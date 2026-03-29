@@ -141,6 +141,127 @@ const DEFAULT_LAYOUT = {
   },
 };
 
+// --- NUOVA SCHERMATA DI LOGIN GLOBALE (Gatekeeper) ---
+const GlobalLoginScreen = ({ technicians, onUnlock, color = "blue" }) => {
+  const [name, setName] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+
+  const handleLogin = (e) => {
+    e.preventDefault();
+    setError("");
+    const cleanName = name.trim();
+
+    if (!cleanName || !password) {
+      setError("Inserisci il tuo Nome e la Password aziendale.");
+      return;
+    }
+
+    // Passpartout Admin: Entra sempre
+    if (password === "Mora1932") {
+      onUnlock(cleanName);
+      return;
+    }
+
+    // Password standard per Tecnici
+    if (password === "1932") {
+      // Controlla se il nome (ignorando maiuscole/minuscole) esiste nell'elenco
+      const matchedTech = technicians.find(
+        (t) => t.name.toLowerCase() === cleanName.toLowerCase()
+      );
+
+      if (matchedTech) {
+        // Se esiste, lo fa entrare salvando il nome esattamente come è scritto nel database
+        onUnlock(matchedTech.name);
+      } else {
+        setError(
+          "Nome non autorizzato. Chiedi all'amministratore di aggiungerti all'elenco dello Staff."
+        );
+      }
+      return;
+    }
+
+    setError("Password errata.");
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4 animate-in fade-in duration-700">
+      <div
+        className={`max-w-md w-full bg-white p-8 rounded-3xl shadow-2xl border-t-4 border-${color}-600`}
+      >
+        <div className="text-center mb-8">
+          <div
+            className={`w-20 h-20 bg-${color}-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-${color}-500/30`}
+          >
+            <HardHat className="w-10 h-10 text-white" />
+          </div>
+          <h1 className="text-2xl font-black text-slate-800 uppercase tracking-tight">
+            Accesso Privato
+          </h1>
+          <p className="text-sm text-slate-500 font-medium mt-2">
+            Area riservata al personale autorizzato.
+          </p>
+        </div>
+
+        <form onSubmit={handleLogin} className="space-y-5">
+          <div className="space-y-1">
+            <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">
+              Il tuo Nome (o Nome Tecnico)
+            </label>
+            <div className="relative">
+              <input
+                type="text"
+                className={`w-full p-4 bg-slate-50 border border-slate-300 rounded-xl font-bold text-slate-800 outline-none focus:ring-2 focus:ring-${color}-500 transition-all`}
+                placeholder="Es. Mario Rossi"
+                value={name}
+                onChange={(e) => {
+                  setName(e.target.value);
+                  setError("");
+                }}
+              />
+              <User className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">
+              Password Aziendale
+            </label>
+            <div className="relative">
+              <input
+                type="password"
+                className={`w-full p-4 bg-slate-50 border border-slate-300 rounded-xl font-bold text-slate-800 outline-none focus:ring-2 focus:ring-${color}-500 transition-all`}
+                placeholder="••••"
+                value={password}
+                onChange={(e) => {
+                  setPassword(e.target.value);
+                  setError("");
+                }}
+              />
+              <Lock className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
+            </div>
+          </div>
+
+          {error && (
+            <div className="bg-red-50 text-red-600 p-3 rounded-xl border border-red-200 text-sm font-bold flex items-center gap-2 animate-in slide-in-from-top-2">
+              <AlertTriangle className="w-5 h-5 shrink-0" />
+              <p>{error}</p>
+            </div>
+          )}
+
+          <button
+            type="submit"
+            className={`w-full py-4 bg-${color}-700 text-white rounded-xl font-black uppercase tracking-widest shadow-lg hover:bg-${color}-800 active:scale-95 transition-all mt-4`}
+          >
+            Entra
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+};
+// --- FINE SCHERMATA LOGIN ---
+
 const PRO_INPUT =
   "w-full p-3 bg-slate-50 border border-slate-300 rounded-lg text-sm font-semibold text-slate-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none placeholder:text-slate-400";
 const PRO_BUTTON_SECONDARY =
@@ -1799,8 +1920,8 @@ const OfficeView = ({
     const today = new Date().toLocaleDateString("it-IT");
 
     const css = `
-        @page { size: A4; margin: 2cm; }
-        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #333; line-height: 1.5; margin: 0; padding: 20px; }
+        @page { size: A4; margin: 0; } /* Il margine a 0 nasconde l'URL e la data di default del browser */
+        body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #333; line-height: 1.5; margin: 0; padding: 20px; box-sizing: border-box; }
         .header { text-align: center; border-bottom: 2px solid #0f172a; padding-bottom: 20px; margin-bottom: 30px; }
         .header h1 { margin: 0; color: #0f172a; text-transform: uppercase; font-size: 24px; letter-spacing: 1px; }
         .header p { margin: 5px 0 0; color: #64748b; font-size: 12px; font-weight: bold; text-transform: uppercase; }
@@ -1810,7 +1931,7 @@ const OfficeView = ({
         th { background: #0f172a; color: white; text-transform: uppercase; font-weight: bold; padding: 12px 10px; text-align: left; }
         td { padding: 12px 10px; border-bottom: 1px solid #e2e8f0; vertical-align: top; }
         tr:nth-child(even) { background-color: #f8fafc; }
-        .footer { position: fixed; bottom: 0; left: 0; right: 0; text-align: center; font-size: 10px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 10px; }
+        .footer { text-align: center; font-size: 10px; color: #94a3b8; border-top: 1px solid #e2e8f0; padding-top: 15px; margin-top: 40px; }
         
         .no-print { 
             position: sticky; top: 0; background: #f1f5f9; padding: 15px; text-align: right; 
@@ -1823,7 +1944,7 @@ const OfficeView = ({
 
         @media print {
             .no-print { display: none !important; }
-            body { margin: 0; padding: 0; }
+            body { padding: 1.5cm; } /* Questo padding sostituisce il margine della pagina per un'impaginazione pulita */
         }
     `;
 
@@ -3688,6 +3809,7 @@ const AdminPanel = ({
             <button
               onClick={() => {
                 localStorage.removeItem("mora_tech_last_name");
+                localStorage.removeItem("mora_app_unlocked");
                 sessionStorage.removeItem("mora_access_tech");
                 window.location.reload();
               }}
@@ -3833,6 +3955,9 @@ export default function App() {
   const [layoutConfig, setLayoutConfig] = useState(DEFAULT_LAYOUT);
   const [isAppLoading, setIsAppLoading] = useState(true);
 
+  // STATO PER LA SICUREZZA GLOBALE
+  const [isAppUnlocked, setIsAppUnlocked] = useState(false);
+
   const [viewingMachineHistory, setViewingMachineHistory] = useState(null);
   const [viewingCustomerDetail, setViewingCustomerDetail] = useState(null);
 
@@ -3845,7 +3970,15 @@ export default function App() {
       }
     };
     initAuth();
-    // Aumentato il tempo di caricamento per mostrare l'animazione bella
+
+    // Controlla se il dispositivo è già autorizzato (regola del Grandfather)
+    const savedTechName = localStorage.getItem("mora_tech_last_name");
+    const hasUnlockToken = localStorage.getItem("mora_app_unlocked") === "true";
+
+    if (savedTechName || hasUnlockToken) {
+      setIsAppUnlocked(true);
+    }
+
     onAuthStateChanged(auth, (u) => {
       setUser(u);
       setTimeout(() => setIsAppLoading(false), 2000);
@@ -4026,6 +4159,13 @@ export default function App() {
     setViewingMachineHistory(null);
   };
 
+  const handleGlobalUnlock = (techName) => {
+    localStorage.setItem("mora_tech_last_name", techName);
+    localStorage.setItem("mora_app_unlocked", "true");
+    setCurrentTechName(techName);
+    setIsAppUnlocked(true);
+  };
+
   const color = layoutConfig.themeColor || "blue";
 
   // SCHERMATA DI CARICAMENTO MIGLIORATA CON ANIMAZIONE
@@ -4062,6 +4202,26 @@ export default function App() {
         </div>
       </div>
     );
+
+  // SE L'APP NON È SBLOCCATA E HA FINITO DI CARICARE I DATI (serve per avere i tecnici)
+  if (!isAppUnlocked && !loading) {
+    return (
+      <GlobalLoginScreen
+        technicians={technicians}
+        onUnlock={handleGlobalUnlock}
+        color={color}
+      />
+    );
+  }
+
+  // SE L'APP NON E' SBLOCCATA MA I DATI STANNO ANCORA CARICANDO, MOSTRA UN LOADER MINIMALE
+  if (!isAppUnlocked && loading) {
+    return (
+      <div className="min-h-screen bg-slate-100 flex items-center justify-center">
+        <RefreshCw className={`animate-spin text-${color}-600 w-10 h-10`} />
+      </div>
+    );
+  }
 
   return (
     <div
