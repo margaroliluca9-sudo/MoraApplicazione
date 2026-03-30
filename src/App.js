@@ -71,6 +71,7 @@ import {
   Mail,
   Send,
   Clock,
+  MinusCircle,
 } from "lucide-react";
 import { initializeApp } from "firebase/app";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "firebase/auth";
@@ -141,6 +142,13 @@ const DEFAULT_LAYOUT = {
   },
 };
 
+// HELPER GLOBALE PER TECNICI MULTIPLI
+const getTechsString = (log) => {
+  if (!log.additionalTechnicians || log.additionalTechnicians.length === 0)
+    return log.technician;
+  return `${log.technician}, ${log.additionalTechnicians.join(", ")}`;
+};
+
 // --- NUOVA SCHERMATA DI LOGIN GLOBALE (Gatekeeper) ---
 const GlobalLoginScreen = ({ technicians, onUnlock, color = "blue" }) => {
   const [name, setName] = useState("");
@@ -165,13 +173,11 @@ const GlobalLoginScreen = ({ technicians, onUnlock, color = "blue" }) => {
 
     // Password standard per Tecnici
     if (password === "1932") {
-      // Controlla se il nome (ignorando maiuscole/minuscole) esiste nell'elenco
       const matchedTech = technicians.find(
         (t) => t.name.toLowerCase() === cleanName.toLowerCase()
       );
 
       if (matchedTech) {
-        // Se esiste, lo fa entrare salvando il nome esattamente come è scritto nel database
         onUnlock(matchedTech.name);
       } else {
         setError(
@@ -460,19 +466,46 @@ const EditLogModal = ({
   color = "blue",
   layoutConfig,
 }) => {
-  const [data, setData] = useState({ ...log });
+  const [data, setData] = useState({
+    ...log,
+    additionalTechnicians: log.additionalTechnicians || [],
+  });
   const [loading, setLoading] = useState(false);
   const customFields = layoutConfig?.customFields || [];
   const formSettings =
     layoutConfig?.formSettings || DEFAULT_LAYOUT.formSettings;
 
+  const sortedTechs = [...technicians].sort((a, b) =>
+    a.name.localeCompare(b.name)
+  );
+
+  const addTechnician = () =>
+    setData((p) => ({
+      ...p,
+      additionalTechnicians: [...p.additionalTechnicians, ""],
+    }));
+  const updateAdditionalTech = (index, val) => {
+    const newTechs = [...data.additionalTechnicians];
+    newTechs[index] = val;
+    setData((p) => ({ ...p, additionalTechnicians: newTechs }));
+  };
+  const removeAdditionalTech = (index) => {
+    const newTechs = [...data.additionalTechnicians];
+    newTechs.splice(index, 1);
+    setData((p) => ({ ...p, additionalTechnicians: newTechs }));
+  };
+
   const handleSave = async () => {
     setLoading(true);
     try {
+      const cleanAdditionalTechs = data.additionalTechnicians.filter(
+        (t) => t.trim() !== ""
+      );
       const newMachineId = data.machineId
         .toUpperCase()
         .replace(/\//g, "-")
         .trim();
+
       await updateDoc(
         doc(
           db,
@@ -486,6 +519,7 @@ const EditLogModal = ({
         {
           ...data,
           technician: data.technician,
+          additionalTechnicians: cleanAdditionalTechs,
           customer: data.customer.toUpperCase(),
           machineId: newMachineId,
           machineType: data.machineType,
@@ -531,7 +565,7 @@ const EditLogModal = ({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">
-                Tecnico
+                Tecnico Principale
               </label>
               <select
                 className={PRO_INPUT}
@@ -540,7 +574,7 @@ const EditLogModal = ({
                   setData({ ...data, technician: e.target.value })
                 }
               >
-                {technicians.map((t) => (
+                {sortedTechs.map((t) => (
                   <option key={t.id} value={t.name}>
                     {t.name}
                   </option>
@@ -561,6 +595,49 @@ const EditLogModal = ({
               />
             </div>
           </div>
+
+          {/* Sezione Altri Tecnici */}
+          <div className="space-y-2 bg-slate-100 p-3 rounded-xl border border-slate-200">
+            <div className="flex justify-between items-center mb-1">
+              <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">
+                Tecnici Aggiuntivi
+              </label>
+              <button
+                type="button"
+                onClick={addTechnician}
+                className={`text-[10px] font-bold flex items-center gap-1 text-${color}-600 hover:text-${color}-800`}
+              >
+                <PlusCircle className="w-3 h-3" /> Aggiungi
+              </button>
+            </div>
+            {data.additionalTechnicians.map((tech, idx) => (
+              <div
+                key={idx}
+                className="flex gap-2 items-center animate-in fade-in"
+              >
+                <select
+                  className={`${PRO_INPUT} py-2`}
+                  value={tech}
+                  onChange={(e) => updateAdditionalTech(idx, e.target.value)}
+                >
+                  <option value="">Seleziona...</option>
+                  {sortedTechs.map((t) => (
+                    <option key={t.id} value={t.name}>
+                      {t.name}
+                    </option>
+                  ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => removeAdditionalTech(idx)}
+                  className="p-2 text-red-500 hover:bg-red-50 rounded-lg"
+                >
+                  <MinusCircle className="w-5 h-5" />
+                </button>
+              </div>
+            ))}
+          </div>
+
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">
               Numero Assistenza (Opzionale)
@@ -667,21 +744,6 @@ const EditLogModal = ({
               }
             />
           </div>
-          {customFields.map((field) => (
-            <div key={field.id} className="space-y-1.5">
-              <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">
-                {field.label}
-              </label>
-              <input
-                type={field.type || "text"}
-                className={PRO_INPUT}
-                value={data[field.id] || ""}
-                onChange={(e) =>
-                  setData((prev) => ({ ...prev, [field.id]: e.target.value }))
-                }
-              />
-            </div>
-          ))}
         </div>
         <div className="p-6 border-t border-slate-100 bg-white">
           <button
@@ -1320,7 +1382,7 @@ const MachineHistoryModal = ({
                     <div className="flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-lg text-slate-500 border border-slate-100">
                       <User className="w-3 h-3" />
                       <span className="text-[9px] font-bold uppercase tracking-tight">
-                        {log.technician}
+                        {getTechsString(log)}
                       </span>
                     </div>
                   </div>
@@ -1502,7 +1564,7 @@ const ExploreView = React.memo(
                                       {l.dateString}
                                     </span>
                                     <span className="text-[9px] font-bold text-blue-600">
-                                      {l.technician}
+                                      {getTechsString(l)}
                                     </span>
                                   </div>
                                   <p className="text-[11px] text-slate-600 leading-relaxed whitespace-pre-wrap break-words">
@@ -1667,7 +1729,7 @@ const DatabaseView = ({
                   {l.dateString}
                 </span>
                 <span className="text-[10px] font-bold text-blue-600">
-                  {l.technician}
+                  {getTechsString(l)}
                 </span>
               </div>
               <div className="font-bold text-xs text-slate-800 mb-1">
@@ -1704,6 +1766,7 @@ const SimpleCalendar = ({ logs, onDayClick, month, year, onMonthChange }) => {
 
   const getInterventionsForDay = (day) =>
     logs.filter((l) => {
+      if (!l.dateString) return false;
       const parts = l.dateString.split("/");
       return (
         parseInt(parts[0]) === day &&
@@ -1800,6 +1863,8 @@ const OfficeView = ({
   const [calMonth, setCalMonth] = useState(today.getMonth());
   const [calYear, setCalYear] = useState(today.getFullYear());
 
+  const [viewMode, setViewMode] = useState("month"); // "month" o "year"
+
   const [selectedCustomer, setSelectedCustomer] = useState("");
   const [selectedMachine, setSelectedMachine] = useState("");
   const [selectedTech, setSelectedTech] = useState("");
@@ -1824,15 +1889,20 @@ const OfficeView = ({
     "Novembre",
     "Dicembre",
   ];
-  const dynamicMonthLabel = `(${monthNames[calMonth]} ${calYear})`;
+
+  const dynamicMonthLabel =
+    viewMode === "year"
+      ? `(${calYear})`
+      : `(${monthNames[calMonth]} ${calYear})`;
 
   const calendarFilteredLogs = useMemo(() => {
     return logs.filter((log) => {
       if (!log.dateString) return false;
       const [d, m, y] = log.dateString.split("/").map(Number);
+      if (viewMode === "year") return y === calYear;
       return m - 1 === calMonth && y === calYear;
     });
-  }, [logs, calMonth, calYear]);
+  }, [logs, calMonth, calYear, viewMode]);
 
   const advancedStats = useMemo(() => {
     const techCounts = {};
@@ -1842,6 +1912,11 @@ const OfficeView = ({
     calendarFilteredLogs.forEach((l) => {
       if (l.technician)
         techCounts[l.technician] = (techCounts[l.technician] || 0) + 1;
+      if (l.additionalTechnicians) {
+        l.additionalTechnicians.forEach((t) => {
+          if (t.trim()) techCounts[t] = (techCounts[t] || 0) + 1;
+        });
+      }
       if (l.machineType)
         machineTypeCounts[l.machineType] =
           (machineTypeCounts[l.machineType] || 0) + 1;
@@ -1870,7 +1945,7 @@ const OfficeView = ({
     return {
       total: logs.length,
       year: yearCount,
-      month: calendarFilteredLogs.length,
+      currentPeriod: calendarFilteredLogs.length,
     };
   }, [logs, calYear, calendarFilteredLogs]);
 
@@ -1895,8 +1970,10 @@ const OfficeView = ({
         !log.machineId.includes(selectedMachine.toUpperCase())
       )
         matches = false;
-      if (matches && selectedTech && log.technician !== selectedTech)
-        matches = false;
+      if (matches && selectedTech) {
+        const techs = [log.technician, ...(log.additionalTechnicians || [])];
+        if (!techs.includes(selectedTech)) matches = false;
+      }
       return matches;
     });
   }, [
@@ -1920,7 +1997,7 @@ const OfficeView = ({
     const today = new Date().toLocaleDateString("it-IT");
 
     const css = `
-        @page { size: A4; margin: 0; } /* Il margine a 0 nasconde l'URL e la data di default del browser */
+        @page { size: A4; margin: 0; }
         body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #333; line-height: 1.5; margin: 0; padding: 20px; box-sizing: border-box; }
         .header { text-align: center; border-bottom: 2px solid #0f172a; padding-bottom: 20px; margin-bottom: 30px; }
         .header h1 { margin: 0; color: #0f172a; text-transform: uppercase; font-size: 24px; letter-spacing: 1px; }
@@ -1944,7 +2021,7 @@ const OfficeView = ({
 
         @media print {
             .no-print { display: none !important; }
-            body { padding: 1.5cm; } /* Questo padding sostituisce il margine della pagina per un'impaginazione pulita */
+            body { padding: 1.5cm; }
         }
     `;
 
@@ -1998,9 +2075,9 @@ const OfficeView = ({
                                     ? `<div style="color: #2563eb; font-size: 10px; margin-top: 2px;">N. Assistenza ${l.ticketNumber}</div>`
                                     : ""
                                 }
-                                <div style="color: #64748b; font-size: 11px; margin-top: 4px;">${
-                                  l.technician
-                                }</div>
+                                <div style="color: #64748b; font-size: 11px; margin-top: 4px;">${getTechsString(
+                                  l
+                                )}</div>
                             </td>
                             <td>
                                 <div style="font-weight: bold; color: #0f172a;">${
@@ -2040,7 +2117,7 @@ const OfficeView = ({
     const headers = [
       "Data",
       "N. Assistenza",
-      "Tecnico",
+      "Tecnico/i",
       "Cliente",
       "Matricola",
       "Descrizione",
@@ -2048,7 +2125,7 @@ const OfficeView = ({
     const rows = filteredLogs.map((l) => [
       l.dateString,
       l.ticketNumber || "",
-      l.technician,
+      `"${getTechsString(l)}"`,
       l.customer,
       l.machineId,
       `"${l.description.replace(/"/g, '""')}"`,
@@ -2067,17 +2144,41 @@ const OfficeView = ({
   return (
     <div className="space-y-8 animate-in fade-in zoom-in-95 duration-500">
       <div className={`p-6 ${getProPanelClass(color)} bg-white`}>
-        <div className="flex items-center gap-3 mb-6">
-          <div className={`p-3 bg-${color}-50 text-${color}-700 rounded-lg`}>
-            <Activity className="w-6 h-6" />
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+          <div className="flex items-center gap-3">
+            <div className={`p-3 bg-${color}-50 text-${color}-700 rounded-lg`}>
+              <Activity className="w-6 h-6" />
+            </div>
+            <div>
+              <h2 className="text-xl font-black text-slate-800 uppercase tracking-tight">
+                Panoramica
+              </h2>
+              <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">
+                Statistiche
+              </p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-xl font-black text-slate-800 uppercase tracking-tight">
-              Panoramica
-            </h2>
-            <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">
-              Statistiche
-            </p>
+          <div className="flex bg-slate-100 p-1 rounded-lg w-fit">
+            <button
+              onClick={() => setViewMode("month")}
+              className={`px-4 py-2 text-xs font-bold rounded-md transition-all ${
+                viewMode === "month"
+                  ? "bg-white shadow text-slate-800"
+                  : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              Mensile
+            </button>
+            <button
+              onClick={() => setViewMode("year")}
+              className={`px-4 py-2 text-xs font-bold rounded-md transition-all ${
+                viewMode === "year"
+                  ? "bg-white shadow text-slate-800"
+                  : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              Annuale
+            </button>
           </div>
         </div>
         <div className="grid grid-cols-3 gap-4">
@@ -2091,7 +2192,7 @@ const OfficeView = ({
           </div>
           <div className="text-center p-4 bg-slate-50 rounded-xl border border-slate-100 shadow-sm">
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-              Anno Sel.
+              Anno {calYear}
             </span>
             <div className="text-2xl font-black text-blue-600">
               {stats.year}
@@ -2099,10 +2200,10 @@ const OfficeView = ({
           </div>
           <div className="text-center p-4 bg-slate-50 rounded-xl border border-slate-100 shadow-sm">
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-              Mese Sel.
+              {viewMode === "year" ? "Totale Periodo" : "Mese Sel."}
             </span>
             <div className="text-2xl font-black text-emerald-600">
-              {stats.month}
+              {stats.currentPeriod}
             </div>
           </div>
         </div>
@@ -2126,7 +2227,10 @@ const OfficeView = ({
                 key={tech}
                 onClick={() => {
                   const techLogs = calendarFilteredLogs.filter(
-                    (l) => l.technician === tech
+                    (l) =>
+                      l.technician === tech ||
+                      (l.additionalTechnicians &&
+                        l.additionalTechnicians.includes(tech))
                   );
                   setPopoverData({
                     date: `Interventi: ${tech}`,
@@ -2165,7 +2269,7 @@ const OfficeView = ({
           </div>
           <div className="space-y-3">
             {advancedStats.topMachineTypes.slice(0, 5).map(([type, count]) => {
-              const pct = Math.round((count / stats.month) * 100) || 0;
+              const pct = Math.round((count / stats.currentPeriod) * 100) || 0;
               return (
                 <div key={type}>
                   <div className="flex justify-between text-[10px] font-bold text-slate-500 mb-1">
@@ -2232,12 +2336,11 @@ const OfficeView = ({
         </div>
       </div>
 
-      {/* SPOSTATO IL CALENDARIO SOPRA "ESPORTA REPORT" */}
       <div className="space-y-2 mt-4">
         <div className="flex items-center gap-2 ml-1">
           <CalendarIcon className="w-4 h-4 text-slate-400" />
           <h4 className="text-xs font-black text-slate-500 uppercase tracking-wider">
-            Calendario
+            Calendario Interventi
           </h4>
         </div>
         <SimpleCalendar
@@ -2396,7 +2499,7 @@ const OfficeView = ({
                 >
                   <div className="flex justify-between mb-1">
                     <span className="text-[10px] font-bold text-slate-500 uppercase">
-                      {l.dateString} - {l.technician}
+                      {l.dateString} - {getTechsString(l)}
                     </span>
                     <span className="text-[10px] font-black text-blue-600">
                       {l.machineId}
@@ -2432,6 +2535,7 @@ const NewEntryForm = ({
 }) => {
   const [formData, setFormData] = useState({
     technician: "",
+    additionalTechnicians: [],
     customer: "",
     machineType: "",
     machineId: "",
@@ -2460,6 +2564,10 @@ const NewEntryForm = ({
       .map(([name]) => name);
   }, [allLogs]);
 
+  const sortedTechs = [...technicians].sort((a, b) =>
+    a.name.localeCompare(b.name)
+  );
+
   useEffect(() => {
     const saved = localStorage.getItem("mora_tech_last_name");
     if (saved) {
@@ -2467,6 +2575,22 @@ const NewEntryForm = ({
       setIsLocked(true);
     }
   }, []);
+
+  const addTechnician = () =>
+    setFormData((p) => ({
+      ...p,
+      additionalTechnicians: [...p.additionalTechnicians, ""],
+    }));
+  const updateAdditionalTech = (index, val) => {
+    const newTechs = [...formData.additionalTechnicians];
+    newTechs[index] = val;
+    setFormData((p) => ({ ...p, additionalTechnicians: newTechs }));
+  };
+  const removeAdditionalTech = (index) => {
+    const newTechs = [...formData.additionalTechnicians];
+    newTechs.splice(index, 1);
+    setFormData((p) => ({ ...p, additionalTechnicians: newTechs }));
+  };
 
   const handleMachineIdChange = (e) => {
     const val = e.target.value.toUpperCase().replace(/\//g, "-");
@@ -2548,6 +2672,10 @@ const NewEntryForm = ({
       if (onTechUpdate) onTechUpdate(formData.technician);
       localStorage.setItem("mora_tech_last_name", formData.technician);
 
+      const cleanAdditionalTechs = formData.additionalTechnicians.filter(
+        (t) => t.trim() !== ""
+      );
+
       await addDoc(
         collection(
           db,
@@ -2559,6 +2687,7 @@ const NewEntryForm = ({
         ),
         {
           ...formData,
+          additionalTechnicians: cleanAdditionalTechs,
           machineId: formData.machineId.toUpperCase(),
           customer: formData.customer.toUpperCase(),
           dateString: new Date().toLocaleDateString("it-IT"),
@@ -2607,38 +2736,91 @@ const NewEntryForm = ({
     switch (key) {
       case "technician":
         return (
-          <div key="tech" className="space-y-1">
-            <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">
-              Tecnico
-            </label>
-            <div className="relative">
-              {isLocked ? (
-                <div className="w-full p-3 bg-slate-100 border border-slate-300 rounded-lg text-sm font-bold text-slate-600 flex justify-between items-center">
-                  <span>{formData.technician}</span>
-                  <Lock className="w-4 h-4 text-slate-400" />
-                </div>
-              ) : (
-                <>
-                  <select
-                    className={PRO_INPUT}
-                    value={formData.technician}
-                    onChange={(e) =>
-                      setFormData({ ...formData, technician: e.target.value })
-                    }
-                  >
-                    <option value="">Seleziona...</option>
-                    {technicians.map((t) => (
-                      <option key={t.id} value={t.name}>
-                        {topTechs.includes(t.name) ? "⭐ " : ""}
-                        {t.name}
-                      </option>
-                    ))}
-                  </select>
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                    <User className="w-4 h-4" />
+          <div key="tech" className="space-y-3">
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">
+                Tecnico Principale
+              </label>
+              <div className="relative">
+                {isLocked ? (
+                  <div className="w-full p-3 bg-slate-100 border border-slate-300 rounded-lg text-sm font-bold text-slate-600 flex justify-between items-center">
+                    <span>{formData.technician}</span>
+                    <Lock className="w-4 h-4 text-slate-400" />
                   </div>
-                </>
-              )}
+                ) : (
+                  <>
+                    <select
+                      className={PRO_INPUT}
+                      value={formData.technician}
+                      onChange={(e) =>
+                        setFormData({ ...formData, technician: e.target.value })
+                      }
+                    >
+                      <option value="">Seleziona...</option>
+                      {sortedTechs.map((t) => (
+                        <option key={t.id} value={t.name}>
+                          {topTechs.includes(t.name) ? "⭐ " : ""}
+                          {t.name}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                      <User className="w-4 h-4" />
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            {/* SEZIONE TECNICI AGGIUNTIVI */}
+            <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
+              <div className="flex justify-between items-center mb-2">
+                <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">
+                  Hanno Lavorato Con Te?
+                </label>
+                <button
+                  type="button"
+                  onClick={addTechnician}
+                  className={`text-[10px] font-bold flex items-center gap-1 text-${color}-600 hover:text-${color}-800 transition-colors`}
+                >
+                  <PlusCircle className="w-3 h-3" /> Aggiungi Tecnico
+                </button>
+              </div>
+              <div className="space-y-2">
+                {formData.additionalTechnicians.map((tech, idx) => (
+                  <div
+                    key={idx}
+                    className="flex gap-2 items-center animate-in fade-in slide-in-from-top-1"
+                  >
+                    <select
+                      className={`${PRO_INPUT} py-2`}
+                      value={tech}
+                      onChange={(e) =>
+                        updateAdditionalTech(idx, e.target.value)
+                      }
+                    >
+                      <option value="">Seleziona un collega...</option>
+                      {sortedTechs.map((t) => (
+                        <option key={t.id} value={t.name}>
+                          {t.name}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => removeAdditionalTech(idx)}
+                      className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                    >
+                      <MinusCircle className="w-5 h-5" />
+                    </button>
+                  </div>
+                ))}
+                {formData.additionalTechnicians.length === 0 && (
+                  <p className="text-[10px] text-slate-400 italic">
+                    Clicca "Aggiungi" se eravate in più di uno.
+                  </p>
+                )}
+              </div>
             </div>
           </div>
         );
@@ -2908,7 +3090,7 @@ const NewEntryForm = ({
               "{lastIntervention.description}"
             </p>
             <div className="text-[10px] text-amber-700 mt-2 font-bold text-right uppercase tracking-wider">
-              - {lastIntervention.technician}
+              - {getTechsString(lastIntervention)}
             </div>
           </div>
         )}
@@ -3100,8 +3282,8 @@ const HistoryView = ({
                 <div className="flex justify-between items-center pt-1">
                   <div className="flex items-center gap-2">
                     <User className="w-3 h-3 text-slate-400" />
-                    <span className="text-[10px] font-bold uppercase text-slate-600">
-                      {log.technician}
+                    <span className="text-[10px] font-bold uppercase text-slate-600 truncate max-w-[120px]">
+                      {getTechsString(log)}
                     </span>
                   </div>
                   <div className="flex gap-2">
@@ -3137,8 +3319,8 @@ const HistoryView = ({
                 <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase">
                   Descrizione
                 </th>
-                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase w-[140px]">
-                  Tecnico
+                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase w-[160px]">
+                  Tecnici
                 </th>
                 <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase text-center w-[120px]">
                   Azioni
@@ -3200,7 +3382,7 @@ const HistoryView = ({
                     "{log.description}"
                   </td>
                   <td className="px-6 py-4 text-[10px] font-bold uppercase text-slate-600 align-top">
-                    {log.technician}
+                    {getTechsString(log)}
                   </td>
                   <td className="px-6 py-4 text-center align-top">
                     <div className="flex justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -3285,7 +3467,7 @@ const AdminPanel = ({
   const [view, setView] = useState("design");
   const [inputValue, setInputValue] = useState("");
   const [logs, setLogs] = useState([]);
-  const [activeUsers, setActiveUsers] = useState([]); // Aggiunto stato per utenti online
+  const [activeUsers, setActiveUsers] = useState([]);
   const [editingCustomer, setEditingCustomer] = useState(null);
   const [editingMachine, setEditingMachine] = useState(null);
   const [mergingItem, setMergingItem] = useState(null);
@@ -3955,8 +4137,9 @@ export default function App() {
   const [layoutConfig, setLayoutConfig] = useState(DEFAULT_LAYOUT);
   const [isAppLoading, setIsAppLoading] = useState(true);
 
-  // STATO PER LA SICUREZZA GLOBALE
+  // STATO PER LA SICUREZZA GLOBALE E NUMERO UTENTI
   const [isAppUnlocked, setIsAppUnlocked] = useState(false);
+  const [onlineUsersCount, setOnlineUsersCount] = useState(0);
 
   const [viewingMachineHistory, setViewingMachineHistory] = useState(null);
   const [viewingCustomerDetail, setViewingCustomerDetail] = useState(null);
@@ -3971,7 +4154,6 @@ export default function App() {
     };
     initAuth();
 
-    // Controlla se il dispositivo è già autorizzato (regola del Grandfather)
     const savedTechName = localStorage.getItem("mora_tech_last_name");
     const hasUnlockToken = localStorage.getItem("mora_app_unlocked") === "true";
 
@@ -3985,7 +4167,7 @@ export default function App() {
     });
   }, []);
 
-  // NUOVO EFFECT PER PRESENZA E LOG DI ACCESSO
+  // EFFECT PER PRESENZA E LOG DI ACCESSO
   useEffect(() => {
     if (!user) return;
     const sessionId =
@@ -4044,8 +4226,25 @@ export default function App() {
     return () => clearInterval(interval);
   }, [user, currentTechName]);
 
+  // LETTURA DATI + NUMERO UTENTI ONLINE (GLOBLALE)
   useEffect(() => {
     if (!user) return;
+
+    // Ascolta tutti gli utenti attivi per calcolare il numeretto
+    const unsubActiveUsers = onSnapshot(
+      collection(db, "artifacts", appId, "public", "data", "active_users"),
+      (s) => {
+        const now = Date.now();
+        const active = s.docs
+          .map((d) => d.data())
+          .filter(
+            (u) =>
+              u.lastActive && now - u.lastActive.seconds * 1000 < 5 * 60 * 1000
+          );
+        setOnlineUsersCount(active.length);
+      }
+    );
+
     const unsubLayout = onSnapshot(
       doc(db, "artifacts", appId, "public", "data", "settings", "layout"),
       (s) => {
@@ -4118,6 +4317,7 @@ export default function App() {
       collection(db, "artifacts", appId, "public", "data", "machine_types"),
       (s) => setMachineTypes(s.docs.map((d) => ({ id: d.id, ...d.data() })))
     );
+
     return () => {
       unsubLayout();
       unsubLogs();
@@ -4125,6 +4325,7 @@ export default function App() {
       unsubTech();
       unsubMach();
       unsubTypes();
+      unsubActiveUsers();
     };
   }, [user]);
 
@@ -4168,7 +4369,6 @@ export default function App() {
 
   const color = layoutConfig.themeColor || "blue";
 
-  // SCHERMATA DI CARICAMENTO MIGLIORATA CON ANIMAZIONE
   if (isAppLoading)
     return (
       <div className="fixed inset-0 bg-slate-900 flex flex-col items-center justify-center z-[100] animate-out fade-out duration-1000 fill-mode-forwards">
@@ -4203,7 +4403,6 @@ export default function App() {
       </div>
     );
 
-  // SE L'APP NON È SBLOCCATA E HA FINITO DI CARICARE I DATI (serve per avere i tecnici)
   if (!isAppUnlocked && !loading) {
     return (
       <GlobalLoginScreen
@@ -4214,7 +4413,6 @@ export default function App() {
     );
   }
 
-  // SE L'APP NON E' SBLOCCATA MA I DATI STANNO ANCORA CARICANDO, MOSTRA UN LOADER MINIMALE
   if (!isAppUnlocked && loading) {
     return (
       <div className="min-h-screen bg-slate-100 flex items-center justify-center">
@@ -4243,8 +4441,20 @@ export default function App() {
               <HardHat className="w-5 h-5" />
             </div>
             <div>
-              <h1 className="text-lg font-black uppercase tracking-tighter leading-none text-slate-800">
+              {/* LED NUMERO UTENTI ONLINE AGGIUNTO AL TITOLO */}
+              <h1 className="text-lg font-black uppercase tracking-tighter leading-none text-slate-800 flex items-center gap-2">
                 {layoutConfig.appTitle}
+                {onlineUsersCount > 0 && (
+                  <div
+                    className="flex items-center gap-1.5 px-2 py-0.5 bg-green-50 border border-green-200 rounded-full"
+                    title={`${onlineUsersCount} Tecnici Online`}
+                  >
+                    <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                    <span className="text-[9px] font-black text-green-700 mt-0.5">
+                      {onlineUsersCount}
+                    </span>
+                  </div>
+                )}
               </h1>
               <span
                 className={`text-[10px] font-bold text-${color}-600 uppercase tracking-wider block mt-0.5`}
