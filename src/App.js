@@ -3500,14 +3500,36 @@ const AdminPanel = ({
         collection(db, "artifacts", appId, "public", "data", "active_users"),
         (s) => {
           const now = Date.now();
-          const users = s.docs
+          const rawUsers = s.docs
             .map((d) => ({ id: d.id, ...d.data() }))
             .filter(
               (u) =>
                 u.lastActive &&
                 now - u.lastActive.seconds * 1000 < 5 * 60 * 1000
-            )
+            );
+
+          // Raggruppa i dispositivi dello stesso tecnico
+          const grouped = {};
+          rawUsers.forEach((u) => {
+            if (!grouped[u.technician]) {
+              grouped[u.technician] = { ...u, allDevices: new Set([u.device]) };
+            } else {
+              grouped[u.technician].allDevices.add(u.device);
+              if (
+                u.lastActive.seconds > grouped[u.technician].lastActive.seconds
+              ) {
+                grouped[u.technician].lastActive = u.lastActive;
+              }
+            }
+          });
+
+          const users = Object.values(grouped)
+            .map((u) => ({
+              ...u,
+              device: Array.from(u.allDevices).join(" + "),
+            }))
             .sort((a, b) => b.lastActive.seconds - a.lastActive.seconds);
+
           setActiveUsers(users);
         }
       );
@@ -3898,7 +3920,8 @@ const AdminPanel = ({
           </div>
 
           <h4 className="font-black text-slate-800 uppercase mb-4 flex items-center gap-2">
-            <Wifi className="w-5 h-5 text-green-500" /> Utenti Attivi Ora
+            <Wifi className="w-5 h-5 text-green-500" /> Utenti Attivi Ora (
+            {activeUsers.length})
           </h4>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-8">
             {activeUsers.length === 0 ? (
@@ -3908,7 +3931,7 @@ const AdminPanel = ({
             ) : (
               activeUsers.map((u) => (
                 <div
-                  key={u.id}
+                  key={u.id || u.technician}
                   className="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-xl shadow-sm"
                 >
                   <div className="flex items-center gap-3">
@@ -4140,6 +4163,8 @@ export default function App() {
   // STATO PER LA SICUREZZA GLOBALE E NUMERO UTENTI
   const [isAppUnlocked, setIsAppUnlocked] = useState(false);
   const [onlineUsersCount, setOnlineUsersCount] = useState(0);
+  const [activeUsersList, setActiveUsersList] = useState([]);
+  const [showOnlineDropdown, setShowOnlineDropdown] = useState(false);
 
   const [viewingMachineHistory, setViewingMachineHistory] = useState(null);
   const [viewingCustomerDetail, setViewingCustomerDetail] = useState(null);
@@ -4235,13 +4260,38 @@ export default function App() {
       collection(db, "artifacts", appId, "public", "data", "active_users"),
       (s) => {
         const now = Date.now();
-        const active = s.docs
+        // Prendo tutte le sessioni attive negli ultimi 5 minuti
+        const activeDocs = s.docs
           .map((d) => d.data())
           .filter(
             (u) =>
               u.lastActive && now - u.lastActive.seconds * 1000 < 5 * 60 * 1000
           );
-        setOnlineUsersCount(active.length);
+
+        // Raggruppa i dispositivi dello stesso tecnico
+        const grouped = {};
+        activeDocs.forEach((u) => {
+          if (!grouped[u.technician]) {
+            grouped[u.technician] = { ...u, allDevices: new Set([u.device]) };
+          } else {
+            grouped[u.technician].allDevices.add(u.device);
+            if (
+              u.lastActive.seconds > grouped[u.technician].lastActive.seconds
+            ) {
+              grouped[u.technician].lastActive = u.lastActive;
+            }
+          }
+        });
+
+        const users = Object.values(grouped)
+          .map((u) => ({
+            ...u,
+            device: Array.from(u.allDevices).join(" + "),
+          }))
+          .sort((a, b) => b.lastActive.seconds - a.lastActive.seconds);
+
+        setActiveUsersList(users);
+        setOnlineUsersCount(users.length);
       }
     );
 
@@ -4442,20 +4492,94 @@ export default function App() {
             </div>
             <div>
               {/* LED NUMERO UTENTI ONLINE AGGIUNTO AL TITOLO */}
-              <h1 className="text-lg font-black uppercase tracking-tighter leading-none text-slate-800 flex items-center gap-2">
-                {layoutConfig.appTitle}
-                {onlineUsersCount > 0 && (
+              <div className="relative">
+                <h1 className="text-lg font-black uppercase tracking-tighter leading-none text-slate-800 flex items-center gap-2">
+                  {layoutConfig.appTitle}
+                  {onlineUsersCount > 0 && (
+                    <div
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (isAdminAuthenticated)
+                          setShowOnlineDropdown(!showOnlineDropdown);
+                      }}
+                      className={`flex items-center gap-1.5 px-2 py-0.5 bg-green-50 border border-green-200 rounded-full ${
+                        isAdminAuthenticated
+                          ? "cursor-pointer hover:bg-green-100 shadow-sm transition-all"
+                          : ""
+                      }`}
+                      title={
+                        isAdminAuthenticated
+                          ? "Clicca per vedere i tecnici"
+                          : `${onlineUsersCount} Tecnici Online`
+                      }
+                    >
+                      <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                      <span className="text-[9px] font-black text-green-700 uppercase mt-0.5">
+                        {onlineUsersCount}{" "}
+                        {onlineUsersCount === 1
+                          ? "tecnico online"
+                          : "tecnici online"}
+                      </span>
+                      {isAdminAuthenticated && (
+                        <ChevronDown
+                          className={`w-3 h-3 text-green-600 transition-transform ${
+                            showOnlineDropdown ? "rotate-180" : ""
+                          }`}
+                        />
+                      )}
+                    </div>
+                  )}
+                </h1>
+
+                {showOnlineDropdown && isAdminAuthenticated && (
                   <div
-                    className="flex items-center gap-1.5 px-2 py-0.5 bg-green-50 border border-green-200 rounded-full"
-                    title={`${onlineUsersCount} Tecnici Online`}
+                    className="absolute top-full left-0 mt-3 w-64 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 animate-in fade-in slide-in-from-top-2 overflow-hidden"
+                    onClick={(e) => e.stopPropagation()}
                   >
-                    <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                    <span className="text-[9px] font-black text-green-700 mt-0.5">
-                      {onlineUsersCount}
-                    </span>
+                    <div className="p-3 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                      <span className="text-[10px] font-black uppercase text-slate-700">
+                        In Diretta ({onlineUsersCount})
+                      </span>
+                      <button
+                        onClick={() => setShowOnlineDropdown(false)}
+                        className="p-1 hover:bg-slate-200 rounded-full transition-colors"
+                      >
+                        <X className="w-4 h-4 text-slate-500" />
+                      </button>
+                    </div>
+                    <div className="max-h-60 overflow-y-auto p-2 space-y-1 custom-scrollbar">
+                      {activeUsersList.map((u) => (
+                        <div
+                          key={u.id || u.technician}
+                          className="flex items-center gap-3 p-2 hover:bg-slate-50 rounded-xl transition-colors"
+                        >
+                          <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center text-green-600 shrink-0 shadow-inner">
+                            <User className="w-4 h-4" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-xs font-bold text-slate-800 truncate leading-tight">
+                              {u.technician}
+                            </div>
+                            <div className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">
+                              {u.device}
+                            </div>
+                          </div>
+                          <div className="text-[9px] font-bold text-slate-400 shrink-0">
+                            {u.lastActive
+                              ? new Date(
+                                  u.lastActive.seconds * 1000
+                                ).toLocaleTimeString([], {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })
+                              : "Ora"}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
-              </h1>
+              </div>
               <span
                 className={`text-[10px] font-bold text-${color}-600 uppercase tracking-wider block mt-0.5`}
               >
