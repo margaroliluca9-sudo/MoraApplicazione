@@ -157,6 +157,15 @@ const formatCapacity = (val) => {
   return `${s} kg`;
 };
 
+// HELPER GLOBALE PER ESTRARRE SOLO LA MATRICOLA/NOME GRU (Nascodendo l'ID composto del DB)
+const getSafeMatricola = (m) => {
+  if (m.matricola) return m.matricola;
+  if (m.id && m.id.includes("_")) {
+    return m.id.substring(m.id.indexOf("_") + 1).toUpperCase();
+  }
+  return m.id ? m.id.toUpperCase() : "N.D.";
+};
+
 // --- NUOVA SCHERMATA DI LOGIN GLOBALE (Gatekeeper) ---
 const GlobalLoginScreen = ({ technicians, onUnlock, color = "blue" }) => {
   const [name, setName] = useState("");
@@ -779,7 +788,7 @@ const EditMachineModal = ({
 }) => {
   const [data, setData] = useState({
     ...machine,
-    matricola: machine.matricola || machine.id,
+    matricola: getSafeMatricola(machine),
   });
   const [loading, setLoading] = useState(false);
   const color = themeColor || "blue";
@@ -789,12 +798,12 @@ const EditMachineModal = ({
       .toUpperCase()
       .replace(/\//g, "-")
       .trim();
-    const newCustomer = data.customerName.toUpperCase();
+    const newCustomer = data.customerName.toUpperCase().trim();
     const newDocId = `${newCustomer}_${newMatricola}`
       .toLowerCase()
       .replace(/[^a-z0-9]/g, "-");
     const oldDocId = machine.id;
-    const oldMatricola = machine.matricola || machine.id;
+    const oldMatricola = getSafeMatricola(machine);
 
     if (newDocId !== oldDocId && allMachines.some((m) => m.id === newDocId)) {
       alert("Esiste già questa macchina per questo cliente!");
@@ -1140,7 +1149,9 @@ const MergeModal = ({
               .filter((i) => i.id !== sourceItem.id)
               .map((i) => (
                 <option key={i.id} value={i.id}>
-                  {type === "customer" ? i.name : `${i.id} (${i.customerName})`}
+                  {type === "customer"
+                    ? i.name
+                    : `${getSafeMatricola(i)} (${i.customerName})`}
                 </option>
               ))}
           </select>
@@ -1229,7 +1240,7 @@ const CustomerDetailModal = ({
             {customerMachines.map((m) => (
               <div
                 key={m.id}
-                onClick={() => onOpenMachine(m.id)}
+                onClick={() => onOpenMachine(getSafeMatricola(m))}
                 className={`p-5 rounded-2xl cursor-pointer group transition-all hover:border-${color}-400 hover:shadow-md ${getProPanelClass(
                   color
                 )}`}
@@ -1238,7 +1249,7 @@ const CustomerDetailModal = ({
                   <span
                     className={`text-xs font-black text-${color}-600 bg-${color}-50 px-2 py-1 rounded-lg uppercase tracking-wider`}
                   >
-                    {m.matricola || m.id}
+                    {getSafeMatricola(m)}
                   </span>
                   <div
                     className={`p-1.5 bg-slate-100 rounded-full text-slate-400 group-hover:text-${color}-500 transition-colors`}
@@ -1271,34 +1282,21 @@ const CustomerDetailModal = ({
 };
 
 const MachineHistoryModal = ({
-  machineId,
-  machines,
+  machine,
   allLogs,
   onClose,
   onOpenCustomer,
   themeColor,
 }) => {
-  const liveMachine = useMemo(
-    () =>
-      machines.find((m) => m.id === machineId) || {
-        id: machineId,
-        matricola: machineId,
-        customerName: "N.D.",
-        type: "N.D.",
-        capacity: "N.D.",
-      },
-    [machines, machineId]
-  );
-  const machineLogs = useMemo(
-    () =>
-      allLogs.filter(
-        (l) =>
-          l.machineId.toLowerCase() ===
-            (liveMachine.matricola || liveMachine.id).toLowerCase() &&
-          l.customer.toUpperCase() === liveMachine.customerName.toUpperCase()
-      ),
-    [allLogs, liveMachine]
-  );
+  const machineLogs = useMemo(() => {
+    const mat = getSafeMatricola(machine).toLowerCase();
+    const cust = machine.customerName.toUpperCase();
+    return allLogs.filter(
+      (l) =>
+        l.machineId.toLowerCase() === mat && l.customer.toUpperCase() === cust
+    );
+  }, [allLogs, machine]);
+
   const color = themeColor || "blue";
 
   return (
@@ -1336,23 +1334,23 @@ const MachineHistoryModal = ({
             </div>
             <div>
               <button
-                onClick={() => onOpenCustomer(liveMachine.customerName)}
+                onClick={() => onOpenCustomer(machine.customerName)}
                 className="text-left group/title"
               >
                 <h2 className="text-xl md:text-2xl font-black uppercase tracking-tight leading-tight text-slate-800 hover:text-blue-700 transition-colors underline decoration-slate-300 underline-offset-4 decoration-2">
-                  {liveMachine.customerName}
+                  {machine.customerName}
                 </h2>
               </button>
               <div className="flex flex-wrap gap-2 text-[10px] font-bold text-slate-500 mt-2">
                 <span className="bg-white px-2 py-1 rounded border border-slate-200">
-                  MAT: {liveMachine.matricola || liveMachine.id}
+                  MAT: {getSafeMatricola(machine)}
                 </span>
                 <span className="bg-white px-2 py-1 rounded border border-slate-200">
-                  {liveMachine.type}
+                  {machine.type}
                 </span>
-                {liveMachine.capacity && (
+                {machine.capacity && (
                   <span className="bg-white px-2 py-1 rounded border border-slate-200">
-                    {formatCapacity(liveMachine.capacity)}
+                    {formatCapacity(machine.capacity)}
                   </span>
                 )}
               </div>
@@ -1516,7 +1514,7 @@ const ExploreView = React.memo(
                     {myMachines.map((m) => {
                       const isMachExpanded = expandedMachine === m.id;
                       const myLogs = isMachExpanded
-                        ? getMachineLogs(m.matricola || m.id, m.customerName)
+                        ? getMachineLogs(getSafeMatricola(m), m.customerName)
                         : [];
 
                       return (
@@ -1538,7 +1536,7 @@ const ExploreView = React.memo(
                               />
                               <div>
                                 <span className="text-xs font-black text-slate-700 block">
-                                  {m.matricola || m.id}
+                                  {getSafeMatricola(m)}
                                 </span>
                                 <div className="flex items-center gap-2 mt-0.5">
                                   <span className="text-[9px] font-bold text-slate-500 bg-slate-100 px-1.5 rounded border border-slate-200 uppercase">
@@ -1712,12 +1710,12 @@ const DatabaseView = ({
           filteredData.map((m) => (
             <div
               key={m.id}
-              onClick={() => onOpenMachine(m.id)}
+              onClick={() => onOpenMachine(getSafeMatricola(m), m.customerName)}
               className="p-4 mb-2 bg-white rounded-xl shadow-sm border border-slate-200 flex justify-between items-center cursor-pointer hover:border-blue-300 hover:shadow-md transition-all"
             >
               <div>
                 <span className="font-black text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded uppercase">
-                  {m.matricola || m.id}
+                  {getSafeMatricola(m)}
                 </span>
                 <p className="text-[10px] font-bold text-slate-500 mt-1">
                   {m.customerName}
@@ -2769,7 +2767,7 @@ const NewEntryForm = ({
   }, [formData.machineId, formData.customer, allLogs, machines]);
 
   const selectMachine = (m) => {
-    const mat = m.matricola || m.id;
+    const mat = getSafeMatricola(m);
     setFormData((p) => ({
       ...p,
       machineId: mat,
@@ -2805,6 +2803,8 @@ const NewEntryForm = ({
       const cleanAdditionalTechs = formData.additionalTechnicians.filter(
         (t) => t.trim() !== ""
       );
+      const cleanCustomer = formData.customer.toUpperCase().trim();
+      const cleanMachineId = formData.machineId.toUpperCase().trim();
 
       await addDoc(
         collection(
@@ -2818,8 +2818,8 @@ const NewEntryForm = ({
         {
           ...formData,
           additionalTechnicians: cleanAdditionalTechs,
-          machineId: formData.machineId.toUpperCase(),
-          customer: formData.customer.toUpperCase(),
+          machineId: cleanMachineId,
+          customer: cleanCustomer,
           dateString: new Date().toLocaleDateString("it-IT"),
           userId: user.uid,
           createdAt: serverTimestamp(),
@@ -2827,25 +2827,25 @@ const NewEntryForm = ({
       );
 
       // Salva la Gru usando la chiave composta "Cliente_Matricola"
-      const machineDocId = `${formData.customer}_${formData.machineId}`
+      const machineDocId = `${cleanCustomer}_${cleanMachineId}`
         .toLowerCase()
         .replace(/[^a-z0-9]/g, "-");
       await setDoc(
         doc(db, "artifacts", appId, "public", "data", "machines", machineDocId),
         {
           id: machineDocId,
-          matricola: formData.machineId.toUpperCase(),
-          customerName: formData.customer.toUpperCase(),
+          matricola: cleanMachineId,
+          customerName: cleanCustomer,
           type: formData.machineType,
           capacity: formData.capacity,
         },
         { merge: true }
       );
 
-      const custId = formData.customer.toLowerCase().replace(/\s+/g, "_");
+      const custId = cleanCustomer.toLowerCase().replace(/\s+/g, "_");
       await setDoc(
         doc(db, "artifacts", appId, "public", "data", "customers", custId),
-        { name: formData.customer.toUpperCase() },
+        { name: cleanCustomer },
         { merge: true }
       );
 
@@ -2978,7 +2978,7 @@ const NewEntryForm = ({
                 <ul className="absolute z-50 left-0 right-0 mt-2 bg-white border border-slate-200 rounded-xl shadow-xl max-h-48 overflow-y-auto animate-in fade-in slide-in-from-top-2">
                   {machines
                     .filter((m) => {
-                      const mat = m.matricola || m.id;
+                      const mat = getSafeMatricola(m);
                       const matchMat =
                         !formData.machineId ||
                         mat.includes(formData.machineId.toUpperCase());
@@ -2996,7 +2996,7 @@ const NewEntryForm = ({
                         className="p-3 hover:bg-slate-50 cursor-pointer font-bold text-xs text-slate-700 border-b border-slate-50 flex justify-between items-center"
                       >
                         <span className="uppercase text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
-                          {m.matricola || m.id}
+                          {getSafeMatricola(m)}
                         </span>
                         <span className="text-[10px] text-slate-500 truncate ml-2 text-right">
                           {m.customerName}
@@ -3098,7 +3098,7 @@ const NewEntryForm = ({
                         <Factory className="w-4 h-4" />
                       </div>
                       <span className="font-black text-slate-700 text-xs block mb-0.5">
-                        {m.matricola || m.id}
+                        {getSafeMatricola(m)}
                       </span>
                       <span className="text-[9px] text-slate-400 font-bold uppercase truncate w-full block">
                         {m.type}
@@ -3700,6 +3700,8 @@ const AdminPanel = ({
   isMobile,
   layoutConfig,
   onUpdateLayout,
+  notificationsEnabled,
+  setNotificationsEnabled,
 }) => {
   const [view, setView] = useState("design");
   const [inputValue, setInputValue] = useState("");
@@ -3866,6 +3868,30 @@ const AdminPanel = ({
       )
     );
     setMergingItem(null);
+  };
+
+  const toggleNotifications = async () => {
+    if (!("Notification" in window)) {
+      alert("Il tuo browser non supporta le notifiche.");
+      return;
+    }
+    if (!notificationsEnabled) {
+      const permission = await Notification.requestPermission();
+      if (permission === "granted") {
+        setNotificationsEnabled(true);
+        localStorage.setItem("mora_notifications", "true");
+        new Notification("Assistenza Mora", {
+          body: "Notifiche per i nuovi interventi attivate con successo!",
+        });
+      } else {
+        alert(
+          "Devi autorizzare le notifiche nelle impostazioni del tuo browser."
+        );
+      }
+    } else {
+      setNotificationsEnabled(false);
+      localStorage.setItem("mora_notifications", "false");
+    }
   };
 
   return (
@@ -4118,6 +4144,44 @@ const AdminPanel = ({
             layoutConfig.themeColor
           )}`}
         >
+          {/* GESTIONE NOTIFICHE (NUOVO) */}
+          <h4 className="font-black text-slate-800 uppercase mb-4 flex items-center gap-2">
+            <Bell className="w-5 h-5 text-yellow-500" /> Notifiche Dispositivo
+          </h4>
+          <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between shadow-sm mb-8">
+            <div className="flex items-center gap-3">
+              <div
+                className={`w-10 h-10 rounded-full flex items-center justify-center shadow-inner ${
+                  notificationsEnabled
+                    ? "bg-yellow-100 text-yellow-600"
+                    : "bg-slate-200 text-slate-500"
+                }`}
+              >
+                <Bell className="w-5 h-5" />
+              </div>
+              <div>
+                <h5 className="font-bold text-sm text-slate-800">
+                  Avvisi Nuovi Interventi
+                </h5>
+                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
+                  {notificationsEnabled
+                    ? "Attive su questo dispositivo"
+                    : "Disattivate"}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={toggleNotifications}
+              className={`px-4 py-2 rounded-lg font-bold text-xs uppercase transition-all shadow-sm ${
+                notificationsEnabled
+                  ? "bg-red-50 text-red-600 border border-red-200 hover:bg-red-100"
+                  : "bg-slate-800 text-white hover:bg-slate-900"
+              }`}
+            >
+              {notificationsEnabled ? "Disattiva" : "Attiva"}
+            </button>
+          </div>
+
           <h4 className="font-black text-slate-800 uppercase mb-4 flex items-center gap-2">
             <Activity className="w-5 h-5 text-blue-500" /> Stato Sistema e
             Database
@@ -4452,6 +4516,17 @@ export default function App() {
   const [layoutConfig, setLayoutConfig] = useState(DEFAULT_LAYOUT);
   const [isAppLoading, setIsAppLoading] = useState(true);
 
+  // STATO PER LE NOTIFICHE (NUOVO)
+  const [notificationsEnabled, setNotificationsEnabled] = useState(
+    localStorage.getItem("mora_notifications") === "true"
+  );
+  const notifRef = useRef(notificationsEnabled);
+
+  // Aggiorna il ref quando lo stato cambia per usarlo dentro l'useEffect del database
+  useEffect(() => {
+    notifRef.current = notificationsEnabled;
+  }, [notificationsEnabled]);
+
   // STATO PER LA SICUREZZA GLOBALE E NUMERO UTENTI
   const [isAppUnlocked, setIsAppUnlocked] = useState(false);
   const [onlineUsersCount, setOnlineUsersCount] = useState(0);
@@ -4543,7 +4618,7 @@ export default function App() {
     return () => clearInterval(interval);
   }, [user, currentTechName]);
 
-  // LETTURA DATI + NUMERO UTENTI ONLINE (GLOBLALE)
+  // LETTURA DATI + NOTIFICHE PUSH
   useEffect(() => {
     if (!user) return;
 
@@ -4615,9 +4690,40 @@ export default function App() {
         }
       }
     );
+
+    let isInitialLogsLoad = true;
+
     const unsubLogs = onSnapshot(
       collection(db, "artifacts", appId, "public", "data", "maintenance_logs"),
       (s) => {
+        // LOGICA NOTIFICHE NUOVI INTERVENTI
+        if (
+          !isInitialLogsLoad &&
+          notifRef.current &&
+          "Notification" in window &&
+          Notification.permission === "granted"
+        ) {
+          s.docChanges().forEach((change) => {
+            if (change.type === "added") {
+              const newLog = change.doc.data();
+              // Controlla se è un log "nuovo" (creato negli ultimi 5 minuti) e se non l'hai inserito tu stesso su questo dispositivo
+              if (
+                newLog.userId !== user.uid &&
+                newLog.createdAt &&
+                Date.now() - newLog.createdAt.seconds * 1000 < 300000
+              ) {
+                new Notification(`Nuovo Intervento: ${newLog.customer}`, {
+                  body: `Tecnico: ${getTechsString(newLog)}\nGru: ${
+                    newLog.machineId
+                  }`,
+                  icon: "/favicon.ico",
+                });
+              }
+            }
+          });
+        }
+        isInitialLogsLoad = false;
+
         setLogs(
           s.docs
             .map((d) => ({ id: d.id, ...d.data() }))
@@ -4638,6 +4744,7 @@ export default function App() {
         setLoading(false);
       }
     );
+
     const unsubCust = onSnapshot(
       collection(db, "artifacts", appId, "public", "data", "customers"),
       (s) =>
@@ -4687,11 +4794,13 @@ export default function App() {
     let machine;
     if (mCustomer) {
       machine = machines.find(
-        (m) => (m.matricola || m.id) === mId && m.customerName === mCustomer
+        (m) => getSafeMatricola(m) === mId && m.customerName === mCustomer
       );
     } else {
-      machine = machines.find((m) => m.id === mId); // Fallback ai vecchi ID
+      machine = machines.find((m) => getSafeMatricola(m) === mId); // Fallback
     }
+
+    // Passiamo l'intero oggetto macchina, oppure un oggetto fittizio costruito al volo ma COMPLETO
     setViewingMachineHistory(
       machine || {
         id: mId,
@@ -4703,6 +4812,7 @@ export default function App() {
     );
     setViewingCustomerDetail(null);
   };
+
   const openCustomerDetail = (customerName) => {
     setViewingCustomerDetail(customerName);
     setViewingMachineHistory(null);
@@ -4727,7 +4837,7 @@ export default function App() {
             <HardHat className="w-16 h-16 text-white" />
           </div>
           <h1 className="text-3xl font-black text-white uppercase tracking-widest mb-2 shadow-sm">
-            Mora App
+            ASSISTENZA MORA
           </h1>
           <p
             className={`text-${color}-400 text-xs font-bold uppercase tracking-widest animate-pulse`}
@@ -4999,6 +5109,8 @@ export default function App() {
                 isMobile={isMobileView}
                 layoutConfig={layoutConfig}
                 onUpdateLayout={handleUpdateLayout}
+                notificationsEnabled={notificationsEnabled}
+                setNotificationsEnabled={setNotificationsEnabled}
               />
             )}
           </div>
@@ -5007,8 +5119,7 @@ export default function App() {
 
       {viewingMachineHistory && (
         <MachineHistoryModal
-          machineId={viewingMachineHistory.id}
-          machines={machines}
+          machine={viewingMachineHistory}
           allLogs={logs}
           onClose={() => setViewingMachineHistory(null)}
           onOpenCustomer={openCustomerDetail}
