@@ -5153,10 +5153,22 @@ export default function App() {
               </span>
             </div>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <button
               onClick={() => setIsMobileView(!isMobileView)}
-              className="p-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl transition-all"
+              className="p-2 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-xl transition-all shadow-sm"
+              title="Forza Rotazione (Verticale/Orizzontale)"
+            >
+              <Smartphone
+                className={`w-4 h-4 text-indigo-600 transition-transform duration-500 ${
+                  !isMobileView ? "-rotate-90" : ""
+                }`}
+              />
+            </button>
+            <button
+              onClick={() => setIsMobileView(!isMobileView)}
+              className="p-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl transition-all shadow-sm"
+              title="Vista PC / Mobile"
             >
               {isMobileView ? (
                 <Smartphone className="w-4 h-4 text-green-600" />
