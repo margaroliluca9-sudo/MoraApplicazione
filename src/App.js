@@ -3711,7 +3711,14 @@ const AdminPanel = ({
   const [editingMachine, setEditingMachine] = useState(null);
   const [mergingItem, setMergingItem] = useState(null);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
-  const [itemToDelete, setItemToDelete] = useState(null); // STATO PER IL POP-UP DI ELIMINAZIONE
+  const [itemToDelete, setItemToDelete] = useState(null);
+
+  // NUOVI STATI PER GESTIONE LISTE AVANZATE (Clienti e Gru)
+  const [clientSearch, setClientSearch] = useState("");
+  const [clientSort, setClientSort] = useState("az");
+  const [machineSearch, setMachineSearch] = useState("");
+  const [machineSort, setMachineSort] = useState("cust-az");
+  const [listViewMode, setListViewMode] = useState("list"); // "list" | "grid"
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -3779,6 +3786,48 @@ const AdminPanel = ({
       };
     }
   }, [view]);
+
+  // LOGICA DI ORDINAMENTO E FILTRO PER CLIENTI
+  const processedCustomers = useMemo(() => {
+    let res = [...customers];
+    if (clientSearch) {
+      res = res.filter((c) =>
+        c.name.toLowerCase().includes(clientSearch.toLowerCase())
+      );
+    }
+    if (clientSort === "az") {
+      res.sort((a, b) => a.name.localeCompare(b.name));
+    } else if (clientSort === "za") {
+      res.sort((a, b) => b.name.localeCompare(a.name));
+    }
+    return res;
+  }, [customers, clientSearch, clientSort]);
+
+  // LOGICA DI ORDINAMENTO E FILTRO PER GRU
+  const processedMachines = useMemo(() => {
+    let res = [...machines];
+    if (machineSearch) {
+      const s = machineSearch.toLowerCase();
+      res = res.filter(
+        (m) =>
+          (m.matricola || m.id).toLowerCase().includes(s) ||
+          m.customerName.toLowerCase().includes(s) ||
+          (m.type && m.type.toLowerCase().includes(s))
+      );
+    }
+    if (machineSort === "mat-az") {
+      res.sort((a, b) =>
+        (a.matricola || a.id).localeCompare(b.matricola || b.id)
+      );
+    } else if (machineSort === "mat-za") {
+      res.sort((a, b) =>
+        (b.matricola || b.id).localeCompare(a.matricola || a.id)
+      );
+    } else if (machineSort === "cust-az") {
+      res.sort((a, b) => a.customerName.localeCompare(b.customerName));
+    }
+    return res;
+  }, [machines, machineSearch, machineSort]);
 
   const addItem = async () => {
     if (!inputValue) return;
@@ -4028,43 +4077,91 @@ const AdminPanel = ({
             layoutConfig.themeColor
           )}`}
         >
-          <h4 className="font-black text-slate-800 uppercase mb-4">
-            Lista Clienti ({customers.length})
-          </h4>
-          <div className="max-h-[400px] overflow-y-auto space-y-2 custom-scrollbar">
-            {customers.map((c) => (
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 mb-4">
+            <h4 className="font-black text-slate-800 uppercase shrink-0">
+              Lista Clienti ({processedCustomers.length})
+            </h4>
+            <div className="flex gap-2 w-full md:w-auto">
+              <input
+                type="text"
+                placeholder="Cerca cliente..."
+                className="p-2 border border-slate-200 rounded-lg text-xs flex-1 md:w-40"
+                value={clientSearch}
+                onChange={(e) => setClientSearch(e.target.value)}
+              />
+              <select
+                className="p-2 border border-slate-200 rounded-lg text-xs font-bold text-slate-600 outline-none cursor-pointer hover:bg-slate-50"
+                value={clientSort}
+                onChange={(e) => setClientSort(e.target.value)}
+              >
+                <option value="az">A-Z</option>
+                <option value="za">Z-A</option>
+              </select>
+              <button
+                onClick={() =>
+                  setListViewMode((p) => (p === "grid" ? "list" : "grid"))
+                }
+                className="p-2 bg-slate-100 rounded-lg text-slate-500 hover:text-blue-600 transition-colors"
+                title="Cambia Vista"
+              >
+                <Layout className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+          <div
+            className={`max-h-[500px] overflow-y-auto custom-scrollbar p-1 ${
+              listViewMode === "grid"
+                ? "grid grid-cols-1 md:grid-cols-2 gap-3"
+                : "space-y-2"
+            }`}
+          >
+            {processedCustomers.map((c) => (
               <div
                 key={c.id}
-                className="flex justify-between p-3 bg-slate-50 border border-slate-100 rounded-xl items-center group"
+                className="flex justify-between p-3 bg-slate-50 border border-slate-100 rounded-xl items-center group hover:border-blue-300 hover:shadow-sm transition-all"
               >
-                <span className="font-bold text-xs text-slate-700">
-                  {String(c.name)}
-                </span>
-                <div className="flex gap-2">
+                <div className="flex items-center gap-3 overflow-hidden">
+                  {listViewMode === "grid" && (
+                    <div className="p-2 bg-blue-100 text-blue-600 rounded-lg shrink-0">
+                      <Users className="w-4 h-4" />
+                    </div>
+                  )}
+                  <span className="font-bold text-xs text-slate-700 truncate">
+                    {String(c.name)}
+                  </span>
+                </div>
+                <div className="flex gap-2 shrink-0">
                   <button
                     onClick={() =>
                       setMergingItem({ item: c, type: "customer" })
                     }
-                    className="text-purple-400 hover:text-purple-600"
+                    className="p-1.5 bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100 transition-colors"
                     title="Unisci"
                   >
                     <Merge className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => setEditingCustomer(c)}
-                    className="text-blue-400 hover:text-blue-600"
+                    className="p-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
+                    title="Modifica"
                   >
                     <Edit className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => deleteItem("customers", c.id)}
-                    className="text-red-400 hover:text-red-600"
+                    className="p-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
+                    title="Elimina"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
               </div>
             ))}
+            {processedCustomers.length === 0 && (
+              <div className="col-span-full text-center py-10 text-xs font-bold text-slate-400 uppercase tracking-widest">
+                Nessun cliente trovato
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -4075,65 +4172,95 @@ const AdminPanel = ({
             layoutConfig.themeColor
           )}`}
         >
-          <div className="flex justify-between items-center mb-4">
-            <h4 className="font-black text-slate-800 uppercase">
-              Archivio Gru ({machines.length})
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 mb-4">
+            <h4 className="font-black text-slate-800 uppercase shrink-0">
+              Archivio Gru ({processedMachines.length})
             </h4>
-            <input
-              type="text"
-              placeholder="Filtra..."
-              className="p-2 border border-slate-200 rounded-lg text-xs"
-              onChange={(e) => {
-                const items = document.querySelectorAll(".machine-item");
-                items.forEach((el) => {
-                  if (
-                    el.textContent
-                      .toLowerCase()
-                      .includes(e.target.value.toLowerCase())
-                  )
-                    el.style.display = "flex";
-                  else el.style.display = "none";
-                });
-              }}
-            />
+            <div className="flex gap-2 w-full md:w-auto">
+              <input
+                type="text"
+                placeholder="Cerca gru, tipo..."
+                className="p-2 border border-slate-200 rounded-lg text-xs flex-1 md:w-40"
+                value={machineSearch}
+                onChange={(e) => setMachineSearch(e.target.value)}
+              />
+              <select
+                className="p-2 border border-slate-200 rounded-lg text-xs font-bold text-slate-600 outline-none cursor-pointer hover:bg-slate-50"
+                value={machineSort}
+                onChange={(e) => setMachineSort(e.target.value)}
+              >
+                <option value="cust-az">Per Cliente</option>
+                <option value="mat-az">Matricola (A-Z)</option>
+                <option value="mat-za">Matricola (Z-A)</option>
+              </select>
+              <button
+                onClick={() =>
+                  setListViewMode((p) => (p === "grid" ? "list" : "grid"))
+                }
+                className="p-2 bg-slate-100 rounded-lg text-slate-500 hover:text-blue-600 transition-colors"
+                title="Cambia Vista"
+              >
+                <Layout className="w-4 h-4" />
+              </button>
+            </div>
           </div>
-          <div className="max-h-[400px] overflow-y-auto space-y-2 custom-scrollbar">
-            {machines.map((m) => (
+          <div
+            className={`max-h-[500px] overflow-y-auto custom-scrollbar p-1 ${
+              listViewMode === "grid"
+                ? "grid grid-cols-1 md:grid-cols-2 gap-3"
+                : "space-y-2"
+            }`}
+          >
+            {processedMachines.map((m) => (
               <div
                 key={m.id}
-                className="machine-item flex justify-between p-3 bg-slate-50 border border-slate-100 rounded-xl items-center"
+                className="flex justify-between p-3 bg-slate-50 border border-slate-100 rounded-xl items-center group hover:border-blue-300 hover:shadow-sm transition-all"
               >
-                <div>
-                  <span className="font-black text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded mr-2">
-                    {m.matricola || m.id}
-                  </span>
-                  <span className="font-bold text-xs text-slate-700">
+                <div className="overflow-hidden pr-2">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="font-black text-xs text-blue-700 bg-blue-100 px-2 py-0.5 rounded border border-blue-200">
+                      {m.matricola || m.id}
+                    </span>
+                    {listViewMode === "grid" && m.type && (
+                      <span className="text-[9px] font-bold text-slate-500 uppercase truncate">
+                        {m.type}
+                      </span>
+                    )}
+                  </div>
+                  <span className="font-bold text-xs text-slate-600 truncate block">
                     {m.customerName}
                   </span>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-2 shrink-0">
                   <button
                     onClick={() => setMergingItem({ item: m, type: "machine" })}
-                    className="text-purple-400 hover:text-purple-600"
+                    className="p-1.5 bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100 transition-colors"
                     title="Unisci"
                   >
                     <Merge className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => setEditingMachine(m)}
-                    className="text-blue-400 hover:text-blue-600"
+                    className="p-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
+                    title="Modifica"
                   >
                     <Edit className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => deleteItem("machines", m.id.toLowerCase())}
-                    className="text-red-400 hover:text-red-600"
+                    className="p-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
+                    title="Elimina"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
               </div>
             ))}
+            {processedMachines.length === 0 && (
+              <div className="col-span-full text-center py-10 text-xs font-bold text-slate-400 uppercase tracking-widest">
+                Nessuna gru trovata
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -4527,12 +4654,32 @@ export default function App() {
     notifRef.current = notificationsEnabled;
   }, [notificationsEnabled]);
 
-  // EFFETTO PER IL RICONOSCIMENTO ROTAZIONE E RIDIMENSIONAMENTO SCHERMO
+  // EFFETTO PER IL RICONOSCIMENTO ROTAZIONE E RIDIMENSIONAMENTO SCHERMO (FIX ANDROID)
   useEffect(() => {
-    const handleResize = () => setIsMobileView(window.innerWidth < 768);
+    let timeoutId;
+
+    const handleResize = () => {
+      clearTimeout(timeoutId);
+      // Un piccolo ritardo (150ms) risolve il bug di Android in cui
+      // le dimensioni dello schermo non si aggiornano istantaneamente
+      timeoutId = setTimeout(() => {
+        const isPortrait = window.innerHeight > window.innerWidth;
+        const isSmallScreen = window.innerWidth < 768;
+
+        // Passa alla vista "Mobile" (liste e menu in basso) SOLO se lo schermo è stretto E in verticale.
+        // In orizzontale (landscape), forza sempre la vista "Desktop" (tabelle).
+        setIsMobileView(isSmallScreen && isPortrait);
+      }, 150);
+    };
+
+    // Forza il ricalcolo all'avvio dell'app
+    handleResize();
+
     window.addEventListener("resize", handleResize);
     window.addEventListener("orientationchange", handleResize);
+
     return () => {
+      clearTimeout(timeoutId);
       window.removeEventListener("resize", handleResize);
       window.removeEventListener("orientationchange", handleResize);
     };
