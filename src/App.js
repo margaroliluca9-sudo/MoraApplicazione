@@ -1453,7 +1453,7 @@ const ExploreView = React.memo(
     };
 
     return (
-      <div className="h-[80vh] flex flex-col animate-in fade-in zoom-in-95 duration-500">
+      <div className="h-[calc(100vh-160px)] md:h-[80vh] flex flex-col animate-in fade-in zoom-in-95 duration-500">
         <div className={`p-4 ${getProPanelClass(color)} mb-4`}>
           <div className="relative">
             <input
@@ -1634,7 +1634,7 @@ const DatabaseView = ({
 
   return (
     <div
-      className={`h-[80vh] flex flex-col animate-in fade-in zoom-in-95 duration-500 ${getProPanelClass(
+      className={`h-[calc(100vh-160px)] md:h-[80vh] flex flex-col animate-in fade-in zoom-in-95 duration-500 ${getProPanelClass(
         color
       )} overflow-hidden`}
     >
@@ -4526,6 +4526,17 @@ export default function App() {
   useEffect(() => {
     notifRef.current = notificationsEnabled;
   }, [notificationsEnabled]);
+
+  // EFFETTO PER IL RICONOSCIMENTO ROTAZIONE E RIDIMENSIONAMENTO SCHERMO
+  useEffect(() => {
+    const handleResize = () => setIsMobileView(window.innerWidth < 768);
+    window.addEventListener("resize", handleResize);
+    window.addEventListener("orientationchange", handleResize);
+    return () => {
+      window.removeEventListener("resize", handleResize);
+      window.removeEventListener("orientationchange", handleResize);
+    };
+  }, []);
 
   // STATO PER LA SICUREZZA GLOBALE E NUMERO UTENTI
   const [isAppUnlocked, setIsAppUnlocked] = useState(false);
