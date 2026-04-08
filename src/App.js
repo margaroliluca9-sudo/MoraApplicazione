@@ -799,20 +799,43 @@ const EditMachineModal = ({
       .replace(/\//g, "-")
       .trim();
     const newCustomer = data.customerName.toUpperCase().trim();
-    const newDocId = `${newCustomer}_${newMatricola}`
-      .toLowerCase()
-      .replace(/[^a-z0-9]/g, "-");
-    const oldDocId = machine.id;
-    const oldMatricola = getSafeMatricola(machine);
 
-    if (newDocId !== oldDocId && allMachines.some((m) => m.id === newDocId)) {
+    // Evita duplicati controllando se esiste GIÀ un'altra macchina con la stessa matricola e cliente
+    if (
+      allMachines.some(
+        (m) =>
+          m.id !== machine.id &&
+          getSafeMatricola(m) === newMatricola &&
+          m.customerName === newCustomer
+      )
+    ) {
       alert("Esiste già questa macchina per questo cliente!");
       return;
     }
 
     setLoading(true);
     try {
-      const promises = [];
+      const batch = writeBatch(db);
+
+      // 1. Aggiorna i dati della macchina STESSA senza crearne una nuova
+      const machineRef = doc(
+        db,
+        "artifacts",
+        appId,
+        "public",
+        "data",
+        "machines",
+        machine.id
+      );
+      batch.update(machineRef, {
+        matricola: newMatricola,
+        customerName: newCustomer,
+        type: data.type,
+        capacity: data.capacity,
+      });
+
+      // 2. Trova e aggiorna tutti gli interventi (log) associati a questa vecchia macchina
+      const oldMatricola = getSafeMatricola(machine);
       const qLogs = query(
         collection(
           db,
@@ -828,57 +851,15 @@ const EditMachineModal = ({
       const logsSnap = await getDocs(qLogs);
 
       logsSnap.forEach((d) => {
-        promises.push(
-          updateDoc(d.ref, {
-            machineId: newMatricola,
-            customer: newCustomer,
-            machineType: data.type,
-            capacity: data.capacity,
-          })
-        );
+        batch.update(d.ref, {
+          machineId: newMatricola,
+          customer: newCustomer,
+          machineType: data.type,
+          capacity: data.capacity,
+        });
       });
 
-      const docRef = doc(
-        db,
-        "artifacts",
-        appId,
-        "public",
-        "data",
-        "machines",
-        oldDocId
-      );
-
-      if (newDocId !== oldDocId) {
-        promises.push(deleteDoc(docRef));
-        promises.push(
-          setDoc(
-            doc(db, "artifacts", appId, "public", "data", "machines", newDocId),
-            {
-              id: newDocId,
-              matricola: newMatricola,
-              customerName: newCustomer,
-              type: data.type,
-              capacity: data.capacity,
-            }
-          )
-        );
-      } else {
-        promises.push(
-          setDoc(
-            docRef,
-            {
-              id: newDocId,
-              matricola: newMatricola,
-              customerName: newCustomer,
-              type: data.type,
-              capacity: data.capacity,
-            },
-            { merge: true }
-          )
-        );
-      }
-
-      await Promise.all(promises);
+      await batch.commit();
       onClose();
     } catch (e) {
       console.error(e);
@@ -1005,21 +986,15 @@ const EditCustomerModal = ({
     }
     setLoading(true);
     try {
-      const promises = [];
-      promises.push(
-        updateDoc(
-          doc(
-            db,
-            "artifacts",
-            appId,
-            "public",
-            "data",
-            "customers",
-            customer.id
-          ),
-          { name: cleanName }
-        )
+      const batch = writeBatch(db);
+
+      // 1. Aggiorna il cliente
+      batch.update(
+        doc(db, "artifacts", appId, "public", "data", "customers", customer.id),
+        { name: cleanName }
       );
+
+      // 2. Aggiorna il nome in tutti i log
       const qLogs = query(
         collection(
           db,
@@ -1032,18 +1007,19 @@ const EditCustomerModal = ({
         where("customer", "==", customer.name)
       );
       const logsSnap = await getDocs(qLogs);
-      logsSnap.forEach((d) =>
-        promises.push(updateDoc(d.ref, { customer: cleanName }))
-      );
+      logsSnap.forEach((d) => batch.update(d.ref, { customer: cleanName }));
+
+      // 3. Aggiorna il nome nelle gru
       const qMachines = query(
         collection(db, "artifacts", appId, "public", "data", "machines"),
         where("customerName", "==", customer.name)
       );
       const machinesSnap = await getDocs(qMachines);
       machinesSnap.forEach((d) =>
-        promises.push(updateDoc(d.ref, { customerName: cleanName }))
+        batch.update(d.ref, { customerName: cleanName })
       );
-      await Promise.all(promises);
+
+      await batch.commit();
       onClose();
     } catch (e) {
       console.error(e);
@@ -2806,6 +2782,7 @@ const NewEntryForm = ({
       const cleanCustomer = formData.customer.toUpperCase().trim();
       const cleanMachineId = formData.machineId.toUpperCase().trim();
 
+      // 1. Salva l'intervento (Log)
       await addDoc(
         collection(
           db,
@@ -2826,28 +2803,48 @@ const NewEntryForm = ({
         }
       );
 
-      // Salva la Gru usando la chiave composta "Cliente_Matricola"
-      const machineDocId = `${cleanCustomer}_${cleanMachineId}`
-        .toLowerCase()
-        .replace(/[^a-z0-9]/g, "-");
-      await setDoc(
-        doc(db, "artifacts", appId, "public", "data", "machines", machineDocId),
-        {
-          id: machineDocId,
-          matricola: cleanMachineId,
-          customerName: cleanCustomer,
-          type: formData.machineType,
-          capacity: formData.capacity,
-        },
-        { merge: true }
-      );
+      // 2. Gestione intelligente Cliente (crea solo se non esiste)
+      const existingCustomer = customers.find((c) => c.name === cleanCustomer);
+      if (!existingCustomer) {
+        await addDoc(
+          collection(db, "artifacts", appId, "public", "data", "customers"),
+          { name: cleanCustomer }
+        );
+      }
 
-      const custId = cleanCustomer.toLowerCase().replace(/\s+/g, "_");
-      await setDoc(
-        doc(db, "artifacts", appId, "public", "data", "customers", custId),
-        { name: cleanCustomer },
-        { merge: true }
+      // 3. Gestione intelligente Macchina (aggiorna se esiste, crea se nuova)
+      const existingMachine = machines.find(
+        (m) =>
+          getSafeMatricola(m) === cleanMachineId &&
+          m.customerName === cleanCustomer
       );
+      if (existingMachine) {
+        await updateDoc(
+          doc(
+            db,
+            "artifacts",
+            appId,
+            "public",
+            "data",
+            "machines",
+            existingMachine.id
+          ),
+          {
+            type: formData.machineType,
+            capacity: formData.capacity,
+          }
+        );
+      } else {
+        await addDoc(
+          collection(db, "artifacts", appId, "public", "data", "machines"),
+          {
+            matricola: cleanMachineId,
+            customerName: cleanCustomer,
+            type: formData.machineType,
+            capacity: formData.capacity,
+          }
+        );
+      }
 
       onSuccess();
       setIsLocked(true);
@@ -4649,39 +4646,56 @@ export default function App() {
   );
   const notifRef = useRef(notificationsEnabled);
 
+  // NUOVO: Ref per bloccare il ricalcolo automatico su Android
+  const isManualOverrideRef = useRef(false);
+
   // Aggiorna il ref quando lo stato cambia per usarlo dentro l'useEffect del database
   useEffect(() => {
     notifRef.current = notificationsEnabled;
   }, [notificationsEnabled]);
 
+  const handleToggleView = useCallback(() => {
+    isManualOverrideRef.current = true; // Blocca il ricalcolo automatico
+    setIsMobileView((prev) => !prev);
+  }, []);
+
   // EFFETTO PER IL RICONOSCIMENTO ROTAZIONE E RIDIMENSIONAMENTO SCHERMO (FIX ANDROID)
   useEffect(() => {
     let timeoutId;
 
+    const updateLayout = () => {
+      const isPortrait = window.innerHeight > window.innerWidth;
+      const isSmallScreen = window.innerWidth < 768;
+      setIsMobileView(isSmallScreen && isPortrait);
+    };
+
     const handleResize = () => {
       clearTimeout(timeoutId);
-      // Un piccolo ritardo (150ms) risolve il bug di Android in cui
-      // le dimensioni dello schermo non si aggiornano istantaneamente
       timeoutId = setTimeout(() => {
-        const isPortrait = window.innerHeight > window.innerWidth;
-        const isSmallScreen = window.innerWidth < 768;
-
-        // Passa alla vista "Mobile" (liste e menu in basso) SOLO se lo schermo è stretto E in verticale.
-        // In orizzontale (landscape), forza sempre la vista "Desktop" (tabelle).
-        setIsMobileView(isSmallScreen && isPortrait);
+        // FIX ANDROID: Ignora il ridimensionamento (es. barra indirizzi a scomparsa)
+        // se l'utente ha cliccato manualmente il tasto rotazione.
+        if (isManualOverrideRef.current) return;
+        updateLayout();
       }, 150);
     };
 
-    // Forza il ricalcolo all'avvio dell'app
-    handleResize();
+    const handleOrientationChange = () => {
+      // Se ruota fisicamente il telefono, resetta la forzatura manuale e torna automatico
+      isManualOverrideRef.current = false;
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(updateLayout, 150);
+    };
+
+    // Ricalcolo all'avvio dell'app
+    updateLayout();
 
     window.addEventListener("resize", handleResize);
-    window.addEventListener("orientationchange", handleResize);
+    window.addEventListener("orientationchange", handleOrientationChange);
 
     return () => {
       clearTimeout(timeoutId);
       window.removeEventListener("resize", handleResize);
-      window.removeEventListener("orientationchange", handleResize);
+      window.removeEventListener("orientationchange", handleOrientationChange);
     };
   }, []);
 
@@ -5155,7 +5169,7 @@ export default function App() {
           </div>
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setIsMobileView(!isMobileView)}
+              onClick={handleToggleView}
               className="p-2 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-xl transition-all shadow-sm"
               title="Forza Rotazione (Verticale/Orizzontale)"
             >
@@ -5166,7 +5180,7 @@ export default function App() {
               />
             </button>
             <button
-              onClick={() => setIsMobileView(!isMobileView)}
+              onClick={handleToggleView}
               className="p-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl transition-all shadow-sm"
               title="Vista PC / Mobile"
             >
