@@ -794,21 +794,11 @@ const EditMachineModal = ({
   const color = themeColor || "blue";
 
   const handleSave = async () => {
-    const newMatricola = data.matricola
-      .toUpperCase()
-      .replace(/\//g, "-")
-      .trim();
+    const newMatricola = data.matricola.toUpperCase().replace(/\//g, "-").trim();
     const newCustomer = data.customerName.toUpperCase().trim();
 
     // Evita duplicati controllando se esiste GIÀ un'altra macchina con la stessa matricola e cliente
-    if (
-      allMachines.some(
-        (m) =>
-          m.id !== machine.id &&
-          getSafeMatricola(m) === newMatricola &&
-          m.customerName === newCustomer
-      )
-    ) {
+    if (allMachines.some((m) => m.id !== machine.id && getSafeMatricola(m) === newMatricola && m.customerName === newCustomer)) {
       alert("Esiste già questa macchina per questo cliente!");
       return;
     }
@@ -818,33 +808,18 @@ const EditMachineModal = ({
       const batch = writeBatch(db);
 
       // 1. Aggiorna i dati della macchina STESSA senza crearne una nuova
-      const machineRef = doc(
-        db,
-        "artifacts",
-        appId,
-        "public",
-        "data",
-        "machines",
-        machine.id
-      );
+      const machineRef = doc(db, "artifacts", appId, "public", "data", "machines", machine.id);
       batch.update(machineRef, {
         matricola: newMatricola,
         customerName: newCustomer,
         type: data.type,
-        capacity: data.capacity,
+        capacity: data.capacity
       });
 
       // 2. Trova e aggiorna tutti gli interventi (log) associati a questa vecchia macchina
       const oldMatricola = getSafeMatricola(machine);
       const qLogs = query(
-        collection(
-          db,
-          "artifacts",
-          appId,
-          "public",
-          "data",
-          "maintenance_logs"
-        ),
+        collection(db, "artifacts", appId, "public", "data", "maintenance_logs"),
         where("machineId", "==", oldMatricola),
         where("customer", "==", machine.customerName)
       );
@@ -989,35 +964,17 @@ const EditCustomerModal = ({
       const batch = writeBatch(db);
 
       // 1. Aggiorna il cliente
-      batch.update(
-        doc(db, "artifacts", appId, "public", "data", "customers", customer.id),
-        { name: cleanName }
-      );
+      batch.update(doc(db, "artifacts", appId, "public", "data", "customers", customer.id), { name: cleanName });
 
       // 2. Aggiorna il nome in tutti i log
-      const qLogs = query(
-        collection(
-          db,
-          "artifacts",
-          appId,
-          "public",
-          "data",
-          "maintenance_logs"
-        ),
-        where("customer", "==", customer.name)
-      );
+      const qLogs = query(collection(db, "artifacts", appId, "public", "data", "maintenance_logs"), where("customer", "==", customer.name));
       const logsSnap = await getDocs(qLogs);
       logsSnap.forEach((d) => batch.update(d.ref, { customer: cleanName }));
 
       // 3. Aggiorna il nome nelle gru
-      const qMachines = query(
-        collection(db, "artifacts", appId, "public", "data", "machines"),
-        where("customerName", "==", customer.name)
-      );
+      const qMachines = query(collection(db, "artifacts", appId, "public", "data", "machines"), where("customerName", "==", customer.name));
       const machinesSnap = await getDocs(qMachines);
-      machinesSnap.forEach((d) =>
-        batch.update(d.ref, { customerName: cleanName })
-      );
+      machinesSnap.forEach((d) => batch.update(d.ref, { customerName: cleanName }));
 
       await batch.commit();
       onClose();
@@ -2784,14 +2741,7 @@ const NewEntryForm = ({
 
       // 1. Salva l'intervento (Log)
       await addDoc(
-        collection(
-          db,
-          "artifacts",
-          appId,
-          "public",
-          "data",
-          "maintenance_logs"
-        ),
+        collection(db, "artifacts", appId, "public", "data", "maintenance_logs"),
         {
           ...formData,
           additionalTechnicians: cleanAdditionalTechs,
@@ -2804,46 +2754,25 @@ const NewEntryForm = ({
       );
 
       // 2. Gestione intelligente Cliente (crea solo se non esiste)
-      const existingCustomer = customers.find((c) => c.name === cleanCustomer);
+      const existingCustomer = customers.find(c => c.name === cleanCustomer);
       if (!existingCustomer) {
-        await addDoc(
-          collection(db, "artifacts", appId, "public", "data", "customers"),
-          { name: cleanCustomer }
-        );
+        await addDoc(collection(db, "artifacts", appId, "public", "data", "customers"), { name: cleanCustomer });
       }
 
       // 3. Gestione intelligente Macchina (aggiorna se esiste, crea se nuova)
-      const existingMachine = machines.find(
-        (m) =>
-          getSafeMatricola(m) === cleanMachineId &&
-          m.customerName === cleanCustomer
-      );
+      const existingMachine = machines.find(m => getSafeMatricola(m) === cleanMachineId && m.customerName === cleanCustomer);
       if (existingMachine) {
-        await updateDoc(
-          doc(
-            db,
-            "artifacts",
-            appId,
-            "public",
-            "data",
-            "machines",
-            existingMachine.id
-          ),
-          {
-            type: formData.machineType,
-            capacity: formData.capacity,
-          }
-        );
+        await updateDoc(doc(db, "artifacts", appId, "public", "data", "machines", existingMachine.id), {
+          type: formData.machineType,
+          capacity: formData.capacity
+        });
       } else {
-        await addDoc(
-          collection(db, "artifacts", appId, "public", "data", "machines"),
-          {
-            matricola: cleanMachineId,
-            customerName: cleanCustomer,
-            type: formData.machineType,
-            capacity: formData.capacity,
-          }
-        );
+        await addDoc(collection(db, "artifacts", appId, "public", "data", "machines"), {
+          matricola: cleanMachineId,
+          customerName: cleanCustomer,
+          type: formData.machineType,
+          capacity: formData.capacity
+        });
       }
 
       onSuccess();
@@ -4659,21 +4588,26 @@ export default function App() {
     setIsMobileView((prev) => !prev);
   }, []);
 
-  // EFFETTO PER IL RICONOSCIMENTO ROTAZIONE E RIDIMENSIONAMENTO SCHERMO (FIX ANDROID)
+  // EFFETTO PER IL RICONOSCIMENTO ROTAZIONE E RIDIMENSIONAMENTO SCHERMO (FIX DEFINITIVO VERCEL/MOBILE)
   useEffect(() => {
     let timeoutId;
 
     const updateLayout = () => {
-      const isPortrait = window.innerHeight > window.innerWidth;
-      const isSmallScreen = window.innerWidth < 768;
+      // FIX DEFINITIVO: Usiamo matchMedia al posto di innerHeight.
+      // È il modo in cui i browser moderni capiscono l'orientamento reale,
+      // ignorando i fastidiosi calcoli della barra degli indirizzi di Android/iOS.
+      const isPortrait = window.matchMedia("(orientation: portrait)").matches;
+      
+      // Alziamo la soglia a 1024px per coprire bene anche i tablet o smartphone molto grandi
+      const isSmallScreen = window.innerWidth < 1024; 
+      
       setIsMobileView(isSmallScreen && isPortrait);
     };
 
     const handleResize = () => {
       clearTimeout(timeoutId);
       timeoutId = setTimeout(() => {
-        // FIX ANDROID: Ignora il ridimensionamento (es. barra indirizzi a scomparsa)
-        // se l'utente ha cliccato manualmente il tasto rotazione.
+        // Ignora il ridimensionamento se l'utente ha cliccato manualmente il tasto rotazione.
         if (isManualOverrideRef.current) return;
         updateLayout();
       }, 150);
@@ -4683,7 +4617,8 @@ export default function App() {
       // Se ruota fisicamente il telefono, resetta la forzatura manuale e torna automatico
       isManualOverrideRef.current = false;
       clearTimeout(timeoutId);
-      timeoutId = setTimeout(updateLayout, 150);
+      // Diamo 300ms ai dispositivi fisici reali per finire l'animazione di rotazione dello schermo
+      timeoutId = setTimeout(updateLayout, 300);
     };
 
     // Ricalcolo all'avvio dell'app
