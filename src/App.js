@@ -36,23 +36,24 @@ import {
   ShieldAlert,
   Power,
   UserX,
-  DatabaseZap,
+  Database,
   Users,
   Palette,
   Bell,
   ArrowUp,
   ArrowDown,
+  ArrowRight,
+  ArrowLeft,
   Plus,
   Folder,
   Wifi,
   WifiOff,
-  ArrowLeft,
   Edit,
   Maximize2,
   AlertTriangle,
   Trophy,
   PieChart,
-  BarChart3,
+  BarChart,
   ToggleLeft,
   ToggleRight,
   Eye,
@@ -61,13 +62,11 @@ import {
   Move,
   Filter,
   CalendarDays,
-  Database,
   Hammer,
-  CheckCircle2,
+  CheckCircle,
   AlertCircle,
-  Merge,
+  GitMerge,
   LogOut,
-  ListTree,
   Mail,
   Send,
   Clock,
@@ -149,7 +148,7 @@ const getTechsString = (log) => {
   return `${log.technician}, ${log.additionalTechnicians.join(", ")}`;
 };
 
-// HELPER GLOBALE PER LA PORTATA (evita duplicazioni di "kg")
+// HELPER GLOBALE PER LA PORTATA
 const formatCapacity = (val) => {
   if (!val) return "";
   const s = String(val).trim();
@@ -157,7 +156,7 @@ const formatCapacity = (val) => {
   return `${s} kg`;
 };
 
-// HELPER GLOBALE PER ESTRARRE SOLO LA MATRICOLA/NOME GRU (Nascodendo l'ID composto del DB)
+// ESTRAE SOLO LA MATRICOLA (Nascodendo l'ID composto del DB)
 const getSafeMatricola = (m) => {
   if (m.matricola) return m.matricola;
   if (m.id && m.id.includes("_")) {
@@ -166,7 +165,30 @@ const getSafeMatricola = (m) => {
   return m.id ? m.id.toUpperCase() : "N.D.";
 };
 
-// --- NUOVA SCHERMATA DI LOGIN GLOBALE (Gatekeeper) ---
+// DISTANZA DI LEVENSHTEIN (Ricerca duplicati)
+const getLevenshteinDistance = (a, b) => {
+  if (!a || !b) return (a || b).length;
+  if (a === b) return 0;
+  const matrix = [];
+  for (let i = 0; i <= b.length; i++) matrix[i] = [i];
+  for (let j = 0; j <= a.length; j++) matrix[0][j] = j;
+  for (let i = 1; i <= b.length; i++) {
+    for (let j = 1; j <= a.length; j++) {
+      if (b.charAt(i - 1) === a.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j] + 1
+        );
+      }
+    }
+  }
+  return matrix[b.length][a.length];
+};
+
+// --- SCHERMATA LOGIN GLOBALE ---
 const GlobalLoginScreen = ({ technicians, onUnlock, color = "blue" }) => {
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
@@ -182,13 +204,11 @@ const GlobalLoginScreen = ({ technicians, onUnlock, color = "blue" }) => {
       return;
     }
 
-    // Passpartout Admin: Entra sempre
     if (password === "Mora1932") {
       onUnlock(cleanName);
       return;
     }
 
-    // Password standard per Tecnici
     if (password === "1932") {
       const matchedTech = technicians.find(
         (t) => t.name.toLowerCase() === cleanName.toLowerCase()
@@ -283,8 +303,8 @@ const GlobalLoginScreen = ({ technicians, onUnlock, color = "blue" }) => {
     </div>
   );
 };
-// --- FINE SCHERMATA LOGIN ---
 
+// --- STILI GLOBALI ---
 const PRO_INPUT =
   "w-full p-3 bg-slate-50 border border-slate-300 rounded-lg text-sm font-semibold text-slate-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none placeholder:text-slate-400";
 const PRO_BUTTON_SECONDARY =
@@ -294,6 +314,7 @@ const getButtonPrimaryClass = (color) =>
 const getProPanelClass = (color) =>
   `bg-white rounded-xl shadow-md border-t-4 border-t-${color}-600 border-x border-b border-slate-200`;
 
+// --- COMPONENTI UI MINORI ---
 const NavButton = React.memo(
   ({ icon: Icon, label, active, onClick, desktop = false, color = "blue" }) => {
     if (desktop) {
@@ -474,6 +495,7 @@ const DeleteConfirmDialog = ({
   </div>
 );
 
+// --- MODALI DATI ---
 const EditLogModal = ({
   log,
   customers,
@@ -613,7 +635,6 @@ const EditLogModal = ({
             </div>
           </div>
 
-          {/* Sezione Altri Tecnici */}
           <div className="space-y-2 bg-slate-100 p-3 rounded-xl border border-slate-200">
             <div className="flex justify-between items-center mb-1">
               <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">
@@ -794,11 +815,20 @@ const EditMachineModal = ({
   const color = themeColor || "blue";
 
   const handleSave = async () => {
-    const newMatricola = data.matricola.toUpperCase().replace(/\//g, "-").trim();
+    const newMatricola = data.matricola
+      .toUpperCase()
+      .replace(/\//g, "-")
+      .trim();
     const newCustomer = data.customerName.toUpperCase().trim();
 
-    // Evita duplicati controllando se esiste GIÀ un'altra macchina con la stessa matricola e cliente
-    if (allMachines.some((m) => m.id !== machine.id && getSafeMatricola(m) === newMatricola && m.customerName === newCustomer)) {
+    if (
+      allMachines.some(
+        (m) =>
+          m.id !== machine.id &&
+          getSafeMatricola(m) === newMatricola &&
+          m.customerName === newCustomer
+      )
+    ) {
       alert("Esiste già questa macchina per questo cliente!");
       return;
     }
@@ -807,19 +837,32 @@ const EditMachineModal = ({
     try {
       const batch = writeBatch(db);
 
-      // 1. Aggiorna i dati della macchina STESSA senza crearne una nuova
-      const machineRef = doc(db, "artifacts", appId, "public", "data", "machines", machine.id);
+      const machineRef = doc(
+        db,
+        "artifacts",
+        appId,
+        "public",
+        "data",
+        "machines",
+        machine.id
+      );
       batch.update(machineRef, {
         matricola: newMatricola,
         customerName: newCustomer,
         type: data.type,
-        capacity: data.capacity
+        capacity: data.capacity,
       });
 
-      // 2. Trova e aggiorna tutti gli interventi (log) associati a questa vecchia macchina
       const oldMatricola = getSafeMatricola(machine);
       const qLogs = query(
-        collection(db, "artifacts", appId, "public", "data", "maintenance_logs"),
+        collection(
+          db,
+          "artifacts",
+          appId,
+          "public",
+          "data",
+          "maintenance_logs"
+        ),
         where("machineId", "==", oldMatricola),
         where("customer", "==", machine.customerName)
       );
@@ -963,18 +1006,33 @@ const EditCustomerModal = ({
     try {
       const batch = writeBatch(db);
 
-      // 1. Aggiorna il cliente
-      batch.update(doc(db, "artifacts", appId, "public", "data", "customers", customer.id), { name: cleanName });
+      batch.update(
+        doc(db, "artifacts", appId, "public", "data", "customers", customer.id),
+        { name: cleanName }
+      );
 
-      // 2. Aggiorna il nome in tutti i log
-      const qLogs = query(collection(db, "artifacts", appId, "public", "data", "maintenance_logs"), where("customer", "==", customer.name));
+      const qLogs = query(
+        collection(
+          db,
+          "artifacts",
+          appId,
+          "public",
+          "data",
+          "maintenance_logs"
+        ),
+        where("customer", "==", customer.name)
+      );
       const logsSnap = await getDocs(qLogs);
       logsSnap.forEach((d) => batch.update(d.ref, { customer: cleanName }));
 
-      // 3. Aggiorna il nome nelle gru
-      const qMachines = query(collection(db, "artifacts", appId, "public", "data", "machines"), where("customerName", "==", customer.name));
+      const qMachines = query(
+        collection(db, "artifacts", appId, "public", "data", "machines"),
+        where("customerName", "==", customer.name)
+      );
       const machinesSnap = await getDocs(qMachines);
-      machinesSnap.forEach((d) => batch.update(d.ref, { customerName: cleanName }));
+      machinesSnap.forEach((d) =>
+        batch.update(d.ref, { customerName: cleanName })
+      );
 
       await batch.commit();
       onClose();
@@ -1035,9 +1093,10 @@ const MergeModal = ({
   onConfirm,
   onClose,
   type,
+  defaultTargetId,
   color = "blue",
 }) => {
-  const [targetId, setTargetId] = useState("");
+  const [targetId, setTargetId] = useState(defaultTargetId || "");
   const [loading, setLoading] = useState(false);
 
   const handleConfirm = async () => {
@@ -1058,14 +1117,17 @@ const MergeModal = ({
       >
         <div className="text-center">
           <div className="w-12 h-12 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center mx-auto mb-2">
-            <Merge className="w-6 h-6" />
+            <GitMerge className="w-6 h-6" />
           </div>
           <h3 className="font-bold text-slate-800 uppercase text-sm tracking-wider">
             Unisci {type === "customer" ? "Cliente" : "Gru"}
           </h3>
           <p className="text-xs text-slate-500 mt-1">
-            Stai per unire <b>{sourceItem.name || sourceItem.id}</b>. Seleziona
-            la destinazione (quello che rimarrà).
+            Stai per unire{" "}
+            <b className="text-red-500">
+              {sourceItem.name || sourceItem.matricola || sourceItem.id}
+            </b>
+            . Seleziona la destinazione (quello che rimarrà).
           </p>
         </div>
         <div className="space-y-1">
@@ -1111,103 +1173,162 @@ const MergeModal = ({
   );
 };
 
-const CustomerDetailModal = ({
-  customerName,
-  machines,
+const DuplicatesModal = ({
+  analysis,
   onClose,
-  onOpenMachine,
+  onDirectMerge,
+  onIgnore,
   color = "blue",
 }) => {
-  const customerMachines = useMemo(
-    () =>
-      machines.filter(
-        (m) => m.customerName.toUpperCase() === customerName.toUpperCase()
-      ),
-    [machines, customerName]
-  );
+  const [loadingIdx, setLoadingIdx] = useState(null);
+  const pairs = analysis.pairs;
+
   return (
-    <div className="fixed inset-0 bg-slate-900/50 z-[210] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-300">
+    <div className="fixed inset-0 bg-slate-900/60 z-[230] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in">
       <div
-        className={`w-full max-w-4xl h-[85vh] rounded-3xl overflow-hidden flex flex-col shadow-2xl ${getProPanelClass(
-          color
-        )}`}
+        className={`w-full max-w-3xl bg-white rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[85vh] border-t-4 border-yellow-500`}
       >
-        <div
-          className={`bg-slate-50 p-6 flex flex-col gap-4 border-b border-slate-200 relative overflow-hidden`}
-        >
-          <div className="flex justify-between items-start relative z-10">
-            <button
-              onClick={onClose}
-              className={`flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg border border-slate-300 shadow-sm transition-all active:scale-95 group text-slate-600`}
-            >
-              <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />{" "}
-              <span className="font-bold text-[10px] uppercase tracking-wider">
-                Indietro
-              </span>
-            </button>
-            <button
-              onClick={onClose}
-              className="p-2 bg-white rounded-full border border-slate-300 hover:bg-slate-100 transition-all text-slate-500"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-          <div className="flex items-center gap-4 relative z-10 mt-2">
-            <div
-              className={`p-3 bg-${color}-100 rounded-xl border border-${color}-200 text-${color}-700`}
-            >
-              <Users className="w-8 h-8" />
+        <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-yellow-100 text-yellow-600 rounded-xl">
+              <AlertTriangle className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-2xl md:text-3xl font-black uppercase tracking-tight leading-tight text-slate-800">
-                {customerName}
-              </h2>
-              <p className="text-slate-500 text-xs font-bold mt-1 uppercase tracking-wider">
-                Parco Macchine: {customerMachines.length}
+              <h3 className="font-black text-slate-800 uppercase tracking-tight text-lg">
+                Potenziali Conflitti
+              </h3>
+              <p className="text-xs font-bold text-slate-500 uppercase">
+                {pairs.length}{" "}
+                {pairs.length === 1 ? "Elemento simile" : "Elementi simili"}{" "}
+                trovati
               </p>
             </div>
           </div>
+          <button
+            onClick={onClose}
+            className="p-2 hover:bg-slate-200 rounded-full transition-colors"
+          >
+            <X className="w-5 h-5 text-slate-400" />
+          </button>
         </div>
-        <div className="flex-1 overflow-y-auto p-5 custom-scrollbar bg-slate-100">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {customerMachines.map((m) => (
-              <div
-                key={m.id}
-                onClick={() => onOpenMachine(getSafeMatricola(m))}
-                className={`p-5 rounded-2xl cursor-pointer group transition-all hover:border-${color}-400 hover:shadow-md ${getProPanelClass(
-                  color
-                )}`}
-              >
-                <div className="flex justify-between items-start mb-2">
-                  <span
-                    className={`text-xs font-black text-${color}-600 bg-${color}-50 px-2 py-1 rounded-lg uppercase tracking-wider`}
-                  >
-                    {getSafeMatricola(m)}
-                  </span>
-                  <div
-                    className={`p-1.5 bg-slate-100 rounded-full text-slate-400 group-hover:text-${color}-500 transition-colors`}
-                  >
-                    <ChevronRight className="w-4 h-4" />
+        <div className="flex-1 overflow-y-auto p-4 custom-scrollbar bg-slate-100 space-y-4">
+          {pairs.length === 0 ? (
+            <div className="text-center py-10">
+              <div className="w-16 h-16 bg-green-100 text-green-500 rounded-full flex items-center justify-center mx-auto mb-3">
+                <CheckCircle className="w-8 h-8" />
+              </div>
+              <p className="text-slate-500 font-bold uppercase text-xs">
+                Nessun conflitto rilevato! 🎉
+              </p>
+            </div>
+          ) : (
+            pairs.map((pair, idx) => {
+              const [a, b] = pair;
+              const nameA =
+                analysis.type === "customer"
+                  ? a.name
+                  : `${getSafeMatricola(a)} (${a.customerName})`;
+              const nameB =
+                analysis.type === "customer"
+                  ? b.name
+                  : `${getSafeMatricola(b)} (${b.customerName})`;
+
+              return (
+                <div
+                  key={idx}
+                  className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hover:border-yellow-300 transition-colors"
+                >
+                  <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+                    {/* Sinistra */}
+                    <div className="flex-1 text-center md:text-left bg-red-50 p-3 rounded-xl border border-red-100 w-full md:w-auto">
+                      <span className="font-black text-sm text-red-700 block uppercase break-words">
+                        {nameA}
+                      </span>
+                      <span className="text-[10px] text-red-400 font-bold mt-1 block">
+                        ID: {a.id.substring(0, 8)}
+                      </span>
+                    </div>
+
+                    {/* Bottoni Azione Veloci */}
+                    <div className="flex flex-col gap-2 shrink-0 w-full md:w-auto">
+                      <button
+                        onClick={async () => {
+                          setLoadingIdx(idx);
+                          await onDirectMerge(a, b, analysis.type);
+                          setLoadingIdx(null);
+                        }}
+                        disabled={loadingIdx !== null}
+                        className={`text-xs font-black bg-purple-100 text-purple-700 px-4 py-2 rounded-xl hover:bg-purple-200 transition-colors shadow-sm uppercase flex items-center justify-center gap-2 ${
+                          loadingIdx !== null
+                            ? "opacity-50 cursor-not-allowed"
+                            : ""
+                        }`}
+                        title="Elimina quello di Sinistra e unisci i suoi dati in quello di Destra"
+                      >
+                        {loadingIdx === idx ? (
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <>
+                            <ArrowRight className="w-4 h-4 hidden md:block" />
+                            <ArrowDown className="w-4 h-4 md:hidden" />
+                          </>
+                        )}{" "}
+                        Unisci a Destra
+                      </button>
+                      <button
+                        onClick={async () => {
+                          setLoadingIdx(idx);
+                          await onDirectMerge(b, a, analysis.type);
+                          setLoadingIdx(null);
+                        }}
+                        disabled={loadingIdx !== null}
+                        className={`text-xs font-black bg-blue-100 text-blue-700 px-4 py-2 rounded-xl hover:bg-blue-200 transition-colors shadow-sm uppercase flex items-center justify-center gap-2 flex-row-reverse md:flex-row ${
+                          loadingIdx !== null
+                            ? "opacity-50 cursor-not-allowed"
+                            : ""
+                        }`}
+                        title="Elimina quello di Destra e unisci i suoi dati in quello di Sinistra"
+                      >
+                        {loadingIdx === idx ? (
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <>
+                            <ArrowLeft className="w-4 h-4 hidden md:block" />
+                            <ArrowUp className="w-4 h-4 md:hidden" />
+                          </>
+                        )}{" "}
+                        Unisci a Sinistra
+                      </button>
+                    </div>
+
+                    {/* Destra */}
+                    <div className="flex-1 text-center md:text-right bg-blue-50 p-3 rounded-xl border border-blue-100 w-full md:w-auto">
+                      <span className="font-black text-sm text-blue-700 block uppercase break-words">
+                        {nameB}
+                      </span>
+                      <span className="text-[10px] text-blue-400 font-bold mt-1 block">
+                        ID: {b.id.substring(0, 8)}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="mt-4 pt-3 border-t border-slate-50 text-center">
+                    <button
+                      onClick={async () => {
+                        setLoadingIdx(idx);
+                        await onIgnore(a, b);
+                        setLoadingIdx(null);
+                      }}
+                      disabled={loadingIdx !== null}
+                      className="text-[10px] font-bold text-slate-400 hover:text-slate-600 uppercase tracking-widest bg-slate-100 px-4 py-1.5 rounded-lg transition-colors"
+                      title="Questi due elementi sono diversi, non propormeli più."
+                    >
+                      Ignora (Ricorda Scelta)
+                    </button>
                   </div>
                 </div>
-                <div className="space-y-1">
-                  <p className="text-xs font-bold text-slate-700 uppercase">
-                    {m.type}
-                  </p>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase">
-                    {m.capacity ? formatCapacity(m.capacity) : "N.D."}
-                  </p>
-                </div>
-              </div>
-            ))}
-            {customerMachines.length === 0 && (
-              <div className="col-span-full text-center py-20 opacity-30">
-                <p className="font-bold uppercase text-xs tracking-widest text-slate-500">
-                  Nessuna macchina registrata
-                </p>
-              </div>
-            )}
-          </div>
+              );
+            })
+          )}
         </div>
       </div>
     </div>
@@ -1346,6 +1467,88 @@ const MachineHistoryModal = ({
   );
 };
 
+const CustomerDetailModal = ({
+  customerName,
+  machines,
+  onClose,
+  onOpenMachine,
+  themeColor,
+}) => {
+  const color = themeColor || "blue";
+  const customerMachines = machines.filter(
+    (m) => m.customerName === customerName
+  );
+
+  return (
+    <div className="fixed inset-0 bg-slate-900/50 z-[200] flex items-center justify-center p-4 backdrop-blur-md animate-in fade-in duration-300">
+      <div
+        className={`w-full max-w-2xl h-[80vh] rounded-3xl overflow-hidden flex flex-col shadow-2xl ${getProPanelClass(
+          color
+        )}`}
+      >
+        <div className="bg-slate-50 p-6 flex justify-between items-center border-b border-slate-200">
+          <div className="flex items-center gap-3">
+            <div className={`p-3 bg-${color}-100 rounded-xl text-${color}-600`}>
+              <Users className="w-6 h-6" />
+            </div>
+            <div>
+              <h2 className="text-xl font-black uppercase tracking-tight text-slate-800">
+                {customerName}
+              </h2>
+              <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">
+                {customerMachines.length} Gru Registrate
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="p-2 bg-white rounded-full border border-slate-300 hover:bg-slate-100 transition-all text-slate-500"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-5 custom-scrollbar bg-slate-100">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {customerMachines.length === 0 && (
+              <div className="col-span-full text-center py-10 opacity-50">
+                <Factory className="w-12 h-12 mx-auto mb-2 text-slate-400" />
+                <p className="font-bold text-slate-500 uppercase text-xs">
+                  Nessuna gru trovata
+                </p>
+              </div>
+            )}
+            {customerMachines.map((m) => (
+              <div
+                key={m.id}
+                onClick={() => onOpenMachine(getSafeMatricola(m), customerName)}
+                className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 cursor-pointer hover:border-blue-400 hover:shadow-md transition-all group"
+              >
+                <div className="flex justify-between items-center mb-2">
+                  <span className="font-black text-sm text-blue-700 bg-blue-50 px-2 py-0.5 rounded uppercase">
+                    MAT: {getSafeMatricola(m)}
+                  </span>
+                  <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-blue-500 group-hover:translate-x-1 transition-all" />
+                </div>
+                <div className="flex gap-2 mt-2">
+                  <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded-lg uppercase">
+                    {m.type}
+                  </span>
+                  {m.capacity && (
+                    <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded-lg uppercase">
+                      {formatCapacity(m.capacity)}
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// --- VIEWS ---
 const ExploreView = React.memo(
   ({ customers, machines, logs, color = "blue" }) => {
     const [searchTerm, setSearchTerm] = useState("");
@@ -1806,7 +2009,7 @@ const OfficeView = ({
   const [calMonth, setCalMonth] = useState(today.getMonth());
   const [calYear, setCalYear] = useState(today.getFullYear());
 
-  const [viewMode, setViewMode] = useState("month"); // "month" o "year"
+  const [viewMode, setViewMode] = useState("month");
   const [ticketSearch, setTicketSearch] = useState("");
 
   const [selectedCustomer, setSelectedCustomer] = useState("");
@@ -2241,7 +2444,7 @@ const OfficeView = ({
         </div>
         <div className={`p-5 ${getProPanelClass(color)}`}>
           <div className="flex items-center gap-2 mb-4">
-            <BarChart3 className="w-5 h-5 text-orange-500" />
+            <BarChart className="w-5 h-5 text-orange-500" />
             <h4 className="text-xs font-black uppercase text-slate-600">
               Clienti{" "}
               <span className="text-slate-400">{dynamicMonthLabel}</span>
@@ -2554,1070 +2757,6 @@ const OfficeView = ({
   );
 };
 
-const NewEntryForm = ({
-  user,
-  customers,
-  technicians,
-  machineTypes,
-  machines,
-  onSuccess,
-  isMobile,
-  onTechUpdate,
-  layoutConfig,
-  allLogs,
-}) => {
-  const [formData, setFormData] = useState({
-    technician: "",
-    additionalTechnicians: [],
-    customer: "",
-    machineType: "",
-    machineId: "",
-    capacity: "",
-    description: "",
-    ticketNumber: "",
-  });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showMachineSuggestions, setShowMachineSuggestions] = useState(false);
-  const [showCustomerSuggestions, setShowCustomerSuggestions] = useState(false);
-  const [relatedMachines, setRelatedMachines] = useState([]);
-  const [lastIntervention, setLastIntervention] = useState(null);
-  const [isLocked, setIsLocked] = useState(false);
-
-  // NUOVI STATI PER GESTIRE GLI AVVISI SENZA USARE I POP-UP DI SISTEMA BLOCCATI
-  const [showClearConfirm, setShowClearConfirm] = useState(false);
-  const [formError, setFormError] = useState("");
-
-  const color = layoutConfig?.themeColor || "blue";
-  const formOrder = layoutConfig?.formOrder || DEFAULT_LAYOUT.formOrder;
-
-  const topTechs = useMemo(() => {
-    if (!allLogs) return [];
-    const counts = {};
-    allLogs.forEach((l) => {
-      if (l.technician) counts[l.technician] = (counts[l.technician] || 0) + 1;
-    });
-    return Object.entries(counts)
-      .sort(([, a], [, b]) => b - a)
-      .slice(0, 3)
-      .map(([name]) => name);
-  }, [allLogs]);
-
-  const sortedTechs = [...technicians].sort((a, b) =>
-    a.name.localeCompare(b.name)
-  );
-
-  useEffect(() => {
-    const saved = localStorage.getItem("mora_tech_last_name");
-    if (saved) {
-      setFormData((prev) => ({ ...prev, technician: saved }));
-      setIsLocked(true);
-    }
-  }, []);
-
-  const addTechnician = () =>
-    setFormData((p) => ({
-      ...p,
-      additionalTechnicians: [...p.additionalTechnicians, ""],
-    }));
-  const updateAdditionalTech = (index, val) => {
-    const newTechs = [...formData.additionalTechnicians];
-    newTechs[index] = val;
-    setFormData((p) => ({ ...p, additionalTechnicians: newTechs }));
-  };
-  const removeAdditionalTech = (index) => {
-    const newTechs = [...formData.additionalTechnicians];
-    newTechs.splice(index, 1);
-    setFormData((p) => ({ ...p, additionalTechnicians: newTechs }));
-  };
-
-  const handleMachineIdChange = (e) => {
-    const val = e.target.value.toUpperCase().replace(/\//g, "-");
-
-    if (val === "") {
-      // Se cancella la matricola, azzera tutto il blocco per non fargli perdere tempo
-      setFormData((p) => ({
-        ...p,
-        machineId: "",
-        customer: "",
-        machineType: "",
-        capacity: "",
-      }));
-      setLastIntervention(null);
-      setShowMachineSuggestions(false);
-    } else {
-      setFormData((p) => ({ ...p, machineId: val }));
-      setShowMachineSuggestions(true);
-    }
-  };
-
-  const handleCustomerChange = (e) => {
-    const val = e.target.value.toUpperCase();
-
-    if (val === "") {
-      // Se cancella il cliente, azzera tutto il blocco
-      setFormData((p) => ({
-        ...p,
-        customer: "",
-        machineId: "",
-        machineType: "",
-        capacity: "",
-      }));
-      setRelatedMachines([]);
-      setLastIntervention(null);
-      setShowCustomerSuggestions(false);
-    } else {
-      setFormData((p) => ({ ...p, customer: val }));
-      setRelatedMachines(machines.filter((m) => m.customerName.includes(val)));
-      setShowCustomerSuggestions(true);
-    }
-  };
-
-  // Verifica lo storico per quella combinazione esatta Gru + Cliente
-  useEffect(() => {
-    if (formData.machineId && formData.customer && allLogs) {
-      const mLogs = allLogs.filter(
-        (l) =>
-          l.machineId === formData.machineId && l.customer === formData.customer
-      );
-      setLastIntervention(mLogs.length > 0 ? mLogs[0] : null);
-
-      // Auto-compila se la macchina esiste in questo cliente
-      const existingMachine = machines.find(
-        (m) =>
-          (m.matricola || m.id) === formData.machineId &&
-          m.customerName === formData.customer
-      );
-      if (existingMachine && !formData.machineType) {
-        setFormData((prev) => ({
-          ...prev,
-          machineType: existingMachine.type,
-          capacity: existingMachine.capacity || "",
-        }));
-      }
-    } else {
-      setLastIntervention(null);
-    }
-  }, [formData.machineId, formData.customer, allLogs, machines]);
-
-  const selectMachine = (m) => {
-    const mat = getSafeMatricola(m);
-    setFormData((p) => ({
-      ...p,
-      machineId: mat,
-      customer: m.customerName,
-      machineType: m.type,
-      capacity: m.capacity,
-    }));
-    setShowMachineSuggestions(false);
-    setRelatedMachines([]);
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (
-      !formData.technician ||
-      !formData.customer ||
-      !formData.description ||
-      !formData.machineType ||
-      (layoutConfig.formSettings.showCapacity && !formData.capacity)
-    ) {
-      setFormError(
-        "Attenzione: Compila tutti i campi obbligatori (segnalati con l'asterisco rosso)."
-      );
-      setTimeout(() => setFormError(""), 5000); // Scompare dopo 5 secondi
-      return;
-    }
-    setFormError("");
-    setIsSubmitting(true);
-    try {
-      if (onTechUpdate) onTechUpdate(formData.technician);
-      localStorage.setItem("mora_tech_last_name", formData.technician);
-
-      const cleanAdditionalTechs = formData.additionalTechnicians.filter(
-        (t) => t.trim() !== ""
-      );
-      const cleanCustomer = formData.customer.toUpperCase().trim();
-      const cleanMachineId = formData.machineId.toUpperCase().trim();
-
-      // 1. Salva l'intervento (Log)
-      await addDoc(
-        collection(db, "artifacts", appId, "public", "data", "maintenance_logs"),
-        {
-          ...formData,
-          additionalTechnicians: cleanAdditionalTechs,
-          machineId: cleanMachineId,
-          customer: cleanCustomer,
-          dateString: new Date().toLocaleDateString("it-IT"),
-          userId: user.uid,
-          createdAt: serverTimestamp(),
-        }
-      );
-
-      // 2. Gestione intelligente Cliente (crea solo se non esiste)
-      const existingCustomer = customers.find(c => c.name === cleanCustomer);
-      if (!existingCustomer) {
-        await addDoc(collection(db, "artifacts", appId, "public", "data", "customers"), { name: cleanCustomer });
-      }
-
-      // 3. Gestione intelligente Macchina (aggiorna se esiste, crea se nuova)
-      const existingMachine = machines.find(m => getSafeMatricola(m) === cleanMachineId && m.customerName === cleanCustomer);
-      if (existingMachine) {
-        await updateDoc(doc(db, "artifacts", appId, "public", "data", "machines", existingMachine.id), {
-          type: formData.machineType,
-          capacity: formData.capacity
-        });
-      } else {
-        await addDoc(collection(db, "artifacts", appId, "public", "data", "machines"), {
-          matricola: cleanMachineId,
-          customerName: cleanCustomer,
-          type: formData.machineType,
-          capacity: formData.capacity
-        });
-      }
-
-      onSuccess();
-      setIsLocked(true);
-    } catch (e) {
-      console.error(e);
-      alert("Errore salvataggio");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const renderField = (key) => {
-    switch (key) {
-      case "technician":
-        return (
-          <div key="tech" className="space-y-3">
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">
-                Tecnico Principale <span className="text-red-500">*</span>
-              </label>
-              <div className="relative">
-                {isLocked ? (
-                  <div className="w-full p-3 bg-slate-100 border border-slate-300 rounded-lg text-sm font-bold text-slate-600 flex justify-between items-center">
-                    <span>{formData.technician}</span>
-                    <Lock className="w-4 h-4 text-slate-400" />
-                  </div>
-                ) : (
-                  <>
-                    <select
-                      className={PRO_INPUT}
-                      value={formData.technician}
-                      onChange={(e) =>
-                        setFormData({ ...formData, technician: e.target.value })
-                      }
-                    >
-                      <option value="">Seleziona...</option>
-                      {sortedTechs.map((t) => (
-                        <option key={t.id} value={t.name}>
-                          {topTechs.includes(t.name) ? "⭐ " : ""}
-                          {t.name}
-                        </option>
-                      ))}
-                    </select>
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                      <User className="w-4 h-4" />
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-
-            {/* SEZIONE TECNICI AGGIUNTIVI */}
-            <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
-              <div className="flex justify-between items-center mb-2">
-                <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">
-                  Hanno Lavorato Con Te?
-                </label>
-                <button
-                  type="button"
-                  onClick={addTechnician}
-                  className={`text-[10px] font-bold flex items-center gap-1 text-${color}-600 hover:text-${color}-800 transition-colors`}
-                >
-                  <PlusCircle className="w-3 h-3" /> Aggiungi Tecnico
-                </button>
-              </div>
-              <div className="space-y-2">
-                {formData.additionalTechnicians.map((tech, idx) => (
-                  <div
-                    key={idx}
-                    className="flex gap-2 items-center animate-in fade-in slide-in-from-top-1"
-                  >
-                    <select
-                      className={`${PRO_INPUT} py-2`}
-                      value={tech}
-                      onChange={(e) =>
-                        updateAdditionalTech(idx, e.target.value)
-                      }
-                    >
-                      <option value="">Seleziona un collega...</option>
-                      {sortedTechs.map((t) => (
-                        <option key={t.id} value={t.name}>
-                          {t.name}
-                        </option>
-                      ))}
-                    </select>
-                    <button
-                      type="button"
-                      onClick={() => removeAdditionalTech(idx)}
-                      className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                    >
-                      <MinusCircle className="w-5 h-5" />
-                    </button>
-                  </div>
-                ))}
-                {formData.additionalTechnicians.length === 0 && (
-                  <p className="text-[10px] text-slate-400 italic">
-                    Clicca "Aggiungi" se eravate in più di uno.
-                  </p>
-                )}
-              </div>
-            </div>
-          </div>
-        );
-      case "machine":
-        return (
-          <div key="mach" className="grid grid-cols-2 gap-4">
-            <div className="space-y-1 relative">
-              <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">
-                Matricola/Campata
-              </label>
-              <div className="relative">
-                <input
-                  type="text"
-                  className={PRO_INPUT}
-                  value={formData.machineId}
-                  onChange={handleMachineIdChange}
-                  onFocus={() => setShowMachineSuggestions(true)}
-                  onBlur={() =>
-                    setTimeout(() => setShowMachineSuggestions(false), 200)
-                  }
-                  placeholder="Es. 01"
-                />
-                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                  <ChevronDown className="w-4 h-4" />
-                </div>
-              </div>
-              {showMachineSuggestions && (
-                <ul className="absolute z-50 left-0 right-0 mt-2 bg-white border border-slate-200 rounded-xl shadow-xl max-h-48 overflow-y-auto animate-in fade-in slide-in-from-top-2">
-                  {machines
-                    .filter((m) => {
-                      const mat = getSafeMatricola(m);
-                      const matchMat =
-                        !formData.machineId ||
-                        mat.includes(formData.machineId.toUpperCase());
-                      const matchCust =
-                        !formData.customer ||
-                        m.customerName.toUpperCase() ===
-                          formData.customer.toUpperCase();
-                      return matchMat && matchCust;
-                    })
-                    .slice(0, 50)
-                    .map((m) => (
-                      <li
-                        key={m.id}
-                        onMouseDown={() => selectMachine(m)}
-                        className="p-3 hover:bg-slate-50 cursor-pointer font-bold text-xs text-slate-700 border-b border-slate-50 flex justify-between items-center"
-                      >
-                        <span className="uppercase text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
-                          {getSafeMatricola(m)}
-                        </span>
-                        <span className="text-[10px] text-slate-500 truncate ml-2 text-right">
-                          {m.customerName}
-                        </span>
-                      </li>
-                    ))}
-                  {formData.machineId && (
-                    <li className="p-3 text-[10px] font-bold text-slate-500 bg-slate-50 text-center italic">
-                      Scrivi "{formData.machineId}" e assicurati di aver
-                      inserito il Cliente per salvarla.
-                    </li>
-                  )}
-                </ul>
-              )}
-            </div>
-            <div className="space-y-1">
-              <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">
-                Tipo <span className="text-red-500">*</span>
-              </label>
-              <select
-                className={PRO_INPUT}
-                value={formData.machineType}
-                onChange={(e) =>
-                  setFormData({ ...formData, machineType: e.target.value })
-                }
-              >
-                <option value="">Seleziona...</option>
-                {machineTypes.map((t) => (
-                  <option key={t.id} value={t.name}>
-                    {t.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-        );
-      case "customer":
-        return (
-          <div key="cust" className="space-y-1 relative">
-            <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">
-              Cliente <span className="text-red-500">*</span>
-            </label>
-            <div className="relative">
-              <input
-                type="text"
-                className={PRO_INPUT}
-                value={formData.customer}
-                onChange={handleCustomerChange}
-                onFocus={() => setShowCustomerSuggestions(true)}
-                onBlur={() =>
-                  setTimeout(() => setShowCustomerSuggestions(false), 200)
-                }
-              />
-              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                <ChevronDown className="w-4 h-4" />
-              </div>
-            </div>
-            {showCustomerSuggestions && (
-              <ul className="absolute z-50 left-0 right-0 mt-2 bg-white border border-slate-200 rounded-xl shadow-xl max-h-48 overflow-y-auto animate-in fade-in slide-in-from-top-2">
-                {customers
-                  .filter(
-                    (c) =>
-                      !formData.customer ||
-                      c.name.includes(formData.customer.toUpperCase())
-                  )
-                  .map((c) => (
-                    <li
-                      key={c.id}
-                      onMouseDown={() => {
-                        setFormData({ ...formData, customer: c.name });
-                        setShowCustomerSuggestions(false);
-                      }}
-                      className="p-3 hover:bg-slate-50 cursor-pointer font-bold text-xs uppercase text-slate-700 border-b border-slate-50"
-                    >
-                      {c.name}
-                    </li>
-                  ))}
-                {customers.length === 0 && (
-                  <li className="p-3 text-xs text-slate-400">
-                    Nessun cliente trovato
-                  </li>
-                )}
-              </ul>
-            )}
-            {relatedMachines.length > 0 && !formData.machineId && (
-              <div className="mt-3">
-                <span className="text-[9px] font-bold text-slate-400 uppercase ml-1 mb-2 block">
-                  Gru di {formData.customer}:
-                </span>
-                <div className="flex gap-3 overflow-x-auto pb-4 pt-1 snap-x">
-                  {relatedMachines.map((m) => (
-                    <button
-                      type="button"
-                      key={m.id}
-                      onClick={() => selectMachine(m)}
-                      className="snap-start flex flex-col items-start p-3 bg-white border border-slate-200 rounded-xl shadow-sm hover:border-blue-500 hover:shadow-md transition-all group min-w-[120px] text-left"
-                    >
-                      <div className="p-2 bg-blue-50 text-blue-600 rounded-lg mb-2 group-hover:bg-blue-600 group-hover:text-white transition-colors">
-                        <Factory className="w-4 h-4" />
-                      </div>
-                      <span className="font-black text-slate-700 text-xs block mb-0.5">
-                        {getSafeMatricola(m)}
-                      </span>
-                      <span className="text-[9px] text-slate-400 font-bold uppercase truncate w-full block">
-                        {m.type}
-                      </span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        );
-      case "description":
-        return (
-          <div key="desc" className="space-y-1">
-            <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">
-              Descrizione <span className="text-red-500">*</span>
-            </label>
-            <textarea
-              rows="4"
-              className={PRO_INPUT}
-              value={formData.description}
-              onChange={(e) =>
-                setFormData({ ...formData, description: e.target.value })
-              }
-            />
-          </div>
-        );
-      case "capacity":
-        const commonCapacities = [
-          "250 kg",
-          "500 kg",
-          "1000 kg",
-          "2000 kg",
-          "3200 kg",
-          "5000 kg",
-          "10000 kg",
-        ];
-        return layoutConfig.formSettings.showCapacity ? (
-          <div key="cap" className="space-y-2">
-            <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">
-              Portata in Kilogrammi <span className="text-red-500">*</span>
-            </label>
-            <input
-              type="text"
-              className={PRO_INPUT}
-              value={formData.capacity}
-              onChange={(e) =>
-                setFormData({ ...formData, capacity: e.target.value })
-              }
-              placeholder="Es. 2000 kg"
-            />
-            <div className="flex flex-wrap gap-1.5 mt-1">
-              {commonCapacities.map((cap) => (
-                <button
-                  key={cap}
-                  type="button"
-                  onClick={() => setFormData({ ...formData, capacity: cap })}
-                  className={`px-2.5 py-1.5 text-[10px] font-bold rounded-lg border transition-all active:scale-95 ${
-                    formData.capacity === cap
-                      ? "bg-" +
-                        color +
-                        "-100 border-" +
-                        color +
-                        "-400 text-" +
-                        color +
-                        "-700 shadow-sm"
-                      : "bg-white border-slate-200 text-slate-500 hover:bg-slate-50"
-                  }`}
-                >
-                  {cap}
-                </button>
-              ))}
-            </div>
-          </div>
-        ) : null;
-      case "date":
-        return (
-          <div key="date" className="space-y-1">
-            <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">
-              Data (Opzionale)
-            </label>
-            <div className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg text-sm text-slate-500 font-bold flex items-center gap-2">
-              <CalendarIcon className="w-4 h-4" />
-              {new Date().toLocaleDateString("it-IT")}
-            </div>
-          </div>
-        );
-      case "ticketNumber":
-        return (
-          <div key="ticketNumber" className="space-y-1">
-            <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">
-              Numero Assistenza (Opzionale)
-            </label>
-            <input
-              type="text"
-              className={PRO_INPUT}
-              value={formData.ticketNumber}
-              onChange={(e) =>
-                setFormData({ ...formData, ticketNumber: e.target.value })
-              }
-              placeholder="Es. #12345"
-            />
-          </div>
-        );
-      case "custom":
-        return layoutConfig.customFields?.length > 0 ? (
-          <div
-            key="custom"
-            className="grid grid-cols-2 gap-4 border-t border-slate-100 pt-4 mt-2"
-          >
-            {layoutConfig.customFields.map((f, i) => (
-              <div key={i} className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">
-                  {f.label}
-                </label>
-                <input
-                  type={f.type || "text"}
-                  className={PRO_INPUT}
-                  placeholder={f.label}
-                />
-              </div>
-            ))}
-          </div>
-        ) : null;
-      default:
-        return null;
-    }
-  };
-
-  return (
-    <div
-      className={`overflow-hidden animate-in slide-in-from-bottom-6 duration-500 ${getProPanelClass(
-        color
-      )}`}
-    >
-      <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-        <h2 className="font-black text-slate-800 text-lg uppercase tracking-tight">
-          Nuovo Rapporto
-        </h2>
-        <div
-          className={`bg-${color}-600 text-white p-2.5 rounded-xl shadow-md`}
-        >
-          <HardHat className="w-5 h-5" />
-        </div>
-      </div>
-      <form onSubmit={handleSubmit} className="p-6 space-y-6">
-        {formOrder.map((key) => renderField(key))}
-        {lastIntervention && (
-          <div className="bg-amber-50 p-4 rounded-xl border border-amber-100 animate-in fade-in slide-in-from-top-2 shadow-sm">
-            <div className="flex items-center gap-2 mb-1.5">
-              <AlertTriangle className="w-4 h-4 text-amber-600" />
-              <h4 className="text-xs font-black text-amber-800 uppercase tracking-wide">
-                Ultimo Intervento ({lastIntervention.dateString})
-              </h4>
-            </div>
-            <p className="text-sm text-amber-900 italic leading-relaxed whitespace-pre-wrap break-words">
-              "{lastIntervention.description}"
-            </p>
-            <div className="text-[10px] text-amber-700 mt-2 font-bold text-right uppercase tracking-wider">
-              - {getTechsString(lastIntervention)}
-            </div>
-          </div>
-        )}
-
-        {formError && (
-          <div className="bg-red-50 text-red-600 p-3 rounded-xl border border-red-200 text-xs font-bold flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2">
-            <AlertTriangle className="w-5 h-5 shrink-0" /> {formError}
-          </div>
-        )}
-
-        <div className="flex gap-3 pt-2">
-          <button
-            type="button"
-            onClick={() => setShowClearConfirm(true)}
-            title="Svuota Modulo"
-            className="p-4 rounded-xl text-slate-400 bg-slate-100 hover:bg-red-50 hover:text-red-500 transition-all active:scale-95"
-          >
-            <Trash2 className="w-5 h-5" />
-          </button>
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className={`flex-1 py-4 rounded-xl font-black text-sm uppercase tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95 ${getButtonPrimaryClass(
-              color
-            )}`}
-          >
-            {isSubmitting ? (
-              <RefreshCw className="animate-spin w-5 h-5" />
-            ) : (
-              <Save className="w-5 h-5" />
-            )}{" "}
-            Salva
-          </button>
-        </div>
-      </form>
-
-      {/* POP-UP DI CONFERMA PERSONALIZZATO */}
-      {showClearConfirm && (
-        <div className="fixed inset-0 z-[300] bg-slate-900/60 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in">
-          <div className="p-6 max-w-xs w-full text-center space-y-5 bg-white rounded-xl shadow-xl border-t-4 border-t-red-500 animate-in zoom-in-95">
-            <div className="p-3 bg-red-100 text-red-600 rounded-full w-fit mx-auto">
-              <Trash2 className="w-8 h-8" />
-            </div>
-            <div>
-              <h4 className="font-black text-slate-800 uppercase text-sm">
-                Svuotare il modulo?
-              </h4>
-              <p className="text-xs text-slate-500 mt-2">
-                I dati inseriti non sono stati salvati e andranno persi.
-              </p>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => {
-                  setFormData((p) => ({
-                    ...p,
-                    customer: "",
-                    machineId: "",
-                    machineType: "",
-                    capacity: "",
-                    description: "",
-                    ticketNumber: "",
-                  }));
-                  setLastIntervention(null);
-                  setRelatedMachines([]);
-                  setShowClearConfirm(false);
-                }}
-                className="py-3 bg-red-600 text-white rounded-lg font-bold text-xs uppercase shadow-md hover:bg-red-700 active:scale-95 transition-all"
-              >
-                Svuota
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowClearConfirm(false)}
-                className="py-3 bg-slate-100 text-slate-600 rounded-lg font-bold text-xs uppercase hover:bg-slate-200 active:scale-95 transition-all"
-              >
-                Annulla
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
-};
-
-const HistoryView = ({
-  logs,
-  machines,
-  customers,
-  technicians,
-  machineTypes,
-  loading,
-  isMobile,
-  onAuthAdmin,
-  isAdmin,
-  layoutConfig,
-  onOpenCustomer,
-  onOpenMachine,
-}) => {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [page, setPage] = useState(1);
-  const [isDeleting, setIsDeleting] = useState(null);
-  const [isEditing, setIsEditing] = useState(null);
-  const [pin, setPin] = useState("");
-  const [err, setErr] = useState(false);
-  const [isFreeAction, setIsFreeAction] = useState(false);
-  const color = layoutConfig?.themeColor || "blue";
-
-  const filtered = logs.filter((l) => {
-    const s = searchTerm.toLowerCase();
-    return (
-      (l.customer && l.customer.toLowerCase().includes(s)) ||
-      (l.machineId && l.machineId.toLowerCase().includes(s)) ||
-      (l.description && l.description.toLowerCase().includes(s))
-    );
-  });
-
-  const ITEMS_PER_PAGE = 50;
-  const paginated = filtered.slice(
-    (page - 1) * ITEMS_PER_PAGE,
-    page * ITEMS_PER_PAGE
-  );
-  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
-
-  const handleDelete = (log) => {
-    const isRecent =
-      log.createdAt &&
-      Date.now() - log.createdAt.seconds * 1000 < 3 * 60 * 1000;
-    if (isAdmin || isRecent) {
-      setIsFreeAction(isRecent && !isAdmin);
-      setIsDeleting(log.id);
-    } else onAuthAdmin();
-  };
-
-  const handleEdit = (log) => {
-    const isRecent =
-      log.createdAt &&
-      Date.now() - log.createdAt.seconds * 1000 < 3 * 60 * 1000;
-    if (isAdmin || isRecent) setIsEditing(log.id);
-    else onAuthAdmin();
-  };
-
-  const confirmDelete = async () => {
-    if (!isFreeAction && pin !== ADMIN_PASSWORD) return setErr(true);
-    await deleteDoc(
-      doc(
-        db,
-        "artifacts",
-        appId,
-        "public",
-        "data",
-        "maintenance_logs",
-        isDeleting
-      )
-    );
-    setIsDeleting(null);
-    setPin("");
-  };
-
-  if (loading)
-    return (
-      <div className="py-20 text-center">
-        <RefreshCw className="animate-spin mx-auto text-slate-400" />
-      </div>
-    );
-
-  return (
-    <div className="space-y-6">
-      <div
-        className={`relative group max-w-xl mx-auto shadow-lg rounded-2xl ${getProPanelClass(
-          color
-        )}`}
-      >
-        <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400">
-          <Search className="w-5 h-5" />
-        </div>
-        <input
-          type="text"
-          placeholder="Cerca..."
-          className="w-full pl-14 pr-6 py-4 bg-transparent font-bold outline-none text-sm placeholder-slate-400"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
-      </div>
-      <div
-        className={`rounded-3xl overflow-hidden shadow-xl ${getProPanelClass(
-          color
-        )}`}
-      >
-        {isMobile ? (
-          <div className="divide-y divide-slate-100">
-            {paginated.map((log) => (
-              <div
-                key={log.id}
-                className="p-5 space-y-3 hover:bg-slate-50 transition-all"
-              >
-                <div className="flex justify-between items-start">
-                  <div className="flex-1 pr-2">
-                    <h4
-                      className="font-black text-slate-800 uppercase text-sm hover:text-blue-600 hover:underline cursor-pointer leading-tight break-words"
-                      onClick={() => onOpenCustomer(log.customer)}
-                    >
-                      {log.customer}
-                    </h4>
-                    <div className="flex flex-wrap gap-1 mt-1.5">
-                      <span
-                        className={`text-[10px] font-bold text-${color}-700 bg-${color}-50 px-2 py-0.5 rounded uppercase cursor-pointer hover:bg-${color}-100`}
-                        onClick={() =>
-                          onOpenMachine(log.machineId, log.customer)
-                        }
-                      >
-                        MAT: {log.machineId}
-                      </span>
-                      <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 uppercase">
-                        {log.machineType}
-                      </span>
-                      {log.capacity && (
-                        <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 uppercase">
-                          {formatCapacity(log.capacity)}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-end gap-1.5 shrink-0">
-                    <div className="flex flex-col items-end gap-1">
-                      <span className="text-[9px] font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded-lg uppercase whitespace-nowrap">
-                        {log.dateString}
-                      </span>
-                      {isAdmin && log.createdAt && (
-                        <span
-                          className="text-[8px] font-bold text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded flex items-center gap-1"
-                          title="Inserito il (Visibile solo Admin)"
-                        >
-                          <Clock className="w-2.5 h-2.5" />{" "}
-                          {new Date(
-                            log.createdAt.seconds * 1000
-                          ).toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </span>
-                      )}
-                    </div>
-                    {log.ticketNumber && (
-                      <span className="text-[9px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-lg uppercase whitespace-nowrap">
-                        N. Assistenza {log.ticketNumber}
-                      </span>
-                    )}
-                  </div>
-                </div>
-                <p className="text-slate-600 text-xs italic bg-slate-50 p-3 rounded-xl border border-slate-100 whitespace-pre-wrap break-words">
-                  "{log.description}"
-                </p>
-                <div className="flex justify-between items-center pt-1">
-                  <div className="flex items-center gap-2">
-                    <User className="w-3 h-3 text-slate-400" />
-                    <span className="text-[10px] font-bold uppercase text-slate-600 truncate max-w-[120px]">
-                      {getTechsString(log)}
-                    </span>
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => handleEdit(log)}
-                      className="p-2 bg-slate-100 text-slate-400 rounded-lg hover:text-blue-500"
-                      title="Modifica"
-                    >
-                      <Edit className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(log)}
-                      className="p-2 bg-slate-100 text-slate-400 rounded-lg hover:text-red-500"
-                      title="Elimina"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <table className="w-full text-left table-fixed">
-            <thead className="bg-slate-50 border-b border-slate-200">
-              <tr>
-                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase w-[100px]">
-                  Data
-                </th>
-                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase w-[240px]">
-                  Cliente
-                </th>
-                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase">
-                  Descrizione
-                </th>
-                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase w-[160px]">
-                  Tecnici
-                </th>
-                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase text-center w-[120px]">
-                  Azioni
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {paginated.map((log) => (
-                <tr key={log.id} className="hover:bg-slate-50 group">
-                  <td className="px-6 py-4 text-xs font-bold text-slate-500 align-top">
-                    <div className="whitespace-nowrap">{log.dateString}</div>
-                    {isAdmin && log.createdAt && (
-                      <div
-                        className="text-[9px] text-purple-600 font-bold mt-1 flex items-center gap-1"
-                        title="Orario di inserimento (Admin)"
-                      >
-                        <Clock className="w-3 h-3" />{" "}
-                        {new Date(
-                          log.createdAt.seconds * 1000
-                        ).toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </div>
-                    )}
-                    {log.ticketNumber && (
-                      <div className="text-[9px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded mt-1.5 inline-block uppercase tracking-wider whitespace-nowrap">
-                        N. Assistenza {log.ticketNumber}
-                      </div>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 align-top">
-                    <div className="flex flex-col">
-                      <span
-                        className="font-bold text-slate-800 uppercase text-xs cursor-pointer hover:text-blue-600 hover:underline break-words whitespace-normal leading-tight"
-                        onClick={() => onOpenCustomer(log.customer)}
-                      >
-                        {log.customer}
-                      </span>
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        <span
-                          className={`text-[10px] text-${color}-600 font-bold cursor-pointer hover:underline`}
-                          onClick={() =>
-                            onOpenMachine(log.machineId, log.customer)
-                          }
-                        >
-                          {log.machineId}
-                        </span>
-                        <span className="text-[10px] text-slate-500 border-l border-slate-300 pl-1 ml-1">
-                          {log.machineType}
-                        </span>
-                        {log.capacity && (
-                          <span className="text-[10px] text-slate-500 border-l border-slate-300 pl-1 ml-1">
-                            {formatCapacity(log.capacity)}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-xs text-slate-600 italic break-words whitespace-pre-wrap align-top">
-                    "{log.description}"
-                  </td>
-                  <td className="px-6 py-4 text-[10px] font-bold uppercase text-slate-600 align-top">
-                    {getTechsString(log)}
-                  </td>
-                  <td className="px-6 py-4 text-center align-top">
-                    <div className="flex justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        onClick={() => handleEdit(log)}
-                        className={`text-${color}-500 hover:scale-110`}
-                        title="Modifica"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(log)}
-                        className="text-red-500 hover:scale-110"
-                        title="Elimina"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-        {totalPages > 1 && (
-          <div className="p-4 flex justify-between">
-            <button
-              disabled={page === 1}
-              onClick={() => setPage((p) => p - 1)}
-              className="text-xs font-bold"
-            >
-              Prec
-            </button>
-            <span className="text-xs">
-              {page}/{totalPages}
-            </span>
-            <button
-              disabled={page === totalPages}
-              onClick={() => setPage((p) => p + 1)}
-              className="text-xs font-bold"
-            >
-              Succ
-            </button>
-          </div>
-        )}
-      </div>
-      {isDeleting && (
-        <DeleteConfirmDialog
-          onConfirm={confirmDelete}
-          onCancel={() => setIsDeleting(null)}
-          pin={pin}
-          setPin={setPin}
-          error={err}
-          title="Elimina"
-          isFree={isFreeAction}
-        />
-      )}
-      {isEditing && (
-        <EditLogModal
-          log={logs.find((l) => l.id === isEditing)}
-          customers={customers}
-          technicians={technicians}
-          machineTypes={machineTypes}
-          onClose={() => setIsEditing(null)}
-          color={color}
-          layoutConfig={layoutConfig}
-        />
-      )}
-    </div>
-  );
-};
-
 const AdminPanel = ({
   customers,
   technicians,
@@ -3638,13 +2777,14 @@ const AdminPanel = ({
   const [mergingItem, setMergingItem] = useState(null);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
   const [itemToDelete, setItemToDelete] = useState(null);
+  const [duplicateAnalysis, setDuplicateAnalysis] = useState(null);
+  const [ignoredConflicts, setIgnoredConflicts] = useState([]);
 
-  // NUOVI STATI PER GESTIONE LISTE AVANZATE (Clienti e Gru)
   const [clientSearch, setClientSearch] = useState("");
   const [clientSort, setClientSort] = useState("az");
   const [machineSearch, setMachineSearch] = useState("");
   const [machineSort, setMachineSort] = useState("cust-az");
-  const [listViewMode, setListViewMode] = useState("list"); // "list" | "grid"
+  const [listViewMode, setListViewMode] = useState("list");
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -3658,6 +2798,13 @@ const AdminPanel = ({
   }, []);
 
   useEffect(() => {
+    const unsubIgnored = onSnapshot(
+      collection(db, "artifacts", appId, "public", "data", "ignored_conflicts"),
+      (snap) => {
+        setIgnoredConflicts(snap.docs.map((d) => d.id));
+      }
+    );
+
     if (view === "diagnostics") {
       const unsubLogs = onSnapshot(
         query(
@@ -3681,7 +2828,6 @@ const AdminPanel = ({
                 now - u.lastActive.seconds * 1000 < 5 * 60 * 1000
             );
 
-          // Raggruppa i dispositivi dello stesso tecnico
           const grouped = {};
           rawUsers.forEach((u) => {
             if (!grouped[u.technician]) {
@@ -3709,11 +2855,13 @@ const AdminPanel = ({
       return () => {
         unsubLogs();
         unsubActive();
+        unsubIgnored();
       };
     }
+
+    return () => unsubIgnored();
   }, [view]);
 
-  // LOGICA DI ORDINAMENTO E FILTRO PER CLIENTI
   const processedCustomers = useMemo(() => {
     let res = [...customers];
     if (clientSearch) {
@@ -3729,7 +2877,6 @@ const AdminPanel = ({
     return res;
   }, [customers, clientSearch, clientSort]);
 
-  // LOGICA DI ORDINAMENTO E FILTRO PER GRU
   const processedMachines = useMemo(() => {
     let res = [...machines];
     if (machineSearch) {
@@ -3754,6 +2901,87 @@ const AdminPanel = ({
     }
     return res;
   }, [machines, machineSearch, machineSort]);
+
+  const analyzeDuplicates = (type, items) => {
+    const pairs = [];
+    const normalize = (s) => (s || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+
+    for (let i = 0; i < items.length; i++) {
+      for (let j = i + 1; j < items.length; j++) {
+        const pairId = [items[i].id, items[j].id].sort().join("_");
+        if (ignoredConflicts.includes(pairId)) continue;
+
+        let isDup = false;
+
+        if (type === "customer") {
+          const normA = normalize(items[i].name);
+          const normB = normalize(items[j].name);
+          if (normA === normB && normA !== "") {
+            isDup = true;
+          } else if (normA.length > 4 && normB.length > 4) {
+            const dist = getLevenshteinDistance(normA, normB);
+            if (
+              dist <= 2 ||
+              (normA.includes(normB) && normA.length - normB.length < 5) ||
+              (normB.includes(normA) && normB.length - normA.length < 5)
+            ) {
+              isDup = true;
+            }
+          }
+        } else if (type === "machine") {
+          const normA = normalize(getSafeMatricola(items[i]));
+          const normB = normalize(getSafeMatricola(items[j]));
+          const custA = normalize(items[i].customerName);
+          const custB = normalize(items[j].customerName);
+
+          if (custA === custB) {
+            if (normA === normB && normA !== "") {
+              isDup = true;
+            } else if (normA.length > 2 && normB.length > 2) {
+              const dist = getLevenshteinDistance(normA, normB);
+              if (dist <= 1) isDup = true;
+            }
+          }
+        }
+
+        if (isDup) pairs.push([items[i], items[j]]);
+      }
+    }
+    setDuplicateAnalysis({ type, pairs });
+  };
+
+  const handleIgnoreConflict = async (itemA, itemB) => {
+    const pairId = [itemA.id, itemB.id].sort().join("_");
+    try {
+      await setDoc(
+        doc(
+          db,
+          "artifacts",
+          appId,
+          "public",
+          "data",
+          "ignored_conflicts",
+          pairId
+        ),
+        {
+          idA: itemA.id,
+          idB: itemB.id,
+          timestamp: serverTimestamp(),
+        }
+      );
+      setDuplicateAnalysis((prev) => {
+        if (!prev) return null;
+        const newPairs = prev.pairs.filter((p) => {
+          const currentPairId = [p[0].id, p[1].id].sort().join("_");
+          return currentPairId !== pairId;
+        });
+        return { ...prev, pairs: newPairs };
+      });
+    } catch (e) {
+      console.error(e);
+      alert("Errore durante il salvataggio della preferenza.");
+    }
+  };
 
   const addItem = async () => {
     if (!inputValue) return;
@@ -3820,29 +3048,59 @@ const AdminPanel = ({
       where("machineId", "==", source.id)
     );
     const logsSnap = await getDocs(qLogs);
-    const promises = [];
-    logsSnap.forEach((d) =>
-      promises.push(
-        updateDoc(d.ref, {
-          machineId: target.id,
-          machineType: target.type,
-          capacity: target.capacity,
-        })
-      )
+
+    const matSource = getSafeMatricola(source);
+    const matTarget = getSafeMatricola(target);
+    const qLogsMat = query(
+      collection(db, "artifacts", appId, "public", "data", "maintenance_logs"),
+      where("machineId", "==", matSource),
+      where("customer", "==", source.customerName)
     );
+    const logsSnapMat = await getDocs(qLogsMat);
+
+    const promises = [];
+
+    const updateLogs = (snap) => {
+      snap.forEach((d) =>
+        promises.push(
+          updateDoc(d.ref, {
+            machineId: matTarget,
+            machineType: target.type || "N.D.",
+            capacity: target.capacity || "",
+          })
+        )
+      );
+    };
+
+    updateLogs(logsSnap);
+    updateLogs(logsSnapMat);
+
     await Promise.all(promises);
+
     await deleteDoc(
-      doc(
-        db,
-        "artifacts",
-        appId,
-        "public",
-        "data",
-        "machines",
-        source.id.toLowerCase()
-      )
+      doc(db, "artifacts", appId, "public", "data", "machines", source.id)
     );
     setMergingItem(null);
+  };
+
+  const handleDirectMerge = async (source, target, type) => {
+    try {
+      if (type === "customer") {
+        await handleMergeCustomers(source, target);
+      } else {
+        await handleMergeMachines(source, target);
+      }
+      setDuplicateAnalysis((prev) => {
+        if (!prev) return null;
+        const newPairs = prev.pairs.filter(
+          (p) => p[0].id !== source.id && p[1].id !== source.id
+        );
+        return { ...prev, pairs: newPairs };
+      });
+    } catch (e) {
+      console.error(e);
+      alert("Errore durante l'unione.");
+    }
   };
 
   const toggleNotifications = async () => {
@@ -4007,7 +3265,7 @@ const AdminPanel = ({
             <h4 className="font-black text-slate-800 uppercase shrink-0">
               Lista Clienti ({processedCustomers.length})
             </h4>
-            <div className="flex gap-2 w-full md:w-auto">
+            <div className="flex gap-2 w-full md:w-auto overflow-x-auto pb-2 md:pb-0">
               <input
                 type="text"
                 placeholder="Cerca cliente..."
@@ -4027,10 +3285,20 @@ const AdminPanel = ({
                 onClick={() =>
                   setListViewMode((p) => (p === "grid" ? "list" : "grid"))
                 }
-                className="p-2 bg-slate-100 rounded-lg text-slate-500 hover:text-blue-600 transition-colors"
+                className="p-2 bg-slate-100 rounded-lg text-slate-500 hover:text-blue-600 transition-colors shrink-0"
                 title="Cambia Vista"
               >
                 <Layout className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => analyzeDuplicates("customer", customers)}
+                className="p-2 bg-yellow-50 text-yellow-600 border border-yellow-200 rounded-lg hover:bg-yellow-100 transition-colors shrink-0 flex items-center gap-1.5"
+                title="Trova Conflitti o Duplicati"
+              >
+                <AlertTriangle className="w-4 h-4" />
+                <span className="text-[10px] font-bold uppercase tracking-wider hidden md:block">
+                  Conflitti
+                </span>
               </button>
             </div>
           </div>
@@ -4064,7 +3332,7 @@ const AdminPanel = ({
                     className="p-1.5 bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100 transition-colors"
                     title="Unisci"
                   >
-                    <Merge className="w-4 h-4" />
+                    <GitMerge className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => setEditingCustomer(c)}
@@ -4102,7 +3370,7 @@ const AdminPanel = ({
             <h4 className="font-black text-slate-800 uppercase shrink-0">
               Archivio Gru ({processedMachines.length})
             </h4>
-            <div className="flex gap-2 w-full md:w-auto">
+            <div className="flex gap-2 w-full md:w-auto overflow-x-auto pb-2 md:pb-0">
               <input
                 type="text"
                 placeholder="Cerca gru, tipo..."
@@ -4123,10 +3391,20 @@ const AdminPanel = ({
                 onClick={() =>
                   setListViewMode((p) => (p === "grid" ? "list" : "grid"))
                 }
-                className="p-2 bg-slate-100 rounded-lg text-slate-500 hover:text-blue-600 transition-colors"
+                className="p-2 bg-slate-100 rounded-lg text-slate-500 hover:text-blue-600 transition-colors shrink-0"
                 title="Cambia Vista"
               >
                 <Layout className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => analyzeDuplicates("machine", machines)}
+                className="p-2 bg-yellow-50 text-yellow-600 border border-yellow-200 rounded-lg hover:bg-yellow-100 transition-colors shrink-0 flex items-center gap-1.5"
+                title="Trova Conflitti o Duplicati"
+              >
+                <AlertTriangle className="w-4 h-4" />
+                <span className="text-[10px] font-bold uppercase tracking-wider hidden md:block">
+                  Conflitti
+                </span>
               </button>
             </div>
           </div>
@@ -4163,7 +3441,7 @@ const AdminPanel = ({
                     className="p-1.5 bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100 transition-colors"
                     title="Unisci"
                   >
-                    <Merge className="w-4 h-4" />
+                    <GitMerge className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => setEditingMachine(m)}
@@ -4173,7 +3451,7 @@ const AdminPanel = ({
                     <Edit className="w-4 h-4" />
                   </button>
                   <button
-                    onClick={() => deleteItem("machines", m.id.toLowerCase())}
+                    onClick={() => deleteItem("machines", m.id)}
                     className="p-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
                     title="Elimina"
                   >
@@ -4197,7 +3475,6 @@ const AdminPanel = ({
             layoutConfig.themeColor
           )}`}
         >
-          {/* GESTIONE NOTIFICHE (NUOVO) */}
           <h4 className="font-black text-slate-800 uppercase mb-4 flex items-center gap-2">
             <Bell className="w-5 h-5 text-yellow-500" /> Notifiche Dispositivo
           </h4>
@@ -4267,7 +3544,7 @@ const AdminPanel = ({
                 </div>
               </div>
               <div className="text-right flex items-center justify-center">
-                <DatabaseZap
+                <Database
                   className={`w-6 h-6 ${
                     isOnline ? "text-green-500 animate-pulse" : "text-red-500"
                   }`}
@@ -4422,6 +3699,7 @@ const AdminPanel = ({
         <MergeModal
           sourceItem={mergingItem.item}
           type={mergingItem.type}
+          defaultTargetId={mergingItem.defaultTargetId}
           allItems={mergingItem.type === "customer" ? customers : machines}
           onClose={() => setMergingItem(null)}
           onConfirm={
@@ -4433,7 +3711,16 @@ const AdminPanel = ({
         />
       )}
 
-      {/* POP-UP CONFERMA ELIMINAZIONE ADMIN */}
+      {duplicateAnalysis && (
+        <DuplicatesModal
+          analysis={duplicateAnalysis}
+          onClose={() => setDuplicateAnalysis(null)}
+          onDirectMerge={handleDirectMerge}
+          onIgnore={handleIgnoreConflict}
+          color={layoutConfig.themeColor}
+        />
+      )}
+
       {itemToDelete && (
         <div className="fixed inset-0 z-[300] bg-slate-900/60 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in">
           <div className="p-6 max-w-xs w-full text-center space-y-5 bg-white rounded-xl shadow-xl border-t-4 border-t-red-500 animate-in zoom-in-95">
@@ -4482,7 +3769,7 @@ const DashboardView = ({
   const buttonsMap = {
     new: { icon: PlusCircle, label: "Nuovo", sub: "Rapporto", color: color },
     explore: {
-      icon: ListTree,
+      icon: Folder,
       label: "Esplora",
       sub: "Archivio",
       color: "orange",
@@ -4569,59 +3856,52 @@ export default function App() {
   const [layoutConfig, setLayoutConfig] = useState(DEFAULT_LAYOUT);
   const [isAppLoading, setIsAppLoading] = useState(true);
 
-  // STATO PER LE NOTIFICHE (NUOVO)
   const [notificationsEnabled, setNotificationsEnabled] = useState(
     localStorage.getItem("mora_notifications") === "true"
   );
   const notifRef = useRef(notificationsEnabled);
 
-  // NUOVO: Ref per bloccare il ricalcolo automatico su Android
-  const isManualOverrideRef = useRef(false);
-
-  // Aggiorna il ref quando lo stato cambia per usarlo dentro l'useEffect del database
   useEffect(() => {
     notifRef.current = notificationsEnabled;
   }, [notificationsEnabled]);
 
-  const handleToggleView = useCallback(() => {
-    isManualOverrideRef.current = true; // Blocca il ricalcolo automatico
-    setIsMobileView((prev) => !prev);
-  }, []);
+  useEffect(() => {
+    if (currentTechName && currentTechName.trim().toLowerCase() === "luca") {
+      setIsAdminAuthenticated(true);
+    }
+  }, [currentTechName]);
 
-  // EFFETTO PER IL RICONOSCIMENTO ROTAZIONE E RIDIMENSIONAMENTO SCHERMO (FIX DEFINITIVO VERCEL/MOBILE)
   useEffect(() => {
     let timeoutId;
 
     const updateLayout = () => {
-      // FIX DEFINITIVO: Usiamo matchMedia al posto di innerHeight.
-      // È il modo in cui i browser moderni capiscono l'orientamento reale,
-      // ignorando i fastidiosi calcoli della barra degli indirizzi di Android/iOS.
-      const isPortrait = window.matchMedia("(orientation: portrait)").matches;
-      
-      // Alziamo la soglia a 1024px per coprire bene anche i tablet o smartphone molto grandi
-      const isSmallScreen = window.innerWidth < 1024; 
-      
+      let isPortrait = true;
+      if (
+        window.screen &&
+        window.screen.orientation &&
+        window.screen.orientation.type
+      ) {
+        isPortrait = window.screen.orientation.type.startsWith("portrait");
+      } else if (window.matchMedia) {
+        isPortrait = window.matchMedia("(orientation: portrait)").matches;
+      } else {
+        isPortrait = window.innerHeight >= window.innerWidth;
+      }
+
+      const isSmallScreen = window.innerWidth < 1024;
       setIsMobileView(isSmallScreen && isPortrait);
     };
 
     const handleResize = () => {
       clearTimeout(timeoutId);
-      timeoutId = setTimeout(() => {
-        // Ignora il ridimensionamento se l'utente ha cliccato manualmente il tasto rotazione.
-        if (isManualOverrideRef.current) return;
-        updateLayout();
-      }, 150);
+      timeoutId = setTimeout(updateLayout, 150);
     };
 
     const handleOrientationChange = () => {
-      // Se ruota fisicamente il telefono, resetta la forzatura manuale e torna automatico
-      isManualOverrideRef.current = false;
       clearTimeout(timeoutId);
-      // Diamo 300ms ai dispositivi fisici reali per finire l'animazione di rotazione dello schermo
       timeoutId = setTimeout(updateLayout, 300);
     };
 
-    // Ricalcolo all'avvio dell'app
     updateLayout();
 
     window.addEventListener("resize", handleResize);
@@ -4634,7 +3914,6 @@ export default function App() {
     };
   }, []);
 
-  // STATO PER LA SICUREZZA GLOBALE E NUMERO UTENTI
   const [isAppUnlocked, setIsAppUnlocked] = useState(false);
   const [onlineUsersCount, setOnlineUsersCount] = useState(0);
   const [activeUsersList, setActiveUsersList] = useState([]);
@@ -4666,7 +3945,6 @@ export default function App() {
     });
   }, []);
 
-  // EFFECT PER PRESENZA E LOG DI ACCESSO
   useEffect(() => {
     if (!user) return;
     const sessionId =
@@ -4725,16 +4003,13 @@ export default function App() {
     return () => clearInterval(interval);
   }, [user, currentTechName]);
 
-  // LETTURA DATI + NOTIFICHE PUSH
   useEffect(() => {
     if (!user) return;
 
-    // Ascolta tutti gli utenti attivi per calcolare il numeretto
     const unsubActiveUsers = onSnapshot(
       collection(db, "artifacts", appId, "public", "data", "active_users"),
       (s) => {
         const now = Date.now();
-        // Prendo tutte le sessioni attive negli ultimi 5 minuti
         const activeDocs = s.docs
           .map((d) => d.data())
           .filter(
@@ -4742,7 +4017,6 @@ export default function App() {
               u.lastActive && now - u.lastActive.seconds * 1000 < 5 * 60 * 1000
           );
 
-        // Raggruppa i dispositivi dello stesso tecnico
         const grouped = {};
         activeDocs.forEach((u) => {
           if (!grouped[u.technician]) {
@@ -4803,7 +4077,6 @@ export default function App() {
     const unsubLogs = onSnapshot(
       collection(db, "artifacts", appId, "public", "data", "maintenance_logs"),
       (s) => {
-        // LOGICA NOTIFICHE NUOVI INTERVENTI
         if (
           !isInitialLogsLoad &&
           notifRef.current &&
@@ -4813,7 +4086,6 @@ export default function App() {
           s.docChanges().forEach((change) => {
             if (change.type === "added") {
               const newLog = change.doc.data();
-              // Controlla se è un log "nuovo" (creato negli ultimi 5 minuti) e se non l'hai inserito tu stesso su questo dispositivo
               if (
                 newLog.userId !== user.uid &&
                 newLog.createdAt &&
@@ -4886,9 +4158,16 @@ export default function App() {
   }, [user]);
 
   const handleAdminAccess = () => {
-    if (!isAdminAuthenticated) setShowAdminLogin(true);
-    else setActiveTab("admin");
+    if (currentTechName && currentTechName.trim().toLowerCase() === "luca") {
+      setIsAdminAuthenticated(true);
+      setActiveTab("admin");
+    } else if (!isAdminAuthenticated) {
+      setShowAdminLogin(true);
+    } else {
+      setActiveTab("admin");
+    }
   };
+
   const handleUpdateLayout = async (cfg) => {
     setLayoutConfig(cfg);
     await setDoc(
@@ -4904,10 +4183,9 @@ export default function App() {
         (m) => getSafeMatricola(m) === mId && m.customerName === mCustomer
       );
     } else {
-      machine = machines.find((m) => getSafeMatricola(m) === mId); // Fallback
+      machine = machines.find((m) => getSafeMatricola(m) === mId);
     }
 
-    // Passiamo l'intero oggetto macchina, oppure un oggetto fittizio costruito al volo ma COMPLETO
     setViewingMachineHistory(
       machine || {
         id: mId,
@@ -5006,7 +4284,6 @@ export default function App() {
               <HardHat className="w-5 h-5" />
             </div>
             <div>
-              {/* LED NUMERO UTENTI ONLINE AGGIUNTO AL TITOLO */}
               <div className="relative">
                 <h1 className="text-lg font-black uppercase tracking-tighter leading-none text-slate-800 flex items-center gap-2">
                   {layoutConfig.appTitle}
@@ -5101,30 +4378,6 @@ export default function App() {
                 {currentTechName ? `Ciao, ${currentTechName}` : "Tecnico"}
               </span>
             </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleToggleView}
-              className="p-2 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200 rounded-xl transition-all shadow-sm"
-              title="Forza Rotazione (Verticale/Orizzontale)"
-            >
-              <Smartphone
-                className={`w-4 h-4 text-indigo-600 transition-transform duration-500 ${
-                  !isMobileView ? "-rotate-90" : ""
-                }`}
-              />
-            </button>
-            <button
-              onClick={handleToggleView}
-              className="p-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-xl transition-all shadow-sm"
-              title="Vista PC / Mobile"
-            >
-              {isMobileView ? (
-                <Smartphone className="w-4 h-4 text-green-600" />
-              ) : (
-                <Monitor className="w-4 h-4 text-slate-400" />
-              )}
-            </button>
           </div>
         </div>
       </header>
