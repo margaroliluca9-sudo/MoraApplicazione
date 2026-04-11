@@ -71,6 +71,8 @@ import {
   Send,
   Clock,
   MinusCircle,
+  Camera,
+  Image as ImageIcon,
 } from "lucide-react";
 import { initializeApp } from "firebase/app";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "firebase/auth";
@@ -131,6 +133,7 @@ const DEFAULT_LAYOUT = {
     "machine",
     "capacity",
     "description",
+    "photos",
     "custom",
   ],
   customFields: [],
@@ -139,6 +142,53 @@ const DEFAULT_LAYOUT = {
     showMachineType: true,
     showCapacity: true,
   },
+};
+
+// HELPER: DATA LOCALE YYYY-MM-DD
+const getTodayString = () => {
+  const today = new Date();
+  const y = today.getFullYear();
+  const m = String(today.getMonth() + 1).padStart(2, "0");
+  const d = String(today.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+};
+
+// HELPER: COMPRESSIONE FOTO (Sicura per Firestore 1MB limit)
+const compressImage = (file) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = (event) => {
+      const img = new Image();
+      img.src = event.target.result;
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const MAX_WIDTH = 800; // Ridimensionamento intelligente
+        const MAX_HEIGHT = 800;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > MAX_WIDTH) {
+            height *= MAX_WIDTH / width;
+            width = MAX_WIDTH;
+          }
+        } else {
+          if (height > MAX_HEIGHT) {
+            width *= MAX_HEIGHT / height;
+            height = MAX_HEIGHT;
+          }
+        }
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", 0.5)); // Qualità bilanciata
+      };
+      img.onerror = (err) => reject(err);
+    };
+    reader.onerror = (err) => reject(err);
+  });
 };
 
 // HELPER GLOBALE PER TECNICI MULTIPLI
@@ -495,6 +545,96 @@ const DeleteConfirmDialog = ({
   </div>
 );
 
+// GALLERIA FOTO GLOBALE CON SCARICAMENTO
+const PhotoViewerModal = ({ photos, onClose }) => {
+  const [currentIndex, setCurrentIndex] = useState(0);
+
+  if (!photos || photos.length === 0) return null;
+
+  const handleDownload = (e) => {
+    e.stopPropagation();
+    const link = document.createElement("a");
+    link.href = photos[currentIndex];
+    link.download = `foto_intervento_${currentIndex + 1}.jpg`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/95 z-[500] flex flex-col items-center justify-center p-4 backdrop-blur-md animate-in fade-in">
+      <div className="absolute top-4 right-4 flex gap-4 z-10 items-center">
+        <div className="bg-black/50 text-white px-4 py-2 rounded-full font-bold text-xs flex items-center shadow-lg">
+          {currentIndex + 1} / {photos.length}
+        </div>
+        <button
+          onClick={handleDownload}
+          className="p-2 text-white/70 hover:text-white bg-black/50 hover:bg-black/80 rounded-full transition-all shadow-lg"
+          title="Scarica questa foto"
+        >
+          <Download className="w-6 h-6" />
+        </button>
+        <button
+          onClick={onClose}
+          className="p-2 text-white/70 hover:text-white bg-black/50 hover:bg-black/80 rounded-full transition-all shadow-lg"
+          title="Chiudi"
+        >
+          <X className="w-6 h-6" />
+        </button>
+      </div>
+
+      <div className="relative w-full max-w-5xl flex items-center justify-center flex-1 min-h-0">
+        <img
+          src={photos[currentIndex]}
+          alt={`Foto ${currentIndex + 1}`}
+          className="max-w-full max-h-full object-contain rounded-xl shadow-2xl animate-in zoom-in-95 duration-300"
+        />
+
+        {photos.length > 1 && (
+          <>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setCurrentIndex((p) => (p === 0 ? photos.length - 1 : p - 1));
+              }}
+              className="absolute left-2 md:left-8 p-3 md:p-4 bg-black/40 hover:bg-black/70 text-white rounded-full backdrop-blur-sm transition-all shadow-lg"
+            >
+              <ArrowLeft className="w-6 h-6 md:w-8 md:h-8" />
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setCurrentIndex((p) => (p === photos.length - 1 ? 0 : p + 1));
+              }}
+              className="absolute right-2 md:right-8 p-3 md:p-4 bg-black/40 hover:bg-black/70 text-white rounded-full backdrop-blur-sm transition-all shadow-lg"
+            >
+              <ArrowRight className="w-6 h-6 md:w-8 md:h-8" />
+            </button>
+          </>
+        )}
+      </div>
+
+      {photos.length > 1 && (
+        <div className="mt-6 flex gap-3 overflow-x-auto pb-4 max-w-full px-4">
+          {photos.map((p, i) => (
+            <img
+              key={i}
+              src={p}
+              onClick={() => setCurrentIndex(i)}
+              className={`w-20 h-20 md:w-24 md:h-24 object-cover rounded-xl cursor-pointer transition-all shadow-md ${
+                currentIndex === i
+                  ? "ring-4 ring-blue-500 scale-105 opacity-100"
+                  : "opacity-50 hover:opacity-100 ring-1 ring-white/20"
+              }`}
+              alt={`Miniatura ${i + 1}`}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 // --- MODALI DATI ---
 const EditLogModal = ({
   log,
@@ -508,8 +648,10 @@ const EditLogModal = ({
   const [data, setData] = useState({
     ...log,
     additionalTechnicians: log.additionalTechnicians || [],
+    photos: log.photos || [],
   });
   const [loading, setLoading] = useState(false);
+  const [uploadingPhotos, setUploadingPhotos] = useState(false);
   const customFields = layoutConfig?.customFields || [];
   const formSettings =
     layoutConfig?.formSettings || DEFAULT_LAYOUT.formSettings;
@@ -532,6 +674,37 @@ const EditLogModal = ({
     const newTechs = [...data.additionalTechnicians];
     newTechs.splice(index, 1);
     setData((p) => ({ ...p, additionalTechnicians: newTechs }));
+  };
+
+  const handlePhotoUpload = async (e) => {
+    const files = Array.from(e.target.files);
+    if (files.length + data.photos.length > 3) {
+      alert("Puoi caricare un massimo di 3 foto in totale per intervento.");
+      return;
+    }
+    setUploadingPhotos(true);
+    try {
+      const newBase64Photos = [];
+      for (let file of files) {
+        if (!file.type.startsWith("image/")) continue;
+        const base64 = await compressImage(file);
+        newBase64Photos.push(base64);
+      }
+      setData((p) => ({ ...p, photos: [...p.photos, ...newBase64Photos] }));
+    } catch (err) {
+      console.error(err);
+      alert("Errore durante l'elaborazione delle immagini.");
+    } finally {
+      setUploadingPhotos(false);
+      e.target.value = null; // reset per ricaricare lo stesso file
+    }
+  };
+
+  const removePhoto = (indexToRemove) => {
+    setData((p) => ({
+      ...p,
+      photos: p.photos.filter((_, idx) => idx !== indexToRemove),
+    }));
   };
 
   const handleSave = async () => {
@@ -566,6 +739,7 @@ const EditLogModal = ({
           description: data.description,
           dateString: data.dateString,
           ticketNumber: data.ticketNumber || "",
+          photos: data.photos,
         }
       );
       onClose();
@@ -622,7 +796,7 @@ const EditLogModal = ({
             </div>
             <div className="space-y-1.5">
               <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">
-                Data
+                Data (DD/MM/YYYY)
               </label>
               <input
                 type="text"
@@ -782,11 +956,65 @@ const EditLogModal = ({
               }
             />
           </div>
+
+          <div className="space-y-2 bg-slate-100 p-3 rounded-xl border border-slate-200">
+            <div className="flex justify-between items-center mb-1">
+              <label className="text-[10px] font-bold text-slate-500 uppercase ml-1 flex items-center gap-1">
+                <Camera className="w-3 h-3" /> Foto Allegate
+              </label>
+              <label
+                className={`text-[10px] font-bold flex items-center gap-1 text-${color}-600 hover:text-${color}-800 cursor-pointer ${
+                  data.photos.length >= 3 ? "opacity-50 cursor-not-allowed" : ""
+                }`}
+              >
+                <PlusCircle className="w-3 h-3" /> Aggiungi
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={handlePhotoUpload}
+                  disabled={data.photos.length >= 3 || uploadingPhotos}
+                />
+              </label>
+            </div>
+
+            {uploadingPhotos && (
+              <div className="text-[10px] text-blue-600 font-bold animate-pulse flex items-center gap-1">
+                <RefreshCw className="w-3 h-3 animate-spin" /> Elaborazione in
+                corso...
+              </div>
+            )}
+
+            <div className="flex gap-3 overflow-x-auto pb-2">
+              {data.photos.map((photoStr, idx) => (
+                <div key={idx} className="relative shrink-0 group">
+                  <img
+                    src={photoStr}
+                    className="w-16 h-16 object-cover rounded-xl border-2 border-white shadow-sm"
+                    alt="Anteprima"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removePhoto(idx)}
+                    className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+              {data.photos.length === 0 && !uploadingPhotos && (
+                <p className="text-[10px] text-slate-400 italic">
+                  Nessuna foto allegata.
+                </p>
+              )}
+            </div>
+          </div>
         </div>
         <div className="p-6 border-t border-slate-100 bg-white">
           <button
             onClick={handleSave}
-            disabled={loading}
+            disabled={loading || uploadingPhotos}
             className={`w-full py-4 rounded-lg font-bold text-xs uppercase transition-all ${getButtonPrimaryClass(
               color
             )}`}
@@ -1239,7 +1467,6 @@ const DuplicatesModal = ({
                   className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hover:border-yellow-300 transition-colors"
                 >
                   <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-                    {/* Sinistra */}
                     <div className="flex-1 text-center md:text-left bg-red-50 p-3 rounded-xl border border-red-100 w-full md:w-auto">
                       <span className="font-black text-sm text-red-700 block uppercase break-words">
                         {nameA}
@@ -1249,7 +1476,6 @@ const DuplicatesModal = ({
                       </span>
                     </div>
 
-                    {/* Bottoni Azione Veloci */}
                     <div className="flex flex-col gap-2 shrink-0 w-full md:w-auto">
                       <button
                         onClick={async () => {
@@ -1301,7 +1527,6 @@ const DuplicatesModal = ({
                       </button>
                     </div>
 
-                    {/* Destra */}
                     <div className="flex-1 text-center md:text-right bg-blue-50 p-3 rounded-xl border border-blue-100 w-full md:w-auto">
                       <span className="font-black text-sm text-blue-700 block uppercase break-words">
                         {nameB}
@@ -1340,6 +1565,7 @@ const MachineHistoryModal = ({
   allLogs,
   onClose,
   onOpenCustomer,
+  onOpenPhotos,
   themeColor,
 }) => {
   const machineLogs = useMemo(() => {
@@ -1439,11 +1665,27 @@ const MachineHistoryModal = ({
                         {log.dateString}
                       </span>
                     </div>
-                    <div className="flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-lg text-slate-500 border border-slate-100">
-                      <User className="w-3 h-3" />
-                      <span className="text-[9px] font-bold uppercase tracking-tight">
-                        {getTechsString(log)}
-                      </span>
+
+                    {/* INFO TECNICO E FOTO */}
+                    <div className="flex flex-col items-end gap-1.5">
+                      <div className="flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-lg text-slate-500 border border-slate-100">
+                        <User className="w-3 h-3" />
+                        <span className="text-[9px] font-bold uppercase tracking-tight">
+                          {getTechsString(log)}
+                        </span>
+                      </div>
+                      {log.photos && log.photos.length > 0 && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onOpenPhotos(log.photos);
+                          }}
+                          className="text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-lg uppercase flex items-center gap-1 hover:bg-emerald-100 transition-colors"
+                        >
+                          <Camera className="w-3 h-3" /> {log.photos.length}{" "}
+                          FOTO
+                        </button>
+                      )}
                     </div>
                   </div>
                   <p className="text-slate-700 text-xs md:text-sm leading-relaxed font-medium relative z-10 italic whitespace-pre-wrap break-words">
@@ -1548,9 +1790,122 @@ const CustomerDetailModal = ({
   );
 };
 
-// --- VIEWS ---
+// --- VIEWS PRINCIPALI ---
+
+const DashboardView = ({ onNavigate, layoutConfig, onAdminAccess }) => {
+  const color = layoutConfig?.themeColor || "blue";
+  const order = layoutConfig?.dashboardOrder || [
+    "new",
+    "explore",
+    "history",
+    "database",
+    "office",
+    "admin",
+  ];
+
+  const items = {
+    new: {
+      id: "new",
+      label: "Nuovo Rapporto",
+      icon: PlusCircle,
+      desc: "Registra nuovo intervento",
+      action: () => onNavigate("new"),
+      primary: true,
+    },
+    explore: {
+      id: "explore",
+      label: "Esplora",
+      icon: Folder,
+      desc: "Sfoglia clienti e macchine",
+      action: () => onNavigate("explore"),
+    },
+    history: {
+      id: "history",
+      label: "Storico",
+      icon: History,
+      desc: "Cronologia interventi",
+      action: () => onNavigate("history"),
+    },
+    database: {
+      id: "database",
+      label: "Database",
+      icon: Database,
+      desc: "Gestione anagrafiche",
+      action: () => onNavigate("database"),
+    },
+    office: {
+      id: "office",
+      label: "Ufficio",
+      icon: Briefcase,
+      desc: "Statistiche e stampe",
+      action: () => onNavigate("office"),
+    },
+    admin: {
+      id: "admin",
+      label: "Impostazioni",
+      icon: Settings,
+      desc: "Configurazione app",
+      action: onAdminAccess,
+    },
+  };
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      {order.map((key) => {
+        const item = items[key];
+        if (!item) return null;
+        const Icon = item.icon;
+
+        if (item.primary) {
+          return (
+            <button
+              key={key}
+              onClick={item.action}
+              className={`col-span-1 md:col-span-2 lg:col-span-3 p-8 rounded-3xl shadow-lg border-2 border-transparent bg-${color}-600 hover:bg-${color}-700 text-white flex flex-col md:flex-row items-center justify-center gap-4 transition-all active:scale-95 group`}
+            >
+              <div
+                className={`p-4 bg-white/20 rounded-full group-hover:scale-110 transition-transform`}
+              >
+                <Icon className="w-10 h-10" />
+              </div>
+              <div className="text-center md:text-left">
+                <h3 className="text-2xl font-black uppercase tracking-tight">
+                  {item.label}
+                </h3>
+                <p className={`text-${color}-100 font-medium mt-1`}>
+                  {item.desc}
+                </p>
+              </div>
+            </button>
+          );
+        }
+
+        return (
+          <button
+            key={key}
+            onClick={item.action}
+            className={`p-6 bg-white rounded-3xl shadow-sm border border-slate-200 hover:border-${color}-300 hover:shadow-md flex flex-col items-center justify-center gap-4 transition-all active:scale-95 group`}
+          >
+            <div
+              className={`p-4 bg-${color}-50 text-${color}-600 rounded-2xl group-hover:bg-${color}-600 group-hover:text-white transition-colors`}
+            >
+              <Icon className="w-8 h-8" />
+            </div>
+            <div className="text-center">
+              <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight">
+                {item.label}
+              </h3>
+              <p className="text-xs text-slate-500 mt-1">{item.desc}</p>
+            </div>
+          </button>
+        );
+      })}
+    </div>
+  );
+};
+
 const ExploreView = React.memo(
-  ({ customers, machines, logs, color = "blue" }) => {
+  ({ customers, machines, logs, color = "blue", onOpenPhotos }) => {
     const [searchTerm, setSearchTerm] = useState("");
     const [expandedCustomer, setExpandedCustomer] = useState(null);
     const [expandedMachine, setExpandedMachine] = useState(null);
@@ -1713,9 +2068,22 @@ const ExploreView = React.memo(
                                       {getTechsString(l)}
                                     </span>
                                   </div>
-                                  <p className="text-[11px] text-slate-600 leading-relaxed whitespace-pre-wrap break-words">
+                                  <p className="text-[11px] text-slate-600 leading-relaxed whitespace-pre-wrap break-words mb-2">
                                     "{l.description}"
                                   </p>
+                                  {/* BOTTONE FOTO ESPLORA */}
+                                  {l.photos && l.photos.length > 0 && (
+                                    <button
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        onOpenPhotos(l.photos);
+                                      }}
+                                      className="text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-lg uppercase flex items-center gap-1 w-fit hover:bg-emerald-100 transition-colors"
+                                    >
+                                      <Camera className="w-3 h-3" />{" "}
+                                      {l.photos.length} FOTO
+                                    </button>
+                                  )}
                                 </div>
                               ))}
                             </div>
@@ -2004,6 +2372,7 @@ const OfficeView = ({
   customers,
   layoutConfig,
   technicians,
+  onOpenPhotos,
 }) => {
   const today = new Date();
   const [calMonth, setCalMonth] = useState(today.getMonth());
@@ -2152,7 +2521,7 @@ const OfficeView = ({
     const today = new Date().toLocaleDateString("it-IT");
 
     const css = `
-        @page { size: A4; margin: 0; }
+        @page { size: A4; margin: 0 !important; }
         body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #333; line-height: 1.5; margin: 0; padding: 20px; box-sizing: border-box; }
         .header { text-align: center; border-bottom: 2px solid #0f172a; padding-bottom: 20px; margin-bottom: 30px; }
         .header h1 { margin: 0; color: #0f172a; text-transform: uppercase; font-size: 24px; letter-spacing: 1px; }
@@ -2176,7 +2545,7 @@ const OfficeView = ({
 
         @media print {
             .no-print { display: none !important; }
-            body { padding: 1.5cm; }
+            body { padding: 15mm; margin: 0; }
         }
     `;
 
@@ -2233,6 +2602,11 @@ const OfficeView = ({
                                 <div style="color: #64748b; font-size: 11px; margin-top: 4px;">${getTechsString(
                                   l
                                 )}</div>
+                                ${
+                                  l.photos && l.photos.length > 0
+                                    ? `<div style="color: #059669; font-size: 10px; margin-top: 4px;">[Allegati: ${l.photos.length} Foto]</div>`
+                                    : ""
+                                }
                             </td>
                             <td>
                                 <div style="font-weight: bold; color: #0f172a;">${
@@ -2544,21 +2918,36 @@ const OfficeView = ({
                   className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm"
                 >
                   <div className="flex justify-between items-start mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded-lg uppercase">
-                        {log.dateString}
-                      </span>
-                      <span
-                        className={`text-[10px] font-black text-${color}-700 bg-${color}-50 border border-${color}-200 px-2 py-1 rounded-lg uppercase`}
-                      >
-                        N. {log.ticketNumber}
-                      </span>
+                    <div className="flex flex-col gap-1.5 items-start">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded-lg uppercase">
+                          {log.dateString}
+                        </span>
+                        <span
+                          className={`text-[10px] font-black text-${color}-700 bg-${color}-50 border border-${color}-200 px-2 py-1 rounded-lg uppercase`}
+                        >
+                          N. {log.ticketNumber}
+                        </span>
+                      </div>
+                      {/* BOTTONE FOTO IN UFFICIO */}
+                      {log.photos && log.photos.length > 0 && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onOpenPhotos(log.photos);
+                          }}
+                          className="text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-lg uppercase flex items-center gap-1 hover:bg-emerald-100 transition-colors"
+                        >
+                          <Camera className="w-3 h-3" /> {log.photos.length}{" "}
+                          FOTO
+                        </button>
+                      )}
                     </div>
                     <span className="text-[10px] font-bold text-slate-600 bg-slate-50 px-2 py-1 rounded border border-slate-100 uppercase">
                       {getTechsString(log)}
                     </span>
                   </div>
-                  <h4 className="font-black text-slate-800 text-sm uppercase">
+                  <h4 className="font-black text-slate-800 text-sm uppercase mt-1">
                     {log.customer}
                   </h4>
                   <div className="flex flex-wrap gap-1 mt-1 mb-2">
@@ -2733,7 +3122,7 @@ const OfficeView = ({
                   key={i}
                   className="bg-slate-50 p-3 rounded-xl border border-slate-100"
                 >
-                  <div className="flex justify-between mb-1">
+                  <div className="flex justify-between items-start mb-1">
                     <span className="text-[10px] font-bold text-slate-500 uppercase">
                       {l.dateString} - {getTechsString(l)}
                     </span>
@@ -2744,14 +3133,1262 @@ const OfficeView = ({
                   <p className="text-xs font-bold text-slate-800">
                     {l.customer}
                   </p>
-                  <p className="text-[10px] text-slate-500 mt-1 italic whitespace-pre-wrap break-words">
+                  <p className="text-[10px] text-slate-500 mt-1 italic whitespace-pre-wrap break-words mb-2">
                     "{l.description}"
                   </p>
+                  {/* BOTTONE FOTO POPOVER */}
+                  {l.photos && l.photos.length > 0 && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onOpenPhotos(l.photos);
+                      }}
+                      className="text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-lg uppercase flex items-center gap-1 w-fit hover:bg-emerald-100 transition-colors"
+                    >
+                      <Camera className="w-3 h-3" /> {l.photos.length} FOTO
+                    </button>
+                  )}
                 </div>
               ))}
             </div>
           </div>
         </div>
+      )}
+    </div>
+  );
+};
+
+const NewEntryForm = ({
+  user,
+  customers,
+  technicians,
+  machineTypes,
+  machines,
+  onSuccess,
+  isMobile,
+  onTechUpdate,
+  layoutConfig,
+  allLogs,
+}) => {
+  const [formData, setFormData] = useState({
+    technician: "",
+    additionalTechnicians: [],
+    customer: "",
+    machineType: "",
+    machineId: "",
+    capacity: "",
+    description: "",
+    ticketNumber: "",
+    photos: [],
+    dateString: getTodayString(), // Formato YYYY-MM-DD per l'input date
+  });
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [uploadingPhotos, setUploadingPhotos] = useState(false);
+
+  const [showMachineSuggestions, setShowMachineSuggestions] = useState(false);
+  const [showCustomerSuggestions, setShowCustomerSuggestions] = useState(false);
+  const [relatedMachines, setRelatedMachines] = useState([]);
+  const [lastIntervention, setLastIntervention] = useState(null);
+  const [isLocked, setIsLocked] = useState(false);
+
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [formError, setFormError] = useState("");
+
+  const color = layoutConfig?.themeColor || "blue";
+
+  let formOrder = layoutConfig?.formOrder || DEFAULT_LAYOUT.formOrder;
+  if (!formOrder.includes("photos")) {
+    formOrder = [...formOrder];
+    const descIdx = formOrder.indexOf("description");
+    if (descIdx !== -1) formOrder.splice(descIdx + 1, 0, "photos");
+    else formOrder.push("photos");
+  }
+
+  const topTechs = useMemo(() => {
+    if (!allLogs) return [];
+    const counts = {};
+    allLogs.forEach((l) => {
+      if (l.technician) counts[l.technician] = (counts[l.technician] || 0) + 1;
+    });
+    return Object.entries(counts)
+      .sort(([, a], [, b]) => b - a)
+      .slice(0, 3)
+      .map(([name]) => name);
+  }, [allLogs]);
+
+  const sortedTechs = [...technicians].sort((a, b) =>
+    a.name.localeCompare(b.name)
+  );
+
+  useEffect(() => {
+    const saved = localStorage.getItem("mora_tech_last_name");
+    if (saved) {
+      setFormData((prev) => ({ ...prev, technician: saved }));
+      setIsLocked(true);
+    }
+  }, []);
+
+  const addTechnician = () =>
+    setFormData((p) => ({
+      ...p,
+      additionalTechnicians: [...p.additionalTechnicians, ""],
+    }));
+  const updateAdditionalTech = (index, val) => {
+    const newTechs = [...formData.additionalTechnicians];
+    newTechs[index] = val;
+    setFormData((p) => ({ ...p, additionalTechnicians: newTechs }));
+  };
+  const removeAdditionalTech = (index) => {
+    const newTechs = [...formData.additionalTechnicians];
+    newTechs.splice(index, 1);
+    setFormData((p) => ({ ...p, additionalTechnicians: newTechs }));
+  };
+
+  const handlePhotoUpload = async (e) => {
+    const files = Array.from(e.target.files);
+    if (files.length + formData.photos.length > 3) {
+      alert("Puoi caricare un massimo di 3 foto in totale.");
+      return;
+    }
+
+    setUploadingPhotos(true);
+    try {
+      const newBase64Photos = [];
+      for (let file of files) {
+        if (!file.type.startsWith("image/")) continue;
+        const base64 = await compressImage(file);
+        newBase64Photos.push(base64);
+      }
+      setFormData((p) => ({ ...p, photos: [...p.photos, ...newBase64Photos] }));
+    } catch (err) {
+      console.error(err);
+      alert("Errore durante l'elaborazione delle immagini.");
+    } finally {
+      setUploadingPhotos(false);
+      e.target.value = null; // Resetta l'input file per permettere di ricaricare lo stesso file
+    }
+  };
+
+  const removePhoto = (indexToRemove) => {
+    setFormData((p) => ({
+      ...p,
+      photos: p.photos.filter((_, idx) => idx !== indexToRemove),
+    }));
+  };
+
+  const handleMachineIdChange = (e) => {
+    const val = e.target.value.toUpperCase().replace(/\//g, "-");
+
+    if (val === "") {
+      setFormData((p) => ({
+        ...p,
+        machineId: "",
+        customer: "",
+        machineType: "",
+        capacity: "",
+      }));
+      setLastIntervention(null);
+      setShowMachineSuggestions(false);
+    } else {
+      setFormData((p) => ({ ...p, machineId: val }));
+      setShowMachineSuggestions(true);
+    }
+  };
+
+  const handleCustomerChange = (e) => {
+    const val = e.target.value.toUpperCase();
+
+    if (val === "") {
+      setFormData((p) => ({
+        ...p,
+        customer: "",
+        machineId: "",
+        machineType: "",
+        capacity: "",
+      }));
+      setRelatedMachines([]);
+      setLastIntervention(null);
+      setShowCustomerSuggestions(false);
+    } else {
+      setFormData((p) => ({ ...p, customer: val }));
+      setRelatedMachines(machines.filter((m) => m.customerName.includes(val)));
+      setShowCustomerSuggestions(true);
+    }
+  };
+
+  useEffect(() => {
+    if (formData.machineId && formData.customer && allLogs) {
+      const mLogs = allLogs.filter(
+        (l) =>
+          l.machineId === formData.machineId && l.customer === formData.customer
+      );
+      setLastIntervention(mLogs.length > 0 ? mLogs[0] : null);
+
+      const existingMachine = machines.find(
+        (m) =>
+          (m.matricola || m.id) === formData.machineId &&
+          m.customerName === formData.customer
+      );
+      if (existingMachine && !formData.machineType) {
+        setFormData((prev) => ({
+          ...prev,
+          machineType: existingMachine.type,
+          capacity: existingMachine.capacity || "",
+        }));
+      }
+    } else {
+      setLastIntervention(null);
+    }
+  }, [formData.machineId, formData.customer, allLogs, machines]);
+
+  const selectMachine = (m) => {
+    const mat = getSafeMatricola(m);
+    setFormData((p) => ({
+      ...p,
+      machineId: mat,
+      customer: m.customerName,
+      machineType: m.type,
+      capacity: m.capacity,
+    }));
+    setShowMachineSuggestions(false);
+    setRelatedMachines([]);
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (
+      !formData.technician ||
+      !formData.customer ||
+      !formData.description ||
+      !formData.machineType ||
+      (layoutConfig.formSettings.showCapacity && !formData.capacity)
+    ) {
+      setFormError(
+        "Attenzione: Compila tutti i campi obbligatori (segnalati con l'asterisco rosso)."
+      );
+      setTimeout(() => setFormError(""), 5000);
+      return;
+    }
+    setFormError("");
+    setIsSubmitting(true);
+    try {
+      if (onTechUpdate) onTechUpdate(formData.technician);
+      localStorage.setItem("mora_tech_last_name", formData.technician);
+
+      const cleanAdditionalTechs = formData.additionalTechnicians.filter(
+        (t) => t.trim() !== ""
+      );
+      const cleanCustomer = formData.customer.toUpperCase().trim();
+      const cleanMachineId = formData.machineId.toUpperCase().trim();
+
+      // Formatta la data (da YYYY-MM-DD a DD/MM/YYYY)
+      let finalDateString = new Date().toLocaleDateString("it-IT");
+      if (formData.dateString) {
+        const [y, m, d] = formData.dateString.split("-");
+        finalDateString = `${parseInt(d, 10)}/${parseInt(m, 10)}/${y}`;
+      }
+
+      await addDoc(
+        collection(
+          db,
+          "artifacts",
+          appId,
+          "public",
+          "data",
+          "maintenance_logs"
+        ),
+        {
+          ...formData,
+          additionalTechnicians: cleanAdditionalTechs,
+          machineId: cleanMachineId,
+          customer: cleanCustomer,
+          dateString: finalDateString,
+          userId: user.uid,
+          createdAt: serverTimestamp(),
+        }
+      );
+
+      const existingCustomer = customers.find((c) => c.name === cleanCustomer);
+      if (!existingCustomer) {
+        await addDoc(
+          collection(db, "artifacts", appId, "public", "data", "customers"),
+          { name: cleanCustomer }
+        );
+      }
+
+      const existingMachine = machines.find(
+        (m) =>
+          getSafeMatricola(m) === cleanMachineId &&
+          m.customerName === cleanCustomer
+      );
+      if (existingMachine) {
+        await updateDoc(
+          doc(
+            db,
+            "artifacts",
+            appId,
+            "public",
+            "data",
+            "machines",
+            existingMachine.id
+          ),
+          {
+            type: formData.machineType,
+            capacity: formData.capacity,
+          }
+        );
+      } else {
+        await addDoc(
+          collection(db, "artifacts", appId, "public", "data", "machines"),
+          {
+            matricola: cleanMachineId,
+            customerName: cleanCustomer,
+            type: formData.machineType,
+            capacity: formData.capacity,
+          }
+        );
+      }
+
+      onSuccess();
+      setIsLocked(true);
+    } catch (e) {
+      console.error(e);
+      alert("Errore salvataggio");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const renderField = (key) => {
+    switch (key) {
+      case "technician":
+        return (
+          <div key="tech" className="space-y-3">
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">
+                Tecnico Principale <span className="text-red-500">*</span>
+              </label>
+              <div className="relative">
+                {isLocked ? (
+                  <div className="w-full p-3 bg-slate-100 border border-slate-300 rounded-lg text-sm font-bold text-slate-600 flex justify-between items-center">
+                    <span>{formData.technician}</span>
+                    <Lock className="w-4 h-4 text-slate-400" />
+                  </div>
+                ) : (
+                  <>
+                    <select
+                      className={PRO_INPUT}
+                      value={formData.technician}
+                      onChange={(e) =>
+                        setFormData({ ...formData, technician: e.target.value })
+                      }
+                    >
+                      <option value="">Seleziona...</option>
+                      {sortedTechs.map((t) => (
+                        <option key={t.id} value={t.name}>
+                          {topTechs.includes(t.name) ? "⭐ " : ""}
+                          {t.name}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                      <User className="w-4 h-4" />
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+
+            <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
+              <div className="flex justify-between items-center mb-2">
+                <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">
+                  Hanno Lavorato Con Te?
+                </label>
+                <button
+                  type="button"
+                  onClick={addTechnician}
+                  className={`text-[10px] font-bold flex items-center gap-1 text-${color}-600 hover:text-${color}-800 transition-colors`}
+                >
+                  <PlusCircle className="w-3 h-3" /> Aggiungi Tecnico
+                </button>
+              </div>
+              <div className="space-y-2">
+                {formData.additionalTechnicians.map((tech, idx) => (
+                  <div
+                    key={idx}
+                    className="flex gap-2 items-center animate-in fade-in slide-in-from-top-1"
+                  >
+                    <select
+                      className={`${PRO_INPUT} py-2`}
+                      value={tech}
+                      onChange={(e) =>
+                        updateAdditionalTech(idx, e.target.value)
+                      }
+                    >
+                      <option value="">Seleziona un collega...</option>
+                      {sortedTechs.map((t) => (
+                        <option key={t.id} value={t.name}>
+                          {t.name}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => removeAdditionalTech(idx)}
+                      className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                    >
+                      <MinusCircle className="w-5 h-5" />
+                    </button>
+                  </div>
+                ))}
+                {formData.additionalTechnicians.length === 0 && (
+                  <p className="text-[10px] text-slate-400 italic">
+                    Clicca "Aggiungi" se eravate in più di uno.
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      case "machine":
+        return (
+          <div key="mach" className="grid grid-cols-2 gap-4">
+            <div className="space-y-1 relative">
+              <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">
+                Matricola/Campata
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  className={PRO_INPUT}
+                  value={formData.machineId}
+                  onChange={handleMachineIdChange}
+                  onFocus={() => setShowMachineSuggestions(true)}
+                  onBlur={() =>
+                    setTimeout(() => setShowMachineSuggestions(false), 200)
+                  }
+                  placeholder="Es. 01"
+                />
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                  <ChevronDown className="w-4 h-4" />
+                </div>
+              </div>
+              {showMachineSuggestions && (
+                <ul className="absolute z-50 left-0 right-0 mt-2 bg-white border border-slate-200 rounded-xl shadow-xl max-h-48 overflow-y-auto animate-in fade-in slide-in-from-top-2">
+                  {machines
+                    .filter((m) => {
+                      const mat = getSafeMatricola(m);
+                      const matchMat =
+                        !formData.machineId ||
+                        mat.includes(formData.machineId.toUpperCase());
+                      const matchCust =
+                        !formData.customer ||
+                        m.customerName.toUpperCase() ===
+                          formData.customer.toUpperCase();
+                      return matchMat && matchCust;
+                    })
+                    .slice(0, 50)
+                    .map((m) => (
+                      <li
+                        key={m.id}
+                        onMouseDown={() => selectMachine(m)}
+                        className="p-3 hover:bg-slate-50 cursor-pointer font-bold text-xs text-slate-700 border-b border-slate-50 flex justify-between items-center"
+                      >
+                        <span className="uppercase text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
+                          {getSafeMatricola(m)}
+                        </span>
+                        <span className="text-[10px] text-slate-500 truncate ml-2 text-right">
+                          {m.customerName}
+                        </span>
+                      </li>
+                    ))}
+                  {formData.machineId && (
+                    <li className="p-3 text-[10px] font-bold text-slate-500 bg-slate-50 text-center italic">
+                      Scrivi "{formData.machineId}" e assicurati di aver
+                      inserito il Cliente per salvarla.
+                    </li>
+                  )}
+                </ul>
+              )}
+            </div>
+            <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">
+                Tipo <span className="text-red-500">*</span>
+              </label>
+              <select
+                className={PRO_INPUT}
+                value={formData.machineType}
+                onChange={(e) =>
+                  setFormData({ ...formData, machineType: e.target.value })
+                }
+              >
+                <option value="">Seleziona...</option>
+                {machineTypes.map((t) => (
+                  <option key={t.id} value={t.name}>
+                    {t.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        );
+      case "customer":
+        return (
+          <div key="cust" className="space-y-1 relative">
+            <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">
+              Cliente <span className="text-red-500">*</span>
+            </label>
+            <div className="relative">
+              <input
+                type="text"
+                className={PRO_INPUT}
+                value={formData.customer}
+                onChange={handleCustomerChange}
+                onFocus={() => setShowCustomerSuggestions(true)}
+                onBlur={() =>
+                  setTimeout(() => setShowCustomerSuggestions(false), 200)
+                }
+              />
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
+                <ChevronDown className="w-4 h-4" />
+              </div>
+            </div>
+            {showCustomerSuggestions && (
+              <ul className="absolute z-50 left-0 right-0 mt-2 bg-white border border-slate-200 rounded-xl shadow-xl max-h-48 overflow-y-auto animate-in fade-in slide-in-from-top-2">
+                {customers
+                  .filter(
+                    (c) =>
+                      !formData.customer ||
+                      c.name.includes(formData.customer.toUpperCase())
+                  )
+                  .map((c) => (
+                    <li
+                      key={c.id}
+                      onMouseDown={() => {
+                        setFormData({ ...formData, customer: c.name });
+                        setShowCustomerSuggestions(false);
+                      }}
+                      className="p-3 hover:bg-slate-50 cursor-pointer font-bold text-xs uppercase text-slate-700 border-b border-slate-50"
+                    >
+                      {c.name}
+                    </li>
+                  ))}
+                {customers.length === 0 && (
+                  <li className="p-3 text-xs text-slate-400">
+                    Nessun cliente trovato
+                  </li>
+                )}
+              </ul>
+            )}
+            {relatedMachines.length > 0 && !formData.machineId && (
+              <div className="mt-3">
+                <span className="text-[9px] font-bold text-slate-400 uppercase ml-1 mb-2 block">
+                  Gru di {formData.customer}:
+                </span>
+                <div className="flex gap-3 overflow-x-auto pb-4 pt-1 snap-x">
+                  {relatedMachines.map((m) => (
+                    <button
+                      type="button"
+                      key={m.id}
+                      onClick={() => selectMachine(m)}
+                      className="snap-start flex flex-col items-start p-3 bg-white border border-slate-200 rounded-xl shadow-sm hover:border-blue-500 hover:shadow-md transition-all group min-w-[120px] text-left"
+                    >
+                      <div className="p-2 bg-blue-50 text-blue-600 rounded-lg mb-2 group-hover:bg-blue-600 group-hover:text-white transition-colors">
+                        <Factory className="w-4 h-4" />
+                      </div>
+                      <span className="font-black text-slate-700 text-xs block mb-0.5">
+                        {getSafeMatricola(m)}
+                      </span>
+                      <span className="text-[9px] text-slate-400 font-bold uppercase truncate w-full block">
+                        {m.type}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      case "description":
+        return (
+          <div key="desc" className="space-y-1">
+            <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">
+              Descrizione <span className="text-red-500">*</span>
+            </label>
+            <textarea
+              rows="4"
+              className={PRO_INPUT}
+              value={formData.description}
+              onChange={(e) =>
+                setFormData({ ...formData, description: e.target.value })
+              }
+            />
+          </div>
+        );
+      case "photos":
+        return (
+          <div
+            key="photos"
+            className="space-y-2 bg-slate-50 p-4 rounded-xl border border-slate-200"
+          >
+            <div className="flex justify-between items-center">
+              <div>
+                <label className="text-[10px] font-bold text-slate-600 uppercase flex items-center gap-1.5">
+                  <Camera className="w-4 h-4 text-slate-400" /> Allega Foto
+                  (Opzionale)
+                </label>
+                <p className="text-[9px] text-slate-400 mt-0.5">
+                  Max 3 foto. Verranno ottimizzate automaticamente.
+                </p>
+              </div>
+              <label
+                className={`cursor-pointer px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-[10px] font-bold flex items-center gap-2 hover:bg-slate-100 transition-all ${
+                  formData.photos.length >= 3
+                    ? "opacity-50 cursor-not-allowed"
+                    : ""
+                }`}
+              >
+                <ImageIcon className="w-3 h-3" /> Scegli
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  className="hidden"
+                  onChange={handlePhotoUpload}
+                  disabled={formData.photos.length >= 3 || uploadingPhotos}
+                />
+              </label>
+            </div>
+
+            {uploadingPhotos && (
+              <div className="flex items-center gap-2 text-[10px] text-blue-600 font-bold animate-pulse mt-2">
+                <RefreshCw className="w-3 h-3 animate-spin" /> Elaborazione
+                immagini in corso...
+              </div>
+            )}
+
+            {formData.photos.length > 0 && (
+              <div className="flex gap-3 overflow-x-auto pt-2 pb-1 snap-x">
+                {formData.photos.map((photoStr, idx) => (
+                  <div
+                    key={idx}
+                    className="relative shrink-0 snap-center group"
+                  >
+                    <img
+                      src={photoStr}
+                      className="w-20 h-20 object-cover rounded-xl border-2 border-white shadow-md"
+                      alt="Anteprima"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removePhoto(idx)}
+                      className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full shadow-md hover:bg-red-600 hover:scale-110 transition-all"
+                      title="Rimuovi foto"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      case "capacity":
+        const commonCapacities = [
+          "250 kg",
+          "500 kg",
+          "1000 kg",
+          "2000 kg",
+          "3200 kg",
+          "5000 kg",
+          "10000 kg",
+        ];
+        return layoutConfig.formSettings.showCapacity ? (
+          <div key="cap" className="space-y-2">
+            <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">
+              Portata in Kilogrammi <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="text"
+              className={PRO_INPUT}
+              value={formData.capacity}
+              onChange={(e) =>
+                setFormData({ ...formData, capacity: e.target.value })
+              }
+              placeholder="Es. 2000 kg"
+            />
+            <div className="flex flex-wrap gap-1.5 mt-1">
+              {commonCapacities.map((cap) => (
+                <button
+                  key={cap}
+                  type="button"
+                  onClick={() => setFormData({ ...formData, capacity: cap })}
+                  className={`px-2.5 py-1.5 text-[10px] font-bold rounded-lg border transition-all active:scale-95 ${
+                    formData.capacity === cap
+                      ? "bg-" +
+                        color +
+                        "-100 border-" +
+                        color +
+                        "-400 text-" +
+                        color +
+                        "-700 shadow-sm"
+                      : "bg-white border-slate-200 text-slate-500 hover:bg-slate-50"
+                  }`}
+                >
+                  {cap}
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null;
+      case "date":
+        return (
+          <div key="date" className="space-y-1 relative">
+            <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">
+              Data Intervento <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="date"
+              className={PRO_INPUT}
+              value={formData.dateString}
+              max={getTodayString()}
+              onChange={(e) =>
+                setFormData({ ...formData, dateString: e.target.value })
+              }
+            />
+          </div>
+        );
+      case "ticketNumber":
+        return (
+          <div key="ticketNumber" className="space-y-1">
+            <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">
+              Numero Assistenza (Opzionale)
+            </label>
+            <input
+              type="text"
+              className={PRO_INPUT}
+              value={formData.ticketNumber}
+              onChange={(e) =>
+                setFormData({ ...formData, ticketNumber: e.target.value })
+              }
+              placeholder="Es. #12345"
+            />
+          </div>
+        );
+      case "custom":
+        return layoutConfig.customFields?.length > 0 ? (
+          <div
+            key="custom"
+            className="grid grid-cols-2 gap-4 border-t border-slate-100 pt-4 mt-2"
+          >
+            {layoutConfig.customFields.map((f, i) => (
+              <div key={i} className="space-y-1">
+                <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">
+                  {f.label}
+                </label>
+                <input
+                  type={f.type || "text"}
+                  className={PRO_INPUT}
+                  placeholder={f.label}
+                />
+              </div>
+            ))}
+          </div>
+        ) : null;
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <div
+      className={`overflow-hidden animate-in slide-in-from-bottom-6 duration-500 ${getProPanelClass(
+        color
+      )}`}
+    >
+      <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+        <h2 className="font-black text-slate-800 text-lg uppercase tracking-tight">
+          Nuovo Rapporto
+        </h2>
+        <div
+          className={`bg-${color}-600 text-white p-2.5 rounded-xl shadow-md`}
+        >
+          <HardHat className="w-5 h-5" />
+        </div>
+      </div>
+      <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        {formOrder.map((key) => renderField(key))}
+        {lastIntervention && (
+          <div className="bg-amber-50 p-4 rounded-xl border border-amber-100 animate-in fade-in slide-in-from-top-2 shadow-sm">
+            <div className="flex items-center gap-2 mb-1.5">
+              <AlertTriangle className="w-4 h-4 text-amber-600" />
+              <h4 className="text-xs font-black text-amber-800 uppercase tracking-wide">
+                Ultimo Intervento ({lastIntervention.dateString})
+              </h4>
+            </div>
+            <p className="text-sm text-amber-900 italic leading-relaxed whitespace-pre-wrap break-words">
+              "{lastIntervention.description}"
+            </p>
+            <div className="text-[10px] text-amber-700 mt-2 font-bold text-right uppercase tracking-wider">
+              - {getTechsString(lastIntervention)}
+            </div>
+          </div>
+        )}
+
+        {formError && (
+          <div className="bg-red-50 text-red-600 p-3 rounded-xl border border-red-200 text-xs font-bold flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2">
+            <AlertTriangle className="w-5 h-5 shrink-0" /> {formError}
+          </div>
+        )}
+
+        <div className="flex gap-3 pt-2">
+          <button
+            type="button"
+            onClick={() => setShowClearConfirm(true)}
+            title="Svuota Modulo"
+            className="p-4 rounded-xl text-slate-400 bg-slate-100 hover:bg-red-50 hover:text-red-500 transition-all active:scale-95"
+          >
+            <Trash2 className="w-5 h-5" />
+          </button>
+          <button
+            type="submit"
+            disabled={isSubmitting || uploadingPhotos}
+            className={`flex-1 py-4 rounded-xl font-black text-sm uppercase tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95 ${getButtonPrimaryClass(
+              color
+            )}`}
+          >
+            {isSubmitting ? (
+              <RefreshCw className="animate-spin w-5 h-5" />
+            ) : (
+              <Save className="w-5 h-5" />
+            )}{" "}
+            Salva
+          </button>
+        </div>
+      </form>
+
+      {showClearConfirm && (
+        <div className="fixed inset-0 z-[300] bg-slate-900/60 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in">
+          <div className="p-6 max-w-xs w-full text-center space-y-5 bg-white rounded-xl shadow-xl border-t-4 border-t-red-500 animate-in zoom-in-95">
+            <div className="p-3 bg-red-100 text-red-600 rounded-full w-fit mx-auto">
+              <Trash2 className="w-8 h-8" />
+            </div>
+            <div>
+              <h4 className="font-black text-slate-800 uppercase text-sm">
+                Svuotare il modulo?
+              </h4>
+              <p className="text-xs text-slate-500 mt-2">
+                I dati inseriti non sono stati salvati e andranno persi.
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setFormData((p) => ({
+                    ...p,
+                    customer: "",
+                    machineId: "",
+                    machineType: "",
+                    capacity: "",
+                    description: "",
+                    ticketNumber: "",
+                    photos: [],
+                    dateString: getTodayString(),
+                  }));
+                  setLastIntervention(null);
+                  setRelatedMachines([]);
+                  setShowClearConfirm(false);
+                }}
+                className="py-3 bg-red-600 text-white rounded-lg font-bold text-xs uppercase shadow-md hover:bg-red-700 active:scale-95 transition-all"
+              >
+                Svuota
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowClearConfirm(false)}
+                className="py-3 bg-slate-100 text-slate-600 rounded-lg font-bold text-xs uppercase hover:bg-slate-200 active:scale-95 transition-all"
+              >
+                Annulla
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const HistoryView = ({
+  logs,
+  machines,
+  customers,
+  technicians,
+  machineTypes,
+  loading,
+  isMobile,
+  onAuthAdmin,
+  isAdmin,
+  layoutConfig,
+  onOpenCustomer,
+  onOpenMachine,
+  onOpenPhotos,
+}) => {
+  const [searchTerm, setSearchTerm] = useState("");
+  const [page, setPage] = useState(1);
+  const [isDeleting, setIsDeleting] = useState(null);
+  const [isEditing, setIsEditing] = useState(null);
+  const [pin, setPin] = useState("");
+  const [err, setErr] = useState(false);
+  const [isFreeAction, setIsFreeAction] = useState(false);
+  const color = layoutConfig?.themeColor || "blue";
+
+  const filtered = logs.filter((l) => {
+    const s = searchTerm.toLowerCase();
+    return (
+      (l.customer && l.customer.toLowerCase().includes(s)) ||
+      (l.machineId && l.machineId.toLowerCase().includes(s)) ||
+      (l.description && l.description.toLowerCase().includes(s))
+    );
+  });
+
+  const ITEMS_PER_PAGE = 50;
+  const paginated = filtered.slice(
+    (page - 1) * ITEMS_PER_PAGE,
+    page * ITEMS_PER_PAGE
+  );
+  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
+
+  const handleDelete = (log) => {
+    const isRecent =
+      log.createdAt &&
+      Date.now() - log.createdAt.seconds * 1000 < 3 * 60 * 1000;
+    if (isAdmin || isRecent) {
+      setIsFreeAction(isRecent && !isAdmin);
+      setIsDeleting(log.id);
+    } else onAuthAdmin();
+  };
+
+  const handleEdit = (log) => {
+    const isRecent =
+      log.createdAt &&
+      Date.now() - log.createdAt.seconds * 1000 < 3 * 60 * 1000;
+    if (isAdmin || isRecent) setIsEditing(log.id);
+    else onAuthAdmin();
+  };
+
+  const confirmDelete = async () => {
+    if (!isFreeAction && pin !== ADMIN_PASSWORD) return setErr(true);
+    await deleteDoc(
+      doc(
+        db,
+        "artifacts",
+        appId,
+        "public",
+        "data",
+        "maintenance_logs",
+        isDeleting
+      )
+    );
+    setIsDeleting(null);
+    setPin("");
+  };
+
+  if (loading)
+    return (
+      <div className="py-20 text-center">
+        <RefreshCw className="animate-spin mx-auto text-slate-400" />
+      </div>
+    );
+
+  return (
+    <div className="space-y-6">
+      <div
+        className={`relative group max-w-xl mx-auto shadow-lg rounded-2xl ${getProPanelClass(
+          color
+        )}`}
+      >
+        <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400">
+          <Search className="w-5 h-5" />
+        </div>
+        <input
+          type="text"
+          placeholder="Cerca..."
+          className="w-full pl-14 pr-6 py-4 bg-transparent font-bold outline-none text-sm placeholder-slate-400"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+      </div>
+      <div
+        className={`rounded-3xl overflow-hidden shadow-xl ${getProPanelClass(
+          color
+        )}`}
+      >
+        {isMobile ? (
+          <div className="divide-y divide-slate-100">
+            {paginated.map((log) => (
+              <div
+                key={log.id}
+                className="p-5 space-y-3 hover:bg-slate-50 transition-all"
+              >
+                <div className="flex justify-between items-start">
+                  <div className="flex-1 pr-2">
+                    <h4
+                      className="font-black text-slate-800 uppercase text-sm hover:text-blue-600 hover:underline cursor-pointer leading-tight break-words"
+                      onClick={() => onOpenCustomer(log.customer)}
+                    >
+                      {log.customer}
+                    </h4>
+                    <div className="flex flex-wrap gap-1 mt-1.5">
+                      <span
+                        className={`text-[10px] font-bold text-${color}-700 bg-${color}-50 px-2 py-0.5 rounded uppercase cursor-pointer hover:bg-${color}-100`}
+                        onClick={() =>
+                          onOpenMachine(log.machineId, log.customer)
+                        }
+                      >
+                        MAT: {log.machineId}
+                      </span>
+                      <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 uppercase">
+                        {log.machineType}
+                      </span>
+                      {log.capacity && (
+                        <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 uppercase">
+                          {formatCapacity(log.capacity)}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-end gap-1.5 shrink-0">
+                    <div className="flex flex-col items-end gap-1">
+                      <span className="text-[9px] font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded-lg uppercase whitespace-nowrap">
+                        {log.dateString}
+                      </span>
+                      {isAdmin && log.createdAt && (
+                        <span
+                          className="text-[8px] font-bold text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded flex items-center gap-1"
+                          title="Inserito il (Visibile solo Admin)"
+                        >
+                          <Clock className="w-2.5 h-2.5" />{" "}
+                          {new Date(
+                            log.createdAt.seconds * 1000
+                          ).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </span>
+                      )}
+                    </div>
+                    {log.ticketNumber && (
+                      <span className="text-[9px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-lg uppercase whitespace-nowrap">
+                        N. Assistenza {log.ticketNumber}
+                      </span>
+                    )}
+                    {/* BOTTONE FOTO STORICO MOBILE */}
+                    {log.photos && log.photos.length > 0 && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onOpenPhotos(log.photos);
+                        }}
+                        className="text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-lg uppercase whitespace-nowrap flex items-center gap-1 hover:bg-emerald-100 transition-colors"
+                      >
+                        <Camera className="w-3 h-3" /> {log.photos.length} FOTO
+                      </button>
+                    )}
+                  </div>
+                </div>
+                <p className="text-slate-600 text-xs italic bg-slate-50 p-3 rounded-xl border border-slate-100 whitespace-pre-wrap break-words">
+                  "{log.description}"
+                </p>
+                <div className="flex justify-between items-center pt-1">
+                  <div className="flex items-center gap-2">
+                    <User className="w-3 h-3 text-slate-400" />
+                    <span className="text-[10px] font-bold uppercase text-slate-600 truncate max-w-[120px]">
+                      {getTechsString(log)}
+                    </span>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleEdit(log)}
+                      className="p-2 bg-slate-100 text-slate-400 rounded-lg hover:text-blue-500"
+                      title="Modifica"
+                    >
+                      <Edit className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleDelete(log)}
+                      className="p-2 bg-slate-100 text-slate-400 rounded-lg hover:text-red-500"
+                      title="Elimina"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <table className="w-full text-left table-fixed">
+            <thead className="bg-slate-50 border-b border-slate-200">
+              <tr>
+                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase w-[100px]">
+                  Data
+                </th>
+                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase w-[240px]">
+                  Cliente
+                </th>
+                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase">
+                  Descrizione
+                </th>
+                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase w-[160px]">
+                  Tecnici
+                </th>
+                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase text-center w-[120px]">
+                  Azioni
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {paginated.map((log) => (
+                <tr key={log.id} className="hover:bg-slate-50 group">
+                  <td className="px-6 py-4 text-xs font-bold text-slate-500 align-top">
+                    <div className="whitespace-nowrap">{log.dateString}</div>
+                    {isAdmin && log.createdAt && (
+                      <div
+                        className="text-[9px] text-purple-600 font-bold mt-1 flex items-center gap-1"
+                        title="Orario di inserimento (Admin)"
+                      >
+                        <Clock className="w-3 h-3" />{" "}
+                        {new Date(
+                          log.createdAt.seconds * 1000
+                        ).toLocaleTimeString([], {
+                          hour: "2-digit",
+                          minute: "2-digit",
+                        })}
+                      </div>
+                    )}
+                    <div className="flex flex-col gap-1 mt-1.5 items-start">
+                      {log.ticketNumber && (
+                        <div className="text-[9px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded inline-block uppercase tracking-wider whitespace-nowrap">
+                          N. Assistenza {log.ticketNumber}
+                        </div>
+                      )}
+                      {/* BOTTONE FOTO STORICO DESKTOP */}
+                      {log.photos && log.photos.length > 0 && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onOpenPhotos(log.photos);
+                          }}
+                          className="text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded uppercase tracking-wider whitespace-nowrap flex items-center gap-1 hover:bg-emerald-100 transition-colors"
+                        >
+                          <Camera className="w-3 h-3" /> {log.photos.length}{" "}
+                          FOTO
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 align-top">
+                    <div className="flex flex-col">
+                      <span
+                        className="font-bold text-slate-800 uppercase text-xs cursor-pointer hover:text-blue-600 hover:underline break-words whitespace-normal leading-tight"
+                        onClick={() => onOpenCustomer(log.customer)}
+                      >
+                        {log.customer}
+                      </span>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        <span
+                          className={`text-[10px] text-${color}-600 font-bold cursor-pointer hover:underline`}
+                          onClick={() =>
+                            onOpenMachine(log.machineId, log.customer)
+                          }
+                        >
+                          {log.machineId}
+                        </span>
+                        <span className="text-[10px] text-slate-500 border-l border-slate-300 pl-1 ml-1">
+                          {log.machineType}
+                        </span>
+                        {log.capacity && (
+                          <span className="text-[10px] text-slate-500 border-l border-slate-300 pl-1 ml-1">
+                            {formatCapacity(log.capacity)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 text-xs text-slate-600 italic break-words whitespace-pre-wrap align-top">
+                    "{log.description}"
+                  </td>
+                  <td className="px-6 py-4 text-[10px] font-bold uppercase text-slate-600 align-top">
+                    {getTechsString(log)}
+                  </td>
+                  <td className="px-6 py-4 text-center align-top">
+                    <div className="flex justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => handleEdit(log)}
+                        className={`text-${color}-500 hover:scale-110`}
+                        title="Modifica"
+                      >
+                        <Edit className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(log)}
+                        className="text-red-500 hover:scale-110"
+                        title="Elimina"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+        {totalPages > 1 && (
+          <div className="p-4 flex justify-between">
+            <button
+              disabled={page === 1}
+              onClick={() => setPage((p) => p - 1)}
+              className="text-xs font-bold"
+            >
+              Prec
+            </button>
+            <span className="text-xs">
+              {page}/{totalPages}
+            </span>
+            <button
+              disabled={page === totalPages}
+              onClick={() => setPage((p) => p + 1)}
+              className="text-xs font-bold"
+            >
+              Succ
+            </button>
+          </div>
+        )}
+      </div>
+      {isDeleting && (
+        <DeleteConfirmDialog
+          onConfirm={confirmDelete}
+          onCancel={() => setIsDeleting(null)}
+          pin={pin}
+          setPin={setPin}
+          error={err}
+          title="Elimina"
+          isFree={isFreeAction}
+        />
+      )}
+      {isEditing && (
+        <EditLogModal
+          log={logs.find((l) => l.id === isEditing)}
+          customers={customers}
+          technicians={technicians}
+          machineTypes={machineTypes}
+          onClose={() => setIsEditing(null)}
+          color={color}
+          layoutConfig={layoutConfig}
+        />
       )}
     </div>
   );
@@ -2804,7 +4441,6 @@ const AdminPanel = ({
         setIgnoredConflicts(snap.docs.map((d) => d.id));
       }
     );
-
     if (view === "diagnostics") {
       const unsubLogs = onSnapshot(
         query(
@@ -2812,9 +4448,7 @@ const AdminPanel = ({
           orderBy("timestamp", "desc"),
           limit(50)
         ),
-        (s) => {
-          setLogs(s.docs.map((d) => ({ id: d.id, ...d.data() })));
-        }
+        (s) => setLogs(s.docs.map((d) => ({ id: d.id, ...d.data() })))
       );
       const unsubActive = onSnapshot(
         collection(db, "artifacts", appId, "public", "data", "active_users"),
@@ -2827,28 +4461,24 @@ const AdminPanel = ({
                 u.lastActive &&
                 now - u.lastActive.seconds * 1000 < 5 * 60 * 1000
             );
-
           const grouped = {};
           rawUsers.forEach((u) => {
-            if (!grouped[u.technician]) {
+            if (!grouped[u.technician])
               grouped[u.technician] = { ...u, allDevices: new Set([u.device]) };
-            } else {
+            else {
               grouped[u.technician].allDevices.add(u.device);
               if (
                 u.lastActive.seconds > grouped[u.technician].lastActive.seconds
-              ) {
+              )
                 grouped[u.technician].lastActive = u.lastActive;
-              }
             }
           });
-
           const users = Object.values(grouped)
             .map((u) => ({
               ...u,
               device: Array.from(u.allDevices).join(" + "),
             }))
             .sort((a, b) => b.lastActive.seconds - a.lastActive.seconds);
-
           setActiveUsers(users);
         }
       );
@@ -2858,22 +4488,18 @@ const AdminPanel = ({
         unsubIgnored();
       };
     }
-
     return () => unsubIgnored();
   }, [view]);
 
   const processedCustomers = useMemo(() => {
     let res = [...customers];
-    if (clientSearch) {
+    if (clientSearch)
       res = res.filter((c) =>
         c.name.toLowerCase().includes(clientSearch.toLowerCase())
       );
-    }
-    if (clientSort === "az") {
-      res.sort((a, b) => a.name.localeCompare(b.name));
-    } else if (clientSort === "za") {
+    if (clientSort === "az") res.sort((a, b) => a.name.localeCompare(b.name));
+    else if (clientSort === "za")
       res.sort((a, b) => b.name.localeCompare(a.name));
-    }
     return res;
   }, [customers, clientSearch, clientSort]);
 
@@ -2888,62 +4514,53 @@ const AdminPanel = ({
           (m.type && m.type.toLowerCase().includes(s))
       );
     }
-    if (machineSort === "mat-az") {
+    if (machineSort === "mat-az")
       res.sort((a, b) =>
         (a.matricola || a.id).localeCompare(b.matricola || b.id)
       );
-    } else if (machineSort === "mat-za") {
+    else if (machineSort === "mat-za")
       res.sort((a, b) =>
         (b.matricola || b.id).localeCompare(a.matricola || a.id)
       );
-    } else if (machineSort === "cust-az") {
+    else if (machineSort === "cust-az")
       res.sort((a, b) => a.customerName.localeCompare(b.customerName));
-    }
     return res;
   }, [machines, machineSearch, machineSort]);
 
   const analyzeDuplicates = (type, items) => {
     const pairs = [];
     const normalize = (s) => (s || "").toLowerCase().replace(/[^a-z0-9]/g, "");
-
     for (let i = 0; i < items.length; i++) {
       for (let j = i + 1; j < items.length; j++) {
         const pairId = [items[i].id, items[j].id].sort().join("_");
         if (ignoredConflicts.includes(pairId)) continue;
-
         let isDup = false;
-
         if (type === "customer") {
           const normA = normalize(items[i].name);
           const normB = normalize(items[j].name);
-          if (normA === normB && normA !== "") {
-            isDup = true;
-          } else if (normA.length > 4 && normB.length > 4) {
+          if (normA === normB && normA !== "") isDup = true;
+          else if (normA.length > 4 && normB.length > 4) {
             const dist = getLevenshteinDistance(normA, normB);
             if (
               dist <= 2 ||
               (normA.includes(normB) && normA.length - normB.length < 5) ||
               (normB.includes(normA) && normB.length - normA.length < 5)
-            ) {
+            )
               isDup = true;
-            }
           }
         } else if (type === "machine") {
           const normA = normalize(getSafeMatricola(items[i]));
           const normB = normalize(getSafeMatricola(items[j]));
           const custA = normalize(items[i].customerName);
           const custB = normalize(items[j].customerName);
-
           if (custA === custB) {
-            if (normA === normB && normA !== "") {
-              isDup = true;
-            } else if (normA.length > 2 && normB.length > 2) {
+            if (normA === normB && normA !== "") isDup = true;
+            else if (normA.length > 2 && normB.length > 2) {
               const dist = getLevenshteinDistance(normA, normB);
               if (dist <= 1) isDup = true;
             }
           }
         }
-
         if (isDup) pairs.push([items[i], items[j]]);
       }
     }
@@ -2963,23 +4580,19 @@ const AdminPanel = ({
           "ignored_conflicts",
           pairId
         ),
-        {
-          idA: itemA.id,
-          idB: itemB.id,
-          timestamp: serverTimestamp(),
-        }
+        { idA: itemA.id, idB: itemB.id, timestamp: serverTimestamp() }
       );
       setDuplicateAnalysis((prev) => {
         if (!prev) return null;
-        const newPairs = prev.pairs.filter((p) => {
-          const currentPairId = [p[0].id, p[1].id].sort().join("_");
-          return currentPairId !== pairId;
-        });
-        return { ...prev, pairs: newPairs };
+        return {
+          ...prev,
+          pairs: prev.pairs.filter(
+            (p) => [p[0].id, p[1].id].sort().join("_") !== pairId
+          ),
+        };
       });
     } catch (e) {
-      console.error(e);
-      alert("Errore durante il salvataggio della preferenza.");
+      alert("Errore");
     }
   };
 
@@ -2993,10 +4606,7 @@ const AdminPanel = ({
     setInputValue("");
   };
 
-  const deleteItem = (coll, id) => {
-    setItemToDelete({ coll, id });
-  };
-
+  const deleteItem = (coll, id) => setItemToDelete({ coll, id });
   const confirmDeleteAdmin = async () => {
     if (!itemToDelete) return;
     try {
@@ -3018,16 +4628,25 @@ const AdminPanel = ({
   };
 
   const handleMergeCustomers = async (source, target) => {
-    const qLogs = query(
-      collection(db, "artifacts", appId, "public", "data", "maintenance_logs"),
-      where("customer", "==", source.name)
+    const logsSnap = await getDocs(
+      query(
+        collection(
+          db,
+          "artifacts",
+          appId,
+          "public",
+          "data",
+          "maintenance_logs"
+        ),
+        where("customer", "==", source.name)
+      )
     );
-    const logsSnap = await getDocs(qLogs);
-    const qMachines = query(
-      collection(db, "artifacts", appId, "public", "data", "machines"),
-      where("customerName", "==", source.name)
+    const machinesSnap = await getDocs(
+      query(
+        collection(db, "artifacts", appId, "public", "data", "machines"),
+        where("customerName", "==", source.name)
+      )
     );
-    const machinesSnap = await getDocs(qMachines);
     const promises = [];
     logsSnap.forEach((d) =>
       promises.push(updateDoc(d.ref, { customer: target.name }))
@@ -3043,23 +4662,36 @@ const AdminPanel = ({
   };
 
   const handleMergeMachines = async (source, target) => {
-    const qLogs = query(
-      collection(db, "artifacts", appId, "public", "data", "maintenance_logs"),
-      where("machineId", "==", source.id)
-    );
-    const logsSnap = await getDocs(qLogs);
-
     const matSource = getSafeMatricola(source);
     const matTarget = getSafeMatricola(target);
-    const qLogsMat = query(
-      collection(db, "artifacts", appId, "public", "data", "maintenance_logs"),
-      where("machineId", "==", matSource),
-      where("customer", "==", source.customerName)
+    const logsSnap = await getDocs(
+      query(
+        collection(
+          db,
+          "artifacts",
+          appId,
+          "public",
+          "data",
+          "maintenance_logs"
+        ),
+        where("machineId", "==", source.id)
+      )
     );
-    const logsSnapMat = await getDocs(qLogsMat);
-
+    const logsSnapMat = await getDocs(
+      query(
+        collection(
+          db,
+          "artifacts",
+          appId,
+          "public",
+          "data",
+          "maintenance_logs"
+        ),
+        where("machineId", "==", matSource),
+        where("customer", "==", source.customerName)
+      )
+    );
     const promises = [];
-
     const updateLogs = (snap) => {
       snap.forEach((d) =>
         promises.push(
@@ -3071,12 +4703,9 @@ const AdminPanel = ({
         )
       );
     };
-
     updateLogs(logsSnap);
     updateLogs(logsSnapMat);
-
     await Promise.all(promises);
-
     await deleteDoc(
       doc(db, "artifacts", appId, "public", "data", "machines", source.id)
     );
@@ -3085,41 +4714,30 @@ const AdminPanel = ({
 
   const handleDirectMerge = async (source, target, type) => {
     try {
-      if (type === "customer") {
-        await handleMergeCustomers(source, target);
-      } else {
-        await handleMergeMachines(source, target);
-      }
+      if (type === "customer") await handleMergeCustomers(source, target);
+      else await handleMergeMachines(source, target);
       setDuplicateAnalysis((prev) => {
         if (!prev) return null;
-        const newPairs = prev.pairs.filter(
-          (p) => p[0].id !== source.id && p[1].id !== source.id
-        );
-        return { ...prev, pairs: newPairs };
+        return {
+          ...prev,
+          pairs: prev.pairs.filter(
+            (p) => p[0].id !== source.id && p[1].id !== source.id
+          ),
+        };
       });
     } catch (e) {
-      console.error(e);
-      alert("Errore durante l'unione.");
+      alert("Errore");
     }
   };
 
   const toggleNotifications = async () => {
-    if (!("Notification" in window)) {
-      alert("Il tuo browser non supporta le notifiche.");
-      return;
-    }
+    if (!("Notification" in window)) return alert("Non supportato");
     if (!notificationsEnabled) {
       const permission = await Notification.requestPermission();
       if (permission === "granted") {
         setNotificationsEnabled(true);
         localStorage.setItem("mora_notifications", "true");
-        new Notification("Assistenza Mora", {
-          body: "Notifiche per i nuovi interventi attivate con successo!",
-        });
-      } else {
-        alert(
-          "Devi autorizzare le notifiche nelle impostazioni del tuo browser."
-        );
+        new Notification("Assistenza Mora", { body: "Notifiche attivate!" });
       }
     } else {
       setNotificationsEnabled(false);
@@ -3274,7 +4892,7 @@ const AdminPanel = ({
                 onChange={(e) => setClientSearch(e.target.value)}
               />
               <select
-                className="p-2 border border-slate-200 rounded-lg text-xs font-bold text-slate-600 outline-none cursor-pointer hover:bg-slate-50"
+                className="p-2 border border-slate-200 rounded-lg text-xs font-bold text-slate-600 outline-none cursor-pointer"
                 value={clientSort}
                 onChange={(e) => setClientSort(e.target.value)}
               >
@@ -3285,18 +4903,16 @@ const AdminPanel = ({
                 onClick={() =>
                   setListViewMode((p) => (p === "grid" ? "list" : "grid"))
                 }
-                className="p-2 bg-slate-100 rounded-lg text-slate-500 hover:text-blue-600 transition-colors shrink-0"
-                title="Cambia Vista"
+                className="p-2 bg-slate-100 rounded-lg text-slate-500 hover:text-blue-600"
               >
                 <Layout className="w-4 h-4" />
               </button>
               <button
                 onClick={() => analyzeDuplicates("customer", customers)}
-                className="p-2 bg-yellow-50 text-yellow-600 border border-yellow-200 rounded-lg hover:bg-yellow-100 transition-colors shrink-0 flex items-center gap-1.5"
-                title="Trova Conflitti o Duplicati"
+                className="p-2 bg-yellow-50 text-yellow-600 border border-yellow-200 rounded-lg hover:bg-yellow-100 flex items-center gap-1.5"
               >
                 <AlertTriangle className="w-4 h-4" />
-                <span className="text-[10px] font-bold uppercase tracking-wider hidden md:block">
+                <span className="text-[10px] font-bold uppercase hidden md:block">
                   Conflitti
                 </span>
               </button>
@@ -3312,7 +4928,7 @@ const AdminPanel = ({
             {processedCustomers.map((c) => (
               <div
                 key={c.id}
-                className="flex justify-between p-3 bg-slate-50 border border-slate-100 rounded-xl items-center group hover:border-blue-300 hover:shadow-sm transition-all"
+                className="flex justify-between p-3 bg-slate-50 border border-slate-100 rounded-xl items-center group hover:border-blue-300 hover:shadow-sm"
               >
                 <div className="flex items-center gap-3 overflow-hidden">
                   {listViewMode === "grid" && (
@@ -3329,33 +4945,25 @@ const AdminPanel = ({
                     onClick={() =>
                       setMergingItem({ item: c, type: "customer" })
                     }
-                    className="p-1.5 bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100 transition-colors"
-                    title="Unisci"
+                    className="p-1.5 bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100"
                   >
                     <GitMerge className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => setEditingCustomer(c)}
-                    className="p-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
-                    title="Modifica"
+                    className="p-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100"
                   >
                     <Edit className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => deleteItem("customers", c.id)}
-                    className="p-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
-                    title="Elimina"
+                    className="p-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
               </div>
             ))}
-            {processedCustomers.length === 0 && (
-              <div className="col-span-full text-center py-10 text-xs font-bold text-slate-400 uppercase tracking-widest">
-                Nessun cliente trovato
-              </div>
-            )}
           </div>
         </div>
       )}
@@ -3373,36 +4981,33 @@ const AdminPanel = ({
             <div className="flex gap-2 w-full md:w-auto overflow-x-auto pb-2 md:pb-0">
               <input
                 type="text"
-                placeholder="Cerca gru, tipo..."
+                placeholder="Cerca gru..."
                 className="p-2 border border-slate-200 rounded-lg text-xs flex-1 md:w-40"
                 value={machineSearch}
                 onChange={(e) => setMachineSearch(e.target.value)}
               />
               <select
-                className="p-2 border border-slate-200 rounded-lg text-xs font-bold text-slate-600 outline-none cursor-pointer hover:bg-slate-50"
+                className="p-2 border border-slate-200 rounded-lg text-xs font-bold text-slate-600 outline-none cursor-pointer"
                 value={machineSort}
                 onChange={(e) => setMachineSort(e.target.value)}
               >
                 <option value="cust-az">Per Cliente</option>
-                <option value="mat-az">Matricola (A-Z)</option>
-                <option value="mat-za">Matricola (Z-A)</option>
+                <option value="mat-az">Mat (A-Z)</option>
               </select>
               <button
                 onClick={() =>
                   setListViewMode((p) => (p === "grid" ? "list" : "grid"))
                 }
-                className="p-2 bg-slate-100 rounded-lg text-slate-500 hover:text-blue-600 transition-colors shrink-0"
-                title="Cambia Vista"
+                className="p-2 bg-slate-100 rounded-lg text-slate-500 hover:text-blue-600"
               >
                 <Layout className="w-4 h-4" />
               </button>
               <button
                 onClick={() => analyzeDuplicates("machine", machines)}
-                className="p-2 bg-yellow-50 text-yellow-600 border border-yellow-200 rounded-lg hover:bg-yellow-100 transition-colors shrink-0 flex items-center gap-1.5"
-                title="Trova Conflitti o Duplicati"
+                className="p-2 bg-yellow-50 text-yellow-600 border border-yellow-200 rounded-lg hover:bg-yellow-100 flex items-center gap-1.5"
               >
                 <AlertTriangle className="w-4 h-4" />
-                <span className="text-[10px] font-bold uppercase tracking-wider hidden md:block">
+                <span className="text-[10px] font-bold uppercase hidden md:block">
                   Conflitti
                 </span>
               </button>
@@ -3418,7 +5023,7 @@ const AdminPanel = ({
             {processedMachines.map((m) => (
               <div
                 key={m.id}
-                className="flex justify-between p-3 bg-slate-50 border border-slate-100 rounded-xl items-center group hover:border-blue-300 hover:shadow-sm transition-all"
+                className="flex justify-between p-3 bg-slate-50 border border-slate-100 rounded-xl items-center group hover:border-blue-300 hover:shadow-sm"
               >
                 <div className="overflow-hidden pr-2">
                   <div className="flex items-center gap-2 mb-1">
@@ -3438,33 +5043,25 @@ const AdminPanel = ({
                 <div className="flex gap-2 shrink-0">
                   <button
                     onClick={() => setMergingItem({ item: m, type: "machine" })}
-                    className="p-1.5 bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100 transition-colors"
-                    title="Unisci"
+                    className="p-1.5 bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100"
                   >
                     <GitMerge className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => setEditingMachine(m)}
-                    className="p-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 transition-colors"
-                    title="Modifica"
+                    className="p-1.5 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100"
                   >
                     <Edit className="w-4 h-4" />
                   </button>
                   <button
                     onClick={() => deleteItem("machines", m.id)}
-                    className="p-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
-                    title="Elimina"
+                    className="p-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
               </div>
             ))}
-            {processedMachines.length === 0 && (
-              <div className="col-span-full text-center py-10 text-xs font-bold text-slate-400 uppercase tracking-widest">
-                Nessuna gru trovata
-              </div>
-            )}
           </div>
         </div>
       )}
@@ -3478,10 +5075,10 @@ const AdminPanel = ({
           <h4 className="font-black text-slate-800 uppercase mb-4 flex items-center gap-2">
             <Bell className="w-5 h-5 text-yellow-500" /> Notifiche Dispositivo
           </h4>
-          <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between shadow-sm mb-8">
+          <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between mb-8">
             <div className="flex items-center gap-3">
               <div
-                className={`w-10 h-10 rounded-full flex items-center justify-center shadow-inner ${
+                className={`w-10 h-10 rounded-full flex items-center justify-center ${
                   notificationsEnabled
                     ? "bg-yellow-100 text-yellow-600"
                     : "bg-slate-200 text-slate-500"
@@ -3493,34 +5090,30 @@ const AdminPanel = ({
                 <h5 className="font-bold text-sm text-slate-800">
                   Avvisi Nuovi Interventi
                 </h5>
-                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
-                  {notificationsEnabled
-                    ? "Attive su questo dispositivo"
-                    : "Disattivate"}
+                <p className="text-[10px] text-slate-500 font-bold uppercase">
+                  {notificationsEnabled ? "Attive" : "Disattivate"}
                 </p>
               </div>
             </div>
             <button
               onClick={toggleNotifications}
-              className={`px-4 py-2 rounded-lg font-bold text-xs uppercase transition-all shadow-sm ${
+              className={`px-4 py-2 rounded-lg font-bold text-xs uppercase ${
                 notificationsEnabled
-                  ? "bg-red-50 text-red-600 border border-red-200 hover:bg-red-100"
-                  : "bg-slate-800 text-white hover:bg-slate-900"
+                  ? "bg-red-50 text-red-600 border border-red-200"
+                  : "bg-slate-800 text-white"
               }`}
             >
               {notificationsEnabled ? "Disattiva" : "Attiva"}
             </button>
           </div>
-
           <h4 className="font-black text-slate-800 uppercase mb-4 flex items-center gap-2">
-            <Activity className="w-5 h-5 text-blue-500" /> Stato Sistema e
-            Database
+            <Activity className="w-5 h-5 text-blue-500" /> Stato Sistema
           </h4>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-            <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between shadow-sm">
+            <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div
-                  className={`w-10 h-10 rounded-full flex items-center justify-center shadow-inner ${
+                  className={`w-10 h-10 rounded-full flex items-center justify-center ${
                     isOnline
                       ? "bg-green-100 text-green-600"
                       : "bg-red-100 text-red-600"
@@ -3537,142 +5130,43 @@ const AdminPanel = ({
                     Connessione DB
                   </h5>
                   <p className="text-[10px] text-slate-500 font-bold uppercase">
-                    {isOnline
-                      ? "Online - Sincronizzato"
-                      : "Offline - Rete Assente"}
+                    {isOnline ? "Online" : "Offline"}
                   </p>
                 </div>
               </div>
-              <div className="text-right flex items-center justify-center">
-                <Database
-                  className={`w-6 h-6 ${
-                    isOnline ? "text-green-500 animate-pulse" : "text-red-500"
-                  }`}
-                />
-              </div>
             </div>
-
             <button
               onClick={() => window.location.reload()}
-              className="p-4 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 transition-all flex items-center justify-start gap-4 group shadow-sm active:scale-95"
+              className="p-4 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-start gap-4"
             >
-              <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center group-hover:rotate-180 transition-transform duration-500 shadow-inner">
+              <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center">
                 <RefreshCw className="w-5 h-5" />
               </div>
               <div className="text-left">
                 <h5 className="font-bold text-sm text-slate-800 uppercase">
                   Riavvia App
                 </h5>
-                <p className="text-[10px] text-slate-500 font-bold uppercase">
-                  Forza aggiornamento dati
-                </p>
               </div>
             </button>
           </div>
-
           <h4 className="font-black text-slate-800 uppercase mb-4 flex items-center gap-2">
-            <Wifi className="w-5 h-5 text-green-500" /> Utenti Attivi Ora (
-            {activeUsers.length})
+            <Terminal className="w-5 h-5 text-slate-800" /> Log Accessi
           </h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-8">
-            {activeUsers.length === 0 ? (
-              <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 text-slate-500 text-xs italic">
-                Nessun utente attivo rilevato negli ultimi 5 minuti.
+          <div className="bg-slate-900 rounded-xl p-4 overflow-hidden font-mono text-xs text-green-400 h-[200px] overflow-y-auto">
+            {logs.map((log) => (
+              <div key={log.id} className="mb-1">
+                <span className="text-slate-500">
+                  [
+                  {log.timestamp?.seconds
+                    ? new Date(log.timestamp.seconds * 1000).toLocaleString(
+                        "it-IT"
+                      )
+                    : "now"}
+                  ]
+                </span>{" "}
+                {log.action || "INFO"} {log.technician} ({log.device})
               </div>
-            ) : (
-              activeUsers.map((u) => (
-                <div
-                  key={u.id || u.technician}
-                  className="flex items-center justify-between p-3 bg-white border border-slate-200 rounded-xl shadow-sm"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="relative">
-                      <div className="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center text-blue-600">
-                        <User className="w-5 h-5" />
-                      </div>
-                      <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-white rounded-full animate-pulse"></div>
-                    </div>
-                    <div>
-                      <h5 className="font-bold text-sm text-slate-800">
-                        {u.technician}
-                      </h5>
-                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
-                        {u.device}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="text-[10px] text-slate-400 text-right">
-                    Ultimo segnale:
-                    <br />
-                    <span className="font-bold text-slate-600">
-                      {u.lastActive
-                        ? new Date(
-                            u.lastActive.seconds * 1000
-                          ).toLocaleTimeString()
-                        : "Ora"}
-                    </span>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-
-          <h4 className="font-black text-slate-800 uppercase mb-4 flex items-center gap-2">
-            <Terminal className="w-5 h-5 text-slate-800" /> Log Accessi e
-            Sistema
-          </h4>
-          <div className="bg-slate-900 rounded-xl p-4 overflow-hidden font-mono text-xs text-green-400 h-[300px] overflow-y-auto border-t-4 border-slate-700 custom-scrollbar shadow-inner">
-            {logs.length === 0 ? (
-              <div className="text-slate-600 italic">Nessun log recente...</div>
-            ) : (
-              logs.map((log) => (
-                <div
-                  key={log.id}
-                  className="mb-2 pb-2 border-b border-slate-800/50 flex flex-col sm:flex-row gap-1 sm:gap-3"
-                >
-                  <span className="text-slate-500 shrink-0">
-                    [
-                    {log.timestamp?.seconds
-                      ? new Date(log.timestamp.seconds * 1000).toLocaleString(
-                          "it-IT"
-                        )
-                      : "now"}
-                    ]
-                  </span>
-                  <span>
-                    <span
-                      className={
-                        log.action === "LOGIN"
-                          ? "text-blue-400 font-bold"
-                          : "text-yellow-500 font-bold"
-                      }
-                    >
-                      {log.action || "INFO"}
-                    </span>
-                    <span className="text-slate-300 ml-2">
-                      {log.technician || "Sconosciuto"}
-                    </span>
-                    <span className="text-slate-500 ml-2">
-                      ({log.device || "Unknown"})
-                    </span>
-                  </span>
-                </div>
-              ))
-            )}
-          </div>
-
-          <div className="mt-6 pt-6 border-t border-slate-100">
-            <button
-              onClick={() => {
-                localStorage.removeItem("mora_tech_last_name");
-                localStorage.removeItem("mora_app_unlocked");
-                sessionStorage.removeItem("mora_access_tech");
-                window.location.reload();
-              }}
-              className="w-full p-4 bg-red-50 border border-red-200 rounded-xl flex items-center justify-center gap-3 text-red-600 hover:bg-red-100 font-bold uppercase tracking-wider transition-all shadow-sm"
-            >
-              <LogOut className="w-5 h-5" /> Scollega Il Mio Dispositivo
-            </button>
+            ))}
           </div>
         </div>
       )}
@@ -3710,7 +5204,6 @@ const AdminPanel = ({
           color={layoutConfig.themeColor}
         />
       )}
-
       {duplicateAnalysis && (
         <DuplicatesModal
           analysis={duplicateAnalysis}
@@ -3720,33 +5213,22 @@ const AdminPanel = ({
           color={layoutConfig.themeColor}
         />
       )}
-
       {itemToDelete && (
-        <div className="fixed inset-0 z-[300] bg-slate-900/60 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in">
-          <div className="p-6 max-w-xs w-full text-center space-y-5 bg-white rounded-xl shadow-xl border-t-4 border-t-red-500 animate-in zoom-in-95">
-            <div className="p-3 bg-red-100 text-red-600 rounded-full w-fit mx-auto">
-              <Trash2 className="w-8 h-8" />
-            </div>
-            <div>
-              <h4 className="font-black text-slate-800 uppercase text-sm">
-                Eliminare?
-              </h4>
-              <p className="text-xs text-slate-500 mt-2">
-                Questa azione è irreversibile e rimuoverà il dato dal database.
-              </p>
-            </div>
+        <div className="fixed inset-0 z-[300] bg-slate-900/60 flex items-center justify-center p-4">
+          <div className="p-6 max-w-xs w-full text-center bg-white rounded-xl shadow-xl border-t-4 border-t-red-500">
+            <h4 className="font-black text-slate-800 uppercase text-sm mb-4">
+              Eliminare definitivamente?
+            </h4>
             <div className="grid grid-cols-2 gap-3">
               <button
-                type="button"
                 onClick={confirmDeleteAdmin}
-                className="py-3 bg-red-600 text-white rounded-lg font-bold text-xs uppercase shadow-md hover:bg-red-700 active:scale-95 transition-all"
+                className="py-3 bg-red-600 text-white rounded-lg font-bold text-xs uppercase"
               >
                 Elimina
               </button>
               <button
-                type="button"
                 onClick={() => setItemToDelete(null)}
-                className="py-3 bg-slate-100 text-slate-600 rounded-lg font-bold text-xs uppercase hover:bg-slate-200 active:scale-95 transition-all"
+                className="py-3 bg-slate-100 text-slate-600 rounded-lg font-bold text-xs uppercase"
               >
                 Annulla
               </button>
@@ -3754,86 +5236,6 @@ const AdminPanel = ({
           </div>
         </div>
       )}
-    </div>
-  );
-};
-
-const DashboardView = ({
-  onNavigate,
-  isMobile,
-  layoutConfig,
-  onAdminAccess,
-}) => {
-  const color = layoutConfig?.themeColor || "blue";
-  const order = layoutConfig?.dashboardOrder || DEFAULT_LAYOUT.dashboardOrder;
-  const buttonsMap = {
-    new: { icon: PlusCircle, label: "Nuovo", sub: "Rapporto", color: color },
-    explore: {
-      icon: Folder,
-      label: "Esplora",
-      sub: "Archivio",
-      color: "orange",
-    },
-    history: {
-      icon: History,
-      label: "Storico",
-      sub: "Cerca",
-      color: "emerald",
-    },
-    database: {
-      icon: Database,
-      label: "Database",
-      sub: "Liste",
-      color: "blue",
-    },
-    office: {
-      icon: Briefcase,
-      label: "Ufficio",
-      sub: "Gestionale",
-      color: "purple",
-    },
-    admin: {
-      icon: Settings,
-      label: "Admin",
-      sub: "Dati",
-      color: "slate",
-      action: onAdminAccess,
-    },
-  };
-
-  return (
-    <div className="max-w-5xl mx-auto py-4 px-4 animate-in fade-in zoom-in-95 duration-500">
-      <div
-        className={`grid ${
-          isMobile ? "grid-cols-2" : "grid-cols-3"
-        } gap-4 md:gap-6`}
-      >
-        {order.map((key) => {
-          const btn = buttonsMap[key];
-          if (!btn) return null;
-          return (
-            <button
-              key={key}
-              onClick={btn.action || (() => onNavigate(key))}
-              className={`p-6 flex flex-col items-center gap-4 transition-all group active:scale-95 bg-white rounded-xl shadow-md border-t-4 border-t-${btn.color}-200 hover:border-${btn.color}-500 hover:shadow-lg`}
-            >
-              <div
-                className={`w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg transition-transform group-hover:scale-110 bg-${btn.color}-600 text-white`}
-              >
-                <btn.icon className="w-8 h-8" />
-              </div>
-              <div className="text-center">
-                <h3 className="text-xl font-black text-slate-800 uppercase tracking-tight">
-                  {btn.label}
-                </h3>
-                <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">
-                  {btn.sub}
-                </p>
-              </div>
-            </button>
-          );
-        })}
-      </div>
     </div>
   );
 };
@@ -3855,6 +5257,7 @@ export default function App() {
   );
   const [layoutConfig, setLayoutConfig] = useState(DEFAULT_LAYOUT);
   const [isAppLoading, setIsAppLoading] = useState(true);
+  const [globalPhotoView, setGlobalPhotoView] = useState(null);
 
   const [notificationsEnabled, setNotificationsEnabled] = useState(
     localStorage.getItem("mora_notifications") === "true"
@@ -4062,6 +5465,14 @@ export default function App() {
             if (dateIdx !== -1) fOrder.splice(dateIdx + 1, 0, "ticketNumber");
             else fOrder.unshift("ticketNumber");
           }
+
+          if (!fOrder.includes("photos")) {
+            fOrder = [...fOrder];
+            const descIdx = fOrder.indexOf("description");
+            if (descIdx !== -1) fOrder.splice(descIdx + 1, 0, "photos");
+            else fOrder.push("photos");
+          }
+
           setLayoutConfig((prev) => ({
             ...DEFAULT_LAYOUT,
             ...data,
@@ -4410,7 +5821,6 @@ export default function App() {
             {activeTab === "dashboard" && (
               <DashboardView
                 onNavigate={setActiveTab}
-                isMobile={isMobileView}
                 layoutConfig={layoutConfig}
                 onAdminAccess={handleAdminAccess}
               />
@@ -4421,6 +5831,7 @@ export default function App() {
                 machines={machines}
                 logs={logs}
                 color={color}
+                onOpenPhotos={setGlobalPhotoView}
               />
             )}
             {activeTab === "history" && (
@@ -4437,6 +5848,7 @@ export default function App() {
                 layoutConfig={layoutConfig}
                 onOpenCustomer={openCustomerDetail}
                 onOpenMachine={openMachineDetail}
+                onOpenPhotos={setGlobalPhotoView}
               />
             )}
             {activeTab === "office" && (
@@ -4446,6 +5858,7 @@ export default function App() {
                 customers={customers}
                 layoutConfig={layoutConfig}
                 technicians={technicians}
+                onOpenPhotos={setGlobalPhotoView}
               />
             )}
             {activeTab === "database" && (
@@ -4489,12 +5902,21 @@ export default function App() {
         )}
       </main>
 
+      {/* Visualizzatore Foto Globale */}
+      {globalPhotoView && (
+        <PhotoViewerModal
+          photos={globalPhotoView}
+          onClose={() => setGlobalPhotoView(null)}
+        />
+      )}
+
       {viewingMachineHistory && (
         <MachineHistoryModal
           machine={viewingMachineHistory}
           allLogs={logs}
           onClose={() => setViewingMachineHistory(null)}
           onOpenCustomer={openCustomerDetail}
+          onOpenPhotos={setGlobalPhotoView}
           themeColor={color}
         />
       )}
