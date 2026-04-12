@@ -148,8 +148,8 @@ const DEFAULT_LAYOUT = {
 const getTodayString = () => {
   const today = new Date();
   const y = today.getFullYear();
-  const m = String(today.getMonth() + 1).padStart(2, "0");
-  const d = String(today.getDate()).padStart(2, "0");
+  const m = String(today.getMonth() + 1).padStart(2, '0');
+  const d = String(today.getDate()).padStart(2, '0');
   return `${y}-${m}-${d}`;
 };
 
@@ -548,7 +548,7 @@ const DeleteConfirmDialog = ({
 // GALLERIA FOTO GLOBALE CON SCARICAMENTO
 const PhotoViewerModal = ({ photos, onClose }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
-
+  
   if (!photos || photos.length === 0) return null;
 
   const handleDownload = (e) => {
@@ -567,45 +567,39 @@ const PhotoViewerModal = ({ photos, onClose }) => {
         <div className="bg-black/50 text-white px-4 py-2 rounded-full font-bold text-xs flex items-center shadow-lg">
           {currentIndex + 1} / {photos.length}
         </div>
-        <button
-          onClick={handleDownload}
+        <button 
+          onClick={handleDownload} 
           className="p-2 text-white/70 hover:text-white bg-black/50 hover:bg-black/80 rounded-full transition-all shadow-lg"
           title="Scarica questa foto"
         >
           <Download className="w-6 h-6" />
         </button>
-        <button
-          onClick={onClose}
+        <button 
+          onClick={onClose} 
           className="p-2 text-white/70 hover:text-white bg-black/50 hover:bg-black/80 rounded-full transition-all shadow-lg"
           title="Chiudi"
         >
           <X className="w-6 h-6" />
         </button>
       </div>
-
+      
       <div className="relative w-full max-w-5xl flex items-center justify-center flex-1 min-h-0">
-        <img
-          src={photos[currentIndex]}
-          alt={`Foto ${currentIndex + 1}`}
+        <img 
+          src={photos[currentIndex]} 
+          alt={`Foto ${currentIndex + 1}`} 
           className="max-w-full max-h-full object-contain rounded-xl shadow-2xl animate-in zoom-in-95 duration-300"
         />
-
+        
         {photos.length > 1 && (
           <>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setCurrentIndex((p) => (p === 0 ? photos.length - 1 : p - 1));
-              }}
+            <button 
+              onClick={(e) => { e.stopPropagation(); setCurrentIndex(p => p === 0 ? photos.length - 1 : p - 1); }} 
               className="absolute left-2 md:left-8 p-3 md:p-4 bg-black/40 hover:bg-black/70 text-white rounded-full backdrop-blur-sm transition-all shadow-lg"
             >
               <ArrowLeft className="w-6 h-6 md:w-8 md:h-8" />
             </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setCurrentIndex((p) => (p === photos.length - 1 ? 0 : p + 1));
-              }}
+            <button 
+              onClick={(e) => { e.stopPropagation(); setCurrentIndex(p => p === photos.length - 1 ? 0 : p + 1); }} 
               className="absolute right-2 md:right-8 p-3 md:p-4 bg-black/40 hover:bg-black/70 text-white rounded-full backdrop-blur-sm transition-all shadow-lg"
             >
               <ArrowRight className="w-6 h-6 md:w-8 md:h-8" />
@@ -613,20 +607,18 @@ const PhotoViewerModal = ({ photos, onClose }) => {
           </>
         )}
       </div>
-
+      
       {photos.length > 1 && (
         <div className="mt-6 flex gap-3 overflow-x-auto pb-4 max-w-full px-4">
           {photos.map((p, i) => (
-            <img
-              key={i}
-              src={p}
-              onClick={() => setCurrentIndex(i)}
+            <img 
+              key={i} 
+              src={p} 
+              onClick={() => setCurrentIndex(i)} 
               className={`w-20 h-20 md:w-24 md:h-24 object-cover rounded-xl cursor-pointer transition-all shadow-md ${
-                currentIndex === i
-                  ? "ring-4 ring-blue-500 scale-105 opacity-100"
-                  : "opacity-50 hover:opacity-100 ring-1 ring-white/20"
-              }`}
-              alt={`Miniatura ${i + 1}`}
+                currentIndex === i ? 'ring-4 ring-blue-500 scale-105 opacity-100' : 'opacity-50 hover:opacity-100 ring-1 ring-white/20'
+              }`} 
+              alt={`Miniatura ${i+1}`}
             />
           ))}
         </div>
@@ -648,7 +640,7 @@ const EditLogModal = ({
   const [data, setData] = useState({
     ...log,
     additionalTechnicians: log.additionalTechnicians || [],
-    photos: log.photos || [],
+    photos: log.photos || []
   });
   const [loading, setLoading] = useState(false);
   const [uploadingPhotos, setUploadingPhotos] = useState(false);
@@ -690,7 +682,7 @@ const EditLogModal = ({
         const base64 = await compressImage(file);
         newBase64Photos.push(base64);
       }
-      setData((p) => ({ ...p, photos: [...p.photos, ...newBase64Photos] }));
+      setData(p => ({ ...p, photos: [...p.photos, ...newBase64Photos] }));
     } catch (err) {
       console.error(err);
       alert("Errore durante l'elaborazione delle immagini.");
@@ -701,10 +693,7 @@ const EditLogModal = ({
   };
 
   const removePhoto = (indexToRemove) => {
-    setData((p) => ({
-      ...p,
-      photos: p.photos.filter((_, idx) => idx !== indexToRemove),
-    }));
+    setData(p => ({ ...p, photos: p.photos.filter((_, idx) => idx !== indexToRemove) }));
   };
 
   const handleSave = async () => {
@@ -739,7 +728,7 @@ const EditLogModal = ({
           description: data.description,
           dateString: data.dateString,
           ticketNumber: data.ticketNumber || "",
-          photos: data.photos,
+          photos: data.photos
         }
       );
       onClose();
@@ -960,42 +949,29 @@ const EditLogModal = ({
           <div className="space-y-2 bg-slate-100 p-3 rounded-xl border border-slate-200">
             <div className="flex justify-between items-center mb-1">
               <label className="text-[10px] font-bold text-slate-500 uppercase ml-1 flex items-center gap-1">
-                <Camera className="w-3 h-3" /> Foto Allegate
+                <Camera className="w-3 h-3"/> Foto Allegate
               </label>
-              <label
-                className={`text-[10px] font-bold flex items-center gap-1 text-${color}-600 hover:text-${color}-800 cursor-pointer ${
-                  data.photos.length >= 3 ? "opacity-50 cursor-not-allowed" : ""
-                }`}
-              >
+              <label className={`text-[10px] font-bold flex items-center gap-1 text-${color}-600 hover:text-${color}-800 cursor-pointer ${data.photos.length >= 3 ? 'opacity-50 cursor-not-allowed' : ''}`}>
                 <PlusCircle className="w-3 h-3" /> Aggiungi
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  className="hidden"
-                  onChange={handlePhotoUpload}
-                  disabled={data.photos.length >= 3 || uploadingPhotos}
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  multiple 
+                  className="hidden" 
+                  onChange={handlePhotoUpload} 
+                  disabled={data.photos.length >= 3 || uploadingPhotos} 
                 />
               </label>
             </div>
-
-            {uploadingPhotos && (
-              <div className="text-[10px] text-blue-600 font-bold animate-pulse flex items-center gap-1">
-                <RefreshCw className="w-3 h-3 animate-spin" /> Elaborazione in
-                corso...
-              </div>
-            )}
-
+            
+            {uploadingPhotos && <div className="text-[10px] text-blue-600 font-bold animate-pulse flex items-center gap-1"><RefreshCw className="w-3 h-3 animate-spin"/> Elaborazione in corso...</div>}
+            
             <div className="flex gap-3 overflow-x-auto pb-2">
               {data.photos.map((photoStr, idx) => (
                 <div key={idx} className="relative shrink-0 group">
-                  <img
-                    src={photoStr}
-                    className="w-16 h-16 object-cover rounded-xl border-2 border-white shadow-sm"
-                    alt="Anteprima"
-                  />
-                  <button
-                    type="button"
+                  <img src={photoStr} className="w-16 h-16 object-cover rounded-xl border-2 border-white shadow-sm" alt="Anteprima"/>
+                  <button 
+                    type="button" 
                     onClick={() => removePhoto(idx)}
                     className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity"
                   >
@@ -1004,12 +980,11 @@ const EditLogModal = ({
                 </div>
               ))}
               {data.photos.length === 0 && !uploadingPhotos && (
-                <p className="text-[10px] text-slate-400 italic">
-                  Nessuna foto allegata.
-                </p>
+                <p className="text-[10px] text-slate-400 italic">Nessuna foto allegata.</p>
               )}
             </div>
           </div>
+
         </div>
         <div className="p-6 border-t border-slate-100 bg-white">
           <button
@@ -1043,20 +1018,10 @@ const EditMachineModal = ({
   const color = themeColor || "blue";
 
   const handleSave = async () => {
-    const newMatricola = data.matricola
-      .toUpperCase()
-      .replace(/\//g, "-")
-      .trim();
+    const newMatricola = data.matricola.toUpperCase().replace(/\//g, "-").trim();
     const newCustomer = data.customerName.toUpperCase().trim();
 
-    if (
-      allMachines.some(
-        (m) =>
-          m.id !== machine.id &&
-          getSafeMatricola(m) === newMatricola &&
-          m.customerName === newCustomer
-      )
-    ) {
+    if (allMachines.some((m) => m.id !== machine.id && getSafeMatricola(m) === newMatricola && m.customerName === newCustomer)) {
       alert("Esiste già questa macchina per questo cliente!");
       return;
     }
@@ -1065,32 +1030,17 @@ const EditMachineModal = ({
     try {
       const batch = writeBatch(db);
 
-      const machineRef = doc(
-        db,
-        "artifacts",
-        appId,
-        "public",
-        "data",
-        "machines",
-        machine.id
-      );
+      const machineRef = doc(db, "artifacts", appId, "public", "data", "machines", machine.id);
       batch.update(machineRef, {
         matricola: newMatricola,
         customerName: newCustomer,
         type: data.type,
-        capacity: data.capacity,
+        capacity: data.capacity
       });
 
       const oldMatricola = getSafeMatricola(machine);
       const qLogs = query(
-        collection(
-          db,
-          "artifacts",
-          appId,
-          "public",
-          "data",
-          "maintenance_logs"
-        ),
+        collection(db, "artifacts", appId, "public", "data", "maintenance_logs"),
         where("machineId", "==", oldMatricola),
         where("customer", "==", machine.customerName)
       );
@@ -1234,33 +1184,15 @@ const EditCustomerModal = ({
     try {
       const batch = writeBatch(db);
 
-      batch.update(
-        doc(db, "artifacts", appId, "public", "data", "customers", customer.id),
-        { name: cleanName }
-      );
+      batch.update(doc(db, "artifacts", appId, "public", "data", "customers", customer.id), { name: cleanName });
 
-      const qLogs = query(
-        collection(
-          db,
-          "artifacts",
-          appId,
-          "public",
-          "data",
-          "maintenance_logs"
-        ),
-        where("customer", "==", customer.name)
-      );
+      const qLogs = query(collection(db, "artifacts", appId, "public", "data", "maintenance_logs"), where("customer", "==", customer.name));
       const logsSnap = await getDocs(qLogs);
       logsSnap.forEach((d) => batch.update(d.ref, { customer: cleanName }));
 
-      const qMachines = query(
-        collection(db, "artifacts", appId, "public", "data", "machines"),
-        where("customerName", "==", customer.name)
-      );
+      const qMachines = query(collection(db, "artifacts", appId, "public", "data", "machines"), where("customerName", "==", customer.name));
       const machinesSnap = await getDocs(qMachines);
-      machinesSnap.forEach((d) =>
-        batch.update(d.ref, { customerName: cleanName })
-      );
+      machinesSnap.forEach((d) => batch.update(d.ref, { customerName: cleanName }));
 
       await batch.commit();
       onClose();
@@ -1351,11 +1283,8 @@ const MergeModal = ({
             Unisci {type === "customer" ? "Cliente" : "Gru"}
           </h3>
           <p className="text-xs text-slate-500 mt-1">
-            Stai per unire{" "}
-            <b className="text-red-500">
-              {sourceItem.name || sourceItem.matricola || sourceItem.id}
-            </b>
-            . Seleziona la destinazione (quello che rimarrà).
+            Stai per unire <b className="text-red-500">{sourceItem.name || sourceItem.matricola || sourceItem.id}</b>. Seleziona
+            la destinazione (quello che rimarrà).
           </p>
         </div>
         <div className="space-y-1">
@@ -1401,21 +1330,13 @@ const MergeModal = ({
   );
 };
 
-const DuplicatesModal = ({
-  analysis,
-  onClose,
-  onDirectMerge,
-  onIgnore,
-  color = "blue",
-}) => {
+const DuplicatesModal = ({ analysis, onClose, onDirectMerge, onIgnore, color = "blue" }) => {
   const [loadingIdx, setLoadingIdx] = useState(null);
   const pairs = analysis.pairs;
 
   return (
     <div className="fixed inset-0 bg-slate-900/60 z-[230] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in">
-      <div
-        className={`w-full max-w-3xl bg-white rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[85vh] border-t-4 border-yellow-500`}
-      >
+      <div className={`w-full max-w-3xl bg-white rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[85vh] border-t-4 border-yellow-500`}>
         <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-yellow-100 text-yellow-600 rounded-xl">
@@ -1426,16 +1347,11 @@ const DuplicatesModal = ({
                 Potenziali Conflitti
               </h3>
               <p className="text-xs font-bold text-slate-500 uppercase">
-                {pairs.length}{" "}
-                {pairs.length === 1 ? "Elemento simile" : "Elementi simili"}{" "}
-                trovati
+                {pairs.length} {pairs.length === 1 ? "Elemento simile" : "Elementi simili"} trovati
               </p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-slate-200 rounded-full transition-colors"
-          >
+          <button onClick={onClose} className="p-2 hover:bg-slate-200 rounded-full transition-colors">
             <X className="w-5 h-5 text-slate-400" />
           </button>
         </div>
@@ -1445,99 +1361,58 @@ const DuplicatesModal = ({
               <div className="w-16 h-16 bg-green-100 text-green-500 rounded-full flex items-center justify-center mx-auto mb-3">
                 <CheckCircle className="w-8 h-8" />
               </div>
-              <p className="text-slate-500 font-bold uppercase text-xs">
-                Nessun conflitto rilevato! 🎉
-              </p>
+              <p className="text-slate-500 font-bold uppercase text-xs">Nessun conflitto rilevato! 🎉</p>
             </div>
           ) : (
             pairs.map((pair, idx) => {
               const [a, b] = pair;
-              const nameA =
-                analysis.type === "customer"
-                  ? a.name
-                  : `${getSafeMatricola(a)} (${a.customerName})`;
-              const nameB =
-                analysis.type === "customer"
-                  ? b.name
-                  : `${getSafeMatricola(b)} (${b.customerName})`;
+              const nameA = analysis.type === 'customer' ? a.name : `${getSafeMatricola(a)} (${a.customerName})`;
+              const nameB = analysis.type === 'customer' ? b.name : `${getSafeMatricola(b)} (${b.customerName})`;
 
               return (
-                <div
-                  key={idx}
-                  className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hover:border-yellow-300 transition-colors"
-                >
+                <div key={idx} className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 hover:border-yellow-300 transition-colors">
                   <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+                    
                     <div className="flex-1 text-center md:text-left bg-red-50 p-3 rounded-xl border border-red-100 w-full md:w-auto">
-                      <span className="font-black text-sm text-red-700 block uppercase break-words">
-                        {nameA}
-                      </span>
-                      <span className="text-[10px] text-red-400 font-bold mt-1 block">
-                        ID: {a.id.substring(0, 8)}
-                      </span>
+                      <span className="font-black text-sm text-red-700 block uppercase break-words">{nameA}</span>
+                      <span className="text-[10px] text-red-400 font-bold mt-1 block">ID: {a.id.substring(0,8)}</span>
                     </div>
 
                     <div className="flex flex-col gap-2 shrink-0 w-full md:w-auto">
-                      <button
+                      <button 
                         onClick={async () => {
                           setLoadingIdx(idx);
                           await onDirectMerge(a, b, analysis.type);
                           setLoadingIdx(null);
-                        }}
+                        }} 
                         disabled={loadingIdx !== null}
-                        className={`text-xs font-black bg-purple-100 text-purple-700 px-4 py-2 rounded-xl hover:bg-purple-200 transition-colors shadow-sm uppercase flex items-center justify-center gap-2 ${
-                          loadingIdx !== null
-                            ? "opacity-50 cursor-not-allowed"
-                            : ""
-                        }`}
+                        className={`text-xs font-black bg-purple-100 text-purple-700 px-4 py-2 rounded-xl hover:bg-purple-200 transition-colors shadow-sm uppercase flex items-center justify-center gap-2 ${loadingIdx !== null ? 'opacity-50 cursor-not-allowed' : ''}`}
                         title="Elimina quello di Sinistra e unisci i suoi dati in quello di Destra"
                       >
-                        {loadingIdx === idx ? (
-                          <RefreshCw className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <>
-                            <ArrowRight className="w-4 h-4 hidden md:block" />
-                            <ArrowDown className="w-4 h-4 md:hidden" />
-                          </>
-                        )}{" "}
-                        Unisci a Destra
+                        {loadingIdx === idx ? <RefreshCw className="w-4 h-4 animate-spin"/> : <><ArrowRight className="w-4 h-4 hidden md:block"/><ArrowDown className="w-4 h-4 md:hidden"/></>} Unisci a Destra 
                       </button>
-                      <button
+                      <button 
                         onClick={async () => {
                           setLoadingIdx(idx);
                           await onDirectMerge(b, a, analysis.type);
                           setLoadingIdx(null);
-                        }}
+                        }} 
                         disabled={loadingIdx !== null}
-                        className={`text-xs font-black bg-blue-100 text-blue-700 px-4 py-2 rounded-xl hover:bg-blue-200 transition-colors shadow-sm uppercase flex items-center justify-center gap-2 flex-row-reverse md:flex-row ${
-                          loadingIdx !== null
-                            ? "opacity-50 cursor-not-allowed"
-                            : ""
-                        }`}
+                        className={`text-xs font-black bg-blue-100 text-blue-700 px-4 py-2 rounded-xl hover:bg-blue-200 transition-colors shadow-sm uppercase flex items-center justify-center gap-2 flex-row-reverse md:flex-row ${loadingIdx !== null ? 'opacity-50 cursor-not-allowed' : ''}`}
                         title="Elimina quello di Destra e unisci i suoi dati in quello di Sinistra"
                       >
-                        {loadingIdx === idx ? (
-                          <RefreshCw className="w-4 h-4 animate-spin" />
-                        ) : (
-                          <>
-                            <ArrowLeft className="w-4 h-4 hidden md:block" />
-                            <ArrowUp className="w-4 h-4 md:hidden" />
-                          </>
-                        )}{" "}
-                        Unisci a Sinistra
+                        {loadingIdx === idx ? <RefreshCw className="w-4 h-4 animate-spin"/> : <><ArrowLeft className="w-4 h-4 hidden md:block"/><ArrowUp className="w-4 h-4 md:hidden"/></>} Unisci a Sinistra 
                       </button>
                     </div>
 
                     <div className="flex-1 text-center md:text-right bg-blue-50 p-3 rounded-xl border border-blue-100 w-full md:w-auto">
-                      <span className="font-black text-sm text-blue-700 block uppercase break-words">
-                        {nameB}
-                      </span>
-                      <span className="text-[10px] text-blue-400 font-bold mt-1 block">
-                        ID: {b.id.substring(0, 8)}
-                      </span>
+                      <span className="font-black text-sm text-blue-700 block uppercase break-words">{nameB}</span>
+                      <span className="text-[10px] text-blue-400 font-bold mt-1 block">ID: {b.id.substring(0,8)}</span>
                     </div>
+
                   </div>
                   <div className="mt-4 pt-3 border-t border-slate-50 text-center">
-                    <button
+                    <button 
                       onClick={async () => {
                         setLoadingIdx(idx);
                         await onIgnore(a, b);
@@ -1551,13 +1426,13 @@ const DuplicatesModal = ({
                     </button>
                   </div>
                 </div>
-              );
+              )
             })
           )}
         </div>
       </div>
     </div>
-  );
+  )
 };
 
 const MachineHistoryModal = ({
@@ -1665,7 +1540,7 @@ const MachineHistoryModal = ({
                         {log.dateString}
                       </span>
                     </div>
-
+                    
                     {/* INFO TECNICO E FOTO */}
                     <div className="flex flex-col items-end gap-1.5">
                       <div className="flex items-center gap-1.5 bg-slate-50 px-2 py-1 rounded-lg text-slate-500 border border-slate-100">
@@ -1676,17 +1551,14 @@ const MachineHistoryModal = ({
                       </div>
                       {log.photos && log.photos.length > 0 && (
                         <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onOpenPhotos(log.photos);
-                          }}
+                          onClick={(e) => { e.stopPropagation(); onOpenPhotos(log.photos); }}
                           className="text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-lg uppercase flex items-center gap-1 hover:bg-emerald-100 transition-colors"
                         >
-                          <Camera className="w-3 h-3" /> {log.photos.length}{" "}
-                          FOTO
+                          <Camera className="w-3 h-3" /> {log.photos.length} FOTO
                         </button>
                       )}
                     </div>
+
                   </div>
                   <p className="text-slate-700 text-xs md:text-sm leading-relaxed font-medium relative z-10 italic whitespace-pre-wrap break-words">
                     "{log.description}"
@@ -1714,38 +1586,25 @@ const CustomerDetailModal = ({
   machines,
   onClose,
   onOpenMachine,
-  themeColor,
+  themeColor
 }) => {
   const color = themeColor || "blue";
-  const customerMachines = machines.filter(
-    (m) => m.customerName === customerName
-  );
+  const customerMachines = machines.filter(m => m.customerName === customerName);
 
   return (
     <div className="fixed inset-0 bg-slate-900/50 z-[200] flex items-center justify-center p-4 backdrop-blur-md animate-in fade-in duration-300">
-      <div
-        className={`w-full max-w-2xl h-[80vh] rounded-3xl overflow-hidden flex flex-col shadow-2xl ${getProPanelClass(
-          color
-        )}`}
-      >
+      <div className={`w-full max-w-2xl h-[80vh] rounded-3xl overflow-hidden flex flex-col shadow-2xl ${getProPanelClass(color)}`}>
         <div className="bg-slate-50 p-6 flex justify-between items-center border-b border-slate-200">
           <div className="flex items-center gap-3">
             <div className={`p-3 bg-${color}-100 rounded-xl text-${color}-600`}>
               <Users className="w-6 h-6" />
             </div>
             <div>
-              <h2 className="text-xl font-black uppercase tracking-tight text-slate-800">
-                {customerName}
-              </h2>
-              <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">
-                {customerMachines.length} Gru Registrate
-              </p>
+              <h2 className="text-xl font-black uppercase tracking-tight text-slate-800">{customerName}</h2>
+              <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">{customerMachines.length} Gru Registrate</p>
             </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 bg-white rounded-full border border-slate-300 hover:bg-slate-100 transition-all text-slate-500"
-          >
+          <button onClick={onClose} className="p-2 bg-white rounded-full border border-slate-300 hover:bg-slate-100 transition-all text-slate-500">
             <X className="w-5 h-5" />
           </button>
         </div>
@@ -1754,32 +1613,18 @@ const CustomerDetailModal = ({
             {customerMachines.length === 0 && (
               <div className="col-span-full text-center py-10 opacity-50">
                 <Factory className="w-12 h-12 mx-auto mb-2 text-slate-400" />
-                <p className="font-bold text-slate-500 uppercase text-xs">
-                  Nessuna gru trovata
-                </p>
+                <p className="font-bold text-slate-500 uppercase text-xs">Nessuna gru trovata</p>
               </div>
             )}
-            {customerMachines.map((m) => (
-              <div
-                key={m.id}
-                onClick={() => onOpenMachine(getSafeMatricola(m), customerName)}
-                className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 cursor-pointer hover:border-blue-400 hover:shadow-md transition-all group"
-              >
+            {customerMachines.map(m => (
+              <div key={m.id} onClick={() => onOpenMachine(getSafeMatricola(m), customerName)} className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 cursor-pointer hover:border-blue-400 hover:shadow-md transition-all group">
                 <div className="flex justify-between items-center mb-2">
-                  <span className="font-black text-sm text-blue-700 bg-blue-50 px-2 py-0.5 rounded uppercase">
-                    MAT: {getSafeMatricola(m)}
-                  </span>
+                  <span className="font-black text-sm text-blue-700 bg-blue-50 px-2 py-0.5 rounded uppercase">MAT: {getSafeMatricola(m)}</span>
                   <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-blue-500 group-hover:translate-x-1 transition-all" />
                 </div>
                 <div className="flex gap-2 mt-2">
-                  <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded-lg uppercase">
-                    {m.type}
-                  </span>
-                  {m.capacity && (
-                    <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded-lg uppercase">
-                      {formatCapacity(m.capacity)}
-                    </span>
-                  )}
+                  <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded-lg uppercase">{m.type}</span>
+                  {m.capacity && <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded-lg uppercase">{formatCapacity(m.capacity)}</span>}
                 </div>
               </div>
             ))}
@@ -1794,59 +1639,15 @@ const CustomerDetailModal = ({
 
 const DashboardView = ({ onNavigate, layoutConfig, onAdminAccess }) => {
   const color = layoutConfig?.themeColor || "blue";
-  const order = layoutConfig?.dashboardOrder || [
-    "new",
-    "explore",
-    "history",
-    "database",
-    "office",
-    "admin",
-  ];
+  const order = layoutConfig?.dashboardOrder || ["new", "explore", "history", "database", "office", "admin"];
 
   const items = {
-    new: {
-      id: "new",
-      label: "Nuovo Rapporto",
-      icon: PlusCircle,
-      desc: "Registra nuovo intervento",
-      action: () => onNavigate("new"),
-      primary: true,
-    },
-    explore: {
-      id: "explore",
-      label: "Esplora",
-      icon: Folder,
-      desc: "Sfoglia clienti e macchine",
-      action: () => onNavigate("explore"),
-    },
-    history: {
-      id: "history",
-      label: "Storico",
-      icon: History,
-      desc: "Cronologia interventi",
-      action: () => onNavigate("history"),
-    },
-    database: {
-      id: "database",
-      label: "Database",
-      icon: Database,
-      desc: "Gestione anagrafiche",
-      action: () => onNavigate("database"),
-    },
-    office: {
-      id: "office",
-      label: "Ufficio",
-      icon: Briefcase,
-      desc: "Statistiche e stampe",
-      action: () => onNavigate("office"),
-    },
-    admin: {
-      id: "admin",
-      label: "Impostazioni",
-      icon: Settings,
-      desc: "Configurazione app",
-      action: onAdminAccess,
-    },
+    new: { id: "new", label: "Nuovo Rapporto", icon: PlusCircle, desc: "Registra nuovo intervento", action: () => onNavigate("new"), primary: true },
+    explore: { id: "explore", label: "Esplora", icon: Folder, desc: "Sfoglia clienti e macchine", action: () => onNavigate("explore") },
+    history: { id: "history", label: "Storico", icon: History, desc: "Cronologia interventi", action: () => onNavigate("history") },
+    database: { id: "database", label: "Database", icon: Database, desc: "Gestione anagrafiche", action: () => onNavigate("database") },
+    office: { id: "office", label: "Ufficio", icon: Briefcase, desc: "Statistiche e stampe", action: () => onNavigate("office") },
+    admin: { id: "admin", label: "Impostazioni", icon: Settings, desc: "Configurazione app", action: onAdminAccess }
   };
 
   return (
@@ -1855,7 +1656,7 @@ const DashboardView = ({ onNavigate, layoutConfig, onAdminAccess }) => {
         const item = items[key];
         if (!item) return null;
         const Icon = item.icon;
-
+        
         if (item.primary) {
           return (
             <button
@@ -1863,18 +1664,12 @@ const DashboardView = ({ onNavigate, layoutConfig, onAdminAccess }) => {
               onClick={item.action}
               className={`col-span-1 md:col-span-2 lg:col-span-3 p-8 rounded-3xl shadow-lg border-2 border-transparent bg-${color}-600 hover:bg-${color}-700 text-white flex flex-col md:flex-row items-center justify-center gap-4 transition-all active:scale-95 group`}
             >
-              <div
-                className={`p-4 bg-white/20 rounded-full group-hover:scale-110 transition-transform`}
-              >
+              <div className={`p-4 bg-white/20 rounded-full group-hover:scale-110 transition-transform`}>
                 <Icon className="w-10 h-10" />
               </div>
               <div className="text-center md:text-left">
-                <h3 className="text-2xl font-black uppercase tracking-tight">
-                  {item.label}
-                </h3>
-                <p className={`text-${color}-100 font-medium mt-1`}>
-                  {item.desc}
-                </p>
+                <h3 className="text-2xl font-black uppercase tracking-tight">{item.label}</h3>
+                <p className={`text-${color}-100 font-medium mt-1`}>{item.desc}</p>
               </div>
             </button>
           );
@@ -1886,15 +1681,11 @@ const DashboardView = ({ onNavigate, layoutConfig, onAdminAccess }) => {
             onClick={item.action}
             className={`p-6 bg-white rounded-3xl shadow-sm border border-slate-200 hover:border-${color}-300 hover:shadow-md flex flex-col items-center justify-center gap-4 transition-all active:scale-95 group`}
           >
-            <div
-              className={`p-4 bg-${color}-50 text-${color}-600 rounded-2xl group-hover:bg-${color}-600 group-hover:text-white transition-colors`}
-            >
+            <div className={`p-4 bg-${color}-50 text-${color}-600 rounded-2xl group-hover:bg-${color}-600 group-hover:text-white transition-colors`}>
               <Icon className="w-8 h-8" />
             </div>
             <div className="text-center">
-              <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight">
-                {item.label}
-              </h3>
+              <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight">{item.label}</h3>
               <p className="text-xs text-slate-500 mt-1">{item.desc}</p>
             </div>
           </button>
@@ -2074,14 +1865,10 @@ const ExploreView = React.memo(
                                   {/* BOTTONE FOTO ESPLORA */}
                                   {l.photos && l.photos.length > 0 && (
                                     <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        onOpenPhotos(l.photos);
-                                      }}
+                                      onClick={(e) => { e.stopPropagation(); onOpenPhotos(l.photos); }}
                                       className="text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-lg uppercase flex items-center gap-1 w-fit hover:bg-emerald-100 transition-colors"
                                     >
-                                      <Camera className="w-3 h-3" />{" "}
-                                      {l.photos.length} FOTO
+                                      <Camera className="w-3 h-3" /> {l.photos.length} FOTO
                                     </button>
                                   )}
                                 </div>
@@ -2372,7 +2159,7 @@ const OfficeView = ({
   customers,
   layoutConfig,
   technicians,
-  onOpenPhotos,
+  onOpenPhotos
 }) => {
   const today = new Date();
   const [calMonth, setCalMonth] = useState(today.getMonth());
@@ -2603,9 +2390,9 @@ const OfficeView = ({
                                   l
                                 )}</div>
                                 ${
-                                  l.photos && l.photos.length > 0
-                                    ? `<div style="color: #059669; font-size: 10px; margin-top: 4px;">[Allegati: ${l.photos.length} Foto]</div>`
-                                    : ""
+                                  l.photos && l.photos.length > 0 
+                                  ? `<div style="color: #059669; font-size: 10px; margin-top: 4px;">[Allegati: ${l.photos.length} Foto]</div>`
+                                  : ""
                                 }
                             </td>
                             <td>
@@ -2932,14 +2719,10 @@ const OfficeView = ({
                       {/* BOTTONE FOTO IN UFFICIO */}
                       {log.photos && log.photos.length > 0 && (
                         <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onOpenPhotos(log.photos);
-                          }}
+                          onClick={(e) => { e.stopPropagation(); onOpenPhotos(log.photos); }}
                           className="text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-lg uppercase flex items-center gap-1 hover:bg-emerald-100 transition-colors"
                         >
-                          <Camera className="w-3 h-3" /> {log.photos.length}{" "}
-                          FOTO
+                          <Camera className="w-3 h-3" /> {log.photos.length} FOTO
                         </button>
                       )}
                     </div>
@@ -3139,10 +2922,7 @@ const OfficeView = ({
                   {/* BOTTONE FOTO POPOVER */}
                   {l.photos && l.photos.length > 0 && (
                     <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onOpenPhotos(l.photos);
-                      }}
+                      onClick={(e) => { e.stopPropagation(); onOpenPhotos(l.photos); }}
                       className="text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-lg uppercase flex items-center gap-1 w-fit hover:bg-emerald-100 transition-colors"
                     >
                       <Camera className="w-3 h-3" /> {l.photos.length} FOTO
@@ -3180,12 +2960,12 @@ const NewEntryForm = ({
     description: "",
     ticketNumber: "",
     photos: [],
-    dateString: getTodayString(), // Formato YYYY-MM-DD per l'input date
+    dateString: getTodayString() // Formato YYYY-MM-DD per l'input date
   });
-
+  
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadingPhotos, setUploadingPhotos] = useState(false);
-
+  
   const [showMachineSuggestions, setShowMachineSuggestions] = useState(false);
   const [showCustomerSuggestions, setShowCustomerSuggestions] = useState(false);
   const [relatedMachines, setRelatedMachines] = useState([]);
@@ -3196,7 +2976,7 @@ const NewEntryForm = ({
   const [formError, setFormError] = useState("");
 
   const color = layoutConfig?.themeColor || "blue";
-
+  
   let formOrder = layoutConfig?.formOrder || DEFAULT_LAYOUT.formOrder;
   if (!formOrder.includes("photos")) {
     formOrder = [...formOrder];
@@ -3251,7 +3031,7 @@ const NewEntryForm = ({
       alert("Puoi caricare un massimo di 3 foto in totale.");
       return;
     }
-
+    
     setUploadingPhotos(true);
     try {
       const newBase64Photos = [];
@@ -3260,7 +3040,7 @@ const NewEntryForm = ({
         const base64 = await compressImage(file);
         newBase64Photos.push(base64);
       }
-      setFormData((p) => ({ ...p, photos: [...p.photos, ...newBase64Photos] }));
+      setFormData(p => ({ ...p, photos: [...p.photos, ...newBase64Photos] }));
     } catch (err) {
       console.error(err);
       alert("Errore durante l'elaborazione delle immagini.");
@@ -3271,10 +3051,7 @@ const NewEntryForm = ({
   };
 
   const removePhoto = (indexToRemove) => {
-    setFormData((p) => ({
-      ...p,
-      photos: p.photos.filter((_, idx) => idx !== indexToRemove),
-    }));
+    setFormData(p => ({ ...p, photos: p.photos.filter((_, idx) => idx !== indexToRemove) }));
   };
 
   const handleMachineIdChange = (e) => {
@@ -3367,7 +3144,7 @@ const NewEntryForm = ({
       setFormError(
         "Attenzione: Compila tutti i campi obbligatori (segnalati con l'asterisco rosso)."
       );
-      setTimeout(() => setFormError(""), 5000);
+      setTimeout(() => setFormError(""), 5000); 
       return;
     }
     setFormError("");
@@ -3390,14 +3167,7 @@ const NewEntryForm = ({
       }
 
       await addDoc(
-        collection(
-          db,
-          "artifacts",
-          appId,
-          "public",
-          "data",
-          "maintenance_logs"
-        ),
+        collection(db, "artifacts", appId, "public", "data", "maintenance_logs"),
         {
           ...formData,
           additionalTechnicians: cleanAdditionalTechs,
@@ -3409,45 +3179,24 @@ const NewEntryForm = ({
         }
       );
 
-      const existingCustomer = customers.find((c) => c.name === cleanCustomer);
+      const existingCustomer = customers.find(c => c.name === cleanCustomer);
       if (!existingCustomer) {
-        await addDoc(
-          collection(db, "artifacts", appId, "public", "data", "customers"),
-          { name: cleanCustomer }
-        );
+        await addDoc(collection(db, "artifacts", appId, "public", "data", "customers"), { name: cleanCustomer });
       }
 
-      const existingMachine = machines.find(
-        (m) =>
-          getSafeMatricola(m) === cleanMachineId &&
-          m.customerName === cleanCustomer
-      );
+      const existingMachine = machines.find(m => getSafeMatricola(m) === cleanMachineId && m.customerName === cleanCustomer);
       if (existingMachine) {
-        await updateDoc(
-          doc(
-            db,
-            "artifacts",
-            appId,
-            "public",
-            "data",
-            "machines",
-            existingMachine.id
-          ),
-          {
-            type: formData.machineType,
-            capacity: formData.capacity,
-          }
-        );
+        await updateDoc(doc(db, "artifacts", appId, "public", "data", "machines", existingMachine.id), {
+          type: formData.machineType,
+          capacity: formData.capacity
+        });
       } else {
-        await addDoc(
-          collection(db, "artifacts", appId, "public", "data", "machines"),
-          {
-            matricola: cleanMachineId,
-            customerName: cleanCustomer,
-            type: formData.machineType,
-            capacity: formData.capacity,
-          }
-        );
+        await addDoc(collection(db, "artifacts", appId, "public", "data", "machines"), {
+          matricola: cleanMachineId,
+          customerName: cleanCustomer,
+          type: formData.machineType,
+          capacity: formData.capacity
+        });
       }
 
       onSuccess();
@@ -3728,60 +3477,44 @@ const NewEntryForm = ({
         );
       case "photos":
         return (
-          <div
-            key="photos"
-            className="space-y-2 bg-slate-50 p-4 rounded-xl border border-slate-200"
-          >
+          <div key="photos" className="space-y-2 bg-slate-50 p-4 rounded-xl border border-slate-200">
             <div className="flex justify-between items-center">
               <div>
                 <label className="text-[10px] font-bold text-slate-600 uppercase flex items-center gap-1.5">
-                  <Camera className="w-4 h-4 text-slate-400" /> Allega Foto
-                  (Opzionale)
+                  <Camera className="w-4 h-4 text-slate-400" /> Allega Foto (Opzionale)
                 </label>
-                <p className="text-[9px] text-slate-400 mt-0.5">
-                  Max 3 foto. Verranno ottimizzate automaticamente.
-                </p>
+                <p className="text-[9px] text-slate-400 mt-0.5">Max 3 foto. Verranno ottimizzate automaticamente.</p>
               </div>
-              <label
-                className={`cursor-pointer px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-[10px] font-bold flex items-center gap-2 hover:bg-slate-100 transition-all ${
-                  formData.photos.length >= 3
-                    ? "opacity-50 cursor-not-allowed"
-                    : ""
-                }`}
-              >
+              <label className={`cursor-pointer px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-[10px] font-bold flex items-center gap-2 hover:bg-slate-100 transition-all ${formData.photos.length >= 3 ? 'opacity-50 cursor-not-allowed' : ''}`}>
                 <ImageIcon className="w-3 h-3" /> Scegli
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  className="hidden"
-                  onChange={handlePhotoUpload}
-                  disabled={formData.photos.length >= 3 || uploadingPhotos}
+                <input 
+                  type="file" 
+                  accept="image/*" 
+                  multiple 
+                  className="hidden" 
+                  onChange={handlePhotoUpload} 
+                  disabled={formData.photos.length >= 3 || uploadingPhotos} 
                 />
               </label>
             </div>
-
+            
             {uploadingPhotos && (
               <div className="flex items-center gap-2 text-[10px] text-blue-600 font-bold animate-pulse mt-2">
-                <RefreshCw className="w-3 h-3 animate-spin" /> Elaborazione
-                immagini in corso...
+                <RefreshCw className="w-3 h-3 animate-spin" /> Elaborazione immagini in corso...
               </div>
             )}
 
             {formData.photos.length > 0 && (
               <div className="flex gap-3 overflow-x-auto pt-2 pb-1 snap-x">
                 {formData.photos.map((photoStr, idx) => (
-                  <div
-                    key={idx}
-                    className="relative shrink-0 snap-center group"
-                  >
-                    <img
-                      src={photoStr}
-                      className="w-20 h-20 object-cover rounded-xl border-2 border-white shadow-md"
+                  <div key={idx} className="relative shrink-0 snap-center group">
+                    <img 
+                      src={photoStr} 
+                      className="w-20 h-20 object-cover rounded-xl border-2 border-white shadow-md" 
                       alt="Anteprima"
                     />
-                    <button
-                      type="button"
+                    <button 
+                      type="button" 
                       onClick={() => removePhoto(idx)}
                       className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full shadow-md hover:bg-red-600 hover:scale-110 transition-all"
                       title="Rimuovi foto"
@@ -3995,7 +3728,7 @@ const NewEntryForm = ({
                     description: "",
                     ticketNumber: "",
                     photos: [],
-                    dateString: getTodayString(),
+                    dateString: getTodayString()
                   }));
                   setLastIntervention(null);
                   setRelatedMachines([]);
@@ -4043,6 +3776,46 @@ const HistoryView = ({
   const [err, setErr] = useState(false);
   const [isFreeAction, setIsFreeAction] = useState(false);
   const color = layoutConfig?.themeColor || "blue";
+
+  // --- STATO E LOGICA PER IL RIDIMENSIONAMENTO COLONNE ---
+  const [colWidths, setColWidths] = useState({
+    date: 140,
+    customer: 240,
+    description: 350,
+    techs: 160,
+    actions: 100
+  });
+  const resizingRef = useRef(null);
+
+  const startResize = (e, col) => {
+    e.preventDefault();
+    e.stopPropagation();
+    resizingRef.current = { col, startX: e.clientX, startWidth: colWidths[col] };
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+  };
+
+  const handleMouseMove = useCallback((e) => {
+    if (!resizingRef.current) return;
+    const { col, startX, startWidth } = resizingRef.current;
+    const delta = e.clientX - startX;
+    const newWidth = Math.max(60, startWidth + delta); // Larghezza minima
+    setColWidths(prev => ({ ...prev, [col]: newWidth }));
+  }, []);
+
+  const handleMouseUp = useCallback(() => {
+    resizingRef.current = null;
+    document.removeEventListener("mousemove", handleMouseMove);
+    document.removeEventListener("mouseup", handleMouseUp);
+  }, [handleMouseMove]);
+
+  useEffect(() => {
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [handleMouseMove, handleMouseUp]);
+  // ---------------------------------------------------------
 
   const filtered = logs.filter((l) => {
     const s = searchTerm.toLowerCase();
@@ -4187,10 +3960,7 @@ const HistoryView = ({
                     {/* BOTTONE FOTO STORICO MOBILE */}
                     {log.photos && log.photos.length > 0 && (
                       <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onOpenPhotos(log.photos);
-                        }}
+                        onClick={(e) => { e.stopPropagation(); onOpenPhotos(log.photos); }}
                         className="text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-lg uppercase whitespace-nowrap flex items-center gap-1 hover:bg-emerald-100 transition-colors"
                       >
                         <Camera className="w-3 h-3" /> {log.photos.length} FOTO
@@ -4229,122 +3999,123 @@ const HistoryView = ({
             ))}
           </div>
         ) : (
-          <table className="w-full text-left table-fixed">
-            <thead className="bg-slate-50 border-b border-slate-200">
-              <tr>
-                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase w-[100px]">
-                  Data
-                </th>
-                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase w-[240px]">
-                  Cliente
-                </th>
-                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase">
-                  Descrizione
-                </th>
-                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase w-[160px]">
-                  Tecnici
-                </th>
-                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase text-center w-[120px]">
-                  Azioni
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {paginated.map((log) => (
-                <tr key={log.id} className="hover:bg-slate-50 group">
-                  <td className="px-6 py-4 text-xs font-bold text-slate-500 align-top">
-                    <div className="whitespace-nowrap">{log.dateString}</div>
-                    {isAdmin && log.createdAt && (
-                      <div
-                        className="text-[9px] text-purple-600 font-bold mt-1 flex items-center gap-1"
-                        title="Orario di inserimento (Admin)"
-                      >
-                        <Clock className="w-3 h-3" />{" "}
-                        {new Date(
-                          log.createdAt.seconds * 1000
-                        ).toLocaleTimeString([], {
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </div>
-                    )}
-                    <div className="flex flex-col gap-1 mt-1.5 items-start">
-                      {log.ticketNumber && (
-                        <div className="text-[9px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded inline-block uppercase tracking-wider whitespace-nowrap">
-                          N. Assistenza {log.ticketNumber}
+          <div className="overflow-x-auto custom-scrollbar w-full">
+            <table className="text-left table-fixed border-collapse" style={{ width: 'max-content', minWidth: '100%' }}>
+              <thead className="bg-slate-50 border-b border-slate-200">
+                <tr>
+                  <th className="px-4 py-3 text-[10px] font-black text-slate-400 uppercase relative group select-none border-r border-slate-200" style={{ width: colWidths.date }}>
+                    Data
+                    <div onMouseDown={(e) => startResize(e, 'date')} onTouchStart={(e) => startResize(e.touches[0], 'date')} className="absolute right-0 top-0 bottom-0 w-4 cursor-col-resize hover:bg-blue-400 opacity-0 group-hover:opacity-100 z-10 translate-x-1/2" />
+                  </th>
+                  <th className="px-4 py-3 text-[10px] font-black text-slate-400 uppercase relative group select-none border-r border-slate-200" style={{ width: colWidths.customer }}>
+                    Cliente
+                    <div onMouseDown={(e) => startResize(e, 'customer')} onTouchStart={(e) => startResize(e.touches[0], 'customer')} className="absolute right-0 top-0 bottom-0 w-4 cursor-col-resize hover:bg-blue-400 opacity-0 group-hover:opacity-100 z-10 translate-x-1/2" />
+                  </th>
+                  <th className="px-4 py-3 text-[10px] font-black text-slate-400 uppercase relative group select-none border-r border-slate-200" style={{ width: colWidths.description }}>
+                    Descrizione
+                    <div onMouseDown={(e) => startResize(e, 'description')} onTouchStart={(e) => startResize(e.touches[0], 'description')} className="absolute right-0 top-0 bottom-0 w-4 cursor-col-resize hover:bg-blue-400 opacity-0 group-hover:opacity-100 z-10 translate-x-1/2" />
+                  </th>
+                  <th className="px-4 py-3 text-[10px] font-black text-slate-400 uppercase relative group select-none border-r border-slate-200" style={{ width: colWidths.techs }}>
+                    Tecnici
+                    <div onMouseDown={(e) => startResize(e, 'techs')} onTouchStart={(e) => startResize(e.touches[0], 'techs')} className="absolute right-0 top-0 bottom-0 w-4 cursor-col-resize hover:bg-blue-400 opacity-0 group-hover:opacity-100 z-10 translate-x-1/2" />
+                  </th>
+                  <th className="px-4 py-3 text-[10px] font-black text-slate-400 uppercase text-center relative group select-none" style={{ width: colWidths.actions }}>
+                    Azioni
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {paginated.map((log) => (
+                  <tr key={log.id} className="hover:bg-slate-50 group">
+                    <td className="px-4 py-4 text-xs font-bold text-slate-500 align-top border-r border-slate-100 overflow-hidden">
+                      <div className="whitespace-nowrap">{log.dateString}</div>
+                      {isAdmin && log.createdAt && (
+                        <div
+                          className="text-[9px] text-purple-600 font-bold mt-1 flex items-center gap-1"
+                          title="Orario di inserimento (Admin)"
+                        >
+                          <Clock className="w-3 h-3" />{" "}
+                          {new Date(
+                            log.createdAt.seconds * 1000
+                          ).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
                         </div>
                       )}
-                      {/* BOTTONE FOTO STORICO DESKTOP */}
-                      {log.photos && log.photos.length > 0 && (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onOpenPhotos(log.photos);
-                          }}
-                          className="text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded uppercase tracking-wider whitespace-nowrap flex items-center gap-1 hover:bg-emerald-100 transition-colors"
-                        >
-                          <Camera className="w-3 h-3" /> {log.photos.length}{" "}
-                          FOTO
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 align-top">
-                    <div className="flex flex-col">
-                      <span
-                        className="font-bold text-slate-800 uppercase text-xs cursor-pointer hover:text-blue-600 hover:underline break-words whitespace-normal leading-tight"
-                        onClick={() => onOpenCustomer(log.customer)}
-                      >
-                        {log.customer}
-                      </span>
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        <span
-                          className={`text-[10px] text-${color}-600 font-bold cursor-pointer hover:underline`}
-                          onClick={() =>
-                            onOpenMachine(log.machineId, log.customer)
-                          }
-                        >
-                          {log.machineId}
-                        </span>
-                        <span className="text-[10px] text-slate-500 border-l border-slate-300 pl-1 ml-1">
-                          {log.machineType}
-                        </span>
-                        {log.capacity && (
-                          <span className="text-[10px] text-slate-500 border-l border-slate-300 pl-1 ml-1">
-                            {formatCapacity(log.capacity)}
-                          </span>
+                      <div className="flex flex-col gap-1 mt-1.5 items-start">
+                        {log.ticketNumber && (
+                          <div className="text-[9px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded inline-block uppercase tracking-wider whitespace-nowrap">
+                            N. Assistenza {log.ticketNumber}
+                          </div>
+                        )}
+                        {log.photos && log.photos.length > 0 && (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); onOpenPhotos(log.photos); }}
+                            className="text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-1.5 py-0.5 rounded uppercase tracking-wider whitespace-nowrap flex items-center gap-1 hover:bg-emerald-100 transition-colors"
+                          >
+                            <Camera className="w-3 h-3" /> {log.photos.length} FOTO
+                          </button>
                         )}
                       </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-xs text-slate-600 italic break-words whitespace-pre-wrap align-top">
-                    "{log.description}"
-                  </td>
-                  <td className="px-6 py-4 text-[10px] font-bold uppercase text-slate-600 align-top">
-                    {getTechsString(log)}
-                  </td>
-                  <td className="px-6 py-4 text-center align-top">
-                    <div className="flex justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        onClick={() => handleEdit(log)}
-                        className={`text-${color}-500 hover:scale-110`}
-                        title="Modifica"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(log)}
-                        className="text-red-500 hover:scale-110"
-                        title="Elimina"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                    </td>
+                    <td className="px-4 py-4 align-top border-r border-slate-100 overflow-hidden">
+                      <div className="flex flex-col">
+                        <span
+                          className="font-bold text-slate-800 uppercase text-xs cursor-pointer hover:text-blue-600 hover:underline break-words whitespace-normal leading-tight"
+                          onClick={() => onOpenCustomer(log.customer)}
+                        >
+                          {log.customer}
+                        </span>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          <span
+                            className={`text-[10px] text-${color}-600 font-bold cursor-pointer hover:underline`}
+                            onClick={() =>
+                              onOpenMachine(log.machineId, log.customer)
+                            }
+                          >
+                            {log.machineId}
+                          </span>
+                          <span className="text-[10px] text-slate-500 border-l border-slate-300 pl-1 ml-1">
+                            {log.machineType}
+                          </span>
+                          {log.capacity && (
+                            <span className="text-[10px] text-slate-500 border-l border-slate-300 pl-1 ml-1">
+                              {formatCapacity(log.capacity)}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-4 py-4 text-xs text-slate-600 italic break-words whitespace-pre-wrap align-top border-r border-slate-100 overflow-hidden">
+                      "{log.description}"
+                    </td>
+                    <td className="px-4 py-4 text-[10px] font-bold uppercase text-slate-600 align-top border-r border-slate-100 overflow-hidden">
+                      {getTechsString(log)}
+                    </td>
+                    <td className="px-4 py-4 text-center align-top">
+                      <div className="flex justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={() => handleEdit(log)}
+                          className={`text-${color}-500 hover:scale-110`}
+                          title="Modifica"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(log)}
+                          className="text-red-500 hover:scale-110"
+                          title="Elimina"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
         {totalPages > 1 && (
           <div className="p-4 flex justify-between">
@@ -4404,6 +4175,7 @@ const AdminPanel = ({
   onUpdateLayout,
   notificationsEnabled,
   setNotificationsEnabled,
+  onLogout,
 }) => {
   const [view, setView] = useState("design");
   const [inputValue, setInputValue] = useState("");
@@ -4416,6 +4188,7 @@ const AdminPanel = ({
   const [itemToDelete, setItemToDelete] = useState(null);
   const [duplicateAnalysis, setDuplicateAnalysis] = useState(null);
   const [ignoredConflicts, setIgnoredConflicts] = useState([]);
+  const [showClearLogsConfirm, setShowClearLogsConfirm] = useState(false);
 
   const [clientSearch, setClientSearch] = useState("");
   const [clientSort, setClientSort] = useState("az");
@@ -4529,7 +4302,10 @@ const AdminPanel = ({
 
   const analyzeDuplicates = (type, items) => {
     const pairs = [];
-    const normalize = (s) => (s || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+    const normalize = (s) =>
+      (s || "")
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, "");
     for (let i = 0; i < items.length; i++) {
       for (let j = i + 1; j < items.length; j++) {
         const pairId = [items[i].id, items[j].id].sort().join("_");
@@ -4731,7 +4507,7 @@ const AdminPanel = ({
   };
 
   const toggleNotifications = async () => {
-    if (!("Notification" in window)) return alert("Non supportato");
+    if (!("Notification" in window)) return;
     if (!notificationsEnabled) {
       const permission = await Notification.requestPermission();
       if (permission === "granted") {
@@ -4743,6 +4519,19 @@ const AdminPanel = ({
       setNotificationsEnabled(false);
       localStorage.setItem("mora_notifications", "false");
     }
+  };
+
+  const executeClearLogs = async () => {
+    try {
+      const q = collection(db, "artifacts", appId, "public", "data", "access_logs");
+      const snap = await getDocs(q);
+      const batch = writeBatch(db);
+      snap.forEach(d => batch.delete(d.ref));
+      await batch.commit();
+    } catch (e) {
+      console.error(e);
+    }
+    setShowClearLogsConfirm(false);
   };
 
   return (
@@ -5109,7 +4898,7 @@ const AdminPanel = ({
           <h4 className="font-black text-slate-800 uppercase mb-4 flex items-center gap-2">
             <Activity className="w-5 h-5 text-blue-500" /> Stato Sistema
           </h4>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
             <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div
@@ -5139,7 +4928,7 @@ const AdminPanel = ({
               onClick={() => window.location.reload()}
               className="p-4 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-start gap-4"
             >
-              <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center">
+              <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center shrink-0">
                 <RefreshCw className="w-5 h-5" />
               </div>
               <div className="text-left">
@@ -5148,10 +4937,32 @@ const AdminPanel = ({
                 </h5>
               </div>
             </button>
+            <button
+              onClick={onLogout}
+              className="p-4 rounded-xl border border-red-200 bg-red-50 hover:bg-red-100 flex items-center justify-start gap-4 transition-all"
+            >
+              <div className="w-10 h-10 bg-red-100 text-red-600 rounded-full flex items-center justify-center shrink-0">
+                <LogOut className="w-5 h-5" />
+              </div>
+              <div className="text-left">
+                <h5 className="font-bold text-sm text-red-800 uppercase">
+                  Scollega
+                </h5>
+                <p className="text-[10px] text-red-600 font-bold uppercase">Torna al Login</p>
+              </div>
+            </button>
           </div>
-          <h4 className="font-black text-slate-800 uppercase mb-4 flex items-center gap-2">
-            <Terminal className="w-5 h-5 text-slate-800" /> Log Accessi
-          </h4>
+          <div className="flex justify-between items-center mb-4 mt-8">
+            <h4 className="font-black text-slate-800 uppercase flex items-center gap-2">
+              <Terminal className="w-5 h-5 text-slate-800" /> Log Accessi
+            </h4>
+            <button
+              onClick={() => setShowClearLogsConfirm(true)}
+              className="px-3 py-1.5 bg-red-50 text-red-600 rounded-lg font-bold text-[10px] uppercase hover:bg-red-100 flex items-center gap-1 transition-colors"
+            >
+              <Trash2 className="w-3 h-3" /> Svuota Log
+            </button>
+          </div>
           <div className="bg-slate-900 rounded-xl p-4 overflow-hidden font-mono text-xs text-green-400 h-[200px] overflow-y-auto">
             {logs.map((log) => (
               <div key={log.id} className="mb-1">
@@ -5167,6 +4978,31 @@ const AdminPanel = ({
                 {log.action || "INFO"} {log.technician} ({log.device})
               </div>
             ))}
+            {logs.length === 0 && <span className="text-slate-500 italic">Nessun log recente.</span>}
+          </div>
+        </div>
+      )}
+
+      {showClearLogsConfirm && (
+        <div className="fixed inset-0 z-[300] bg-slate-900/60 flex items-center justify-center p-4">
+          <div className="p-6 max-w-xs w-full text-center bg-white rounded-xl shadow-xl border-t-4 border-t-red-500">
+            <h4 className="font-black text-slate-800 uppercase text-sm mb-4">
+              Svuotare tutti i log di accesso?
+            </h4>
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={executeClearLogs}
+                className="py-3 bg-red-600 text-white rounded-lg font-bold text-xs uppercase"
+              >
+                Svuota
+              </button>
+              <button
+                onClick={() => setShowClearLogsConfirm(false)}
+                className="py-3 bg-slate-100 text-slate-600 rounded-lg font-bold text-xs uppercase"
+              >
+                Annulla
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -5279,11 +5115,7 @@ export default function App() {
 
     const updateLayout = () => {
       let isPortrait = true;
-      if (
-        window.screen &&
-        window.screen.orientation &&
-        window.screen.orientation.type
-      ) {
+      if (window.screen && window.screen.orientation && window.screen.orientation.type) {
         isPortrait = window.screen.orientation.type.startsWith("portrait");
       } else if (window.matchMedia) {
         isPortrait = window.matchMedia("(orientation: portrait)").matches;
@@ -5291,7 +5123,7 @@ export default function App() {
         isPortrait = window.innerHeight >= window.innerWidth;
       }
 
-      const isSmallScreen = window.innerWidth < 1024;
+      const isSmallScreen = window.innerWidth < 1024; 
       setIsMobileView(isSmallScreen && isPortrait);
     };
 
@@ -5465,7 +5297,7 @@ export default function App() {
             if (dateIdx !== -1) fOrder.splice(dateIdx + 1, 0, "ticketNumber");
             else fOrder.unshift("ticketNumber");
           }
-
+          
           if (!fOrder.includes("photos")) {
             fOrder = [...fOrder];
             const descIdx = fOrder.indexOf("description");
@@ -5578,7 +5410,7 @@ export default function App() {
       setActiveTab("admin");
     }
   };
-
+  
   const handleUpdateLayout = async (cfg) => {
     setLayoutConfig(cfg);
     await setDoc(
@@ -5619,6 +5451,16 @@ export default function App() {
     localStorage.setItem("mora_app_unlocked", "true");
     setCurrentTechName(techName);
     setIsAppUnlocked(true);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem("mora_tech_last_name");
+    localStorage.removeItem("mora_app_unlocked");
+    sessionStorage.removeItem("mora_access_tech");
+    setCurrentTechName("");
+    setIsAppUnlocked(false);
+    setIsAdminAuthenticated(false);
+    setActiveTab("dashboard");
   };
 
   const color = layoutConfig.themeColor || "blue";
@@ -5896,6 +5738,7 @@ export default function App() {
                 onUpdateLayout={handleUpdateLayout}
                 notificationsEnabled={notificationsEnabled}
                 setNotificationsEnabled={setNotificationsEnabled}
+                onLogout={handleLogout}
               />
             )}
           </div>
@@ -5904,9 +5747,9 @@ export default function App() {
 
       {/* Visualizzatore Foto Globale */}
       {globalPhotoView && (
-        <PhotoViewerModal
-          photos={globalPhotoView}
-          onClose={() => setGlobalPhotoView(null)}
+        <PhotoViewerModal 
+          photos={globalPhotoView} 
+          onClose={() => setGlobalPhotoView(null)} 
         />
       )}
 
