@@ -2380,6 +2380,9 @@ const OfficeView = ({
 
   const [viewMode, setViewMode] = useState("month");
   const [ticketSearch, setTicketSearch] = useState("");
+  const [ticketSearchYear, setTicketSearchYear] = useState(
+    today.getFullYear().toString()
+  );
 
   const [selectedCustomer, setSelectedCustomer] = useState("");
   const [selectedMachine, setSelectedMachine] = useState("");
@@ -2391,13 +2394,41 @@ const OfficeView = ({
   const [popoverData, setPopoverData] = useState(null);
   const color = layoutConfig?.themeColor || "blue";
 
+  const availableYears = useMemo(() => {
+    const years = new Set();
+    logs.forEach((l) => {
+      if (l.dateString) {
+        const parts = l.dateString.split("/");
+        if (parts.length === 3) years.add(parts[2]);
+      }
+    });
+    // Assicuriamoci che l'anno corrente sia sempre presente
+    years.add(today.getFullYear().toString());
+    // Ordine decrescente
+    return Array.from(years).sort((a, b) => b - a);
+  }, [logs]);
+
   const ticketSearchResults = useMemo(() => {
     if (!ticketSearch.trim()) return [];
     const term = ticketSearch.toLowerCase().trim();
-    return logs.filter(
-      (l) => l.ticketNumber && l.ticketNumber.toLowerCase().includes(term)
-    );
-  }, [logs, ticketSearch]);
+    return logs.filter((l) => {
+      const matchNumber =
+        l.ticketNumber && l.ticketNumber.toLowerCase().includes(term);
+      if (!matchNumber) return false;
+
+      // Se è selezionato "tutti", non filtriamo per anno
+      if (ticketSearchYear === "tutti") return true;
+
+      // Controllo esatto sull'anno selezionato (formato DD/MM/YYYY)
+      if (l.dateString) {
+        const parts = l.dateString.split("/");
+        if (parts.length === 3 && parts[2] === ticketSearchYear) {
+          return true;
+        }
+      }
+      return false;
+    });
+  }, [logs, ticketSearch, ticketSearchYear]);
 
   const monthNames = [
     "Gennaio",
@@ -2895,15 +2926,29 @@ const OfficeView = ({
             Cerca N. Assistenza
           </h2>
         </div>
-        <div className="relative mb-4">
-          <input
-            type="text"
-            placeholder="Inserisci il numero assistenza (es. 12345)..."
-            className={PRO_INPUT}
-            value={ticketSearch}
-            onChange={(e) => setTicketSearch(e.target.value)}
-          />
-          <Search className="absolute right-3 top-3.5 text-slate-400 w-5 h-5" />
+        <div className="flex gap-2 mb-4">
+          <div className="relative flex-1">
+            <input
+              type="text"
+              placeholder="Inserisci numero (es. 12345)..."
+              className={PRO_INPUT}
+              value={ticketSearch}
+              onChange={(e) => setTicketSearch(e.target.value)}
+            />
+            <Search className="absolute right-3 top-3.5 text-slate-400 w-5 h-5" />
+          </div>
+          <select
+            className={`${PRO_INPUT} !w-32 md:!w-40 shrink-0 font-bold`}
+            value={ticketSearchYear}
+            onChange={(e) => setTicketSearchYear(e.target.value)}
+          >
+            <option value="tutti">Tutti gli anni</option>
+            {availableYears.map((y) => (
+              <option key={y} value={y}>
+                Anno {y}
+              </option>
+            ))}
+          </select>
         </div>
         {ticketSearch.trim() !== "" && (
           <div className="space-y-3 max-h-[400px] overflow-y-auto custom-scrollbar">
