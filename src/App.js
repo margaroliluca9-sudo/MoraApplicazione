@@ -4668,7 +4668,9 @@ const AdminPanel = ({
         (b.matricola || b.id).localeCompare(a.matricola || a.id)
       );
     else if (machineSort === "cust-az")
-      res.sort((a, b) => a.customerName.localeCompare(b.customerName));
+      res.sort((a, b) =>
+        (a.customerName || "").localeCompare(b.customerName || "")
+      );
     return res;
   }, [machines, machineSearch, machineSort]);
 
