@@ -126,3 +126,38 @@ export const getLevenshteinDistance = (a, b) => {
   }
   return matrix[b.length][a.length];
 };
+
+// PORTATE SUGGERITE: le più inserite negli interventi, in ordine di utilizzo.
+// "2000", "2000 kg", "2.000 kg" contano come la stessa portata.
+export const DEFAULT_CAPACITIES = [
+  "250 kg",
+  "500 kg",
+  "1000 kg",
+  "2000 kg",
+  "3200 kg",
+  "5000 kg",
+  "10000 kg",
+];
+export const normalizeCapacity = (value) => {
+  const s = String(value === undefined || value === null ? "" : value)
+    .toLowerCase()
+    .replace(/\s+/g, " ")
+    .trim();
+  const m = s.match(/^(\d{1,3}(?:[.,]\d{3})+|\d+)\s*(?:kg)?$/);
+  if (!m) return null;
+  const n = parseInt(m[1].replace(/[.,]/g, ""), 10);
+  return n > 0 ? `${n} kg` : null;
+};
+export const getSuggestedCapacities = (logs, max = 7) => {
+  const counts = {};
+  (logs || []).forEach((l) => {
+    const c = normalizeCapacity(l && l.capacity);
+    if (c) counts[c] = (counts[c] || 0) + 1;
+  });
+  const used = Object.entries(counts)
+    .sort(([a, x], [b, y]) => y - x || parseInt(a, 10) - parseInt(b, 10))
+    .map(([c]) => c)
+    .slice(0, max);
+  const fill = DEFAULT_CAPACITIES.filter((c) => !used.includes(c));
+  return [...used, ...fill].slice(0, max);
+};

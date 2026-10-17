@@ -18,6 +18,7 @@ import {
   serverTimestamp,
   doc,
   setDoc,
+  deleteDoc,
 } from "firebase/firestore";
 import { auth, db, appId } from "./firebase";
 import { DEFAULT_LAYOUT } from "./constants";
@@ -191,6 +192,37 @@ export default function App() {
 
     return () => clearInterval(interval);
   }, [user, currentTechName]);
+
+  // DISCONNESSIONE FORZATA dall'amministratore (Admin > System)
+  const logoutRef = useRef(null);
+  useEffect(() => {
+    if (!user) return;
+    const sessionId =
+      sessionStorage.getItem("mora_session_id") || crypto.randomUUID();
+    sessionStorage.setItem("mora_session_id", sessionId);
+    const presenceRef = doc(
+      db,
+      "artifacts",
+      appId,
+      "public",
+      "data",
+      "active_users",
+      sessionId
+    );
+    const unsub = onSnapshot(presenceRef, (snap) => {
+      const data = snap && snap.exists() ? snap.data() : null;
+      const kickedAt = data && data.kickedAt && data.kickedAt.seconds;
+      if (!kickedAt) return;
+      // ogni richiesta viene applicata una sola volta (niente loop)
+      if (sessionStorage.getItem("mora_kick_handled") === String(kickedAt))
+        return;
+      sessionStorage.setItem("mora_kick_handled", String(kickedAt));
+      deleteDoc(presenceRef).catch(() => {});
+      if (logoutRef.current) logoutRef.current();
+      alert("Sei stato disconnesso dall'amministratore.");
+    });
+    return () => unsub();
+  }, [user]);
 
   useEffect(() => {
     if (!user) return;
@@ -416,6 +448,7 @@ export default function App() {
     setIsAdminAuthenticated(false);
     setActiveTab("dashboard");
   };
+  logoutRef.current = handleLogout;
 
   const color = layoutConfig.themeColor || "blue";
 
@@ -693,6 +726,7 @@ export default function App() {
                 notificationsEnabled={notificationsEnabled}
                 setNotificationsEnabled={setNotificationsEnabled}
                 onLogout={handleLogout}
+                allLogs={logs}
               />
             )}
           </div>
@@ -715,6 +749,7 @@ export default function App() {
           onOpenCustomer={openCustomerDetail}
           onOpenPhotos={setGlobalPhotoView}
           themeColor={color}
+          appTitle={layoutConfig?.appTitle}
         />
       )}
       {viewingCustomerDetail && (

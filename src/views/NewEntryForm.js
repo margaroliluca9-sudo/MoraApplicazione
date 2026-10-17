@@ -32,6 +32,9 @@ import {
   getSafeMatricola,
 } from "../utils";
 import { PRO_INPUT, getButtonPrimaryClass, getProPanelClass } from "../ui";
+import { PartsEditor } from "../components/PartsEditor";
+import { cleanParts } from "../parts";
+import { getSuggestedCapacities } from "../utils";
 
 export const NewEntryForm = ({
   user,
@@ -55,6 +58,7 @@ export const NewEntryForm = ({
     description: "",
     ticketNumber: "",
     photos: [],
+    parts: [],
     dateString: getTodayString(), // Formato YYYY-MM-DD per l'input date
   });
 
@@ -78,6 +82,11 @@ export const NewEntryForm = ({
     if (descIdx !== -1) formOrder.splice(descIdx + 1, 0, "photos");
     else formOrder.push("photos");
   }
+  if (!formOrder.includes("parts")) {
+    formOrder = [...formOrder];
+    const photosIdx = formOrder.indexOf("photos");
+    formOrder.splice(photosIdx + 1, 0, "parts");
+  }
 
   const topTechs = useMemo(() => {
     if (!allLogs) return [];
@@ -90,6 +99,12 @@ export const NewEntryForm = ({
       .slice(0, 3)
       .map(([name]) => name);
   }, [allLogs]);
+
+  // Portate suggerite: le 7 più inserite negli interventi (completate con quelle standard)
+  const suggestedCapacities = useMemo(
+    () => getSuggestedCapacities(allLogs),
+    [allLogs]
+  );
 
   const sortedTechs = [...technicians].sort((a, b) =>
     a.name.localeCompare(b.name)
@@ -291,6 +306,7 @@ export const NewEntryForm = ({
           machineId: cleanMachineId,
           customer: cleanCustomer,
           dateString: finalDateString,
+          parts: cleanParts(formData.parts),
           userId: user.uid,
           createdAt: serverTimestamp(),
         }
@@ -681,16 +697,16 @@ export const NewEntryForm = ({
             )}
           </div>
         );
+      case "parts":
+        return (
+          <PartsEditor
+            key="parts"
+            parts={formData.parts}
+            onChange={(parts) => setFormData((p) => ({ ...p, parts }))}
+          />
+        );
       case "capacity":
-        const commonCapacities = [
-          "250 kg",
-          "500 kg",
-          "1000 kg",
-          "2000 kg",
-          "3200 kg",
-          "5000 kg",
-          "10000 kg",
-        ];
+        const commonCapacities = suggestedCapacities;
         return layoutConfig.formSettings.showCapacity ? (
           <div key="cap" className="space-y-2">
             <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">
@@ -882,6 +898,7 @@ export const NewEntryForm = ({
                     description: "",
                     ticketNumber: "",
                     photos: [],
+                    parts: [],
                     dateString: getTodayString(),
                   }));
                   setLastIntervention(null);

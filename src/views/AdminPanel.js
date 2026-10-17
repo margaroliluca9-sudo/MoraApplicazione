@@ -18,6 +18,11 @@ import {
   Layout,
   GitMerge,
   LogOut,
+  Check,
+  X,
+  UserX,
+  Database,
+  HardDrive,
 } from "lucide-react";
 import {
   collection,
@@ -54,8 +59,13 @@ export const AdminPanel = ({
   notificationsEnabled,
   setNotificationsEnabled,
   onLogout,
+  allLogs = [],
 }) => {
   const [view, setView] = useState("design");
+  const [renaming, setRenaming] = useState(null); // { id, value }
+  const [renameBusy, setRenameBusy] = useState(false);
+  const [kickBusy, setKickBusy] = useState(null);
+  const [storageInfo, setStorageInfo] = useState(null);
   const [inputValue, setInputValue] = useState("");
   const [logs, setLogs] = useState([]);
   const [activeUsers, setActiveUsers] = useState([]);
@@ -115,9 +125,16 @@ export const AdminPanel = ({
           const grouped = {};
           rawUsers.forEach((u) => {
             if (!grouped[u.technician])
-              grouped[u.technician] = { ...u, allDevices: new Set([u.device]) };
+              grouped[u.technician] = {
+                ...u,
+                allDevices: new Set([u.device]),
+                sessionIds: [u.id],
+                pendingKick: !!u.kickedAt,
+              };
             else {
               grouped[u.technician].allDevices.add(u.device);
+              grouped[u.technician].sessionIds.push(u.id);
+              if (u.kickedAt) grouped[u.technician].pendingKick = true;
               if (
                 u.lastActive.seconds > grouped[u.technician].lastActive.seconds
               )
@@ -258,6 +275,154 @@ export const AdminPanel = ({
       name: inputValue,
     });
     setInputValue("");
+  };
+
+  // Spazio usato dall'app sul dispositivo (dati offline)
+  useEffect(() => {
+    if (view !== "diagnostics") return;
+    try {
+      if (navigator.storage && navigator.storage.estimate)
+        navigator.storage
+          .estimate()
+          .then((e) => setStorageInfo(e))
+          .catch(() => {});
+    } catch (e) {}
+  }, [view]);
+
+  // Statistiche dell'archivio (sezione System)
+  const dbStats = useMemo(() => {
+    let withPhotos = 0;
+    let withParts = 0;
+    let lastKey = 0;
+    let last = null;
+    allLogs.forEach((l) => {
+      if (l.photos && l.photos.length) withPhotos++;
+      if (Array.isArray(l.parts) && l.parts.length) withParts++;
+      const parts = String(l.dateString || "").split("/").map(Number);
+      if (parts.length === 3) {
+        const k = parts[2] * 10000 + parts[1] * 100 + parts[0];
+        if (k > lastKey) {
+          lastKey = k;
+          last = l.dateString;
+        }
+      }
+    });
+    return { withPhotos, withParts, last };
+  }, [allLogs]);
+
+  // Disconnette tutti i dispositivi di un tecnico
+  const kickUser = async (u) => {
+    if (
+      !window.confirm(
+        `Disconnettere ${u.technician}? Il suo dispositivo tornerà alla schermata di accesso.`
+      )
+    )
+      return;
+    setKickBusy(u.technician);
+    try {
+      await Promise.all(
+        (u.sessionIds || []).map((sid) =>
+          setDoc(
+            doc(db, "artifacts", appId, "public", "data", "active_users", sid),
+            { kickedAt: serverTimestamp() },
+            { merge: true }
+          )
+        )
+      );
+    } catch (e) {
+      console.error(e);
+      alert("Impossibile disconnettere: " + describeError(e));
+    } finally {
+      setKickBusy(null);
+    }
+  };
+
+  // Esegue gli aggiornamenti a blocchi (Firebase accetta max 500 operazioni per volta)
+  const commitInChunks = async (ops) => {
+    for (let i = 0; i < ops.length; i += 400) {
+      const batch = writeBatch(db);
+      ops.slice(i, i + 400).forEach(([ref, data]) => batch.update(ref, data));
+      await batch.commit();
+    }
+  };
+
+  // Rinomina un tecnico o un tipo di gru e aggiorna tutto ciò che lo usa
+  const renameItem = async (item, rawName) => {
+    const isTech = view === "techs";
+    const newName = String(rawName || "").trim();
+    const oldName = item.name;
+    if (!newName || newName === oldName) return setRenaming(null);
+    const list = isTech ? technicians : machineTypes;
+    if (
+      list.some(
+        (x) =>
+          x.id !== item.id &&
+          String(x.name).trim().toLowerCase() === newName.toLowerCase()
+      )
+    )
+      return alert(`Esiste già "${newName}".`);
+    setRenameBusy(true);
+    try {
+      const base = ["artifacts", appId, "public", "data"];
+      const logsColl = collection(db, ...base, "maintenance_logs");
+      const ops = [];
+      let logsUpdated = 0;
+      let machinesUpdated = 0;
+      if (isTech) {
+        ops.push([doc(db, ...base, "technicians", item.id), { name: newName }]);
+        const touched = {};
+        const main = await getDocs(
+          query(logsColl, where("technician", "==", oldName))
+        );
+        main.forEach((d) => {
+          touched[d.id] = { ref: d.ref, data: d.data(), upd: { technician: newName } };
+        });
+        const extra = await getDocs(
+          query(logsColl, where("additionalTechnicians", "array-contains", oldName))
+        );
+        extra.forEach((d) => {
+          const data = d.data();
+          const upd = touched[d.id] ? touched[d.id].upd : {};
+          upd.additionalTechnicians = (data.additionalTechnicians || []).map((t) =>
+            t === oldName ? newName : t
+          );
+          touched[d.id] = { ref: d.ref, data, upd };
+        });
+        Object.values(touched).forEach((t) => ops.push([t.ref, t.upd]));
+        logsUpdated = Object.keys(touched).length;
+        if (localStorage.getItem("mora_tech_last_name") === oldName)
+          localStorage.setItem("mora_tech_last_name", newName);
+      } else {
+        ops.push([doc(db, ...base, "machine_types", item.id), { name: newName }]);
+        const ms = await getDocs(
+          query(collection(db, ...base, "machines"), where("type", "==", oldName))
+        );
+        ms.forEach((d) => ops.push([d.ref, { type: newName }]));
+        machinesUpdated = ms.size;
+        const ls = await getDocs(
+          query(logsColl, where("machineType", "==", oldName))
+        );
+        ls.forEach((d) => ops.push([d.ref, { machineType: newName }]));
+        logsUpdated = ls.size;
+      }
+      await commitInChunks(ops);
+      setRenaming(null);
+      alert(
+        `"${oldName}" rinominato in "${newName}". Aggiornati ${logsUpdated} interventi` +
+          (isTech
+            ? ". Chi è collegato con il vecchio nome deve rientrare."
+            : ` e ${machinesUpdated} gru.`)
+      );
+    } catch (e) {
+      console.error(e);
+      alert(
+        "Rinomina non completata: " +
+          describeError(e) +
+          " Riprova: le modifiche già fatte restano valide."
+      );
+    } finally {
+      setRenameBusy(false);
+    }
   };
 
   const deleteItem = (coll, id) => setItemToDelete({ coll, id });
@@ -527,27 +692,82 @@ export const AdminPanel = ({
             </button>
           </div>
           <div className="space-y-2 max-h-[300px] overflow-y-auto custom-scrollbar">
-            {(view === "techs" ? technicians : machineTypes).map((i) => (
-              <div
-                key={i.id}
-                className="flex justify-between p-3 bg-slate-50 rounded-xl border border-slate-100"
-              >
-                <span className="font-bold text-xs uppercase text-slate-700">
-                  {String(i.name)}
-                </span>
-                <button
-                  onClick={() =>
-                    deleteItem(
-                      view === "techs" ? "technicians" : "machine_types",
-                      i.id
-                    )
-                  }
-                  className="text-red-400"
+            {(view === "techs" ? technicians : machineTypes).map((i) =>
+              renaming && renaming.id === i.id ? (
+                <div
+                  key={i.id}
+                  className="flex gap-2 p-2 bg-blue-50 rounded-xl border border-blue-200 items-center"
                 >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-            ))}
+                  <input
+                    type="text"
+                    aria-label="Nuovo nome"
+                    autoFocus
+                    className={PRO_INPUT}
+                    value={renaming.value}
+                    disabled={renameBusy}
+                    onChange={(e) =>
+                      setRenaming({ id: i.id, value: e.target.value })
+                    }
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") renameItem(i, renaming.value);
+                      if (e.key === "Escape") setRenaming(null);
+                    }}
+                  />
+                  <button
+                    onClick={() => renameItem(i, renaming.value)}
+                    disabled={renameBusy}
+                    aria-label="Salva nome"
+                    className="p-2 bg-green-600 text-white rounded-lg shrink-0 disabled:opacity-50"
+                  >
+                    {renameBusy ? (
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Check className="w-4 h-4" />
+                    )}
+                  </button>
+                  <button
+                    onClick={() => setRenaming(null)}
+                    disabled={renameBusy}
+                    aria-label="Annulla"
+                    className="p-2 bg-white text-slate-500 border border-slate-200 rounded-lg shrink-0"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              ) : (
+                <div
+                  key={i.id}
+                  className="flex justify-between p-3 bg-slate-50 rounded-xl border border-slate-100 items-center"
+                >
+                  <span className="font-bold text-xs uppercase text-slate-700">
+                    {String(i.name)}
+                  </span>
+                  <div className="flex gap-3 items-center">
+                    <button
+                      onClick={() =>
+                        setRenaming({ id: i.id, value: String(i.name) })
+                      }
+                      aria-label="Rinomina"
+                      className="text-blue-500"
+                    >
+                      <Edit className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() =>
+                        deleteItem(
+                          view === "techs" ? "technicians" : "machine_types",
+                          i.id
+                        )
+                      }
+                      aria-label="Elimina"
+                      className="text-red-400"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              )
+            )}
           </div>
         </div>
       )}
@@ -844,6 +1064,92 @@ export const AdminPanel = ({
               </div>
             </button>
           </div>
+          <h4 className="font-black text-slate-800 uppercase mb-4 flex items-center gap-2">
+            <Users className="w-5 h-5 text-green-600" /> Tecnici connessi (
+            {activeUsers.length})
+          </h4>
+          <div className="space-y-2 mb-8" data-section="active-users">
+            {activeUsers.length === 0 && (
+              <p className="text-xs text-slate-400 italic">
+                Nessun tecnico attivo negli ultimi 5 minuti.
+              </p>
+            )}
+            {activeUsers.map((u) => (
+              <div
+                key={u.technician}
+                className="p-3 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between gap-3"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-9 h-9 bg-green-100 text-green-700 rounded-full flex items-center justify-center shrink-0">
+                    <User className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <h5 className="font-bold text-sm text-slate-800 truncate">
+                      {u.technician}
+                    </h5>
+                    <p className="text-[10px] text-slate-500 font-bold uppercase">
+                      {u.device} · attivo{" "}
+                      {u.lastActive && u.lastActive.seconds
+                        ? new Date(u.lastActive.seconds * 1000).toLocaleTimeString(
+                            "it-IT",
+                            { hour: "2-digit", minute: "2-digit" }
+                          )
+                        : "ora"}
+                      {u.pendingKick ? " · disconnessione in corso..." : ""}
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => kickUser(u)}
+                  disabled={kickBusy === u.technician}
+                  className="px-3 py-2 bg-red-50 text-red-600 border border-red-200 rounded-lg font-bold text-[10px] uppercase hover:bg-red-100 flex items-center gap-1.5 shrink-0 disabled:opacity-50"
+                >
+                  <UserX className="w-4 h-4" /> Disconnetti
+                </button>
+              </div>
+            ))}
+          </div>
+
+          <h4 className="font-black text-slate-800 uppercase mb-4 flex items-center gap-2">
+            <Database className="w-5 h-5 text-purple-600" /> Archivio
+          </h4>
+          <div
+            className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4"
+            data-section="db-stats"
+          >
+            {[
+              ["Interventi", allLogs.length],
+              ["Clienti", customers.length],
+              ["Gru", machines.length],
+              ["Tecnici", technicians.length],
+              ["Tipi gru", machineTypes.length],
+              ["Con foto", dbStats.withPhotos],
+              ["Con pezzi", dbStats.withParts],
+              ["Ultimo intervento", dbStats.last || "-"],
+            ].map(([label, value]) => (
+              <div
+                key={label}
+                className="p-3 rounded-xl border border-slate-200 bg-slate-50 text-center"
+              >
+                <div className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+                  {label}
+                </div>
+                <div className="text-lg font-black text-slate-800">{value}</div>
+              </div>
+            ))}
+          </div>
+          <div className="p-3 rounded-xl border border-slate-200 bg-slate-50 flex items-center gap-3 mb-8 text-xs text-slate-600">
+            <HardDrive className="w-5 h-5 text-slate-400 shrink-0" />
+            <span>
+              Questo dispositivo:{" "}
+              <b>{/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent) ? "Mobile" : "Desktop"}</b>
+              {storageInfo && storageInfo.usage !== undefined
+                ? ` · dati offline ${(storageInfo.usage / 1048576).toFixed(1)} MB`
+                : ""}
+              {" · "}schermo {window.innerWidth}×{window.innerHeight}
+            </span>
+          </div>
+
           <div className="flex justify-between items-center mb-4 mt-8">
             <h4 className="font-black text-slate-800 uppercase flex items-center gap-2">
               <Terminal className="w-5 h-5 text-slate-800" /> Log Accessi
