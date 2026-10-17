@@ -97,7 +97,6 @@ export const DashboardView = ({
       )
       .sort((a, b) => dateKey(b.dateString) - dateKey(a.dateString));
     return { cs, ms, ls };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query, customers, machines, logs]);
 
   const items = {
