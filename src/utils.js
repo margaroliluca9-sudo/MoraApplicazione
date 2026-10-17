@@ -8,7 +8,29 @@ export const getTodayString = () => {
   return `${y}-${m}-${d}`;
 };
 
-// HELPER: COMPRESSIONE FOTO (Sicura per Firestore 1MB limit)
+// HELPER: COMPRESSIONE FOTO
+// Le foto vengono salvate dentro il rapporto (Firebase: max ~1 MB per rapporto, max 3 foto).
+// Ogni foto parte da 1600 pixel sul lato lungo e qualità alta; la qualità scende solo quanto
+// serve per stare nel suo spazio (PHOTO_MAX_CHARS). Se non basta, la foto viene rimpicciolita
+// a passi fino a 800 pixel (la risoluzione di prima). 3 foto + testo restano sotto il limite.
+export const PHOTO_MAX_CHARS = 290000; // ~210 KB di JPEG per foto
+const PHOTO_SIDES = [1600, 1400, 1200, 1000, 800];
+const PHOTO_QUALITIES = [0.85, 0.78, 0.7, 0.62, 0.55];
+
+const encodeAt = (img, maxSide, quality) => {
+  const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+  const width = Math.max(1, Math.round(img.width * scale));
+  const height = Math.max(1, Math.round(img.height * scale));
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(img, 0, 0, width, height);
+  return canvas.toDataURL("image/jpeg", quality);
+};
+
 export const compressImage = (file) => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -17,28 +39,21 @@ export const compressImage = (file) => {
       const img = new Image();
       img.src = event.target.result;
       img.onload = () => {
-        const canvas = document.createElement("canvas");
-        const MAX_WIDTH = 800; // Ridimensionamento intelligente
-        const MAX_HEIGHT = 800;
-        let width = img.width;
-        let height = img.height;
-
-        if (width > height) {
-          if (width > MAX_WIDTH) {
-            height *= MAX_WIDTH / width;
-            width = MAX_WIDTH;
+        try {
+          const largest = Math.max(img.width, img.height);
+          // niente ingrandimenti: le foto piccole restano della loro misura
+          const sides = PHOTO_SIDES.filter((sd, i) => i === 0 || sd < largest);
+          for (const side of sides) {
+            for (const q of PHOTO_QUALITIES) {
+              const data = encodeAt(img, side, q);
+              if (data.length <= PHOTO_MAX_CHARS) return resolve(data);
+            }
           }
-        } else {
-          if (height > MAX_HEIGHT) {
-            width *= MAX_HEIGHT / height;
-            height = MAX_HEIGHT;
-          }
+          // ultima risorsa (foto estremamente dettagliate): 800 px, qualità più bassa
+          resolve(encodeAt(img, 800, 0.4));
+        } catch (err) {
+          reject(err);
         }
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext("2d");
-        ctx.drawImage(img, 0, 0, width, height);
-        resolve(canvas.toDataURL("image/jpeg", 0.5)); // Qualità bilanciata
       };
       img.onerror = (err) => reject(err);
     };
