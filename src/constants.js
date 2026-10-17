@@ -1,0 +1,26 @@
+// Costanti dell'app.
+export const ADMIN_PASSWORD = "Mora1932";
+
+export const DEFAULT_LAYOUT = {
+  themeColor: "blue",
+  borderRadius: "xl",
+  appTitle: "Assistenza Mora",
+  dashboardOrder: ["new", "explore", "history", "database", "office", "admin"],
+  formOrder: [
+    "technician",
+    "date",
+    "ticketNumber",
+    "customer",
+    "machine",
+    "capacity",
+    "description",
+    "photos",
+    "custom",
+  ],
+  customFields: [],
+  formSettings: {
+    showMachineId: true,
+    showMachineType: true,
+    showCapacity: true,
+  },
+};
