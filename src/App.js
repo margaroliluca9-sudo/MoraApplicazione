@@ -749,7 +749,6 @@ export default function App() {
           onOpenCustomer={openCustomerDetail}
           onOpenPhotos={setGlobalPhotoView}
           themeColor={color}
-          appTitle={layoutConfig?.appTitle}
         />
       )}
       {viewingCustomerDetail && (

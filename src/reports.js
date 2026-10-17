@@ -140,3 +140,80 @@ export const openPrintWindow = (html) => {
   printWindow.document.close();
   return true;
 };
+
+// Solo immagini incorporate o https (niente altro dentro la pagina di stampa)
+const safeImageSrc = (src) =>
+  typeof src === "string" && (/^data:image\/(png|jpe?g|gif|webp);base64,/i.test(src) || /^https:\/\//i.test(src))
+    ? src
+    : null;
+
+// Rapporto di un singolo intervento (Storico): dati, descrizione, foto, firme
+export const buildSingleLogReportHtml = ({ appTitle, log, today }) => {
+  const photos = (log.photos || []).map(safeImageSrc).filter(Boolean);
+  const row = (label, value) =>
+    value
+      ? `<tr><th>${escapeHtml(label)}</th><td>${escapeHtml(value)}</td></tr>`
+      : "";
+  return `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Rapporto Intervento ${escapeHtml(log.ticketNumber || log.dateString || "")}</title>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <style>${REPORT_CSS}
+        .details th { width: 30%; background: #f1f5f9; color: #0f172a; }
+        .details td, .details th { border-bottom: 1px solid #e2e8f0; }
+        .section-title { font-size: 12px; font-weight: bold; text-transform: uppercase; color: #0f172a; margin: 25px 0 8px; letter-spacing: 1px; }
+        .description { white-space: normal; font-size: 12px; line-height: 1.7; color: #334155; border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px; min-height: 80px; }
+        .photos { display: flex; flex-wrap: wrap; gap: 10px; }
+        .photos img { width: 31%; max-height: 220px; object-fit: cover; border-radius: 6px; border: 1px solid #e2e8f0; }
+        .signatures { display: flex; gap: 30px; margin-top: 40px; page-break-inside: avoid; }
+        .signature { flex: 1; }
+        .signature .label { font-size: 11px; font-weight: bold; text-transform: uppercase; color: #64748b; margin-bottom: 50px; }
+        .signature .line { border-bottom: 1px solid #0f172a; }
+            </style>
+        </head>
+        <body>
+            <div class="no-print">
+                <button class="btn btn-close" onclick="window.close()">Chiudi</button>
+                <button class="btn btn-print" onclick="window.print()">Stampa / Salva PDF</button>
+            </div>
+            <div class="header">
+                <h1>${escapeHtml(appTitle || "Assistenza Tecnica")}</h1>
+                <p>Rapporto di Intervento</p>
+            </div>
+            <div class="meta">
+                <div>Data: ${escapeHtml(log.dateString || "-")}</div>
+                <div>N. Assistenza: ${escapeHtml(log.ticketNumber || "-")}</div>
+                <div>Stampato il: ${escapeHtml(today)}</div>
+            </div>
+            <table class="details">
+                <tbody>
+                    ${row("Tecnico/i", getTechsString(log))}
+                    ${row("Cliente", log.customer)}
+                    ${row("Matricola gru", log.machineId)}
+                    ${row("Tipo", log.machineType)}
+                    ${row("Portata", log.capacity ? formatCapacity(log.capacity) : "")}
+                </tbody>
+            </table>
+            <div class="section-title">Descrizione del lavoro</div>
+            <div class="description">${escapeHtml(log.description).replace(/\r?\n/g, "<br>")}</div>
+            ${
+              photos.length
+                ? `<div class="section-title">Foto allegate</div>
+            <div class="photos">${photos
+              .map((src) => `<img src="${escapeHtml(src)}" alt="Foto intervento">`)
+              .join("")}</div>`
+                : ""
+            }
+            <div class="signatures">
+                <div class="signature"><div class="label">Firma tecnico</div><div class="line"></div></div>
+                <div class="signature"><div class="label">Firma cliente</div><div class="line"></div></div>
+            </div>
+            <div class="footer">
+                Documento generato automaticamente dal sistema di gestione.
+            </div>
+        </body>
+        </html>
+    `;
+};

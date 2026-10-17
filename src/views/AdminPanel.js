@@ -292,12 +292,10 @@ export const AdminPanel = ({
   // Statistiche dell'archivio (sezione System)
   const dbStats = useMemo(() => {
     let withPhotos = 0;
-    let withParts = 0;
     let lastKey = 0;
     let last = null;
     allLogs.forEach((l) => {
       if (l.photos && l.photos.length) withPhotos++;
-      if (Array.isArray(l.parts) && l.parts.length) withParts++;
       const parts = String(l.dateString || "").split("/").map(Number);
       if (parts.length === 3) {
         const k = parts[2] * 10000 + parts[1] * 100 + parts[0];
@@ -307,7 +305,7 @@ export const AdminPanel = ({
         }
       }
     });
-    return { withPhotos, withParts, last };
+    return { withPhotos, last };
   }, [allLogs]);
 
   // Disconnette tutti i dispositivi di un tecnico
@@ -1124,7 +1122,6 @@ export const AdminPanel = ({
               ["Tecnici", technicians.length],
               ["Tipi gru", machineTypes.length],
               ["Con foto", dbStats.withPhotos],
-              ["Con pezzi", dbStats.withParts],
               ["Ultimo intervento", dbStats.last || "-"],
             ].map(([label, value]) => (
               <div

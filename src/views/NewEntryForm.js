@@ -30,11 +30,9 @@ import {
   describeError,
   getTechsString,
   getSafeMatricola,
+  getSuggestedCapacities,
 } from "../utils";
 import { PRO_INPUT, getButtonPrimaryClass, getProPanelClass } from "../ui";
-import { PartsEditor } from "../components/PartsEditor";
-import { cleanParts } from "../parts";
-import { getSuggestedCapacities } from "../utils";
 
 export const NewEntryForm = ({
   user,
@@ -58,7 +56,6 @@ export const NewEntryForm = ({
     description: "",
     ticketNumber: "",
     photos: [],
-    parts: [],
     dateString: getTodayString(), // Formato YYYY-MM-DD per l'input date
   });
 
@@ -81,11 +78,6 @@ export const NewEntryForm = ({
     const descIdx = formOrder.indexOf("description");
     if (descIdx !== -1) formOrder.splice(descIdx + 1, 0, "photos");
     else formOrder.push("photos");
-  }
-  if (!formOrder.includes("parts")) {
-    formOrder = [...formOrder];
-    const photosIdx = formOrder.indexOf("photos");
-    formOrder.splice(photosIdx + 1, 0, "parts");
   }
 
   const topTechs = useMemo(() => {
@@ -306,7 +298,6 @@ export const NewEntryForm = ({
           machineId: cleanMachineId,
           customer: cleanCustomer,
           dateString: finalDateString,
-          parts: cleanParts(formData.parts),
           userId: user.uid,
           createdAt: serverTimestamp(),
         }
@@ -697,14 +688,6 @@ export const NewEntryForm = ({
             )}
           </div>
         );
-      case "parts":
-        return (
-          <PartsEditor
-            key="parts"
-            parts={formData.parts}
-            onChange={(parts) => setFormData((p) => ({ ...p, parts }))}
-          />
-        );
       case "capacity":
         const commonCapacities = suggestedCapacities;
         return layoutConfig.formSettings.showCapacity ? (
@@ -898,7 +881,6 @@ export const NewEntryForm = ({
                     description: "",
                     ticketNumber: "",
                     photos: [],
-                    parts: [],
                     dateString: getTodayString(),
                   }));
                   setLastIntervention(null);

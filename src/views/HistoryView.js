@@ -16,8 +16,7 @@ import { getTechsString, formatCapacity } from "../utils";
 import { getProPanelClass } from "../ui";
 import { DeleteConfirmDialog } from "../components/DeleteConfirmDialog";
 import { EditLogModal } from "../components/modals/EditLogModal";
-import { buildLogsReportHtml, openPrintWindow } from "../reports";
-import { logSortKey } from "../parts";
+import { buildSingleLogReportHtml, openPrintWindow } from "../reports";
 
 export const HistoryView = ({
   logs,
@@ -103,35 +102,6 @@ export const HistoryView = ({
   );
   const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
 
-  // Stampa di tutti gli interventi che corrispondono alla ricerca (non solo la pagina)
-  const printReport = () => {
-    if (filtered.length === 0) return alert("Nessun intervento da stampare.");
-    if (
-      filtered.length > 300 &&
-      !window.confirm(
-        `Stai per stampare ${filtered.length} interventi. Continuare?`
-      )
-    )
-      return;
-    const dated = filtered.filter((l) => logSortKey(l) > 0);
-    const sorted = [...dated].sort((a, b) => logSortKey(a) - logSortKey(b));
-    const periodLabel = sorted.length
-      ? `${sorted[0].dateString} - ${sorted[sorted.length - 1].dateString}`
-      : "-";
-    const term = searchTerm.trim();
-    openPrintWindow(
-      buildLogsReportHtml({
-        appTitle: layoutConfig?.appTitle,
-        logs: filtered,
-        today: new Date().toLocaleDateString("it-IT"),
-        periodLabel,
-        subtitle: term
-          ? `Report Interventi Tecnici - Ricerca "${term}"`
-          : "Report Interventi Tecnici",
-      })
-    );
-  };
-
   const handleDelete = (log) => {
     const isRecent =
       log.createdAt &&
@@ -141,6 +111,16 @@ export const HistoryView = ({
       setIsDeleting(log.id);
     } else onAuthAdmin();
   };
+
+  // Stampa il rapporto del singolo intervento
+  const printLog = (log) =>
+    openPrintWindow(
+      buildSingleLogReportHtml({
+        appTitle: layoutConfig?.appTitle,
+        log,
+        today: new Date().toLocaleDateString("it-IT"),
+      })
+    );
 
   const handleEdit = (log) => {
     const isRecent =
@@ -191,17 +171,6 @@ export const HistoryView = ({
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
-      </div>
-      <div className="flex justify-center -mt-2">
-        <button
-          onClick={printReport}
-          className="flex items-center gap-2 bg-white px-4 py-2 rounded-xl border border-slate-200 shadow-sm text-slate-600 hover:bg-slate-50 active:scale-95 transition-all"
-        >
-          <Printer className="w-4 h-4" />
-          <span className="font-bold text-[10px] uppercase tracking-wider">
-            Stampa report ({filtered.length})
-          </span>
-        </button>
       </div>
       <div
         className={`rounded-3xl overflow-hidden shadow-xl ${getProPanelClass(
@@ -292,6 +261,14 @@ export const HistoryView = ({
                     </span>
                   </div>
                   <div className="flex gap-2">
+                    <button
+                      onClick={() => printLog(log)}
+                      className="p-2 bg-slate-100 text-slate-400 rounded-lg hover:text-slate-700"
+                      title="Stampa"
+                      aria-label="Stampa intervento"
+                    >
+                      <Printer className="w-4 h-4" />
+                    </button>
                     <button
                       onClick={() => handleEdit(log)}
                       className="p-2 bg-slate-100 text-slate-400 rounded-lg hover:text-blue-500"
@@ -450,6 +427,14 @@ export const HistoryView = ({
                     </td>
                     <td className="px-4 py-4 text-center align-top">
                       <div className="flex justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button
+                          onClick={() => printLog(log)}
+                          className="text-slate-500 hover:scale-110"
+                          title="Stampa"
+                          aria-label="Stampa intervento"
+                        >
+                          <Printer className="w-4 h-4" />
+                        </button>
                         <button
                           onClick={() => handleEdit(log)}
                           className={`text-${color}-500 hover:scale-110`}

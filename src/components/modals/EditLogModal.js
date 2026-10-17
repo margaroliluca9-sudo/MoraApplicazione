@@ -13,9 +13,6 @@ import { compressImage, describeError } from "../../utils";
 import { PRO_INPUT, getButtonPrimaryClass, getProPanelClass } from "../../ui";
 
 // --- MODALI DATI ---
-import { PartsEditor } from "../PartsEditor";
-import { cleanParts, extractPartsFromText, partLabel } from "../../parts";
-
 export const EditLogModal = ({
   log,
   customers,
@@ -29,7 +26,6 @@ export const EditLogModal = ({
     ...log,
     additionalTechnicians: log.additionalTechnicians || [],
     photos: log.photos || [],
-    parts: Array.isArray(log.parts) ? log.parts : [],
   });
   const [loading, setLoading] = useState(false);
   const [uploadingPhotos, setUploadingPhotos] = useState(false);
@@ -121,7 +117,6 @@ export const EditLogModal = ({
           dateString: data.dateString,
           ticketNumber: data.ticketNumber || "",
           photos: data.photos,
-          parts: cleanParts(data.parts),
         }
       );
       onClose();
@@ -338,20 +333,6 @@ export const EditLogModal = ({
               }
             />
           </div>
-
-          <PartsEditor
-            parts={data.parts}
-            onChange={(parts) => setData((p) => ({ ...p, parts }))}
-          />
-          {data.parts.length === 0 &&
-            extractPartsFromText(data.description).length > 0 && (
-              <p className="text-[10px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-2 -mt-2">
-                Dalla descrizione risulta: {extractPartsFromText(data.description)
-                  .map((x) => partLabel(x.type))
-                  .join(", ")}
-                . Aggiungi i pezzi qui sopra per salvare i dati esatti.
-              </p>
-            )}
 
           <div className="space-y-2 bg-slate-100 p-3 rounded-xl border border-slate-200">
             <div className="flex justify-between items-center mb-1">
