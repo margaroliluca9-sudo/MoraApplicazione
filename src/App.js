@@ -2446,11 +2446,15 @@ const OfficeView = ({
   ];
 
   const dynamicMonthLabel =
-    viewMode === "year"
+    viewMode === "all"
+      ? "(Totale)"
+      : viewMode === "year"
       ? `(${calYear})`
       : `(${monthNames[calMonth]} ${calYear})`;
 
   const calendarFilteredLogs = useMemo(() => {
+    // Vista "Totale": tutti gli interventi registrati dall'app
+    if (viewMode === "all") return logs;
     return logs.filter((log) => {
       if (!log.dateString) return false;
       const [d, m, y] = log.dateString.split("/").map(Number);
@@ -2739,6 +2743,16 @@ const OfficeView = ({
             >
               Annuale
             </button>
+            <button
+              onClick={() => setViewMode("all")}
+              className={`px-4 py-2 text-xs font-bold rounded-md transition-all ${
+                viewMode === "all"
+                  ? "bg-white shadow text-slate-800"
+                  : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              Totale
+            </button>
           </div>
         </div>
         <div className="grid grid-cols-3 gap-4">
@@ -2760,7 +2774,11 @@ const OfficeView = ({
           </div>
           <div className="text-center p-4 bg-slate-50 rounded-xl border border-slate-100 shadow-sm">
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-              {viewMode === "year" ? "Totale Periodo" : "Mese Sel."}
+              {viewMode === "all"
+                ? "Totale"
+                : viewMode === "year"
+                ? "Totale Periodo"
+                : "Mese Sel."}
             </span>
             <div className="text-2xl font-black text-emerald-600">
               {stats.currentPeriod}
