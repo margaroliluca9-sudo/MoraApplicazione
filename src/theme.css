@@ -16,16 +16,21 @@ body {
   background-color: var(--mora-page);
 }
 
-/* Caratteri: Barlow per i testi, Barlow Condensed per i titoli (come nell'avvio) */
+/* Caratteri: scelti in Admin > Design (predefinito Barlow / Barlow Condensed, come nell'avvio) */
 html body,
 html .font-sans {
-  font-family: "Barlow", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: var(--mora-font, "Barlow", "Segoe UI", Roboto, Helvetica, Arial, sans-serif);
 }
 html h1.font-black,
 html h2.font-black,
 html h3.font-black,
 html h4.font-black {
-  font-family: "Barlow Condensed", "Arial Narrow", "Barlow", sans-serif;
+  font-family: var(--mora-font-head, "Barlow Condensed", "Arial Narrow", "Barlow", sans-serif);
+}
+html[data-font="barlow"] h1.font-black,
+html[data-font="barlow"] h2.font-black,
+html[data-font="barlow"] h3.font-black,
+html[data-font="barlow"] h4.font-black {
   letter-spacing: 0.03em;
 }
 

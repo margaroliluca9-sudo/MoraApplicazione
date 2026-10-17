@@ -34,7 +34,6 @@ html.dark .divide-slate-200 > :not([hidden]) ~ :not([hidden]) { border-color: #2
 html.dark .placeholder-slate-400::placeholder { color: #56647c }
 html.dark .bg-white,
 html.dark .hover\:bg-white:hover { background-color: #121b2c }
-html.dark .bg-white\/20 { background-color: rgba(18, 27, 44, 0.2) }
 html.dark .border-white { border-color: #223049 }
 html.dark .bg-red-50,
 html.dark .hover\:bg-red-50:hover { background-color: rgba(220, 38, 38, 0.14) }
@@ -69,6 +68,7 @@ html.dark .text-amber-800 { color: #fcd34d }
 html.dark .text-amber-700 { color: #fcd34d }
 html.dark .text-amber-600 { color: #fbbf24 }
 html.dark .border-amber-100 { border-color: rgba(245, 158, 11, 0.3) }
+html.dark .border-amber-200 { border-color: rgba(245, 158, 11, 0.4) }
 html.dark .bg-yellow-50 { background-color: rgba(202, 138, 4, 0.14) }
 html.dark .bg-yellow-100,
 html.dark .hover\:bg-yellow-100:hover { background-color: rgba(234, 179, 8, 0.2) }

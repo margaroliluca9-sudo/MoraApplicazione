@@ -44,6 +44,13 @@ import { describeError, getSafeMatricola, getLevenshteinDistance } from "../util
 import { PRO_INPUT, getButtonPrimaryClass, getProPanelClass } from "../ui";
 import { AdminTab } from "../components/AdminTab";
 import { buildBackupHtml, openPrintWindow } from "../reports";
+import {
+  FONT_OPTIONS,
+  FONT_SCALE_OPTIONS,
+  RADIUS_OPTIONS,
+  DENSITY_OPTIONS,
+  APPEARANCE_DEFAULTS,
+} from "../appearance";
 import { EditMachineModal } from "../components/modals/EditMachineModal";
 import { EditCustomerModal } from "../components/modals/EditCustomerModal";
 import { MergeModal } from "../components/modals/MergeModal";
@@ -654,6 +661,126 @@ export const AdminPanel = ({
               ></button>
             ))}
           </div>
+          <p className="text-[10px] font-bold text-slate-400 uppercase mb-4">
+            Le scelte di questa pagina valgono per tutti i telefoni.
+          </p>
+
+          <div className="space-y-5 mb-6" data-section="appearance">
+            <div className="space-y-1.5">
+              <label
+                htmlFor="design-font"
+                className="text-[10px] font-bold text-slate-500 uppercase ml-1"
+              >
+                Carattere
+              </label>
+              <select
+                id="design-font"
+                className={PRO_INPUT}
+                value={layoutConfig.fontFamily || APPEARANCE_DEFAULTS.fontFamily}
+                onChange={(e) =>
+                  onUpdateLayout({ ...layoutConfig, fontFamily: e.target.value })
+                }
+              >
+                {FONT_OPTIONS.map((f) => (
+                  <option key={f.id} value={f.id}>
+                    {f.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {[
+              {
+                key: "fontScale",
+                title: "Grandezza lettere",
+                options: FONT_SCALE_OPTIONS,
+              },
+              { key: "radiusStyle", title: "Angoli", options: RADIUS_OPTIONS },
+              { key: "density", title: "Spaziatura", options: DENSITY_OPTIONS },
+            ].map((group) => {
+              const current =
+                layoutConfig[group.key] || APPEARANCE_DEFAULTS[group.key];
+              return (
+                <div key={group.key} className="space-y-1.5">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase ml-1 block">
+                    {group.title}
+                  </span>
+                  <div
+                    className="grid gap-2"
+                    style={{
+                      gridTemplateColumns: `repeat(${group.options.length}, minmax(0, 1fr))`,
+                    }}
+                    role="group"
+                    aria-label={group.title}
+                  >
+                    {group.options.map((o) => (
+                      <button
+                        key={o.id}
+                        type="button"
+                        aria-pressed={current === o.id}
+                        onClick={() =>
+                          onUpdateLayout({ ...layoutConfig, [group.key]: o.id })
+                        }
+                        className={`py-2.5 px-1 rounded-lg border text-xs font-bold transition-all ${
+                          current === o.id
+                            ? `bg-${layoutConfig.themeColor}-600 border-${layoutConfig.themeColor}-600 text-white`
+                            : "bg-white border-slate-200 text-slate-600 hover:bg-slate-50"
+                        }`}
+                        style={
+                          group.key === "fontScale"
+                            ? { fontSize: `${12 * o.value}px` }
+                            : undefined
+                        }
+                      >
+                        {o.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+
+            <div className="flex items-center justify-between gap-3 p-3 rounded-xl border border-slate-200 bg-slate-50">
+              <div>
+                <span className="text-xs font-bold text-slate-700 block">
+                  Animazione di avvio
+                </span>
+                <span className="text-[10px] text-slate-500">
+                  {layoutConfig.showSplash === false
+                    ? "Disattivata: l'app si apre subito"
+                    : "Carroponte e gru all'apertura (circa 2 secondi)"}
+                </span>
+              </div>
+              <button
+                type="button"
+                aria-pressed={layoutConfig.showSplash !== false}
+                onClick={() =>
+                  onUpdateLayout({
+                    ...layoutConfig,
+                    showSplash: layoutConfig.showSplash === false,
+                  })
+                }
+                className={`px-4 py-2 rounded-lg font-bold text-xs uppercase shrink-0 ${
+                  layoutConfig.showSplash === false
+                    ? "bg-white border border-slate-300 text-slate-600"
+                    : `bg-${layoutConfig.themeColor}-600 text-white`
+                }`}
+              >
+                {layoutConfig.showSplash === false ? "Attiva" : "Disattiva"}
+              </button>
+            </div>
+
+            <button
+              type="button"
+              onClick={() =>
+                onUpdateLayout({ ...layoutConfig, ...APPEARANCE_DEFAULTS })
+              }
+              className="w-full py-2.5 rounded-lg border border-slate-200 bg-white text-slate-600 font-bold text-xs uppercase hover:bg-slate-50"
+            >
+              Ripristina grafica predefinita
+            </button>
+          </div>
+
           <button
             onClick={() =>
               onUpdateLayout({

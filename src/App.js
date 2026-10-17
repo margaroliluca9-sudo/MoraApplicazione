@@ -11,6 +11,8 @@ import {
   Sun,
   Moon,
   Smartphone,
+  WifiOff,
+  UploadCloud,
 } from "lucide-react";
 import { signInAnonymously, onAuthStateChanged } from "firebase/auth";
 import {
@@ -38,6 +40,7 @@ import {
   applyTheme,
   onSystemThemeChange,
 } from "./theme";
+import { applyAppearance, getCachedLayout, cacheLayout } from "./appearance";
 import { NavButton } from "./components/NavButton";
 import { AdminLoginModal } from "./components/AdminLoginModal";
 import { PhotoViewerModal } from "./components/PhotoViewerModal";
@@ -82,7 +85,15 @@ export default function App() {
   const [currentTechName, setCurrentTechName] = useState(
     localStorage.getItem("mora_tech_last_name") || ""
   );
-  const [layoutConfig, setLayoutConfig] = useState(DEFAULT_LAYOUT);
+  // impostazioni grafiche: parte dalla copia salvata sul telefono, poi arriva quella del database
+  const [layoutConfig, setLayoutConfig] = useState(() => ({
+    ...DEFAULT_LAYOUT,
+    ...getCachedLayout(),
+  }));
+  useEffect(() => {
+    applyAppearance(layoutConfig);
+    cacheLayout(layoutConfig);
+  }, [layoutConfig]);
   const [isAppLoading, setIsAppLoading] = useState(true);
   const [globalPhotoView, setGlobalPhotoView] = useState(null);
 
@@ -151,7 +162,9 @@ export default function App() {
 
     onAuthStateChanged(auth, (u) => {
       setUser(u);
-      setTimeout(() => setIsAppLoading(false), 2500);
+      // con l'animazione di avvio attiva si aspetta che finisca (~2,4 s)
+      const splashOn = getCachedLayout().showSplash !== false;
+      setTimeout(() => setIsAppLoading(false), splashOn ? 2500 : 300);
     });
   }, []);
 
@@ -212,6 +225,22 @@ export default function App() {
 
     return () => clearInterval(interval);
   }, [user, currentTechName]);
+
+  // RETE: avviso quando il telefono è offline e rapporti non ancora inviati
+  const [isOnline, setIsOnline] = useState(
+    typeof navigator === "undefined" ? true : navigator.onLine !== false
+  );
+  const [pendingCount, setPendingCount] = useState(0);
+  useEffect(() => {
+    const on = () => setIsOnline(true);
+    const off = () => setIsOnline(false);
+    window.addEventListener("online", on);
+    window.addEventListener("offline", off);
+    return () => {
+      window.removeEventListener("online", on);
+      window.removeEventListener("offline", off);
+    };
+  }, []);
 
   // DISCONNESSIONE FORZATA dall'amministratore (Admin > System)
   const logoutRef = useRef(null);
@@ -323,7 +352,12 @@ export default function App() {
 
     const unsubLogs = onSnapshot(
       collection(db, "artifacts", appId, "public", "data", "maintenance_logs"),
+      { includeMetadataChanges: true },
       (s) => {
+        // interventi salvati sul telefono ma non ancora arrivati al server
+        setPendingCount(
+          s.docs.filter((d) => d.metadata && d.metadata.hasPendingWrites).length
+        );
         setLogs(
           s.docs
             .map((d) => ({ id: d.id, ...d.data() }))
@@ -443,6 +477,9 @@ export default function App() {
   logoutRef.current = handleLogout;
 
   const color = layoutConfig.themeColor || "blue";
+
+  if (isAppLoading && layoutConfig.showSplash === false)
+    return <div className="mora-app min-h-screen bg-slate-100" />;
 
   if (isAppLoading)
     return (
@@ -596,6 +633,36 @@ export default function App() {
           </button>
         </div>
       </header>
+      {(!isOnline || pendingCount > 0) && (
+        <div
+          role="status"
+          data-section="network-status"
+          className={`px-4 py-2.5 text-xs font-bold flex items-center justify-center gap-2 text-center border-b ${
+            !isOnline
+              ? "bg-amber-50 text-amber-800 border-amber-200"
+              : "bg-blue-50 text-blue-800 border-blue-200"
+          }`}
+        >
+          {!isOnline ? (
+            <WifiOff className="w-4 h-4 shrink-0" />
+          ) : (
+            <UploadCloud className="w-4 h-4 shrink-0 animate-pulse" />
+          )}
+          <span>
+            {!isOnline
+              ? pendingCount > 0
+                ? `Senza rete: ${pendingCount} ${
+                    pendingCount === 1 ? "rapporto salvato" : "rapporti salvati"
+                  } sul telefono, ${
+                    pendingCount === 1 ? "verrà inviato" : "verranno inviati"
+                  } appena torna la connessione.`
+                : "Senza rete: puoi continuare a lavorare, i rapporti verranno inviati appena torna la connessione."
+              : `Invio di ${pendingCount} ${
+                  pendingCount === 1 ? "rapporto" : "rapporti"
+                } in corso...`}
+          </span>
+        </div>
+      )}
 
       {activeTab !== "dashboard" && (
         <div className="sticky top-[76px] z-40 w-full py-3 px-4">
@@ -627,6 +694,12 @@ export default function App() {
                 onNavigate={setActiveTab}
                 layoutConfig={layoutConfig}
                 onAdminAccess={handleAdminAccess}
+                logs={logs}
+                customers={customers}
+                machines={machines}
+                currentTechName={currentTechName}
+                onOpenCustomer={openCustomerDetail}
+                onOpenMachine={openMachineDetail}
               />
             )}
             {activeTab === "explore" && (

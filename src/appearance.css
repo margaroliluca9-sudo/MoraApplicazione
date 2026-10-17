@@ -1,0 +1,91 @@
+/* GENERATO AUTOMATICAMENTE: opzioni di Admin > Design (testi, spaziatura, angoli).
+   Variabili su <html>: --mora-fs, --mora-space, --mora-radius (1 = come Tailwind). Non modificare a mano. */
+:root { --mora-fs: 1; --mora-space: 1; --mora-radius: 1; }
+html body { font-size: calc(16px * var(--mora-fs)); }
+html .text-lg { font-size: calc(18px * var(--mora-fs)); line-height: calc(28px * var(--mora-fs)) }
+html .text-xs { font-size: calc(12px * var(--mora-fs)); line-height: calc(16px * var(--mora-fs)) }
+html .text-2xl { font-size: calc(24px * var(--mora-fs)); line-height: calc(32px * var(--mora-fs)) }
+html .text-sm { font-size: calc(14px * var(--mora-fs)); line-height: calc(20px * var(--mora-fs)) }
+html .text-xl { font-size: calc(20px * var(--mora-fs)); line-height: calc(28px * var(--mora-fs)) }
+html .text-\[9px\] { font-size: calc(9px * var(--mora-fs)) }
+html .text-\[10px\] { font-size: calc(10px * var(--mora-fs)) }
+html .text-\[11px\] { font-size: calc(11px * var(--mora-fs)) }
+html .text-\[8px\] { font-size: calc(8px * var(--mora-fs)) }
+html .leading-none { line-height: 1 }
+html .leading-tight { line-height: 1.25 }
+html .leading-relaxed { line-height: 1.625 }
+html .p-4 { padding: calc(1rem * var(--mora-space)) }
+html .gap-3 { gap: calc(0.75rem * var(--mora-space)) }
+html .p-2 { padding: calc(0.5rem * var(--mora-space)) }
+html .gap-2 { gap: calc(0.5rem * var(--mora-space)) }
+html .gap-1\.5 { gap: calc(0.375rem * var(--mora-space)) }
+html .p-3 { padding: calc(0.75rem * var(--mora-space)) }
+html .p-1 { padding: calc(0.25rem * var(--mora-space)) }
+html .p-8 { padding: calc(2rem * var(--mora-space)) }
+html .gap-1 { gap: calc(0.25rem * var(--mora-space)) }
+html .gap-4 { gap: calc(1rem * var(--mora-space)) }
+html .p-5 { padding: calc(1.25rem * var(--mora-space)) }
+html .p-6 { padding: calc(1.5rem * var(--mora-space)) }
+html .p-2\.5 { padding: calc(0.625rem * var(--mora-space)) }
+html .p-1\.5 { padding: calc(0.375rem * var(--mora-space)) }
+html .gap-6 { gap: calc(1.5rem * var(--mora-space)) }
+html .px-2 { padding-left: calc(0.5rem * var(--mora-space)); padding-right: calc(0.5rem * var(--mora-space)) }
+html .py-0\.5 { padding-top: calc(0.125rem * var(--mora-space)); padding-bottom: calc(0.125rem * var(--mora-space)) }
+html .px-4 { padding-left: calc(1rem * var(--mora-space)); padding-right: calc(1rem * var(--mora-space)) }
+html .py-2\.5 { padding-top: calc(0.625rem * var(--mora-space)); padding-bottom: calc(0.625rem * var(--mora-space)) }
+html .py-3 { padding-top: calc(0.75rem * var(--mora-space)); padding-bottom: calc(0.75rem * var(--mora-space)) }
+html .px-5 { padding-left: calc(1.25rem * var(--mora-space)); padding-right: calc(1.25rem * var(--mora-space)) }
+html .py-2 { padding-top: calc(0.5rem * var(--mora-space)); padding-bottom: calc(0.5rem * var(--mora-space)) }
+html .py-40 { padding-top: calc(10rem * var(--mora-space)); padding-bottom: calc(10rem * var(--mora-space)) }
+html .px-3 { padding-left: calc(0.75rem * var(--mora-space)); padding-right: calc(0.75rem * var(--mora-space)) }
+html .py-4 { padding-top: calc(1rem * var(--mora-space)); padding-bottom: calc(1rem * var(--mora-space)) }
+html .py-10 { padding-top: calc(2.5rem * var(--mora-space)); padding-bottom: calc(2.5rem * var(--mora-space)) }
+html .py-1 { padding-top: calc(0.25rem * var(--mora-space)); padding-bottom: calc(0.25rem * var(--mora-space)) }
+html .py-1\.5 { padding-top: calc(0.375rem * var(--mora-space)); padding-bottom: calc(0.375rem * var(--mora-space)) }
+html .py-20 { padding-top: calc(5rem * var(--mora-space)); padding-bottom: calc(5rem * var(--mora-space)) }
+html .py-8 { padding-top: calc(2rem * var(--mora-space)); padding-bottom: calc(2rem * var(--mora-space)) }
+html .px-1 { padding-left: calc(0.25rem * var(--mora-space)); padding-right: calc(0.25rem * var(--mora-space)) }
+html .px-6 { padding-left: calc(1.5rem * var(--mora-space)); padding-right: calc(1.5rem * var(--mora-space)) }
+html .px-1\.5 { padding-left: calc(0.375rem * var(--mora-space)); padding-right: calc(0.375rem * var(--mora-space)) }
+html .px-2\.5 { padding-left: calc(0.625rem * var(--mora-space)); padding-right: calc(0.625rem * var(--mora-space)) }
+html .py-5 { padding-top: calc(1.25rem * var(--mora-space)); padding-bottom: calc(1.25rem * var(--mora-space)) }
+html .pb-24 { padding-bottom: calc(6rem * var(--mora-space)) }
+html .pb-4 { padding-bottom: calc(1rem * var(--mora-space)) }
+html .pt-3 { padding-top: calc(0.75rem * var(--mora-space)) }
+html .pt-2 { padding-top: calc(0.5rem * var(--mora-space)) }
+html .pb-2 { padding-bottom: calc(0.5rem * var(--mora-space)) }
+html .pr-1 { padding-right: calc(0.25rem * var(--mora-space)) }
+html .pt-1 { padding-top: calc(0.25rem * var(--mora-space)) }
+html .pt-4 { padding-top: calc(1rem * var(--mora-space)) }
+html .pr-2 { padding-right: calc(0.5rem * var(--mora-space)) }
+html .pl-12 { padding-left: calc(3rem * var(--mora-space)) }
+html .pr-12 { padding-right: calc(3rem * var(--mora-space)) }
+html .pb-20 { padding-bottom: calc(5rem * var(--mora-space)) }
+html .pl-8 { padding-left: calc(2rem * var(--mora-space)) }
+html .pl-14 { padding-left: calc(3.5rem * var(--mora-space)) }
+html .pr-6 { padding-right: calc(1.5rem * var(--mora-space)) }
+html .pl-1 { padding-left: calc(0.25rem * var(--mora-space)) }
+html .pb-1 { padding-bottom: calc(0.25rem * var(--mora-space)) }
+html .pb-3 { padding-bottom: calc(0.75rem * var(--mora-space)) }
+html .space-y-1 > :not([hidden]) ~ :not([hidden]) { margin-top: calc(0.25rem * var(--mora-space)) }
+html .space-y-6 > :not([hidden]) ~ :not([hidden]) { margin-top: calc(1.5rem * var(--mora-space)) }
+html .space-y-5 > :not([hidden]) ~ :not([hidden]) { margin-top: calc(1.25rem * var(--mora-space)) }
+html .space-y-4 > :not([hidden]) ~ :not([hidden]) { margin-top: calc(1rem * var(--mora-space)) }
+html .space-y-1\.5 > :not([hidden]) ~ :not([hidden]) { margin-top: calc(0.375rem * var(--mora-space)) }
+html .space-y-2 > :not([hidden]) ~ :not([hidden]) { margin-top: calc(0.5rem * var(--mora-space)) }
+html .space-y-3 > :not([hidden]) ~ :not([hidden]) { margin-top: calc(0.75rem * var(--mora-space)) }
+html .space-y-8 > :not([hidden]) ~ :not([hidden]) { margin-top: calc(2rem * var(--mora-space)) }
+html .rounded-none { border-radius: calc(0rem * var(--mora-radius)) }
+html .rounded-xl { border-radius: calc(0.75rem * var(--mora-radius)) }
+html .rounded-2xl { border-radius: calc(1rem * var(--mora-radius)) }
+html .rounded-lg { border-radius: calc(0.5rem * var(--mora-radius)) }
+html .rounded-3xl { border-radius: calc(1.5rem * var(--mora-radius)) }
+html .rounded { border-radius: calc(0.25rem * var(--mora-radius)) }
+html .rounded-md { border-radius: calc(0.375rem * var(--mora-radius)) }
+@media (min-width: 768px) {
+html .md\:text-2xl { font-size: calc(24px * var(--mora-fs)); line-height: calc(32px * var(--mora-fs)) }
+html .md\:text-sm { font-size: calc(14px * var(--mora-fs)); line-height: calc(20px * var(--mora-fs)) }
+html .md\:p-8 { padding: calc(2rem * var(--mora-space)) }
+html .md\:p-4 { padding: calc(1rem * var(--mora-space)) }
+html .md\:pb-0 { padding-bottom: calc(0rem * var(--mora-space)) }
+}

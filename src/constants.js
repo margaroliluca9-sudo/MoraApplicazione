@@ -18,6 +18,12 @@ export const DEFAULT_LAYOUT = {
     "custom",
   ],
   customFields: [],
+  // Admin > Design: carattere, grandezza lettere, angoli, spaziatura, animazione di avvio
+  fontFamily: "barlow",
+  fontScale: "normal",
+  radiusStyle: "normal",
+  density: "normal",
+  showSplash: true,
   formSettings: {
     showMachineId: true,
     showMachineType: true,

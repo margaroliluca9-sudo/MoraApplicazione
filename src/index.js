@@ -4,10 +4,13 @@ import { createRoot } from "react-dom/client";
 import App from "./App";
 import "./theme.css";
 import "./dark.css";
+import "./appearance.css";
 import { applyTheme, getThemeMode } from "./theme";
+import { applyAppearance, getCachedLayout } from "./appearance";
 
-// tema applicato subito, prima del primo disegno (niente lampo bianco)
+// tema e opzioni grafiche applicati subito, prima del primo disegno
 applyTheme(getThemeMode());
+applyAppearance(getCachedLayout());
 
 const rootElement = document.getElementById("root");
 const root = createRoot(rootElement);

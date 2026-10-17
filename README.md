@@ -14,8 +14,9 @@ App "Assistenza Mora" per registrare e consultare gli interventi sulle gru
 | `ui.js` | Classi grafiche comuni (input, bottoni, pannelli) |
 | `theme.js`, `theme.css` | Tema chiaro/scuro (scelto su ogni dispositivo), caratteri, sfondo |
 | `dark.css` | Colori del tema scuro (file generato, non modificare a mano) |
+| `appearance.js`, `appearance.css` | Opzioni di Admin > Design: carattere, grandezza lettere, angoli, spaziatura, avvio (CSS generato) |
 | `reports.js` | Report stampabili (elenco interventi di Ufficio, rapporto del singolo intervento dallo Storico, backup PDF) |
-| `views/DashboardView.js` | Home con i riquadri |
+| `views/DashboardView.js` | Home: ricerca unica, riquadri, "I miei interventi" |
 | `views/NewEntryForm.js` | Nuovo rapporto d'intervento |
 | `views/ExploreView.js` | Esplora clienti e macchine |
 | `views/HistoryView.js` | Storico interventi |
@@ -24,6 +25,10 @@ App "Assistenza Mora" per registrare e consultare gli interventi sulle gru
 | `views/AdminPanel.js` | Admin: grafica, staff, tipi, clienti, gru, conflitti, sistema |
 | `components/` | Pezzi riutilizzati (animazione di avvio, simbolo carroponte, login, calendario, foto...) |
 | `components/modals/` | Finestre di modifica, unione e dettaglio (cliente, gru, intervento) |
+
+## Icone
+
+In `public/icons/` (simbolo del carroponte): usate dal manifest e dalla schermata Home del telefono.
 
 ## Comandi
 
