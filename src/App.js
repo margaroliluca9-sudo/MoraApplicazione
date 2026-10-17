@@ -191,6 +191,40 @@ const compressImage = (file) => {
   });
 };
 
+// HELPER: SPIEGA UN ERRORE (Firebase o generico) IN ITALIANO
+const describeError = (e) => {
+  const code = (e && e.code) || "";
+  if (code.includes("permission-denied"))
+    return "permesso negato dal database.";
+  if (code.includes("unavailable") || !navigator.onLine)
+    return "nessuna connessione a internet. Riprova quando sei online.";
+  if (code.includes("deadline-exceeded"))
+    return "il server non ha risposto in tempo. Riprova.";
+  if (code.includes("unauthenticated"))
+    return "accesso scaduto. Ricarica l'app e riprova.";
+  if (code.includes("not-found"))
+    return "elemento non trovato (forse è già stato eliminato).";
+  if (code.includes("invalid-argument") || code.includes("resource-exhausted"))
+    return "dati troppo grandi (prova con meno foto).";
+  return (e && e.message) || "errore sconosciuto.";
+};
+
+// HELPER: TESTO SICURO DA INSERIRE IN UNA PAGINA HTML (report PDF)
+const escapeHtml = (value) =>
+  String(value === undefined || value === null ? "" : value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+
+// HELPER: CELLA CSV (gestisce virgole, virgolette e a capo)
+const csvCell = (value) =>
+  `"${String(value === undefined || value === null ? "" : value).replace(
+    /"/g,
+    '""'
+  )}"`;
+
 // HELPER GLOBALE PER TECNICI MULTIPLI
 const getTechsString = (log) => {
   if (!log.additionalTechnicians || log.additionalTechnicians.length === 0)
@@ -745,7 +779,7 @@ const EditLogModal = ({
       onClose();
     } catch (e) {
       console.error(e);
-      alert("Errore durante il salvataggio.");
+      alert("Errore durante il salvataggio: " + describeError(e));
     } finally {
       setLoading(false);
     }
@@ -1109,7 +1143,7 @@ const EditMachineModal = ({
       onClose();
     } catch (e) {
       console.error(e);
-      alert("Errore durante il salvataggio.");
+      alert("Errore durante il salvataggio: " + describeError(e));
     } finally {
       setLoading(false);
     }
@@ -1266,7 +1300,7 @@ const EditCustomerModal = ({
       onClose();
     } catch (e) {
       console.error(e);
-      alert("Errore salvataggio cliente");
+      alert("Errore salvataggio cliente: " + describeError(e));
     } finally {
       setLoading(false);
     }
@@ -1333,8 +1367,18 @@ const MergeModal = ({
     const targetItem = allItems.find((i) => i.id === targetId);
     if (!targetItem) return;
     setLoading(true);
-    await onConfirm(sourceItem, targetItem);
-    setLoading(false);
+    try {
+      await onConfirm(sourceItem, targetItem);
+    } catch (e) {
+      console.error(e);
+      alert(
+        "Unione non completata: " +
+          describeError(e) +
+          " Alcuni interventi potrebbero essere già stati spostati: riprova l'unione."
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   const MAX_RESULTS = 50;
@@ -2719,7 +2763,9 @@ const OfficeView = ({
                 <button class="btn btn-print" onclick="window.print()">Stampa / Salva PDF</button>
             </div>
             <div class="header">
-                <h1>${layoutConfig?.appTitle || "Assistenza Tecnica"}</h1>
+                <h1>${escapeHtml(
+                  layoutConfig?.appTitle || "Assistenza Tecnica"
+                )}</h1>
                 <p>Report Interventi Tecnici</p>
             </div>
             <div class="meta">
@@ -2747,16 +2793,18 @@ const OfficeView = ({
                         (l) => `
                         <tr>
                             <td>
-                                <div style="font-weight: bold;">${
+                                <div style="font-weight: bold;">${escapeHtml(
                                   l.dateString
-                                }</div>
+                                )}</div>
                                 ${
                                   l.ticketNumber
-                                    ? `<div style="color: #2563eb; font-size: 10px; margin-top: 2px;">N. Assistenza ${l.ticketNumber}</div>`
+                                    ? `<div style="color: #2563eb; font-size: 10px; margin-top: 2px;">N. Assistenza ${escapeHtml(
+                                        l.ticketNumber
+                                      )}</div>`
                                     : ""
                                 }
-                                <div style="color: #64748b; font-size: 11px; margin-top: 4px;">${getTechsString(
-                                  l
+                                <div style="color: #64748b; font-size: 11px; margin-top: 4px;">${escapeHtml(
+                                  getTechsString(l)
                                 )}</div>
                                 ${
                                   l.photos && l.photos.length > 0
@@ -2765,20 +2813,25 @@ const OfficeView = ({
                                 }
                             </td>
                             <td>
-                                <div style="font-weight: bold; color: #0f172a;">${
+                                <div style="font-weight: bold; color: #0f172a;">${escapeHtml(
                                   l.customer
-                                }</div>
-                                <div style="color: #64748b; font-size: 11px; margin-top: 4px;">Mat: ${
+                                )}</div>
+                                <div style="color: #64748b; font-size: 11px; margin-top: 4px;">Mat: ${escapeHtml(
                                   l.machineId
-                                }</div>
+                                )}</div>
                                 <div style="color: #94a3b8; font-size: 10px;">
-                                    ${l.machineType} ${
-                          l.capacity ? `- ${formatCapacity(l.capacity)}` : ""
+                                    ${escapeHtml(l.machineType)} ${
+                          l.capacity
+                            ? `- ${escapeHtml(formatCapacity(l.capacity))}`
+                            : ""
                         }
                                 </div>
                             </td>
                             <td style="color: #334155; line-height: 1.6;">
-                                ${l.description.replace(/\n/g, "<br>")}
+                                ${escapeHtml(l.description).replace(
+                                  /\r?\n/g,
+                                  "<br>"
+                                )}
                             </td>
                         </tr>
                     `
@@ -2810,20 +2863,25 @@ const OfficeView = ({
     const rows = filteredLogs.map((l) => [
       l.dateString,
       l.ticketNumber || "",
-      `"${getTechsString(l)}"`,
+      getTechsString(l),
       l.customer,
       l.machineId,
-      `"${l.description.replace(/"/g, '""')}"`,
+      l.description,
     ]);
+    // Ogni cella tra virgolette: virgole, virgolette, "#" e a capo non rompono il file.
+    // "﻿" fa leggere correttamente le lettere accentate a Excel.
     const csvContent =
-      "data:text/csv;charset=utf-8," +
-      [headers.join(","), ...rows.map((e) => e.join(","))].join("\n");
+      "﻿" +
+      [headers, ...rows].map((r) => r.map(csvCell).join(",")).join("\r\n");
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement("a");
-    link.setAttribute("href", encodeURI(csvContent));
+    link.setAttribute("href", url);
     link.setAttribute("download", "report.csv");
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
 
   return (
@@ -3650,7 +3708,7 @@ const NewEntryForm = ({
       setIsLocked(true);
     } catch (e) {
       console.error(e);
-      alert("Errore salvataggio");
+      alert("Errore salvataggio: " + describeError(e));
     } finally {
       setIsSubmitting(false);
     }
@@ -4878,7 +4936,8 @@ const AdminPanel = ({
         };
       });
     } catch (e) {
-      alert("Errore");
+      console.error(e);
+      alert("Impossibile ignorare il conflitto: " + describeError(e));
     }
   };
 
@@ -5012,7 +5071,12 @@ const AdminPanel = ({
         };
       });
     } catch (e) {
-      alert("Errore");
+      console.error(e);
+      alert(
+        "Unione non completata: " +
+          describeError(e) +
+          " Alcuni interventi potrebbero essere già stati spostati: riprova l'unione."
+      );
     }
   };
 
