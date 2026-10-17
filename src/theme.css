@@ -1,0 +1,82 @@
+/* Stile generale dell'app: caratteri, sfondo "da progetto tecnico", tema scuro di base.
+   I colori scuri dei singoli elementi sono in dark.css (generato). */
+
+:root {
+  --mora-page: #f1f5f9;
+  --mora-grid: rgba(29, 78, 216, 0.045);
+}
+html.dark {
+  --mora-page: #0b1220;
+  --mora-grid: rgba(120, 150, 200, 0.06);
+  color-scheme: dark;
+}
+
+html,
+body {
+  background-color: var(--mora-page);
+}
+
+/* Caratteri: Barlow per i testi, Barlow Condensed per i titoli (come nell'avvio) */
+html body,
+html .font-sans {
+  font-family: "Barlow", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+html h1.font-black,
+html h2.font-black,
+html h3.font-black,
+html h4.font-black {
+  font-family: "Barlow Condensed", "Arial Narrow", "Barlow", sans-serif;
+  letter-spacing: 0.03em;
+}
+
+/* Sfondo con griglia leggera (app e schermata di accesso) */
+.mora-app {
+  background-color: var(--mora-page) !important;
+  background-image: repeating-linear-gradient(
+      0deg,
+      var(--mora-grid) 0 1px,
+      transparent 1px 24px
+    ),
+    repeating-linear-gradient(90deg, var(--mora-grid) 0 1px, transparent 1px 24px);
+}
+
+/* Tema scuro: testo base e campi */
+html.dark body,
+html.dark .mora-app {
+  color: #e2e8f2;
+}
+html.dark input,
+html.dark select,
+html.dark textarea {
+  color-scheme: dark;
+}
+html.dark .shadow-sm,
+html.dark .shadow-md,
+html.dark .shadow-lg,
+html.dark .shadow-xl,
+html.dark .shadow-2xl {
+  --tw-shadow-color: rgba(0, 0, 0, 0.45);
+}
+
+/* Bottone tema nell'intestazione */
+.mora-theme-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  color: #475569;
+  flex-shrink: 0;
+}
+html.dark .mora-theme-btn {
+  border-color: #223049;
+  background: #121b2c;
+  color: #cfd8e6;
+}
+.mora-theme-btn:focus-visible {
+  outline: 3px solid #3b82f6;
+  outline-offset: 2px;
+}

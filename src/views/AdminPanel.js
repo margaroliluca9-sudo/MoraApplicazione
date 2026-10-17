@@ -10,7 +10,6 @@ import {
   Terminal,
   Users,
   Palette,
-  Bell,
   Wifi,
   WifiOff,
   Edit,
@@ -23,6 +22,7 @@ import {
   UserX,
   Database,
   HardDrive,
+  Download,
 } from "lucide-react";
 import {
   collection,
@@ -43,6 +43,7 @@ import { db, appId } from "../firebase";
 import { describeError, getSafeMatricola, getLevenshteinDistance } from "../utils";
 import { PRO_INPUT, getButtonPrimaryClass, getProPanelClass } from "../ui";
 import { AdminTab } from "../components/AdminTab";
+import { buildBackupHtml, openPrintWindow } from "../reports";
 import { EditMachineModal } from "../components/modals/EditMachineModal";
 import { EditCustomerModal } from "../components/modals/EditCustomerModal";
 import { MergeModal } from "../components/modals/MergeModal";
@@ -56,8 +57,6 @@ export const AdminPanel = ({
   isMobile,
   layoutConfig,
   onUpdateLayout,
-  notificationsEnabled,
-  setNotificationsEnabled,
   onLogout,
   allLogs = [],
 }) => {
@@ -288,6 +287,26 @@ export const AdminPanel = ({
           .catch(() => {});
     } catch (e) {}
   }, [view]);
+
+  // Backup completo: documento da salvare in PDF con "Stampa / Salva PDF"
+  const downloadBackup = () =>
+    openPrintWindow(
+      buildBackupHtml({
+        appTitle: layoutConfig?.appTitle,
+        logs: allLogs,
+        customers,
+        machines,
+        technicians,
+        machineTypes,
+        generatedAt: new Date().toLocaleString("it-IT", {
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+          hour: "2-digit",
+          minute: "2-digit",
+        }),
+      })
+    );
 
   // Statistiche dell'archivio (sezione System)
   const dbStats = useMemo(() => {
@@ -549,21 +568,6 @@ export const AdminPanel = ({
           describeError(e) +
           " Alcuni interventi potrebbero essere già stati spostati: riprova l'unione."
       );
-    }
-  };
-
-  const toggleNotifications = async () => {
-    if (!("Notification" in window)) return;
-    if (!notificationsEnabled) {
-      const permission = await Notification.requestPermission();
-      if (permission === "granted") {
-        setNotificationsEnabled(true);
-        localStorage.setItem("mora_notifications", "true");
-        new Notification("Assistenza Mora", { body: "Notifiche attivate!" });
-      }
-    } else {
-      setNotificationsEnabled(false);
-      localStorage.setItem("mora_notifications", "false");
     }
   };
 
@@ -970,40 +974,6 @@ export const AdminPanel = ({
           )}`}
         >
           <h4 className="font-black text-slate-800 uppercase mb-4 flex items-center gap-2">
-            <Bell className="w-5 h-5 text-yellow-500" /> Notifiche Dispositivo
-          </h4>
-          <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between mb-8">
-            <div className="flex items-center gap-3">
-              <div
-                className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                  notificationsEnabled
-                    ? "bg-yellow-100 text-yellow-600"
-                    : "bg-slate-200 text-slate-500"
-                }`}
-              >
-                <Bell className="w-5 h-5" />
-              </div>
-              <div>
-                <h5 className="font-bold text-sm text-slate-800">
-                  Avvisi Nuovi Interventi
-                </h5>
-                <p className="text-[10px] text-slate-500 font-bold uppercase">
-                  {notificationsEnabled ? "Attive" : "Disattivate"}
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={toggleNotifications}
-              className={`px-4 py-2 rounded-lg font-bold text-xs uppercase ${
-                notificationsEnabled
-                  ? "bg-red-50 text-red-600 border border-red-200"
-                  : "bg-slate-800 text-white"
-              }`}
-            >
-              {notificationsEnabled ? "Disattiva" : "Attiva"}
-            </button>
-          </div>
-          <h4 className="font-black text-slate-800 uppercase mb-4 flex items-center gap-2">
             <Activity className="w-5 h-5 text-blue-500" /> Stato Sistema
           </h4>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
@@ -1108,9 +1078,17 @@ export const AdminPanel = ({
             ))}
           </div>
 
-          <h4 className="font-black text-slate-800 uppercase mb-4 flex items-center gap-2">
-            <Database className="w-5 h-5 text-purple-600" /> Archivio
-          </h4>
+          <div className="flex flex-wrap justify-between items-center gap-3 mb-4">
+            <h4 className="font-black text-slate-800 uppercase flex items-center gap-2">
+              <Database className="w-5 h-5 text-purple-600" /> Archivio
+            </h4>
+            <button
+              onClick={downloadBackup}
+              className="px-3 py-2 bg-purple-50 text-purple-700 border border-purple-200 rounded-lg font-bold text-[10px] uppercase hover:bg-purple-100 flex items-center gap-1.5"
+            >
+              <Download className="w-4 h-4" /> Backup PDF
+            </button>
+          </div>
           <div
             className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4"
             data-section="db-stats"

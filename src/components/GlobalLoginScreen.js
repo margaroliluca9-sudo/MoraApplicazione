@@ -1,10 +1,11 @@
 import React, { useState } from "react";
 import {
-  HardHat,
   User,
   Lock,
   AlertTriangle,
 } from "lucide-react";
+
+import { CraneMark } from "./CraneMark";
 
 // --- SCHERMATA LOGIN GLOBALE ---
 export const GlobalLoginScreen = ({ technicians, onUnlock, color = "blue" }) => {
@@ -46,7 +47,7 @@ export const GlobalLoginScreen = ({ technicians, onUnlock, color = "blue" }) => 
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 flex items-center justify-center p-4 animate-in fade-in duration-700">
+    <div className="mora-app min-h-screen bg-slate-100 flex items-center justify-center p-4 animate-in fade-in duration-700">
       <div
         className={`max-w-md w-full bg-white p-8 rounded-3xl shadow-2xl border-t-4 border-${color}-600`}
       >
@@ -54,7 +55,7 @@ export const GlobalLoginScreen = ({ technicians, onUnlock, color = "blue" }) => 
           <div
             className={`w-20 h-20 bg-${color}-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-${color}-500/30`}
           >
-            <HardHat className="w-10 h-10 text-white" />
+            <CraneMark className="w-10 h-10 text-white" />
           </div>
           <h1 className="text-2xl font-black text-slate-800 uppercase tracking-tight">
             Accesso Privato

@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import {
   PlusCircle,
-  HardHat,
   History,
   User,
   X,
@@ -9,6 +8,9 @@ import {
   ChevronDown,
   RefreshCw,
   ArrowLeft,
+  Sun,
+  Moon,
+  Smartphone,
 } from "lucide-react";
 import { signInAnonymously, onAuthStateChanged } from "firebase/auth";
 import {
@@ -22,9 +24,20 @@ import {
 } from "firebase/firestore";
 import { auth, db, appId } from "./firebase";
 import { DEFAULT_LAYOUT } from "./constants";
-import { getTechsString, getSafeMatricola } from "./utils";
+import { getSafeMatricola } from "./utils";
 import { PRO_BUTTON_SECONDARY } from "./ui";
 import { GlobalLoginScreen } from "./components/GlobalLoginScreen";
+import { SplashScreen } from "./components/SplashScreen";
+import { CraneMark } from "./components/CraneMark";
+import {
+  THEME_MODES,
+  THEME_LABELS,
+  getThemeMode,
+  saveThemeMode,
+  isDarkMode,
+  applyTheme,
+  onSystemThemeChange,
+} from "./theme";
 import { NavButton } from "./components/NavButton";
 import { AdminLoginModal } from "./components/AdminLoginModal";
 import { PhotoViewerModal } from "./components/PhotoViewerModal";
@@ -39,6 +52,22 @@ import { HistoryView } from "./views/HistoryView";
 import { AdminPanel } from "./views/AdminPanel";
 
 export default function App() {
+  // TEMA chiaro / scuro (scelto su ogni dispositivo)
+  const [themeMode, setThemeMode] = useState(getThemeMode);
+  const [isDark, setIsDark] = useState(() => isDarkMode(getThemeMode()));
+  useEffect(() => {
+    setIsDark(applyTheme(themeMode));
+    saveThemeMode(themeMode);
+    if (themeMode !== "auto") return;
+    return onSystemThemeChange(() => setIsDark(applyTheme("auto")));
+  }, [themeMode]);
+  const cycleTheme = () =>
+    setThemeMode(
+      (m) => THEME_MODES[(THEME_MODES.indexOf(m) + 1) % THEME_MODES.length]
+    );
+  const ThemeIcon =
+    themeMode === "dark" ? Moon : themeMode === "light" ? Sun : Smartphone;
+
   const [user, setUser] = useState(null);
   const [activeTab, setActiveTab] = useState("dashboard");
   const [logs, setLogs] = useState([]);
@@ -56,15 +85,6 @@ export default function App() {
   const [layoutConfig, setLayoutConfig] = useState(DEFAULT_LAYOUT);
   const [isAppLoading, setIsAppLoading] = useState(true);
   const [globalPhotoView, setGlobalPhotoView] = useState(null);
-
-  const [notificationsEnabled, setNotificationsEnabled] = useState(
-    localStorage.getItem("mora_notifications") === "true"
-  );
-  const notifRef = useRef(notificationsEnabled);
-
-  useEffect(() => {
-    notifRef.current = notificationsEnabled;
-  }, [notificationsEnabled]);
 
   useEffect(() => {
     if (currentTechName && currentTechName.trim().toLowerCase() === "luca") {
@@ -131,7 +151,7 @@ export default function App() {
 
     onAuthStateChanged(auth, (u) => {
       setUser(u);
-      setTimeout(() => setIsAppLoading(false), 2000);
+      setTimeout(() => setIsAppLoading(false), 2500);
     });
   }, []);
 
@@ -301,37 +321,9 @@ export default function App() {
       }
     );
 
-    let isInitialLogsLoad = true;
-
     const unsubLogs = onSnapshot(
       collection(db, "artifacts", appId, "public", "data", "maintenance_logs"),
       (s) => {
-        if (
-          !isInitialLogsLoad &&
-          notifRef.current &&
-          "Notification" in window &&
-          Notification.permission === "granted"
-        ) {
-          s.docChanges().forEach((change) => {
-            if (change.type === "added") {
-              const newLog = change.doc.data();
-              if (
-                newLog.userId !== user.uid &&
-                newLog.createdAt &&
-                Date.now() - newLog.createdAt.seconds * 1000 < 300000
-              ) {
-                new Notification(`Nuovo Intervento: ${newLog.customer}`, {
-                  body: `Tecnico: ${getTechsString(newLog)}\nGru: ${
-                    newLog.machineId
-                  }`,
-                  icon: "/favicon.ico",
-                });
-              }
-            }
-          });
-        }
-        isInitialLogsLoad = false;
-
         setLogs(
           s.docs
             .map((d) => ({ id: d.id, ...d.data() }))
@@ -454,36 +446,10 @@ export default function App() {
 
   if (isAppLoading)
     return (
-      <div className="fixed inset-0 bg-slate-900 flex flex-col items-center justify-center z-[100] animate-out fade-out duration-1000 fill-mode-forwards">
-        <div className="relative flex flex-col items-center animate-in zoom-in duration-700">
-          <div
-            className={`p-6 rounded-3xl bg-${color}-600 shadow-2xl mb-6 shadow-${color}-500/50`}
-          >
-            <HardHat className="w-16 h-16 text-white" />
-          </div>
-          <h1 className="text-3xl font-black text-white uppercase tracking-widest mb-2 shadow-sm">
-            ASSISTENZA MORA
-          </h1>
-          <p
-            className={`text-${color}-400 text-xs font-bold uppercase tracking-widest animate-pulse`}
-          >
-            Caricamento sistema...
-          </p>
-          <div className="mt-8 flex gap-2">
-            <div
-              className={`w-2 h-2 rounded-full bg-${color}-500 animate-bounce`}
-            ></div>
-            <div
-              className={`w-2 h-2 rounded-full bg-${color}-500 animate-bounce`}
-              style={{ animationDelay: "-0.2s" }}
-            ></div>
-            <div
-              className={`w-2 h-2 rounded-full bg-${color}-500 animate-bounce`}
-              style={{ animationDelay: "-0.4s" }}
-            ></div>
-          </div>
-        </div>
-      </div>
+      <SplashScreen
+        dark={isDark}
+        title={layoutConfig.appTitle || "Assistenza Mora"}
+      />
     );
 
   if (!isAppUnlocked && !loading) {
@@ -498,7 +464,7 @@ export default function App() {
 
   if (!isAppUnlocked && loading) {
     return (
-      <div className="min-h-screen bg-slate-100 flex items-center justify-center">
+      <div className="mora-app min-h-screen bg-slate-100 flex items-center justify-center">
         <RefreshCw className={`animate-spin text-${color}-600 w-10 h-10`} />
       </div>
     );
@@ -506,7 +472,7 @@ export default function App() {
 
   return (
     <div
-      className={`min-h-screen font-sans ${
+      className={`mora-app min-h-screen font-sans ${
         isMobileView ? "pb-24" : ""
       } relative bg-slate-100 text-slate-900 animate-in fade-in duration-700`}
     >
@@ -521,7 +487,7 @@ export default function App() {
             <div
               className={`p-2 rounded-xl bg-${color}-600 text-white shadow-lg`}
             >
-              <HardHat className="w-5 h-5" />
+              <CraneMark className="w-5 h-5" />
             </div>
             <div>
               <div className="relative">
@@ -619,6 +585,15 @@ export default function App() {
               </span>
             </div>
           </div>
+          <button
+            type="button"
+            onClick={cycleTheme}
+            className="mora-theme-btn"
+            title={`${THEME_LABELS[themeMode]} (tocca per cambiare)`}
+            aria-label={`${THEME_LABELS[themeMode]}. Tocca per cambiare tema`}
+          >
+            <ThemeIcon className="w-5 h-5" />
+          </button>
         </div>
       </header>
 
@@ -723,8 +698,6 @@ export default function App() {
                 isMobile={isMobileView}
                 layoutConfig={layoutConfig}
                 onUpdateLayout={handleUpdateLayout}
-                notificationsEnabled={notificationsEnabled}
-                setNotificationsEnabled={setNotificationsEnabled}
                 onLogout={handleLogout}
                 allLogs={logs}
               />
