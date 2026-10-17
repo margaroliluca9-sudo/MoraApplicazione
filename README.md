@@ -12,6 +12,8 @@ App "Assistenza Mora" per registrare e consultare gli interventi sulle gru
 | `constants.js` | Costanti (password admin, impostazioni grafiche di default) |
 | `utils.js` | Funzioni di supporto (date, compressione foto, matricole, CSV, messaggi di errore) |
 | `ui.js` | Classi grafiche comuni (input, bottoni, pannelli) |
+| `parts.js` | Pezzi sostituiti e scheda tecnica gru (lettura automatica delle descrizioni) |
+| `reports.js` | Report stampabili (Ufficio, Storico, Scheda gru) |
 | `views/DashboardView.js` | Home con i riquadri |
 | `views/NewEntryForm.js` | Nuovo rapporto d'intervento |
 | `views/ExploreView.js` | Esplora clienti e macchine |
