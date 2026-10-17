@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 
 import { getSafeMatricola } from "../utils";
+import { formatRope } from "../ropes";
 import {
   MyLogsModal,
   isMyLog,
@@ -92,7 +93,7 @@ export const DashboardView = ({
     const ls = logs
       .filter((l) =>
         hit(
-          `${l.ticketNumber || ""} ${l.customer} ${l.machineId} ${l.description} ${l.technician} ${(l.additionalTechnicians || []).join(" ")} ${l.dateString}`,
+          `${l.ticketNumber || ""} ${l.customer} ${l.machineId} ${l.description} ${l.technician} ${(l.additionalTechnicians || []).join(" ")} ${l.dateString} ${formatRope(l.fune)} ${formatRope(l.catena)}`,
         ),
       )
       .sort((a, b) => dateKey(b.dateString) - dateKey(a.dateString));

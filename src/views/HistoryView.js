@@ -17,6 +17,7 @@ import { getProPanelClass } from "../ui";
 import { DeleteConfirmDialog } from "../components/DeleteConfirmDialog";
 import { EditLogModal } from "../components/modals/EditLogModal";
 import { buildSingleLogReportHtml, openPrintWindow } from "../reports";
+import { formatRope } from "../ropes";
 
 export const HistoryView = ({
   logs,
@@ -91,7 +92,9 @@ export const HistoryView = ({
     return (
       (l.customer && l.customer.toLowerCase().includes(s)) ||
       (l.machineId && l.machineId.toLowerCase().includes(s)) ||
-      (l.description && l.description.toLowerCase().includes(s))
+      (l.description && l.description.toLowerCase().includes(s)) ||
+      (l.fune && formatRope(l.fune).toLowerCase().includes(s)) ||
+      (l.catena && formatRope(l.catena).toLowerCase().includes(s))
     );
   });
 

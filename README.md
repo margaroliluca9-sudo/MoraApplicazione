@@ -15,6 +15,7 @@ App "Assistenza Mora" per registrare e consultare gli interventi sulle gru
 | `theme.js`, `theme.css` | Tema chiaro/scuro (scelto su ogni dispositivo), caratteri, sfondo |
 | `dark.css` | Colori del tema scuro (file generato, non modificare a mano) |
 | `appearance.js`, `appearance.css` | Opzioni di Admin > Design: carattere, grandezza lettere, angoli, spaziatura, avvio (CSS generato) |
+| `ropes.js` | Fune e catena sostituite: riconoscimento dalla descrizione, dati obbligatori (certificato, diametro, lunghezza) |
 | `reports.js` | Report stampabili (elenco interventi di Ufficio, rapporto del singolo intervento dallo Storico, backup PDF) |
 | `views/DashboardView.js` | Home: ricerca unica, riquadri, "I miei interventi" |
 | `views/NewEntryForm.js` | Nuovo rapporto d'intervento |

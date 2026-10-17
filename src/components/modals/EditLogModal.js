@@ -13,6 +13,15 @@ import { compressImage, describeError } from "../../utils";
 import { PRO_INPUT, getButtonPrimaryClass, getProPanelClass } from "../../ui";
 
 // --- MODALI DATI ---
+import { RopeFields } from "../RopeFields";
+import {
+  ROPE_ITEMS,
+  autoTick,
+  validateRopes,
+  toSavedRope,
+  fromSavedRope,
+} from "../../ropes";
+
 export const EditLogModal = ({
   log,
   customers,
@@ -26,6 +35,7 @@ export const EditLogModal = ({
     ...log,
     additionalTechnicians: log.additionalTechnicians || [],
     photos: log.photos || [],
+    ropes: { fune: fromSavedRope(log.fune), catena: fromSavedRope(log.catena) },
   });
   const [loading, setLoading] = useState(false);
   const [uploadingPhotos, setUploadingPhotos] = useState(false);
@@ -85,8 +95,13 @@ export const EditLogModal = ({
   };
 
   const handleSave = async () => {
+    const ropeError = validateRopes(data.ropes);
+    if (ropeError) return alert(ropeError);
     setLoading(true);
     try {
+      // fune/catena: dati salvati, oppure null se tolti
+      const { ropes, ...dataToSave } = data;
+      for (const { id } of ROPE_ITEMS) dataToSave[id] = toSavedRope(ropes[id]);
       const cleanAdditionalTechs = data.additionalTechnicians.filter(
         (t) => t.trim() !== ""
       );
@@ -106,7 +121,7 @@ export const EditLogModal = ({
           log.id
         ),
         {
-          ...data,
+          ...dataToSave,
           technician: data.technician,
           additionalTechnicians: cleanAdditionalTechs,
           customer: data.customer.toUpperCase(),
@@ -329,10 +344,19 @@ export const EditLogModal = ({
               className={PRO_INPUT}
               value={data.description}
               onChange={(e) =>
-                setData({ ...data, description: e.target.value })
+                setData({
+                  ...data,
+                  description: e.target.value,
+                  ropes: autoTick(data.ropes, e.target.value),
+                })
               }
             />
           </div>
+
+          <RopeFields
+            ropes={data.ropes}
+            onChange={(ropes) => setData((p) => ({ ...p, ropes }))}
+          />
 
           <div className="space-y-2 bg-slate-100 p-3 rounded-xl border border-slate-200">
             <div className="flex justify-between items-center mb-1">

@@ -1,5 +1,19 @@
 // Report stampabili (stesso aspetto in Ufficio, Storico e Scheda gru).
 import { escapeHtml, getTechsString, formatCapacity } from "./utils";
+import { formatRope } from "./ropes";
+
+// righe "Fune/Catena sostituita" sotto la descrizione (solo se presenti)
+const ropeLinesHtml = (l) =>
+  [
+    ["fune", "Fune sostituita"],
+    ["catena", "Catena sostituita"],
+  ]
+    .filter(([k]) => l && l[k])
+    .map(
+      ([k, label]) =>
+        `<div style="margin-top: 6px; font-size: 10px; color: #92400e; font-weight: bold;">${label}: ${escapeHtml(formatRope(l[k]))}</div>`
+    )
+    .join("");
 
 export const REPORT_CSS = `
         @page { size: A4; margin: 0 !important; }
@@ -113,7 +127,7 @@ export const buildLogsReportHtml = ({
                                 ${escapeHtml(l.description).replace(
                                   /\r?\n/g,
                                   "<br>"
-                                )}
+                                )}${ropeLinesHtml(l)}
                             </td>
                         </tr>
                     `
@@ -194,6 +208,8 @@ export const buildSingleLogReportHtml = ({ appTitle, log, today }) => {
                     ${row("Matricola gru", log.machineId)}
                     ${row("Tipo", log.machineType)}
                     ${row("Portata", log.capacity ? formatCapacity(log.capacity) : "")}
+                    ${row("Fune sostituita", formatRope(log.fune))}
+                    ${row("Catena sostituita", formatRope(log.catena))}
                 </tbody>
             </table>
             <div class="section-title">Descrizione del lavoro</div>
@@ -288,7 +304,7 @@ export const buildBackupHtml = ({
                                 <div style="color: #64748b; font-size: 11px; margin-top: 4px;">Mat: ${escapeHtml(l.machineId)}</div>
                                 <div style="color: #94a3b8; font-size: 10px;">${escapeHtml(l.machineType)} ${l.capacity ? `- ${escapeHtml(formatCapacity(l.capacity))}` : ""}</div>
                             </td>
-                            <td style="color: #334155; line-height: 1.6;">${escapeHtml(l.description).replace(/\r?\n/g, "<br>")}</td>
+                            <td style="color: #334155; line-height: 1.6;">${escapeHtml(l.description).replace(/\r?\n/g, "<br>")}${ropeLinesHtml(l)}</td>
                         </tr>`
     )
     .join("");

@@ -33,6 +33,14 @@ import {
   getSuggestedCapacities,
 } from "../utils";
 import { PRO_INPUT, getButtonPrimaryClass, getProPanelClass } from "../ui";
+import { RopeFields } from "../components/RopeFields";
+import {
+  ROPE_ITEMS,
+  emptyRope,
+  autoTick,
+  validateRopes,
+  toSavedRope,
+} from "../ropes";
 
 export const NewEntryForm = ({
   user,
@@ -56,6 +64,7 @@ export const NewEntryForm = ({
     description: "",
     ticketNumber: "",
     photos: [],
+    ropes: { fune: emptyRope(), catena: emptyRope() },
     dateString: getTodayString(), // Formato YYYY-MM-DD per l'input date
   });
 
@@ -73,6 +82,12 @@ export const NewEntryForm = ({
   const color = layoutConfig?.themeColor || "blue";
 
   let formOrder = layoutConfig?.formOrder || DEFAULT_LAYOUT.formOrder;
+  if (!formOrder.includes("ropes")) {
+    // fune / catena sostituita: subito dopo la descrizione
+    formOrder = [...formOrder];
+    const dIdx = formOrder.indexOf("description");
+    formOrder.splice(dIdx === -1 ? formOrder.length : dIdx + 1, 0, "ropes");
+  }
   if (!formOrder.includes("photos")) {
     formOrder = [...formOrder];
     const descIdx = formOrder.indexOf("description");
@@ -264,6 +279,13 @@ export const NewEntryForm = ({
       setTimeout(() => setFormError(""), 5000);
       return;
     }
+    // fune / catena sostituita: dati obbligatori (o "non disponibile" con motivo)
+    const ropeError = validateRopes(formData.ropes);
+    if (ropeError) {
+      setFormError(ropeError);
+      setTimeout(() => setFormError(""), 9000);
+      return;
+    }
     setFormError("");
     setIsSubmitting(true);
     try {
@@ -275,6 +297,13 @@ export const NewEntryForm = ({
       );
       const cleanCustomer = formData.customer.toUpperCase().trim();
       const cleanMachineId = formData.machineId.toUpperCase().trim();
+
+      // dati da salvare: niente stato interno del modulo, fune/catena solo se sostituite
+      const { ropes, ...formDataToSave } = formData;
+      for (const { id } of ROPE_ITEMS) {
+        const saved = toSavedRope(ropes && ropes[id]);
+        if (saved) formDataToSave[id] = saved;
+      }
 
       // Formatta la data (da YYYY-MM-DD a DD/MM/YYYY)
       let finalDateString = new Date().toLocaleDateString("it-IT");
@@ -293,7 +322,7 @@ export const NewEntryForm = ({
           "maintenance_logs"
         ),
         {
-          ...formData,
+          ...formDataToSave,
           additionalTechnicians: cleanAdditionalTechs,
           machineId: cleanMachineId,
           customer: cleanCustomer,
@@ -615,10 +644,22 @@ export const NewEntryForm = ({
               className={PRO_INPUT}
               value={formData.description}
               onChange={(e) =>
-                setFormData({ ...formData, description: e.target.value })
+                setFormData({
+                  ...formData,
+                  description: e.target.value,
+                  ropes: autoTick(formData.ropes, e.target.value),
+                })
               }
             />
           </div>
+        );
+      case "ropes":
+        return (
+          <RopeFields
+            key="ropes"
+            ropes={formData.ropes}
+            onChange={(ropes) => setFormData((p) => ({ ...p, ropes }))}
+          />
         );
       case "photos":
         return (
@@ -881,6 +922,7 @@ export const NewEntryForm = ({
                     description: "",
                     ticketNumber: "",
                     photos: [],
+                    ropes: { fune: emptyRope(), catena: emptyRope() },
                     dateString: getTodayString(),
                   }));
                   setLastIntervention(null);

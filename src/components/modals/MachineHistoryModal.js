@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { getTechsString, formatCapacity, getSafeMatricola } from "../../utils";
 import { getProPanelClass } from "../../ui";
+import { ROPE_ITEMS, formatRope, lastRopeOf } from "../../ropes";
 
 export const MachineHistoryModal = ({
   machine,
@@ -85,6 +86,19 @@ export const MachineHistoryModal = ({
                   </span>
                 )}
               </div>
+              {ROPE_ITEMS.map(({ id, title }) => {
+                const last = lastRopeOf(machineLogs, id);
+                return last ? (
+                  <div
+                    key={id}
+                    data-last-rope={id}
+                    className="text-[11px] font-bold text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1 mt-2 w-fit max-w-full"
+                  >
+                    Ultima {title.toLowerCase()} ({last.dateString}):{" "}
+                    {formatRope(last[id])}
+                  </div>
+                ) : null;
+              })}
             </div>
           </div>
         </div>
@@ -142,6 +156,14 @@ export const MachineHistoryModal = ({
                   <p className="text-slate-700 text-xs md:text-sm leading-relaxed font-medium relative z-10 italic whitespace-pre-wrap break-words">
                     "{log.description}"
                   </p>
+                  {ROPE_ITEMS.filter(({ id }) => log[id]).map(({ id, title }) => (
+                    <div
+                      key={id}
+                      className="relative z-10 mt-3 text-[10px] font-bold text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1 w-fit max-w-full"
+                    >
+                      {title} sostituita: {formatRope(log[id])}
+                    </div>
+                  ))}
                 </div>
               </div>
             ))}
