@@ -364,3 +364,75 @@ export const buildBackupHtml = ({
         </html>
     `;
 };
+
+// ELENCO GRU DI UN CLIENTE (con colonna "Note" vuota da compilare a penna)
+export const buildCustomerMachinesHtml = ({ appTitle, customerName, machines = [], today }) => {
+  const mat = (m) =>
+    m.matricola || (m.id && m.id.includes("_") ? m.id.slice(m.id.indexOf("_") + 1).toUpperCase() : m.id) || "-";
+  const sorted = [...machines].sort((a, b) =>
+    String(mat(a)).localeCompare(String(mat(b)), "it", { numeric: true, sensitivity: "base" })
+  );
+  const rows = sorted
+    .map(
+      (m, i) => `
+                    <tr>
+                        <td class="num">${i + 1}</td>
+                        <td class="mat">${escapeHtml(mat(m))}</td>
+                        <td>${escapeHtml(m.type || "-")}</td>
+                        <td>${escapeHtml(m.capacity ? formatCapacity(m.capacity) : "-")}</td>
+                        <td class="note"></td>
+                    </tr>`
+    )
+    .join("");
+  return `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Gru ${escapeHtml(customerName)}</title>
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <style>${REPORT_CSS}
+        table.gru td { vertical-align: middle; height: 34px; padding-top: 6px; padding-bottom: 6px; }
+        table.gru td.num { color: #94a3b8; width: 5%; }
+        table.gru td.mat { font-weight: bold; color: #0f172a; }
+        table.gru td.note { border-left: 1px solid #e2e8f0; }
+        table.gru tr { page-break-inside: avoid; }
+        .empty { text-align: center; color: #94a3b8; font-style: italic; padding: 30px; }
+            </style>
+        </head>
+        <body>
+            <div class="no-print">
+                <button class="btn btn-close" onclick="window.close()">Chiudi</button>
+                <button class="btn btn-print" onclick="window.print()">Stampa / Salva PDF</button>
+            </div>
+            <div class="header">
+                <h1>${escapeHtml(appTitle || "Assistenza Tecnica")}</h1>
+                <p>Elenco gru</p>
+            </div>
+            <div class="meta">
+                <div>Cliente: ${escapeHtml(customerName)}</div>
+                <div>Gru: ${sorted.length}</div>
+                <div>Stampato il: ${escapeHtml(today)}</div>
+            </div>
+            ${
+              sorted.length
+                ? `<table class="gru">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th style="width: 20%">Matricola</th>
+                        <th style="width: 20%">Tipo</th>
+                        <th style="width: 13%">Portata</th>
+                        <th style="width: 42%">Note</th>
+                    </tr>
+                </thead>
+                <tbody>${rows}</tbody>
+            </table>`
+                : `<div class="empty">Nessuna gru registrata per questo cliente.</div>`
+            }
+            <div class="footer">
+                Documento generato automaticamente dal sistema di gestione.
+            </div>
+        </body>
+        </html>
+    `;
+};

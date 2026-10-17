@@ -804,6 +804,7 @@ export default function App() {
           onClose={() => setViewingCustomerDetail(null)}
           onOpenMachine={openMachineDetail}
           themeColor={color}
+          appTitle={layoutConfig.appTitle}
         />
       )}
 
