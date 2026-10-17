@@ -1,5 +1,4 @@
 // Costanti dell'app.
-export const ADMIN_PASSWORD = "Mora1932";
 
 export const DEFAULT_LAYOUT = {
   themeColor: "blue",

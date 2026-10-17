@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 
 import { CraneMark } from "./CraneMark";
+import { isAdminPassword, isStaffPassword } from "../passwords";
 
 // --- SCHERMATA LOGIN GLOBALE ---
 export const GlobalLoginScreen = ({ technicians, onUnlock, color = "blue" }) => {
@@ -23,12 +24,12 @@ export const GlobalLoginScreen = ({ technicians, onUnlock, color = "blue" }) => 
       return;
     }
 
-    if (password === "Mora1932") {
+    if (isAdminPassword(password)) {
       onUnlock(cleanName);
       return;
     }
 
-    if (password === "1932") {
+    if (isStaffPassword(password)) {
       const matchedTech = technicians.find(
         (t) => t.name.toLowerCase() === cleanName.toLowerCase()
       );

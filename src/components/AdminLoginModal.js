@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Lock } from "lucide-react";
-import { ADMIN_PASSWORD } from "../constants";
+import { isAdminPassword } from "../passwords";
 import {
   PRO_INPUT,
   PRO_BUTTON_SECONDARY,
@@ -17,7 +17,7 @@ export const AdminLoginModal = ({
   const [pin, setPin] = useState("");
   const [error, setError] = useState(false);
   const handleLogin = () => {
-    if (pin === ADMIN_PASSWORD) onSuccess();
+    if (isAdminPassword(pin)) onSuccess();
     else {
       setError(true);
       setPin("");

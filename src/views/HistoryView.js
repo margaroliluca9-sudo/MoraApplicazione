@@ -11,7 +11,7 @@ import {
 } from "lucide-react";
 import { doc, deleteDoc } from "firebase/firestore";
 import { db, appId } from "../firebase";
-import { ADMIN_PASSWORD } from "../constants";
+import { isAdminPassword } from "../passwords";
 import { getTechsString, formatCapacity } from "../utils";
 import { getProPanelClass } from "../ui";
 import { DeleteConfirmDialog } from "../components/DeleteConfirmDialog";
@@ -131,7 +131,7 @@ export const HistoryView = ({
   };
 
   const confirmDelete = async () => {
-    if (!isFreeAction && pin !== ADMIN_PASSWORD) return setErr(true);
+    if (!isFreeAction && !isAdminPassword(pin)) return setErr(true);
     await deleteDoc(
       doc(
         db,
