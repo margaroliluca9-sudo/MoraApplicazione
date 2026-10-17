@@ -34,6 +34,8 @@ import {
 } from "../utils";
 import { PRO_INPUT, getButtonPrimaryClass, getProPanelClass } from "../ui";
 import { RopeFields } from "../components/RopeFields";
+import { AssistantPanel } from "../components/AssistantPanel";
+import { logsOfMachine, findSameMatricola, normalizeMatricola } from "../assistant";
 import {
   ROPE_ITEMS,
   emptyRope,
@@ -251,6 +253,22 @@ export const NewEntryForm = ({
       setLastIntervention(null);
     }
   }, [formData.machineId, formData.customer, allLogs, machines]);
+
+  // assistente: interventi della gru scelta e matricola scritta in modo diverso
+  const assistantLogs = useMemo(
+    () => logsOfMachine(allLogs, formData.machineId, formData.customer),
+    [allLogs, formData.machineId, formData.customer]
+  );
+  const sameMatricola = useMemo(() => {
+    const typed = String(formData.machineId || "").trim().toUpperCase();
+    const cust = String(formData.customer || "").trim().toUpperCase();
+    const exact = (machines || []).some(
+      (m) =>
+        getSafeMatricola(m) === typed &&
+        String(m.customerName || "").trim().toUpperCase() === cust
+    );
+    return exact ? null : findSameMatricola(machines, typed, cust);
+  }, [machines, formData.machineId, formData.customer]);
 
   const selectMachine = (m) => {
     const mat = getSafeMatricola(m);
@@ -502,9 +520,14 @@ export const NewEntryForm = ({
                   {machines
                     .filter((m) => {
                       const mat = getSafeMatricola(m);
+                      // trova anche le matricole scritte in modo diverso ("m 100" -> M-100)
                       const matchMat =
                         !formData.machineId ||
-                        mat.includes(formData.machineId.toUpperCase());
+                        mat.includes(formData.machineId.toUpperCase()) ||
+                        (normalizeMatricola(formData.machineId) !== "" &&
+                          normalizeMatricola(mat).includes(
+                            normalizeMatricola(formData.machineId)
+                          ));
                       const matchCust =
                         !formData.customer ||
                         m.customerName.toUpperCase() ===
@@ -845,7 +868,31 @@ export const NewEntryForm = ({
         </div>
       </div>
       <form onSubmit={handleSubmit} className="p-6 space-y-6">
-        {formOrder.map((key) => renderField(key))}
+        {formOrder.map((key) => (
+          <React.Fragment key={key}>
+            {renderField(key)}
+            {key === "machine" && sameMatricola && (
+              <div
+                data-section="same-matricola"
+                className="flex flex-wrap items-center justify-between gap-2 bg-blue-50 border border-blue-200 rounded-xl px-3 py-2 text-xs font-bold text-blue-800"
+              >
+                <span>
+                  Questo cliente ha già la gru{" "}
+                  <span className="font-black">{getSafeMatricola(sameMatricola)}</span>
+                  {sameMatricola.type ? ` (${sameMatricola.type})` : ""}: è la stessa?
+                </span>
+                <button
+                  type="button"
+                  onClick={() => selectMachine(sameMatricola)}
+                  className="bg-blue-600 text-white px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wide active:scale-95 transition-transform"
+                >
+                  Usa {getSafeMatricola(sameMatricola)}
+                </button>
+              </div>
+            )}
+            {key === "machine" && <AssistantPanel machineLogs={assistantLogs} />}
+          </React.Fragment>
+        ))}
         {lastIntervention && (
           <div className="bg-amber-50 p-4 rounded-xl border border-amber-100 animate-in fade-in slide-in-from-top-2 shadow-sm">
             <div className="flex items-center gap-2 mb-1.5">

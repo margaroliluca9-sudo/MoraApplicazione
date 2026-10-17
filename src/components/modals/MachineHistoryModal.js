@@ -11,6 +11,7 @@ import {
 import { getTechsString, formatCapacity, getSafeMatricola } from "../../utils";
 import { getProPanelClass } from "../../ui";
 import { ROPE_ITEMS, formatRope, lastRopeOf } from "../../ropes";
+import { AssistantPanel } from "../AssistantPanel";
 
 export const MachineHistoryModal = ({
   machine,
@@ -103,6 +104,9 @@ export const MachineHistoryModal = ({
           </div>
         </div>
         <div className="flex-1 overflow-y-auto p-5 custom-scrollbar bg-slate-100">
+          <div className="mb-4">
+            <AssistantPanel machineLogs={machineLogs} />
+          </div>
           <div className="space-y-4">
             {machineLogs.map((log, idx) => (
               <div key={log.id} className="flex gap-4 group">
