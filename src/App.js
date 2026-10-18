@@ -23,6 +23,8 @@ import {
   doc,
   setDoc,
   deleteDoc,
+  query,
+  where,
 } from "firebase/firestore";
 import { auth, db, appId } from "./firebase";
 import { DEFAULT_LAYOUT } from "./constants";
@@ -45,7 +47,10 @@ import { NavButton } from "./components/NavButton";
 import { AdminLoginModal } from "./components/AdminLoginModal";
 import { PhotoViewerModal } from "./components/PhotoViewerModal";
 import { PdfHost } from "./components/PdfHost";
-import { refreshPush } from "./chat";
+import { refreshPush, key as techKey } from "./chat";
+import { PERSONAL } from "./personal";
+import { VAN } from "./van";
+import { VanHost } from "./components/VanHost";
 import { MachineHistoryModal } from "./components/modals/MachineHistoryModal";
 import { CustomerDetailModal } from "./components/modals/CustomerDetailModal";
 import { DashboardView } from "./views/DashboardView";
@@ -82,6 +87,10 @@ export default function App() {
   const [machineTypes, setMachineTypes] = useState([]);
   const [chatMessages, setChatMessages] = useState([]);
   const [chatReads, setChatReads] = useState([]);
+  // magazzino furgoni (tutti) e "La mia area" (solo le cose del tecnico collegato)
+  const [vans, setVans] = useState([]);
+  const [vanItems, setVanItems] = useState([]);
+  const [personal, setPersonal] = useState({ events: [], notes: [], reminders: [], contacts: [] });
   const [loading, setLoading] = useState(true);
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
   const [showAdminLogin, setShowAdminLogin] = useState(false);
@@ -416,7 +425,20 @@ export default function App() {
       () => setChatReads([])
     );
 
+    const unsubVans = onSnapshot(
+      collection(db, "artifacts", appId, "public", "data", VAN.vans),
+      (s) => setVans(s.docs.map((d) => ({ id: d.id, ...d.data() }))),
+      () => setVans([])
+    );
+    const unsubVanItems = onSnapshot(
+      collection(db, "artifacts", appId, "public", "data", VAN.items),
+      (s) => setVanItems(s.docs.map((d) => ({ id: d.id, ...d.data() }))),
+      () => setVanItems([])
+    );
+
     return () => {
+      unsubVans();
+      unsubVanItems();
       unsubLayout();
       unsubLogs();
       unsubCust();
@@ -429,6 +451,22 @@ export default function App() {
     };
   }, [user]);
 
+  // LA MIA AREA: carico solo i documenti del tecnico collegato
+  useEffect(() => {
+    const me = techKey(currentTechName);
+    setPersonal({ events: [], notes: [], reminders: [], contacts: [] });
+    if (!user || !me) return undefined;
+    const unsubs = Object.entries(PERSONAL).map(([kind, name]) =>
+      onSnapshot(
+        query(collection(db, "artifacts", appId, "public", "data", name), where("owner", "==", me)),
+        (s) =>
+          setPersonal((p) => ({ ...p, [kind]: s.docs.map((d) => ({ id: d.id, ...d.data() })) })),
+        () => setPersonal((p) => ({ ...p, [kind]: [] }))
+      )
+    );
+    return () => unsubs.forEach((u) => u());
+  }, [user, currentTechName]);
+
   // notifiche: tengo aggiornata l'iscrizione di questo telefono (se già permesse)
   useEffect(() => {
     if (user && currentTechName) refreshPush(currentTechName);
@@ -439,12 +477,22 @@ export default function App() {
     const onMsg = (e) => {
       if (e.data && e.data.type === "open-chat") {
         let conv = "group";
+        let panel = null;
         try {
-          conv = new URL(e.data.url, window.location.origin).searchParams.get("chat") || "group";
+          const q = new URL(e.data.url, window.location.origin).searchParams;
+          conv = q.get("chat") || "group";
+          if (q.has("area")) panel = q.get("area") || "home";
         } catch (err) {
           // niente
         }
         setActiveTab("dashboard");
+        if (panel) {
+          setTimeout(
+            () => window.dispatchEvent(new CustomEvent("mora-open-area", { detail: { panel } })),
+            50
+          );
+          return;
+        }
         setTimeout(
           () => window.dispatchEvent(new CustomEvent("mora-open-chat", { detail: { conv } })),
           50
@@ -557,6 +605,7 @@ export default function App() {
       } relative bg-slate-100 text-slate-900 animate-in fade-in duration-700`}
     >
       <PdfHost />
+      <VanHost vanItems={vanItems} color={color} />
       <header
         className={`sticky top-0 z-50 p-4 transition-colors duration-300 bg-white border-b border-slate-200 shadow-sm rounded-none border-t-4 border-t-${color}-600`}
       >
@@ -749,6 +798,9 @@ export default function App() {
                 technicians={technicians}
                 isAdmin={isAdminAuthenticated}
                 onOpenPhotos={setGlobalPhotoView}
+                personal={personal}
+                vans={vans}
+                vanItems={vanItems}
               />
             )}
             {activeTab === "explore" && (
@@ -809,6 +861,8 @@ export default function App() {
                 onTechUpdate={setCurrentTechName}
                 layoutConfig={layoutConfig}
                 allLogs={logs}
+                vans={vans}
+                vanItems={vanItems}
               />
             )}
             {activeTab === "admin" && isAdminAuthenticated && (
@@ -822,6 +876,9 @@ export default function App() {
                 onUpdateLayout={handleUpdateLayout}
                 onLogout={handleLogout}
                 allLogs={logs}
+                vans={vans}
+                vanItems={vanItems}
+                currentTechName={currentTechName}
               />
             )}
           </div>

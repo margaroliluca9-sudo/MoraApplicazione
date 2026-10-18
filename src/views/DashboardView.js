@@ -3,7 +3,6 @@ import {
   PlusCircle,
   Search,
   X,
-  User,
   Users,
   Factory,
   ClipboardList,
@@ -13,7 +12,7 @@ import {
   Briefcase,
   Database,
   Folder,
-  MessageSquare,
+  UserCircle,
 } from "lucide-react";
 
 import { getSafeMatricola } from "../utils";
@@ -25,6 +24,8 @@ import {
 } from "../components/modals/MyLogsModal";
 import { ChatModal } from "../components/modals/ChatModal";
 import { unreadTotal } from "../chat";
+import { PersonalAreaModal } from "../components/modals/PersonalAreaModal";
+import { todayItems } from "../personal";
 
 // --- VIEWS PRINCIPALI ---
 
@@ -60,6 +61,9 @@ export const DashboardView = ({
   technicians = [],
   isAdmin = false,
   onOpenPhotos = () => {},
+  personal = {},
+  vans = [],
+  vanItems = [],
 }) => {
   const color = layoutConfig?.themeColor || "blue";
   const [query, setQuery] = useState("");
@@ -75,6 +79,17 @@ export const DashboardView = ({
     }
     return null;
   };
+  // LA MIA AREA: si apre anche dalla notifica di un promemoria ("?area=promemoria")
+  const areaFromUrl = () => {
+    try {
+      const q = new URLSearchParams(window.location.search);
+      if (q.has("area")) return q.get("area") || "home";
+    } catch (e) {
+      // niente
+    }
+    return null;
+  };
+  const [area, setArea] = useState(areaFromUrl);
   const [chatConv, setChatConv] = useState(convFromUrl);
   const [showChat, setShowChat] = useState(() => convFromUrl() !== null);
   useEffect(() => {
@@ -82,15 +97,20 @@ export const DashboardView = ({
       setChatConv((e && e.detail && e.detail.conv) || "group");
       setShowChat(true);
     };
+    const onArea = (e) => setArea((e && e.detail && e.detail.panel) || "home");
     window.addEventListener("mora-open-chat", onOpen);
+    window.addEventListener("mora-open-area", onArea);
     try {
       const q = new URLSearchParams(window.location.search);
-      if (q.has("chat") || q.has("bacheca"))
+      if (q.has("chat") || q.has("bacheca") || q.has("area"))
         window.history.replaceState(null, "", window.location.pathname);
     } catch (e) {
       // niente
     }
-    return () => window.removeEventListener("mora-open-chat", onOpen);
+    return () => {
+      window.removeEventListener("mora-open-chat", onOpen);
+      window.removeEventListener("mora-open-area", onArea);
+    };
   }, []);
   const unread = useMemo(
     () => unreadTotal(chatMessages, chatReads, currentTechName),
@@ -104,19 +124,18 @@ export const DashboardView = ({
     "office",
     "admin",
   ];
-  // riquadro "I miei interventi" subito dopo "Nuovo Rapporto"
-  if (currentTechName && !order.includes("mine")) {
-    order = [...order];
-    const i = order.indexOf("new");
-    order.splice(i === -1 ? 0 : i + 1, 0, "mine");
-  }
-  // riquadro "Chat" subito dopo "I miei interventi" (o dopo "Nuovo Rapporto")
-  if (!order.includes("chat")) {
-    order = [...order];
-    const j = Math.max(order.indexOf("mine"), order.indexOf("new"));
-    order.splice(j === -1 ? 0 : j + 1, 0, "chat");
+  // "I miei interventi" e "Chat" stanno dentro "La mia area" (non più in Home)
+  order = order.filter((k) => k !== "mine" && k !== "chat");
+  // riquadro "La mia area" subito dopo "Nuovo Rapporto"
+  if (currentTechName && !order.includes("area")) {
+    const k = order.indexOf("new");
+    order.splice(k === -1 ? 0 : k + 1, 0, "area");
   }
 
+  const todayCount = useMemo(
+    () => todayItems(personal.events || [], personal.reminders || []).length,
+    [personal.events, personal.reminders],
+  );
   const myMonthCount = useMemo(
     () =>
       logs.filter((l) => isMyLog(l, currentTechName) && isThisMonth(l)).length,
@@ -190,31 +209,18 @@ export const DashboardView = ({
       desc: "Configurazione app",
       action: onAdminAccess,
     },
-    mine: {
-      id: "mine",
-      label: "I miei interventi",
-      icon: User,
-      desc:
-        myMonthCount === 1
-          ? "1 intervento questo mese"
-          : `${myMonthCount} interventi questo mese`,
-      action: () => setShowMine(true),
-    },
-    chat: {
-      id: "chat",
-      label: "Chat",
-      icon: MessageSquare,
-      desc:
-        unread === 0
-          ? "Gruppo e messaggi privati"
-          : unread === 1
-            ? "1 messaggio nuovo"
-            : `${unread} messaggi nuovi`,
-      action: () => {
-        setChatConv(null);
-        setShowChat(true);
-      },
-      badge: unread,
+    area: {
+      id: "area",
+      label: "La mia area",
+      icon: UserCircle,
+      desc: [
+        unread === 1 ? "1 messaggio nuovo" : unread > 1 ? `${unread} messaggi nuovi` : "",
+        todayCount === 1 ? "1 cosa da fare oggi" : todayCount > 1 ? `${todayCount} cose da fare oggi` : "",
+      ]
+        .filter(Boolean)
+        .join(" · ") || "Interventi, chat, calendario, note",
+      action: () => setArea("home"),
+      badge: unread + todayCount,
     },
   };
 
@@ -370,6 +376,34 @@ export const DashboardView = ({
           color={color}
           onClose={() => setShowChat(false)}
           onOpenPhotos={onOpenPhotos}
+        />
+      )}
+      {area && currentTechName && (
+        <PersonalAreaModal
+          key={area}
+          me={currentTechName}
+          logs={logs}
+          events={personal.events || []}
+          notes={personal.notes || []}
+          reminders={personal.reminders || []}
+          contacts={personal.contacts || []}
+          vans={vans}
+          vanItems={vanItems}
+          chatUnread={unread}
+          myMonthCount={myMonthCount}
+          onOpenMine={() => setShowMine(true)}
+          color={color}
+          initialPanel={area === "home" ? null : area}
+          onClose={() => setArea(null)}
+          onOpenMachine={(m, c) => {
+            setArea(null);
+            onOpenMachine(m, c);
+          }}
+          onOpenChat={() => {
+            setArea(null);
+            setChatConv(null);
+            setShowChat(true);
+          }}
         />
       )}
       {showMine && (

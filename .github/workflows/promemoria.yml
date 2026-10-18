@@ -1,0 +1,15 @@
+# Ogni 5 minuti chiede all'app di mandare gli avvisi dei promemoria e degli impegni ("La mia area").
+name: Avvisi promemoria
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  avvisi:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Manda gli avvisi scaduti
+        run: curl -fsS --max-time 60 https://mora-applicazione.vercel.app/api/reminders

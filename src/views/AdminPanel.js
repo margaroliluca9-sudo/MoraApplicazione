@@ -7,6 +7,7 @@ import {
   Layers,
   Activity,
   AlertOctagon,
+  Truck,
   Terminal,
   Users,
   Palette,
@@ -56,6 +57,7 @@ import { EditMachineModal } from "../components/modals/EditMachineModal";
 import { EditCustomerModal } from "../components/modals/EditCustomerModal";
 import { MergeModal } from "../components/modals/MergeModal";
 import { DuplicatesModal } from "../components/modals/DuplicatesModal";
+import { VanAdmin } from "./VanAdmin";
 
 export const AdminPanel = ({
   customers,
@@ -67,6 +69,9 @@ export const AdminPanel = ({
   onUpdateLayout,
   onLogout,
   allLogs = [],
+  vans = [],
+  vanItems = [],
+  currentTechName = "",
 }) => {
   const [view, setView] = useState("design");
   const [renaming, setRenaming] = useState(null); // { id, value }
@@ -636,12 +641,28 @@ export const AdminPanel = ({
           label="Gru"
         />
         <AdminTab
+          active={view === "vans"}
+          onClick={() => setView("vans")}
+          icon={Truck}
+          label="Furgoni"
+        />
+        <AdminTab
           active={view === "diagnostics"}
           onClick={() => setView("diagnostics")}
           icon={AlertOctagon}
           label="System"
         />
       </div>
+
+      {view === "vans" && (
+        <VanAdmin
+          vans={vans}
+          vanItems={vanItems}
+          technicians={technicians}
+          color={layoutConfig.themeColor}
+          me={currentTechName}
+        />
+      )}
 
       {view === "design" && (
         <div

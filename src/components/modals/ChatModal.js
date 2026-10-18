@@ -78,7 +78,7 @@ const ChatPhoto = ({ id, onOpen }) => {
 };
 
 // riquadro notifiche (attiva / attive / istruzioni iPhone)
-const PushBox = ({ techName, color }) => {
+export const PushBox = ({ techName, color }) => {
   const [push, setPush] = useState("checking");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");

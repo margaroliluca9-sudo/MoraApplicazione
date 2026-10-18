@@ -496,6 +496,37 @@ export const buildCustomerMachinesPdf = async ({ customerName, machines = [], to
 };
 
 // Backup completo dell'archivio
+// LISTA D'ORDINE: pezzi sotto la scorta minima, furgone per furgone
+export const buildVanOrderPdf = async ({ groups = [], today }) => {
+  const flow = await createFlow({ title: "LISTA D'ORDINE FURGONI", subtitle: `Stampato il ${today}`, docTitle: "Lista d'ordine furgoni" });
+  const total = groups.reduce((n, g) => n + g.rows.length, 0);
+  flow.meta([`Furgoni: ${groups.length}`, `Articoli da riordinare: ${total}`]);
+  if (!total) flow.paragraph("Tutti i furgoni sono sopra la scorta minima.", { color: C.light });
+  groups
+    .filter((g) => g.rows.length)
+    .forEach((g) => {
+      flow.heading(`${g.name}${g.users ? " - " + g.users : ""}`);
+      flow.table({
+        columns: [
+          { label: "Articolo", w: 0.4 },
+          { label: "Codice", w: 0.18 },
+          { label: "A bordo", w: 0.14 },
+          { label: "Minimo", w: 0.14 },
+          { label: "Da ordinare", w: 0.14 },
+        ],
+        minRowH: 16,
+        rows: g.rows.map((r) => [
+          [{ t: r.name, b: true, c: C.ink }],
+          { t: r.code || "-" },
+          { t: r.qty },
+          { t: r.min },
+          [{ t: r.order, b: true, c: C.ink }],
+        ]),
+      });
+    });
+  return flow.finish("Documento generato dall'app Assistenza Mora.");
+};
+
 export const buildBackupPdf = async ({ logs = [], customers = [], machines = [], technicians = [], machineTypes = [], generatedAt }) => {
   const flow = await createFlow({ title: "BACKUP ARCHIVIO", subtitle: `Generato il ${generatedAt}`, docTitle: `Backup archivio ${generatedAt}` });
   const sortedLogs = [...logs].sort((a, b) => dateKey(b.dateString) - dateKey(a.dateString));

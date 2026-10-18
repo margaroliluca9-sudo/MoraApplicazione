@@ -42,7 +42,10 @@ import {
   autoTick,
   validateRopes,
   toSavedRope,
+  detectReplacements,
 } from "../ropes";
+import { vanOf, applyReport } from "../van";
+import { showVanUsage } from "../components/VanHost";
 
 export const NewEntryForm = ({
   user,
@@ -55,6 +58,8 @@ export const NewEntryForm = ({
   onTechUpdate,
   layoutConfig,
   allLogs,
+  vans = [],
+  vanItems = [],
 }) => {
   const [formData, setFormData] = useState({
     technician: "",
@@ -330,7 +335,7 @@ export const NewEntryForm = ({
         finalDateString = `${parseInt(d, 10)}/${parseInt(m, 10)}/${y}`;
       }
 
-      await addDoc(
+      const logRef = await addDoc(
         collection(
           db,
           "artifacts",
@@ -389,6 +394,26 @@ export const NewEntryForm = ({
             capacity: formData.capacity,
           }
         );
+      }
+
+      // MAGAZZINO FURGONE: solo chi ha un furgone assegnato; gli altri non vedono niente
+      const van = vanOf(vans, formData.technician);
+      if (van) {
+        const ropes = detectReplacements(formData.description);
+        const ditta = [ropes.fune && "Fune", ropes.catena && "Catena"].filter(Boolean).join(" e ");
+        const note = `${cleanCustomer} · ${cleanMachineId}${formData.ticketNumber ? ` (N. ${formData.ticketNumber})` : ""}`;
+        applyReport({
+          van,
+          items: vanItems,
+          description: formData.description,
+          logId: logRef && logRef.id,
+          author: formData.technician,
+          note,
+        })
+          .then((used) => {
+            if (used.length) showVanUsage({ van, used, logId: logRef && logRef.id, author: formData.technician, note, ditta });
+          })
+          .catch((err) => console.error("Magazzino furgone:", err));
       }
 
       onSuccess();
