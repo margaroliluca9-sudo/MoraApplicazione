@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   PlusCircle,
   Search,
@@ -13,6 +13,7 @@ import {
   Briefcase,
   Database,
   Folder,
+  MessageSquare,
 } from "lucide-react";
 
 import { getSafeMatricola } from "../utils";
@@ -22,6 +23,8 @@ import {
   isMyLog,
   isThisMonth,
 } from "../components/modals/MyLogsModal";
+import { BoardModal } from "../components/modals/BoardModal";
+import { getLastRead, unreadCount } from "../board";
 
 // --- VIEWS PRINCIPALI ---
 
@@ -52,10 +55,41 @@ export const DashboardView = ({
   currentTechName = "",
   onOpenCustomer = () => {},
   onOpenMachine = () => {},
+  boardMessages = [],
+  onOpenPhotos = () => {},
 }) => {
   const color = layoutConfig?.themeColor || "blue";
   const [query, setQuery] = useState("");
   const [showMine, setShowMine] = useState(false);
+  // BACHECA: si apre anche dalla notifica (indirizzo "?bacheca=1" o messaggio dell'app)
+  const [showBoard, setShowBoard] = useState(() => {
+    try {
+      return new URLSearchParams(window.location.search).has("bacheca");
+    } catch (e) {
+      return false;
+    }
+  });
+  const [lastRead, setLastRead] = useState(getLastRead);
+  useEffect(() => {
+    const onRead = () => setLastRead(getLastRead());
+    const onOpen = () => setShowBoard(true);
+    window.addEventListener("mora-board-read", onRead);
+    window.addEventListener("mora-open-board", onOpen);
+    try {
+      if (new URLSearchParams(window.location.search).has("bacheca"))
+        window.history.replaceState(null, "", window.location.pathname);
+    } catch (e) {
+      // niente
+    }
+    return () => {
+      window.removeEventListener("mora-board-read", onRead);
+      window.removeEventListener("mora-open-board", onOpen);
+    };
+  }, []);
+  const unread = useMemo(
+    () => unreadCount(boardMessages, currentTechName, lastRead),
+    [boardMessages, currentTechName, lastRead],
+  );
   let order = layoutConfig?.dashboardOrder || [
     "new",
     "explore",
@@ -69,6 +103,12 @@ export const DashboardView = ({
     order = [...order];
     const i = order.indexOf("new");
     order.splice(i === -1 ? 0 : i + 1, 0, "mine");
+  }
+  // riquadro "Bacheca" subito dopo "I miei interventi" (o dopo "Nuovo Rapporto")
+  if (!order.includes("board")) {
+    order = [...order];
+    const j = Math.max(order.indexOf("mine"), order.indexOf("new"));
+    order.splice(j === -1 ? 0 : j + 1, 0, "board");
   }
 
   const myMonthCount = useMemo(
@@ -153,6 +193,19 @@ export const DashboardView = ({
           ? "1 intervento questo mese"
           : `${myMonthCount} interventi questo mese`,
       action: () => setShowMine(true),
+    },
+    board: {
+      id: "board",
+      label: "Bacheca",
+      icon: MessageSquare,
+      desc:
+        unread === 0
+          ? "Messaggi tra tecnici"
+          : unread === 1
+            ? "1 messaggio nuovo"
+            : `${unread} messaggi nuovi`,
+      action: () => setShowBoard(true),
+      badge: unread,
     },
   };
 
@@ -297,6 +350,15 @@ export const DashboardView = ({
   return (
     <div className="space-y-4">
       {searchBox}
+      {showBoard && (
+        <BoardModal
+          messages={boardMessages}
+          techName={currentTechName}
+          color={color}
+          onClose={() => setShowBoard(false)}
+          onOpenPhotos={onOpenPhotos}
+        />
+      )}
       {showMine && (
         <MyLogsModal
           logs={logs}
@@ -340,8 +402,17 @@ export const DashboardView = ({
             <button
               key={key}
               onClick={item.action}
-              className={`p-6 bg-white rounded-3xl shadow-sm border border-slate-200 hover:border-${color}-300 hover:shadow-md flex flex-col items-center justify-center gap-4 transition-all active:scale-95 group`}
+              data-tile={key}
+              className={`relative p-6 bg-white rounded-3xl shadow-sm border border-slate-200 hover:border-${color}-300 hover:shadow-md flex flex-col items-center justify-center gap-4 transition-all active:scale-95 group`}
             >
+              {item.badge > 0 && (
+                <span
+                  data-badge
+                  className="absolute top-3 right-3 min-w-[26px] h-[26px] px-1.5 rounded-full bg-red-600 text-white text-xs font-black flex items-center justify-center shadow"
+                >
+                  {item.badge > 99 ? "99+" : item.badge}
+                </span>
+              )}
               <div
                 className={`p-4 bg-${color}-50 text-${color}-600 rounded-2xl group-hover:bg-${color}-600 group-hover:text-white transition-colors`}
               >

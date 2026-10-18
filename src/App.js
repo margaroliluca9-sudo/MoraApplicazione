@@ -45,6 +45,7 @@ import { NavButton } from "./components/NavButton";
 import { AdminLoginModal } from "./components/AdminLoginModal";
 import { PhotoViewerModal } from "./components/PhotoViewerModal";
 import { PdfHost } from "./components/PdfHost";
+import { isExpired, refreshPush, boardDoc } from "./board";
 import { MachineHistoryModal } from "./components/modals/MachineHistoryModal";
 import { CustomerDetailModal } from "./components/modals/CustomerDetailModal";
 import { DashboardView } from "./views/DashboardView";
@@ -79,6 +80,7 @@ export default function App() {
   const [technicians, setTechnicians] = useState([]);
   const [machines, setMachines] = useState([]);
   const [machineTypes, setMachineTypes] = useState([]);
+  const [boardMessages, setBoardMessages] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
   const [showAdminLogin, setShowAdminLogin] = useState(false);
@@ -401,6 +403,18 @@ export default function App() {
       collection(db, "artifacts", appId, "public", "data", "machine_types"),
       (s) => setMachineTypes(s.docs.map((d) => ({ id: d.id, ...d.data() })))
     );
+    // BACHECA: messaggi; quelli più vecchi di 30 giorni (non fissati) vengono cancellati
+    const unsubBoard = onSnapshot(
+      collection(db, "artifacts", appId, "public", "data", "board_messages"),
+      (s) => {
+        const all = s.docs.map((d) => ({ id: d.id, ...d.data() }));
+        all
+          .filter((m) => isExpired(m))
+          .forEach((m) => deleteDoc(boardDoc("board_messages", m.id)).catch(() => {}));
+        setBoardMessages(all.filter((m) => !isExpired(m)));
+      },
+      () => setBoardMessages([])
+    );
 
     return () => {
       unsubLayout();
@@ -409,9 +423,27 @@ export default function App() {
       unsubTech();
       unsubMach();
       unsubTypes();
+      unsubBoard();
       unsubActiveUsers();
     };
   }, [user]);
+
+  // notifiche: tengo aggiornata l'iscrizione di questo telefono (se già permesse)
+  useEffect(() => {
+    if (user && currentTechName) refreshPush(currentTechName);
+  }, [user, currentTechName]);
+  // tocco su una notifica con l'app già aperta: vado alla bacheca
+  useEffect(() => {
+    if (typeof navigator === "undefined" || !navigator.serviceWorker) return;
+    const onMsg = (e) => {
+      if (e.data && e.data.type === "open-board") {
+        setActiveTab("dashboard");
+        setTimeout(() => window.dispatchEvent(new Event("mora-open-board")), 50);
+      }
+    };
+    navigator.serviceWorker.addEventListener("message", onMsg);
+    return () => navigator.serviceWorker.removeEventListener("message", onMsg);
+  }, []);
 
   const handleAdminAccess = () => {
     if (currentTechName && currentTechName.trim().toLowerCase() === "luca") {
@@ -702,6 +734,8 @@ export default function App() {
                 currentTechName={currentTechName}
                 onOpenCustomer={openCustomerDetail}
                 onOpenMachine={openMachineDetail}
+                boardMessages={boardMessages}
+                onOpenPhotos={setGlobalPhotoView}
               />
             )}
             {activeTab === "explore" && (
