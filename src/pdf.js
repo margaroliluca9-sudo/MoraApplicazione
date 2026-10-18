@@ -1,6 +1,6 @@
 // STAMPE IN PDF: l'app crea un vero file PDF (niente finestre o stampa del browser,
 // che sul telefono spesso non funzionano). Il file si condivide, si stampa o si salva.
-//  - buildInterventionPdf: rapporto del singolo intervento (dati, descrizione, foto, firme)
+//  - buildInterventionPdf: rapporto del singolo intervento (dati, descrizione, foto)
 //  - buildCustomerMachinesPdf / buildLogsReportPdf / buildBackupPdf: elenchi
 // Tutti con l'intestazione Mora (logo, indirizzo, telefoni).
 // La libreria pdf-lib viene caricata solo al momento della stampa.
@@ -393,7 +393,7 @@ const createFlow = async ({ title, subtitle, docTitle }) => {
 };
 
 // =====================================================================
-// RAPPORTO DI UN SINGOLO INTERVENTO (Storico): dati, descrizione, foto, firme
+// RAPPORTO DI UN SINGOLO INTERVENTO: dati, descrizione, foto (senza spazi per le firme)
 // =====================================================================
 export const buildInterventionPdf = async ({ log, today }) => {
   const printed = today || new Date().toLocaleDateString("it-IT");
@@ -426,7 +426,6 @@ export const buildInterventionPdf = async ({ log, today }) => {
     flow.heading("Foto allegate");
     flow.photos(images);
   }
-  flow.signatures(["Firma tecnico", "Firma cliente"]);
   return flow.finish("Documento generato dall'app Assistenza Mora.");
 };
 

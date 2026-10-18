@@ -19,6 +19,7 @@ import { PRO_INPUT, getProPanelClass } from "../ui";
 import { SimpleCalendar } from "../components/SimpleCalendar";
 import { buildLogsReportPdf, pdfFileName } from "../pdf";
 import { openPdf } from "../components/PdfHost";
+import { PrintLogButton } from "../components/PrintLogButton";
 
 export const OfficeView = ({
   logs,
@@ -575,6 +576,9 @@ export const OfficeView = ({
                   <p className="text-xs text-slate-600 italic whitespace-pre-wrap break-words bg-slate-50 p-3 rounded-lg border border-slate-100">
                     "{log.description}"
                   </p>
+                  <div className="mt-2">
+                    <PrintLogButton log={log} />
+                  </div>
                 </div>
               ))
             )}
@@ -755,6 +759,9 @@ export const OfficeView = ({
                       <Camera className="w-3 h-3" /> {l.photos.length} FOTO
                     </button>
                   )}
+                  <div className="mt-2">
+                    <PrintLogButton log={l} />
+                  </div>
                 </div>
               ))}
             </div>

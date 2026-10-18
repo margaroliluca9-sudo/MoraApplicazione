@@ -39,6 +39,7 @@ export const PersonalAreaModal = ({
   vans = [],
   vanItems = [],
   chatUnread = 0,
+  chatEnabled = false,
   onOpenChat = () => {},
   myMonthCount = 0,
   onOpenMine = () => {},
@@ -124,18 +125,20 @@ export const PersonalAreaModal = ({
           </section>
 
           <section className="grid grid-cols-2 gap-3">
-            <Tile id="mine" icon={ClipboardList} label="I miei interventi" tone="bg-slate-100 text-slate-700" onClick={onOpenMine} wide={!van}
+            <Tile id="mine" icon={ClipboardList} label="I miei interventi" tone="bg-slate-100 text-slate-700" onClick={onOpenMine} wide={!van && chatEnabled}
               sub={myMonthCount === 1 ? "1 questo mese" : `${myMonthCount} questo mese`} />
             <Tile id="calendar" icon={CalendarDays} label="Calendario" tone="bg-blue-50 text-blue-700" onClick={() => setPanel("calendar")}
               sub={todayEvents === 0 ? "Nessun impegno oggi" : todayEvents === 1 ? "1 impegno oggi" : `${todayEvents} impegni oggi`} />
             <Tile id="notes" icon={StickyNote} label="Note" tone="bg-amber-50 text-amber-700" onClick={() => setPanel("notes")}
               sub={notes.length === 1 ? "1 nota · solo tu" : `${notes.length} note · solo tu`} />
-            <Tile id="chat" icon={MessageSquare} label="Chat" tone="bg-emerald-50 text-emerald-700" onClick={onOpenChat} badge={chatUnread}
-              sub={chatUnread === 0 ? "Gruppo e privati" : chatUnread === 1 ? "1 messaggio nuovo" : `${chatUnread} messaggi nuovi`} />
+            {chatEnabled && (
+              <Tile id="chat" icon={MessageSquare} label="Chat" tone="bg-emerald-50 text-emerald-700" onClick={onOpenChat} badge={chatUnread}
+                sub={chatUnread === 0 ? "Gruppo e privati" : chatUnread === 1 ? "1 messaggio nuovo" : `${chatUnread} messaggi nuovi`} />
+            )}
             <Tile id="reminders" icon={Bell} label="Promemoria" tone="bg-orange-50 text-orange-700" onClick={() => setPanel("reminders")}
               sub={openRem === 1 ? "1 attivo · contatti" : `${openRem} attivi · contatti`} />
             {van && (
-              <Tile id="van" icon={Truck} label="Magazzino" tone="bg-purple-50 text-purple-700" onClick={() => setPanel("van")} alert={low > 0}
+              <Tile id="van" icon={Truck} label="Magazzino" tone="bg-purple-50 text-purple-700" onClick={() => setPanel("van")} alert={low > 0} wide={!chatEnabled}
                 sub={low > 0 ? `${van.name} · ${low} da riordinare` : `${van.name} · ${vanList.length} articoli`} />
             )}
           </section>

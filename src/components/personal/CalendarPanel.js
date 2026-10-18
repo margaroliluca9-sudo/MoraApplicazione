@@ -15,6 +15,7 @@ import {
 } from "../../personal";
 import { describeError } from "../../utils";
 import { PanelHeader, Sheet, Field, INPUT, PrimaryBtn, GhostBtn } from "./PersonalUi";
+import { PrintLogButton } from "../PrintLogButton";
 
 const blank = (date) => ({ title: "", date, time: "", place: "", notifyBefore: "" });
 
@@ -151,11 +152,11 @@ export const CalendarPanel = ({ me, events, logs, onBack, onClose, color = "blue
             </button>
           ))}
           {dayJobs.map((l) => (
+            <div key={l.id} className="flex items-stretch gap-2">
             <button
-              key={l.id}
               type="button"
               onClick={() => onOpenMachine && onOpenMachine(l.machineId, l.customer)}
-              className="w-full text-left bg-white rounded-2xl border border-slate-200 p-3 flex gap-3 items-center"
+              className="flex-1 min-w-0 text-left bg-white rounded-2xl border border-slate-200 p-3 flex gap-3 items-center"
             >
               <span className="w-14 flex justify-center">
                 <span className="w-8 h-8 rounded-full bg-emerald-50 text-emerald-700 flex items-center justify-center">
@@ -170,6 +171,8 @@ export const CalendarPanel = ({ me, events, logs, onBack, onClose, color = "blue
                 <span className="block text-xs text-slate-500 truncate">Intervento fatto · {l.description}</span>
               </span>
             </button>
+            <PrintLogButton log={l} variant="square" />
+            </div>
           ))}
         </section>
       </div>

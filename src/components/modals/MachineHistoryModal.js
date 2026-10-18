@@ -12,6 +12,7 @@ import { getTechsString, formatCapacity, getSafeMatricola } from "../../utils";
 import { getProPanelClass } from "../../ui";
 import { ROPE_ITEMS, formatRopeLong, lastRopeOf } from "../../ropes";
 import { AssistantPanel } from "../AssistantPanel";
+import { PrintLogButton } from "../PrintLogButton";
 
 export const MachineHistoryModal = ({
   machine,
@@ -168,6 +169,9 @@ export const MachineHistoryModal = ({
                       {title} sostituita: {formatRopeLong(log[id])}
                     </div>
                   ))}
+                  <div className="relative z-10 mt-3 flex justify-end">
+                    <PrintLogButton log={log} />
+                  </div>
                 </div>
               </div>
             ))}

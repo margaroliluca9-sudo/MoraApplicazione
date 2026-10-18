@@ -2,6 +2,7 @@ import React, { useState, useMemo } from "react";
 import { Search, ChevronRight, Users } from "lucide-react";
 import { getTechsString, getSafeMatricola } from "../utils";
 import { PRO_INPUT, getProPanelClass } from "../ui";
+import { PrintLogButton } from "../components/PrintLogButton";
 
 export const DatabaseView = ({
   customers,
@@ -153,6 +154,9 @@ export const DatabaseView = ({
               <p className="text-[11px] text-slate-500 italic whitespace-pre-wrap break-words">
                 "{l.description}"
               </p>
+              <div className="mt-2">
+                <PrintLogButton log={l} />
+              </div>
             </div>
           ))}
       </div>

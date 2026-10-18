@@ -23,6 +23,8 @@ export const DEFAULT_LAYOUT = {
   radiusStyle: "normal",
   density: "normal",
   showSplash: true,
+  // Admin > Design: chat tra tecnici (spenta finché l'admin non la attiva)
+  chatEnabled: false,
   formSettings: {
     showMachineId: true,
     showMachineType: true,

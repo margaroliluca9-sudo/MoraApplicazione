@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { getTechsString, formatCapacity, getSafeMatricola } from "../utils";
 import { PRO_INPUT, getProPanelClass } from "../ui";
+import { PrintLogButton } from "../components/PrintLogButton";
 
 export const ExploreView = React.memo(
   ({ customers, machines, logs, color = "blue", onOpenPhotos }) => {
@@ -189,6 +190,9 @@ export const ExploreView = React.memo(
                                       {l.photos.length} FOTO
                                     </button>
                                   )}
+                                  <div className="mt-2">
+                                    <PrintLogButton log={l} />
+                                  </div>
                                 </div>
                               ))}
                             </div>

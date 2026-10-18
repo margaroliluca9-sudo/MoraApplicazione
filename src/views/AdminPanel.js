@@ -765,6 +765,39 @@ export const AdminPanel = ({
               );
             })}
 
+            <div
+              className="flex items-center justify-between gap-3 p-3 rounded-xl border border-slate-200 bg-slate-50"
+              data-section="chat-toggle"
+            >
+              <div>
+                <span className="text-xs font-bold text-slate-700 block">
+                  Chat tra tecnici
+                </span>
+                <span className="text-[10px] text-slate-500">
+                  {layoutConfig.chatEnabled === true
+                    ? "Attiva: c'è nella «La mia area» di ogni tecnico"
+                    : "Spenta: nessuno la vede (i messaggi restano salvati)"}
+                </span>
+              </div>
+              <button
+                type="button"
+                aria-pressed={layoutConfig.chatEnabled === true}
+                onClick={() =>
+                  onUpdateLayout({
+                    ...layoutConfig,
+                    chatEnabled: layoutConfig.chatEnabled !== true,
+                  })
+                }
+                className={`px-4 py-2 rounded-lg font-bold text-xs uppercase shrink-0 ${
+                  layoutConfig.chatEnabled === true
+                    ? `bg-${layoutConfig.themeColor}-600 text-white`
+                    : "bg-white border border-slate-300 text-slate-600"
+                }`}
+              >
+                {layoutConfig.chatEnabled === true ? "Disattiva" : "Attiva"}
+              </button>
+            </div>
+
             <div className="flex items-center justify-between gap-3 p-3 rounded-xl border border-slate-200 bg-slate-50">
               <div>
                 <span className="text-xs font-bold text-slate-700 block">

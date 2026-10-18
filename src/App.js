@@ -413,18 +413,6 @@ export default function App() {
       collection(db, "artifacts", appId, "public", "data", "machine_types"),
       (s) => setMachineTypes(s.docs.map((d) => ({ id: d.id, ...d.data() })))
     );
-    // CHAT: messaggi (le foto sono a parte) e fin dove ha letto ognuno
-    const unsubChat = onSnapshot(
-      collection(db, "artifacts", appId, "public", "data", "chat_messages"),
-      (s) => setChatMessages(s.docs.map((d) => ({ id: d.id, ...d.data() }))),
-      () => setChatMessages([])
-    );
-    const unsubReads = onSnapshot(
-      collection(db, "artifacts", appId, "public", "data", "chat_reads"),
-      (s) => setChatReads(s.docs.map((d) => ({ id: d.id, ...d.data() }))),
-      () => setChatReads([])
-    );
-
     const unsubVans = onSnapshot(
       collection(db, "artifacts", appId, "public", "data", VAN.vans),
       (s) => setVans(s.docs.map((d) => ({ id: d.id, ...d.data() }))),
@@ -445,11 +433,34 @@ export default function App() {
       unsubTech();
       unsubMach();
       unsubTypes();
-      unsubChat();
-      unsubReads();
       unsubActiveUsers();
     };
   }, [user]);
+
+  // CHAT: messaggi (le foto sono a parte) e fin dove ha letto ognuno.
+  // Solo se l'admin l'ha attivata (Impostazioni > Design > Chat tra tecnici).
+  const chatEnabled = layoutConfig.chatEnabled === true;
+  useEffect(() => {
+    if (!user || !chatEnabled) {
+      setChatMessages([]);
+      setChatReads([]);
+      return undefined;
+    }
+    const unsubChat = onSnapshot(
+      collection(db, "artifacts", appId, "public", "data", "chat_messages"),
+      (s) => setChatMessages(s.docs.map((d) => ({ id: d.id, ...d.data() }))),
+      () => setChatMessages([])
+    );
+    const unsubReads = onSnapshot(
+      collection(db, "artifacts", appId, "public", "data", "chat_reads"),
+      (s) => setChatReads(s.docs.map((d) => ({ id: d.id, ...d.data() }))),
+      () => setChatReads([])
+    );
+    return () => {
+      unsubChat();
+      unsubReads();
+    };
+  }, [user, chatEnabled]);
 
   // LA MIA AREA: carico solo i documenti del tecnico collegato
   useEffect(() => {
@@ -801,6 +812,7 @@ export default function App() {
                 personal={personal}
                 vans={vans}
                 vanItems={vanItems}
+                chatEnabled={chatEnabled}
               />
             )}
             {activeTab === "explore" && (

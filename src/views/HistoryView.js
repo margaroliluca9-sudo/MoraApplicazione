@@ -16,9 +16,8 @@ import { getTechsString, formatCapacity } from "../utils";
 import { getProPanelClass } from "../ui";
 import { DeleteConfirmDialog } from "../components/DeleteConfirmDialog";
 import { EditLogModal } from "../components/modals/EditLogModal";
-import { buildInterventionPdf, pdfFileName } from "../pdf";
-import { openPdf } from "../components/PdfHost";
 import { formatRope, formatRopeLong, ROPE_ITEMS } from "../ropes";
+import { printIntervention } from "../components/PrintLogButton";
 
 export const HistoryView = ({
   logs,
@@ -116,12 +115,8 @@ export const HistoryView = ({
     } else onAuthAdmin();
   };
 
-  // Stampa il rapporto del singolo intervento (modulo "Servizio Assistenza Tecnica")
-  const printLog = (log) =>
-    openPdf(
-      () => buildInterventionPdf({ log }),
-      pdfFileName("Assistenza", log.ticketNumber, log.customer, (log.dateString || "").replace(/\//g, "-"))
-    );
+  // Stampa il rapporto del singolo intervento
+  const printLog = printIntervention;
 
   const handleEdit = (log) => {
     const isRecent =

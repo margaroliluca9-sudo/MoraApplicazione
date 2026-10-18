@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react";
 import { X, User, ChevronRight, Camera } from "lucide-react";
 import { getTechsString } from "../../utils";
 import { getProPanelClass } from "../../ui";
+import { PrintLogButton } from "../PrintLogButton";
 
 // Data "g/m/aaaa" -> numero ordinabile
 const dateKey = (ds) => {
@@ -124,11 +125,11 @@ export const MyLogsModal = ({
             </p>
           )}
           {shown.map((l) => (
+            <div key={l.id} className="flex items-stretch gap-2">
             <button
-              key={l.id}
               type="button"
               onClick={() => onOpenMachine(l.machineId, l.customer)}
-              className="w-full text-left p-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 flex items-center gap-3"
+              className="flex-1 min-w-0 text-left p-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 flex items-center gap-3"
               data-my-log={l.id}
             >
               <div className="flex-1 min-w-0">
@@ -161,6 +162,8 @@ export const MyLogsModal = ({
               </div>
               <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
             </button>
+            <PrintLogButton log={l} variant="square" />
+            </div>
           ))}
         </div>
       </div>
