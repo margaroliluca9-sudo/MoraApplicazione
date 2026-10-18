@@ -1,9 +1,8 @@
 // STAMPE IN PDF: l'app crea un vero file PDF (niente finestre o stampa del browser,
 // che sul telefono spesso non funzionano). Il file si condivide, si stampa o si salva.
-//  - buildInterventionPdf: rapporto del singolo intervento, uguale al modulo cartaceo
-//    "SERVIZIO ASSISTENZA TECNICA" (+ pagina con le foto)
-//  - buildCustomerMachinesPdf / buildLogsReportPdf / buildBackupPdf: elenchi con
-//    l'intestazione Mora
+//  - buildInterventionPdf: rapporto del singolo intervento (dati, descrizione, foto, firme)
+//  - buildCustomerMachinesPdf / buildLogsReportPdf / buildBackupPdf: elenchi
+// Tutti con l'intestazione Mora (logo, indirizzo, telefoni).
 // La libreria pdf-lib viene caricata solo al momento della stampa.
 import { getTechsString, formatCapacity, getSafeMatricola } from "./utils";
 import { formatRopeLong } from "./ropes";
@@ -130,18 +129,6 @@ const fitLine = (font, text, size, maxWidth) => {
   return t.trimEnd() + "...";
 };
 
-// tipo di gru -> caselle del modulo
-export const machineKind = (type) => {
-  const t = String(type || "").toUpperCase();
-  return {
-    bandiera: /BANDIERA/.test(t),
-    impianto: /SOSPES|MONOROTAIA/.test(t),
-    carroponte: /PONTE|CARROPONTE|BITRAVE|MONOTRAVE|BI-TRAVE|MONO-TRAVE|PORTALE|CAVALLETTO/.test(t),
-    bitrave: /BITRAVE|BI-TRAVE|BI TRAVE/.test(t),
-    monotrave: /MONOTRAVE|MONO-TRAVE|MONO TRAVE/.test(t),
-  };
-};
-
 const ropeLines = (log) =>
   [
     ["fune", "Fune sostituita"],
@@ -154,293 +141,6 @@ const photoSources = (log) =>
   (log.photos || []).filter(
     (p) => typeof p === "string" && /^data:image\/(png|jpe?g);base64,/i.test(p)
   );
-
-// =====================================================================
-// RAPPORTO DI INTERVENTO = modulo "SERVIZIO ASSISTENZA TECNICA"
-// =====================================================================
-export const buildInterventionPdf = async ({ log }) => {
-  const ctx = await createDoc(
-    `Assistenza ${log.ticketNumber ? "N. " + log.ticketNumber + " " : ""}${log.customer || ""}`
-  );
-  const { doc, font, bold, logo, col } = ctx;
-  const page = doc.addPage([W, H]);
-  const Y = (top) => H - top; // coordinate dall'alto
-  const L = 28;
-  const R = 567;
-  const X0 = 40; // inizio testo
-  const X1 = 555; // fine righe puntinate
-
-  const text = (s, x, top, { size = 10, f = font, color = C.ink } = {}) =>
-    page.drawText(cleanText(f, s), { x, y: Y(top), size, font: f, color: col(color) });
-  const hline = (top, x1 = L, x2 = R, thickness = 1) =>
-    page.drawLine({ start: { x: x1, y: Y(top) }, end: { x: x2, y: Y(top) }, thickness, color: col(C.black) });
-  const vline = (x, t1, t2, thickness = 1) =>
-    page.drawLine({ start: { x, y: Y(t1) }, end: { x, y: Y(t2) }, thickness, color: col(C.black) });
-  const dots = (x1, x2, top) =>
-    page.drawLine({
-      start: { x: x1, y: Y(top) + 1 },
-      end: { x: x2, y: Y(top) + 1 },
-      thickness: 0.8,
-      color: col(C.grey),
-      dashArray: [0.6, 2.2],
-      lineCap: ctx.lib.LineCapStyle.Round,
-    });
-  const box = (x, top, checked) => {
-    page.drawRectangle({ x, y: Y(top) - 0.5, width: 7.5, height: 7.5, borderWidth: 0.9, borderColor: col(C.black) });
-    if (checked) {
-      page.drawLine({ start: { x: x + 1.2, y: Y(top) + 0.7 }, end: { x: x + 6.3, y: Y(top) + 5.8 }, thickness: 1.3, color: col(C.fill) });
-      page.drawLine({ start: { x: x + 1.2, y: Y(top) + 5.8 }, end: { x: x + 6.3, y: Y(top) + 0.7 }, thickness: 1.3, color: col(C.fill) });
-    }
-  };
-  // etichetta + righe puntinate (+ valore scritto "a penna"); restituisce la x di fine
-  const field = (label, x, top, xEnd, value, { size = 10, valueSize = 10 } = {}) => {
-    text(label, x, top, { size });
-    const start = x + widthOf(font, cleanText(font, label), size) + 2;
-    dots(start, xEnd, top);
-    if (value !== undefined && value !== null && String(value).trim() !== "") {
-      const v = fitLine(bold, value, valueSize, xEnd - start - 6);
-      text(v, start + 4, top - 1.5, { size: valueSize, f: bold, color: C.fill });
-    }
-    return start;
-  };
-
-  // --- cornice e divisioni ---
-  const T = 26;
-  const B = 812;
-  page.drawRectangle({ x: L, y: Y(B), width: R - L, height: B - T, borderWidth: 1.2, borderColor: col(C.black) });
-  [139, 158, 223, 288, 420, 553, 714].forEach((t) => hline(t));
-  vline(314, T, 139);
-
-  // --- intestazione ---
-  const logoW = 122;
-  page.drawImage(logo, { x: 186, y: Y(32 + logoW / MORA_LOGO_RATIO), width: logoW, height: logoW / MORA_LOGO_RATIO });
-  text("ELETTROMECCANICA", 44, 72, { size: 12.5, f: bold });
-  const addr1 = "Via Piola n. 16 - 28013 ";
-  text(addr1, 44, 90, { size: 8.6 });
-  text("GATTICO-VERUNO", 44 + widthOf(font, addr1, 8.6), 90, { size: 8.6, f: bold });
-  text(" (NO)", 44 + widthOf(font, addr1, 8.6) + widthOf(bold, "GATTICO-VERUNO", 8.6), 90, { size: 8.6 });
-  text(COMPANY.phone, 44, 101.5, { size: 8.6 });
-  text(COMPANY.web, 44, 113, { size: 8.6 });
-  text(COMPANY.reg, 44, 123.5, { size: 6.4 });
-  text(COMPANY.rea, 44, 131.5, { size: 6.4 });
-
-  field("Nota N°", 330, 72, 445, log.ticketNumber || "");
-  field("del", 449, 72, X1, log.dateString || "");
-  field("Tecnico", 330, 108, X1, getTechsString(log) || "");
-
-  // --- titolo (lettere spaziate) ---
-  const title = "SERVIZIO ASSISTENZA TECNICA";
-  const tSize = 13.5;
-  const spacing = 2.2;
-  const tWidth = title.split("").reduce((s, ch) => s + widthOf(bold, ch, tSize) + spacing, -spacing);
-  let tx = (L + R) / 2 - tWidth / 2;
-  for (const ch of title) {
-    text(ch, tx, 153.5, { size: tSize, f: bold });
-    tx += widthOf(bold, ch, tSize) + spacing;
-  }
-
-  // --- cliente ---
-  field("Cliente", X0, 177, 430, log.customer || "");
-  field("Tel.", 436, 177, X1);
-  field("Località", X0, 196, 262);
-  field("Via", 268, 196, 486);
-  field("n°", 492, 196, X1);
-  box(X0, 213, false);
-  field("Rif. richiesta", X0 + 11, 213.5, 258, "", { size: 9.5 });
-  field("del", 262, 213.5, 330, "", { size: 9.5 });
-  box(336, 213, false);
-  field("Rif. Vs. ordine N.", 347, 213.5, 488, "", { size: 9.5 });
-  field("del", 492, 213.5, X1, "", { size: 9.5 });
-
-  // --- tipo di lavoro (a penna) ---
-  const wt = [
-    ["Lavoro in economia", X0],
-    ["Garanzia", 150],
-    ["Verif. annuale ........ / ........", 226],
-    ["Verif. trim.le ........ / ........", 352],
-    ["Lavoro su prev.", 476],
-  ];
-  wt.forEach(([label, x]) => {
-    box(x, 240, false);
-    text(label, x + 11, 240.5, { size: 8.3 });
-  });
-  field("Ore lavorate comprensive del tempo di viaggio", X0, 257, X1);
-  field("Km percorsi", X0, 274, 228);
-  field("Trasferte n°", 232, 274, X1);
-
-  // --- tre blocchi "Lavoro eseguito su" ---
-  const kind = machineKind(log.machineType);
-  const descLines = [...String(log.description || "").split(/\r?\n/), ...ropeLines(log)].join("\n");
-  let overflow = "";
-  const block = (t0, data) => {
-    text("Lavoro eseguito su", X0, t0 + 18);
-    const bx = X0 + widthOf(font, "Lavoro eseguito su", 10) + 8;
-    box(bx, t0 + 17.5, data && kind.carroponte);
-    text("Carroponte", bx + 11, t0 + 18);
-    // frazione BITRAVE / MONOTRAVE
-    const fx = bx + 11 + widthOf(font, "Carroponte", 10) + 8;
-    text("BITRAVE", fx + 7, t0 + 12.5, { size: 6.4 });
-    page.drawLine({ start: { x: fx, y: Y(t0 + 14.6) }, end: { x: fx + 44, y: Y(t0 + 14.6) }, thickness: 0.7, color: col(C.black) });
-    text("MONOTRAVE", fx + 1, t0 + 20.5, { size: 6.4 });
-    if (data && (kind.bitrave || kind.monotrave)) {
-      const ty = kind.bitrave ? t0 + 10.3 : t0 + 18.3;
-      page.drawEllipse({ x: fx + 22, y: Y(ty), xScale: 24, yScale: 5.4, borderWidth: 0.9, borderColor: col(C.fill) });
-    }
-    box(300, t0 + 17.5, data && kind.bandiera);
-    text("Bandiera", 311, t0 + 18);
-    box(392, t0 + 17.5, data && kind.impianto);
-    text("Impianto sospeso / monorotaia", 403, t0 + 18);
-
-    field("Portata", X0, t0 + 36, 250, data ? formatCapacity(data.capacity) || data.capacity || "" : "");
-    field("N°", 256, t0 + 36, 360);
-    field("Matricola", 366, t0 + 36, X1, data ? data.machineId || "" : "");
-    const dStart = field("Descrizione dell'intervento con specifica dei ricambi impiegati", X0, t0 + 53, X1);
-    const rows = [t0 + 71, t0 + 89, t0 + 107, t0 + 124];
-    rows.forEach((r) => dots(X0, X1, r));
-    if (!data) return;
-
-    // descrizione: prima riga corta dopo l'etichetta, poi 4 righe intere
-    const slots = [{ x: dStart + 4, w: X1 - dStart - 6, top: t0 + 53 }, ...rows.map((r) => ({ x: X0 + 2, w: X1 - X0 - 4, top: r }))];
-    const widths = slots.map((sl) => sl.w);
-    let size = 9.5;
-    let res = flowIntoSlots(bold, descLines, size, widths);
-    if (res.overflow) {
-      size = 8.5;
-      res = flowIntoSlots(bold, descLines, size, widths);
-    }
-    if (res.overflow) {
-      overflow = descLines;
-      size = 9.5;
-      const note = " (segue nel foglio allegato)";
-      const w2 = [...widths];
-      w2[w2.length - 1] -= widthOf(bold, note, size) + 4;
-      res = flowIntoSlots(bold, descLines, size, w2);
-      res.lines[res.lines.length - 1] = (res.lines[res.lines.length - 1] || "") + note;
-    }
-    res.lines.forEach((ln, i) => {
-      if (ln) text(ln, slots[i].x, slots[i].top - 1.8, { size, f: bold, color: C.fill });
-    });
-  };
-  block(288, log);
-  block(420, null);
-  block(553, null);
-
-  // --- firme e annotazioni ---
-  const sig1 = "TIMBRO E FIRMA DEL CLIENTE PER ACCETTAZIONE";
-  text(sig1, X1 - widthOf(font, sig1, 7.6), 553 + 140, { size: 7.6 });
-  dots(345, X1, 553 + 156);
-  text("ANNOTAZIONI", X0, 728, { size: 7.6 });
-  text("TIMBRO E FIRMA DEL CLIENTE", 392, 766, { size: 7.6 });
-  dots(345, X1, 792);
-
-  // --- pagina 2: descrizione completa (se non stava) e foto ---
-  const photos = photoSources(log);
-  if (overflow || photos.length) await addAttachmentPage(ctx, log, overflow, photos);
-  return doc.save();
-};
-
-// distribuisce il testo su righe di larghezza diversa (le righe puntinate del modulo)
-export const flowIntoSlots = (font, text, size, widths) => {
-  const lines = [];
-  let line = "";
-  const room = () => widths[Math.min(lines.length, widths.length - 1)];
-  const push = () => {
-    lines.push(line);
-    line = "";
-  };
-  const paras = cleanText(font, text).replace(/\s+$/, "").split("\n");
-  paras.forEach((para, pi) => {
-    for (let word of para.split(/ +/).filter(Boolean)) {
-      const test = line ? line + " " + word : word;
-      if (widthOf(font, test, size) <= room()) {
-        line = test;
-        continue;
-      }
-      if (line) push();
-      // parola troppo lunga per una riga intera: la spezzo
-      while (widthOf(font, word, size) > room()) {
-        let cut = word.length - 1;
-        while (cut > 1 && widthOf(font, word.slice(0, cut), size) > room()) cut--;
-        line = word.slice(0, cut);
-        push();
-        word = word.slice(cut);
-      }
-      line = word;
-    }
-    if (line || pi < paras.length - 1) push();
-  });
-  if (line) push();
-  while (lines.length && lines[lines.length - 1] === "") lines.pop();
-  return { lines: lines.slice(0, widths.length), overflow: lines.length > widths.length };
-};
-
-const addAttachmentPage = async (ctx, log, fullText, photos) => {
-  const { doc, font, bold, logo, col } = ctx;
-  let page = doc.addPage([W, H]);
-  const M = 36;
-  const header = () => {
-    const lh = 30;
-    page.drawImage(logo, { x: M, y: H - M - lh, width: lh * MORA_LOGO_RATIO, height: lh });
-    const t = `Allegato alla Nota N° ${log.ticketNumber || "-"} del ${log.dateString || "-"}`;
-    page.drawText(cleanText(bold, t), { x: M + lh * MORA_LOGO_RATIO + 14, y: H - M - 12, size: 11, font: bold, color: col(C.ink) });
-    const sub = `${log.customer || ""}  ·  Matricola ${log.machineId || "-"}`;
-    page.drawText(fitLine(font, sub, 9, W - 2 * M - lh * MORA_LOGO_RATIO - 14), { x: M + lh * MORA_LOGO_RATIO + 14, y: H - M - 26, size: 9, font, color: col(C.grey) });
-    page.drawLine({ start: { x: M, y: H - M - 38 }, end: { x: W - M, y: H - M - 38 }, thickness: 1, color: col(C.ink) });
-    return H - M - 56;
-  };
-  let y = header();
-  if (fullText) {
-    page.drawText("DESCRIZIONE COMPLETA DELL'INTERVENTO", { x: M, y, size: 9, font: bold, color: col(C.ink) });
-    y -= 16;
-    for (const ln of wrapText(font, fullText, 10, W - 2 * M)) {
-      if (y < M + 20) {
-        page = doc.addPage([W, H]);
-        y = header();
-      }
-      page.drawText(ln, { x: M, y, size: 10, font, color: col(C.text) });
-      y -= 14;
-    }
-    y -= 10;
-  }
-  if (!photos.length) return;
-  const images = [];
-  for (const src of photos) {
-    try {
-      images.push(/^data:image\/png/i.test(src) ? await doc.embedPng(src) : await doc.embedJpg(src));
-    } catch (e) {
-      // foto non leggibile: la salto
-    }
-  }
-  if (!images.length) return;
-  const title = `FOTO ALLEGATE (${images.length})`;
-  const gap = 10;
-  const maxW = W - 2 * M;
-  for (const img of images) {
-    const avail = () => y - M - 6;
-    // altezza massima per foto: tutte e tre in una pagina se possibile
-    const maxH = Math.min(avail() - (title && img === images[0] ? 16 : 0), (H - 2 * M - 70 - gap * 2) / Math.min(images.length, 3));
-    let scale = Math.min(maxW / img.width, Math.max(maxH, 120) / img.height);
-    let w = img.width * scale;
-    let h = img.height * scale;
-    if (img === images[0]) {
-      if (avail() < h + 16) {
-        page = doc.addPage([W, H]);
-        y = header();
-      }
-      page.drawText(title, { x: M, y, size: 9, font: bold, color: col(C.ink) });
-      y -= 14;
-    }
-    if (y - h < M) {
-      page = doc.addPage([W, H]);
-      y = header();
-      scale = Math.min(maxW / img.width, (y - M) / img.height);
-      w = img.width * scale;
-      h = img.height * scale;
-    }
-    page.drawImage(img, { x: M + (maxW - w) / 2, y: y - h, width: w, height: h });
-    y -= h + gap;
-  }
-};
 
 // =====================================================================
 // ELENCHI (tabelle) con intestazione Mora
@@ -598,6 +298,88 @@ const createFlow = async ({ title, subtitle, docTitle }) => {
     flow.y -= 12;
   };
 
+  // tabella "etichetta | valore" (dati dell'intervento)
+  flow.details = (rows) => {
+    const total = W - 2 * M;
+    const lw = total * 0.3;
+    const pad = 7;
+    const list = rows.filter(([, v]) => v !== undefined && v !== null && String(v).trim() !== "");
+    flow.ensure(30);
+    const top = flow.y + 12;
+    list.forEach(([label, value]) => {
+      const lines = wrapText(font, value, 10, total - lw - 2 * pad);
+      const h = Math.max(1, lines.length) * 13.5 + 2 * pad - 3.5;
+      if (flow.y + 12 - h < bottom) header();
+      const y0 = flow.y + 12;
+      flow.page.drawRectangle({ x: M, y: y0 - h, width: lw, height: h, color: col([241, 245, 249]) });
+      flow.page.drawLine({ start: { x: M, y: y0 - h }, end: { x: M + total, y: y0 - h }, thickness: 0.6, color: col(C.line) });
+      flow.page.drawText(fitLine(bold, label.toUpperCase(), 8.5, lw - 2 * pad), { x: M + pad, y: y0 - pad - 8.5, size: 8.5, font: bold, color: col(C.ink) });
+      lines.forEach((ln, i) => flow.page.drawText(ln, { x: M + lw + pad, y: y0 - pad - 9.5 - i * 13.5, size: 10, font, color: col(C.text) }));
+      flow.y -= h;
+    });
+    if (list.length) flow.page.drawLine({ start: { x: M, y: top }, end: { x: M + total, y: top }, thickness: 0.6, color: col(C.line) });
+    flow.y -= 14;
+  };
+  // riquadro con bordo per la descrizione (continua nella pagina dopo se serve)
+  flow.textBox = (t, { minH = 80, size = 10.5 } = {}) => {
+    const total = W - 2 * M;
+    const pad = 10;
+    const lh = size + 6;
+    let lines = wrapText(font, t || "", size, total - 2 * pad);
+    if (!lines.length) lines = [""];
+    let first = true;
+    while (lines.length) {
+      const room = Math.floor((flow.y + 12 - bottom - 2 * pad) / lh);
+      if (room < 2) {
+        header();
+        continue;
+      }
+      const chunk = lines.splice(0, room);
+      const h = Math.max(first ? minH : 0, chunk.length * lh + 2 * pad - 4);
+      const y0 = flow.y + 12;
+      flow.page.drawRectangle({ x: M, y: y0 - h, width: total, height: h, borderWidth: 0.8, borderColor: col(C.line) });
+      chunk.forEach((ln, i) => flow.page.drawText(ln, { x: M + pad, y: y0 - pad - size - i * lh + 1, size, font, color: col(C.text) }));
+      flow.y -= h;
+      first = false;
+      if (lines.length) header();
+    }
+    flow.y -= 16;
+  };
+  // foto: 3 per riga
+  flow.photos = (images) => {
+    const total = W - 2 * M;
+    const gap = 10;
+    const cw = (total - 2 * gap) / 3;
+    const ch = 165;
+    for (let i = 0; i < images.length; i += 3) {
+      flow.ensure(ch + 10);
+      images.slice(i, i + 3).forEach((img, j) => {
+        const sc = Math.min(cw / img.width, ch / img.height);
+        const w = img.width * sc;
+        const h = img.height * sc;
+        const x = M + j * (cw + gap) + (cw - w) / 2;
+        flow.page.drawImage(img, { x, y: flow.y + 12 - h, width: w, height: h });
+        flow.page.drawRectangle({ x, y: flow.y + 12 - h, width: w, height: h, borderWidth: 0.6, borderColor: col(C.line) });
+      });
+      flow.y -= ch + gap;
+    }
+    flow.y -= 6;
+  };
+  // spazi per le firme
+  flow.signatures = (labels) => {
+    const total = W - 2 * M;
+    const gap = 30;
+    const w = (total - gap * (labels.length - 1)) / labels.length;
+    flow.ensure(80);
+    flow.y -= 20;
+    labels.forEach((l, i) => {
+      const x = M + i * (w + gap);
+      flow.page.drawText(l.toUpperCase(), { x, y: flow.y, size: 8.5, font: bold, color: col(C.grey) });
+      flow.page.drawLine({ start: { x, y: flow.y - 42 }, end: { x: x + w, y: flow.y - 42 }, thickness: 0.9, color: col(C.ink) });
+    });
+    flow.y -= 60;
+  };
+
   flow.finish = (footerText) => {
     const pages = doc.getPages();
     pages.forEach((p, i) => {
@@ -608,6 +390,44 @@ const createFlow = async ({ title, subtitle, docTitle }) => {
     return doc.save();
   };
   return flow;
+};
+
+// =====================================================================
+// RAPPORTO DI UN SINGOLO INTERVENTO (Storico): dati, descrizione, foto, firme
+// =====================================================================
+export const buildInterventionPdf = async ({ log, today }) => {
+  const printed = today || new Date().toLocaleDateString("it-IT");
+  const flow = await createFlow({
+    title: "RAPPORTO DI INTERVENTO",
+    subtitle: log.ticketNumber ? `N. Assistenza ${log.ticketNumber}` : "",
+    docTitle: `Rapporto intervento ${log.ticketNumber || log.dateString || ""}`,
+  });
+  flow.meta([`Data: ${log.dateString || "-"}`, `N. Assistenza: ${log.ticketNumber || "-"}`, `Stampato il: ${printed}`]);
+  flow.details([
+    ["Tecnico/i", getTechsString(log)],
+    ["Cliente", log.customer],
+    ["Matricola gru", log.machineId],
+    ["Tipo", log.machineType],
+    ["Portata", log.capacity ? formatCapacity(log.capacity) : ""],
+    ["Fune sostituita", formatRopeLong(log.fune)],
+    ["Catena sostituita", formatRopeLong(log.catena)],
+  ]);
+  flow.heading("Descrizione del lavoro");
+  flow.textBox(log.description || "");
+  const images = [];
+  for (const src of photoSources(log)) {
+    try {
+      images.push(/^data:image\/png/i.test(src) ? await flow.ctx.doc.embedPng(src) : await flow.ctx.doc.embedJpg(src));
+    } catch (e) {
+      // foto non leggibile: la salto
+    }
+  }
+  if (images.length) {
+    flow.heading("Foto allegate");
+    flow.photos(images);
+  }
+  flow.signatures(["Firma tecnico", "Firma cliente"]);
+  return flow.finish("Documento generato dall'app Assistenza Mora.");
 };
 
 // colonne "Data / Tecnico", "Cliente / Impianto", "Descrizione" (Ufficio e Backup)
