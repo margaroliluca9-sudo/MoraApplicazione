@@ -17,6 +17,7 @@ import {
   CalendarDays,
   BarChart3,
   Truck,
+  BookOpen,
 } from "lucide-react";
 
 import { getSafeMatricola } from "../utils";
@@ -31,6 +32,7 @@ import { unreadTotal } from "../chat";
 import { PersonalAreaModal } from "../components/modals/PersonalAreaModal";
 import { todayItems, monthNumbers, relDay, isoFromLogDate } from "../personal";
 import { HomeGrid } from "../components/HomeGrid";
+import { GuideModal } from "../components/modals/GuideModal";
 import { WIDGETS, HOME_PREFS, resolveHome, cachedPrefs, cachePrefs } from "../home";
 import { vanOf, itemsOf, lowItems, fmtQty } from "../van";
 import { chatDoc, key as techKey } from "../chat";
@@ -78,6 +80,38 @@ export const DashboardView = ({
   const color = layoutConfig?.themeColor || "blue";
   const [query, setQuery] = useState("");
   const [showMine, setShowMine] = useState(false);
+  // GUIDA ALL'APP (riquadro in fondo alla Home) + avviso "Novità" finché non l'hai aperta
+  const [showGuide, setShowGuide] = useState(false);
+  const guideKey = "mora_guide_seen_" + String(currentTechName || "").trim().toLowerCase();
+  const [guideSeen, setGuideSeen] = useState(() => {
+    try {
+      return localStorage.getItem(guideKey) === "1";
+    } catch (e) {
+      return true;
+    }
+  });
+  const markGuideSeen = () => {
+    setGuideSeen(true);
+    try {
+      localStorage.setItem(guideKey, "1");
+    } catch (e) {
+      // niente
+    }
+  };
+  const openGuide = () => {
+    markGuideSeen();
+    setShowGuide(true);
+  };
+  const guideGo = (to) => {
+    setShowGuide(false);
+    if (to === "new") onNavigate("new");
+    else if (to === "area") setArea("home");
+    else if (to === "van") setArea("van");
+    else if (to === "chat") {
+      setChatConv(null);
+      setShowChat(true);
+    } else if (to === "home-edit") setTimeout(() => window.dispatchEvent(new CustomEvent("mora-edit-home")), 50);
+  };
   // HOME PERSONALIZZATA: preferenze del tecnico (prima la copia sul telefono, poi il database)
   const [prefs, setPrefs] = useState(() => cachedPrefs(currentTechName));
   useEffect(() => {
@@ -523,6 +557,18 @@ export const DashboardView = ({
           onOpenMachine={onOpenMachine}
         />
       )}
+      {!guideSeen && (
+        <div className="flex items-center gap-3 p-3 rounded-2xl border border-amber-200 bg-amber-50" data-section="guide-banner">
+          <BookOpen className="w-5 h-5 text-amber-700 shrink-0" />
+          <button type="button" onClick={openGuide} className="flex-1 text-left">
+            <span className="block font-black text-amber-900 text-sm">L'app ha tante funzioni nuove</span>
+            <span className="block text-xs font-semibold text-amber-800">Tocca qui per il tutorial</span>
+          </button>
+          <button type="button" onClick={markGuideSeen} aria-label="Chiudi avviso" className="p-2 rounded-full hover:bg-amber-100">
+            <X className="w-4 h-4 text-amber-700" />
+          </button>
+        </div>
+      )}
       <HomeGrid
         items={items}
         home={home}
@@ -531,6 +577,31 @@ export const DashboardView = ({
         searchBox={searchBox}
         onSaved={setPrefs}
       />
+      <button
+        type="button"
+        data-action="open-guide"
+        onClick={openGuide}
+        className="w-full p-4 rounded-3xl border border-slate-200 bg-white shadow-sm flex items-center gap-4 text-left"
+      >
+        <span className={`p-3 rounded-2xl bg-${color}-50 text-${color}-600 shrink-0`}>
+          <BookOpen className="w-7 h-7" />
+        </span>
+        <span className="flex-1 min-w-0">
+          <span className="block text-base font-black text-slate-800 uppercase tracking-tight">Guida all'app</span>
+          <span className="block text-xs text-slate-500 mt-0.5">Tutorial e spiegazione di tutte le funzioni</span>
+        </span>
+        <ChevronRight className="w-5 h-5 text-slate-400 shrink-0" />
+      </button>
+      {showGuide && (
+        <GuideModal
+          color={color}
+          hasVan={!!myVan}
+          chatEnabled={chatEnabled}
+          isAdmin={isAdmin}
+          onGo={guideGo}
+          onClose={() => setShowGuide(false)}
+        />
+      )}
     </div>
   );
 };

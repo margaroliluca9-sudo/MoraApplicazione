@@ -1,5 +1,5 @@
 // Riquadri della Home: normali e in "Modifica la tua Home" (sposta, grandezza, colore, nascondi, aggiungi).
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { GripVertical, X, Plus, Pencil, ChevronLeft, ChevronRight, EyeOff, RotateCcw, Check } from "lucide-react";
 import {
   SIZES,
@@ -147,12 +147,23 @@ export const HomeGrid = ({ items, home, me, color = "blue", searchBox, onEditing
   const [busy, setBusy] = useState(false);
   const editing = !!draft;
   const h = draft || home;
+  // dalla Guida: "Modifica la Home" (startRef = ultima versione di start)
+  const startRef = useRef(null);
+  useEffect(() => {
+    const on = () => {
+      if (startRef.current) startRef.current();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    };
+    window.addEventListener("mora-edit-home", on);
+    return () => window.removeEventListener("mora-edit-home", on);
+  }, []);
 
   const start = () => {
     setDraft({ ...home, order: [...home.order], hidden: [...home.hidden], sizes: { ...home.sizes }, colors: { ...home.colors } });
     setError("");
     onEditingChange(true);
   };
+  startRef.current = start;
   const stop = () => {
     setDraft(null);
     setSel(null);
