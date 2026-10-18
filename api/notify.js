@@ -1,5 +1,5 @@
 // POSTINO DELLE NOTIFICHE (funzione Vercel, indirizzo /api/notify).
-// L'app gli manda il messaggio della bacheca e l'elenco dei telefoni iscritti:
+// L'app gli manda il messaggio della chat e l'elenco dei telefoni che lo devono ricevere:
 // lui cifra il messaggio e lo spedisce a ciascun telefono (Google, Apple, Mozilla...).
 // Standard "Web Push" (cifratura RFC 8291 aes128gcm + firma VAPID RFC 8292), senza librerie.
 // NB: la chiave privata è qui nel codice per scelta del titolare (repository pubblico):
@@ -124,10 +124,11 @@ const handler = async (req, res) => {
     .filter((s) => s && allowedEndpoint(s.endpoint) && s.keys && s.keys.p256dh && s.keys.auth)
     .slice(0, 200);
   const payload = JSON.stringify({
-    title: String(body.title || "Bacheca Mora").slice(0, 80),
+    title: String(body.title || "Chat Mora").slice(0, 80),
     body: String(body.text || "").slice(0, 300),
-    tag: String(body.tag || "bacheca").slice(0, 64),
-    url: "/?bacheca=1",
+    tag: String(body.tag || "chat").slice(0, 64),
+    // solo indirizzi interni dell'app che aprono una conversazione
+    url: /^\/\?chat=[A-Za-z0-9%._~:|-]{1,160}$/.test(String(body.url || "")) ? body.url : "/?chat=group",
   });
   const results = await Promise.all(subs.map((s) => sendOne(s, payload)));
   res.status(200).json({

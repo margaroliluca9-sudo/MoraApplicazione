@@ -1,4 +1,4 @@
-// SERVICE WORKER DELL'APP: serve SOLO per le notifiche della bacheca.
+// SERVICE WORKER DELL'APP: serve SOLO per le notifiche della chat.
 // Non memorizza pagine (così l'app è sempre l'ultima versione pubblicata).
 self.addEventListener("install", () => self.skipWaiting());
 
@@ -22,27 +22,27 @@ self.addEventListener("push", (event) => {
     data = { body: event.data ? event.data.text() : "" };
   }
   event.waitUntil(
-    self.registration.showNotification(data.title || "Bacheca Mora", {
+    self.registration.showNotification(data.title || "Chat Mora", {
       body: data.body || "",
-      tag: data.tag || "bacheca",
+      tag: data.tag || "chat",
       renotify: true,
       icon: "/icons/icon-192.png",
       badge: "/icons/icon-192.png",
-      data: { url: data.url || "/?bacheca=1" },
+      data: { url: data.url || "/?chat=group" },
     })
   );
 });
 
-// tocco sulla notifica: apro l'app sulla bacheca
+// tocco sulla notifica: apro l'app sulla conversazione
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
-  const url = (event.notification.data && event.notification.data.url) || "/?bacheca=1";
+  const url = (event.notification.data && event.notification.data.url) || "/?chat=group";
   event.waitUntil(
     (async () => {
       const wins = await self.clients.matchAll({ type: "window", includeUncontrolled: true });
       for (const w of wins) {
         if ("focus" in w) {
-          w.postMessage({ type: "open-board" });
+          w.postMessage({ type: "open-chat", url });
           return w.focus();
         }
       }

@@ -23,8 +23,8 @@ import {
   isMyLog,
   isThisMonth,
 } from "../components/modals/MyLogsModal";
-import { BoardModal } from "../components/modals/BoardModal";
-import { getLastRead, unreadCount } from "../board";
+import { ChatModal } from "../components/modals/ChatModal";
+import { unreadTotal } from "../chat";
 
 // --- VIEWS PRINCIPALI ---
 
@@ -55,40 +55,46 @@ export const DashboardView = ({
   currentTechName = "",
   onOpenCustomer = () => {},
   onOpenMachine = () => {},
-  boardMessages = [],
+  chatMessages = [],
+  chatReads = [],
+  technicians = [],
+  isAdmin = false,
   onOpenPhotos = () => {},
 }) => {
   const color = layoutConfig?.themeColor || "blue";
   const [query, setQuery] = useState("");
   const [showMine, setShowMine] = useState(false);
-  // BACHECA: si apre anche dalla notifica (indirizzo "?bacheca=1" o messaggio dell'app)
-  const [showBoard, setShowBoard] = useState(() => {
+  // CHAT: si apre anche dalla notifica (indirizzo "?chat=..." o messaggio dell'app)
+  const convFromUrl = () => {
     try {
-      return new URLSearchParams(window.location.search).has("bacheca");
+      const q = new URLSearchParams(window.location.search);
+      if (q.has("chat")) return q.get("chat") || "group";
+      if (q.has("bacheca")) return "group";
     } catch (e) {
-      return false;
+      // niente
     }
-  });
-  const [lastRead, setLastRead] = useState(getLastRead);
+    return null;
+  };
+  const [chatConv, setChatConv] = useState(convFromUrl);
+  const [showChat, setShowChat] = useState(() => convFromUrl() !== null);
   useEffect(() => {
-    const onRead = () => setLastRead(getLastRead());
-    const onOpen = () => setShowBoard(true);
-    window.addEventListener("mora-board-read", onRead);
-    window.addEventListener("mora-open-board", onOpen);
+    const onOpen = (e) => {
+      setChatConv((e && e.detail && e.detail.conv) || "group");
+      setShowChat(true);
+    };
+    window.addEventListener("mora-open-chat", onOpen);
     try {
-      if (new URLSearchParams(window.location.search).has("bacheca"))
+      const q = new URLSearchParams(window.location.search);
+      if (q.has("chat") || q.has("bacheca"))
         window.history.replaceState(null, "", window.location.pathname);
     } catch (e) {
       // niente
     }
-    return () => {
-      window.removeEventListener("mora-board-read", onRead);
-      window.removeEventListener("mora-open-board", onOpen);
-    };
+    return () => window.removeEventListener("mora-open-chat", onOpen);
   }, []);
   const unread = useMemo(
-    () => unreadCount(boardMessages, currentTechName, lastRead),
-    [boardMessages, currentTechName, lastRead],
+    () => unreadTotal(chatMessages, chatReads, currentTechName),
+    [chatMessages, chatReads, currentTechName],
   );
   let order = layoutConfig?.dashboardOrder || [
     "new",
@@ -104,11 +110,11 @@ export const DashboardView = ({
     const i = order.indexOf("new");
     order.splice(i === -1 ? 0 : i + 1, 0, "mine");
   }
-  // riquadro "Bacheca" subito dopo "I miei interventi" (o dopo "Nuovo Rapporto")
-  if (!order.includes("board")) {
+  // riquadro "Chat" subito dopo "I miei interventi" (o dopo "Nuovo Rapporto")
+  if (!order.includes("chat")) {
     order = [...order];
     const j = Math.max(order.indexOf("mine"), order.indexOf("new"));
-    order.splice(j === -1 ? 0 : j + 1, 0, "board");
+    order.splice(j === -1 ? 0 : j + 1, 0, "chat");
   }
 
   const myMonthCount = useMemo(
@@ -194,17 +200,20 @@ export const DashboardView = ({
           : `${myMonthCount} interventi questo mese`,
       action: () => setShowMine(true),
     },
-    board: {
-      id: "board",
-      label: "Bacheca",
+    chat: {
+      id: "chat",
+      label: "Chat",
       icon: MessageSquare,
       desc:
         unread === 0
-          ? "Messaggi tra tecnici"
+          ? "Gruppo e messaggi privati"
           : unread === 1
             ? "1 messaggio nuovo"
             : `${unread} messaggi nuovi`,
-      action: () => setShowBoard(true),
+      action: () => {
+        setChatConv(null);
+        setShowChat(true);
+      },
       badge: unread,
     },
   };
@@ -350,12 +359,16 @@ export const DashboardView = ({
   return (
     <div className="space-y-4">
       {searchBox}
-      {showBoard && (
-        <BoardModal
-          messages={boardMessages}
+      {showChat && (
+        <ChatModal
+          messages={chatMessages}
+          reads={chatReads}
+          technicians={technicians}
           techName={currentTechName}
+          isAdmin={isAdmin}
+          initialConv={chatConv}
           color={color}
-          onClose={() => setShowBoard(false)}
+          onClose={() => setShowChat(false)}
           onOpenPhotos={onOpenPhotos}
         />
       )}
