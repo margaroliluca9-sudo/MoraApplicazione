@@ -17,7 +17,8 @@ import {
 } from "../utils";
 import { PRO_INPUT, getProPanelClass } from "../ui";
 import { SimpleCalendar } from "../components/SimpleCalendar";
-import { buildLogsReportHtml } from "../reports";
+import { buildLogsReportPdf, pdfFileName } from "../pdf";
+import { openPdf } from "../components/PdfHost";
 
 export const OfficeView = ({
   logs,
@@ -203,25 +204,15 @@ export const OfficeView = ({
   const generatePDF = () => {
     if (filteredLogs.length === 0) return alert("Nessun intervento trovato.");
 
-    const printWindow = window.open("", "_blank");
-    if (!printWindow) {
-      alert("Impossibile aprire il report. Verifica il blocco popup.");
-      return;
-    }
-
     const today = new Date().toLocaleDateString("it-IT");
-
-    const html = buildLogsReportHtml({
-      appTitle: layoutConfig?.appTitle,
-      logs: filteredLogs,
-      today,
-      periodLabel: `${
-        startDate ? new Date(startDate).toLocaleDateString() : "Inizio"
-      } - ${endDate ? new Date(endDate).toLocaleDateString() : "Oggi"}`,
-    });
-
-    printWindow.document.write(html);
-    printWindow.document.close();
+    const logs = filteredLogs;
+    const periodLabel = `${
+      startDate ? new Date(startDate).toLocaleDateString("it-IT") : "Inizio"
+    } - ${endDate ? new Date(endDate).toLocaleDateString("it-IT") : "Oggi"}`;
+    openPdf(
+      () => buildLogsReportPdf({ logs, today, periodLabel }),
+      pdfFileName("Report interventi", today.replace(/\//g, "-"))
+    );
   };
 
   const handleDownloadExcel = () => {

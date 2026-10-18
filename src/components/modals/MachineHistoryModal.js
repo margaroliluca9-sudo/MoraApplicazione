@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { getTechsString, formatCapacity, getSafeMatricola } from "../../utils";
 import { getProPanelClass } from "../../ui";
-import { ROPE_ITEMS, formatRope, lastRopeOf } from "../../ropes";
+import { ROPE_ITEMS, formatRopeLong, lastRopeOf } from "../../ropes";
 import { AssistantPanel } from "../AssistantPanel";
 
 export const MachineHistoryModal = ({
@@ -96,7 +96,7 @@ export const MachineHistoryModal = ({
                     className="text-[11px] font-bold text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1 mt-2 w-fit max-w-full"
                   >
                     Ultima {title.toLowerCase()} ({last.dateString}):{" "}
-                    {formatRope(last[id])}
+                    {formatRopeLong(last[id])}
                   </div>
                 ) : null;
               })}
@@ -165,7 +165,7 @@ export const MachineHistoryModal = ({
                       key={id}
                       className="relative z-10 mt-3 text-[10px] font-bold text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1 w-fit max-w-full"
                     >
-                      {title} sostituita: {formatRope(log[id])}
+                      {title} sostituita: {formatRopeLong(log[id])}
                     </div>
                   ))}
                 </div>

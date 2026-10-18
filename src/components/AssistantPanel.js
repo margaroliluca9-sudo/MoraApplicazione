@@ -1,46 +1,24 @@
 import React, { useMemo } from "react";
-import { Lightbulb, Repeat, History } from "lucide-react";
+import { Lightbulb, Repeat } from "lucide-react";
 import { getTechsString } from "../utils";
-import { pendingItems, repeatedFaults, machineSummary } from "../assistant";
+import { pendingItems, repeatedFaults } from "../assistant";
 
 // Avvisi dell'assistente su una gru (vedi assistant.js):
-//  riassunto in una riga, "L'ultima volta…" (cose in sospeso), guasto che si ripete.
-export const AssistantPanel = ({ machineLogs, showSummary = true }) => {
+//  "L'ultima volta…" (cose in sospeso) e guasto che si ripete.
+export const AssistantPanel = ({ machineLogs }) => {
   const data = useMemo(() => {
     const logs = machineLogs || [];
     return {
-      summary: machineSummary(logs),
       pending: pendingItems(logs).slice(0, 5),
       repeated: repeatedFaults(logs),
     };
   }, [machineLogs]);
 
-  const { summary, pending, repeated } = data;
-  if (!summary) return null;
-  const nothing = !pending.length && !repeated.length;
-  if (nothing && !showSummary) return null;
+  const { pending, repeated } = data;
+  if (!pending.length && !repeated.length) return null;
 
   return (
     <div data-section="assistant" className="space-y-2">
-      {showSummary && (
-        <div
-          data-assistant="summary"
-          className="flex items-start gap-2 text-[11px] font-bold text-slate-600 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2"
-        >
-          <History className="w-4 h-4 shrink-0 text-slate-400" />
-          <span>
-            {summary.count === 1
-              ? "1 intervento"
-              : `${summary.count} interventi dal ${summary.firstYear}`}
-            {" · ultimo "}
-            {summary.last.dateString}
-            {summary.top.length > 0 &&
-              " · più spesso: " +
-                summary.top.map((t) => `${t.label} (${t.count})`).join(", ")}
-          </span>
-        </div>
-      )}
-
       {repeated.map((r) => (
         <div
           key={r.id}

@@ -16,8 +16,8 @@ App "Assistenza Mora" per registrare e consultare gli interventi sulle gru
 | `dark.css` | Colori del tema scuro (file generato, non modificare a mano) |
 | `appearance.js`, `appearance.css` | Opzioni di Admin > Design: carattere, grandezza lettere, angoli, spaziatura, avvio (CSS generato) |
 | `ropes.js` | Fune e catena sostituite: riconoscimento dalla descrizione, dati obbligatori (certificato, diametro, lunghezza) |
-| `assistant.js` + `components/AssistantPanel.js` | Assistente del tecnico: "L'ultima volta…" (cose in sospeso, spariscono da sole), guasto che si ripete (2 volte in 2 mesi), riassunto della gru, matricole scritte diversamente (stesso cliente) |
-| `reports.js` | Report stampabili (elenco interventi di Ufficio, rapporto del singolo intervento dallo Storico, backup PDF) |
+| `assistant.js` + `components/AssistantPanel.js` | Assistente del tecnico: "L'ultima volta…" (cose in sospeso, spariscono da sole), guasto che si ripete (2 volte in 2 mesi), matricole scritte diversamente (stesso cliente) |
+| `pdf.js` + `pdfLogo.js` + `components/PdfHost.js` | Stampe in PDF vero (libreria pdf-lib, caricata solo quando serve): rapporto di intervento uguale al modulo cartaceo "Servizio Assistenza Tecnica" (+ foto), elenco gru del cliente, report Ufficio, backup. La finestra PdfHost offre Condividi/Stampa, Apri, Scarica |
 | `views/DashboardView.js` | Home: ricerca unica, riquadri, "I miei interventi" |
 | `views/NewEntryForm.js` | Nuovo rapporto d'intervento |
 | `views/ExploreView.js` | Esplora clienti e macchine |

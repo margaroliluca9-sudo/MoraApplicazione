@@ -8,7 +8,8 @@ import {
 } from "lucide-react";
 import { formatCapacity, getSafeMatricola } from "../../utils";
 import { getProPanelClass } from "../../ui";
-import { buildCustomerMachinesHtml, openPrintWindow } from "../../reports";
+import { buildCustomerMachinesPdf, pdfFileName } from "../../pdf";
+import { openPdf } from "../PdfHost";
 
 export const CustomerDetailModal = ({
   customerName,
@@ -16,7 +17,6 @@ export const CustomerDetailModal = ({
   onClose,
   onOpenMachine,
   themeColor,
-  appTitle,
 }) => {
   const color = themeColor || "blue";
   const customerMachines = machines.filter(
@@ -47,13 +47,14 @@ export const CustomerDetailModal = ({
           <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={() =>
-                openPrintWindow(
-                  buildCustomerMachinesHtml({
-                    appTitle,
-                    customerName,
-                    machines: customerMachines,
-                    today: new Date().toLocaleDateString("it-IT"),
-                  })
+                openPdf(
+                  () =>
+                    buildCustomerMachinesPdf({
+                      customerName,
+                      machines: customerMachines,
+                      today: new Date().toLocaleDateString("it-IT"),
+                    }),
+                  pdfFileName("Elenco gru", customerName)
                 )
               }
               className="flex items-center gap-2 bg-white px-3 py-2 rounded-lg border border-slate-300 shadow-sm text-slate-600 hover:bg-slate-100 active:scale-95 transition-all"

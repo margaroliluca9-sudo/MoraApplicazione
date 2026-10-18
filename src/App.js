@@ -44,6 +44,7 @@ import { applyAppearance, getCachedLayout, cacheLayout } from "./appearance";
 import { NavButton } from "./components/NavButton";
 import { AdminLoginModal } from "./components/AdminLoginModal";
 import { PhotoViewerModal } from "./components/PhotoViewerModal";
+import { PdfHost } from "./components/PdfHost";
 import { MachineHistoryModal } from "./components/modals/MachineHistoryModal";
 import { CustomerDetailModal } from "./components/modals/CustomerDetailModal";
 import { DashboardView } from "./views/DashboardView";
@@ -513,6 +514,7 @@ export default function App() {
         isMobileView ? "pb-24" : ""
       } relative bg-slate-100 text-slate-900 animate-in fade-in duration-700`}
     >
+      <PdfHost />
       <header
         className={`sticky top-0 z-50 p-4 transition-colors duration-300 bg-white border-b border-slate-200 shadow-sm rounded-none border-t-4 border-t-${color}-600`}
       >

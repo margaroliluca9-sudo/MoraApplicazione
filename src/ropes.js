@@ -124,6 +124,20 @@ export const formatRope = (saved) => {
   return parts.join(" · ");
 };
 
+// testo completo con le etichette (Storico): "Certificato X · Diametro 10,5 mm · Lunghezza 32 m"
+export const formatRopeLong = (saved) => {
+  if (!saved) return "";
+  const parts = [];
+  // quando i dati "non sono disponibili" mostro solo quelli inseriti + il motivo
+  const all = !saved.nonDisponibile;
+  if (all || saved.certificato) parts.push(`Certificato ${saved.certificato || "-"}`);
+  if (all || saved.diametro) parts.push(`Diametro ${saved.diametro ? fmt(saved.diametro) + " mm" : "-"}`);
+  if (all || saved.lunghezza) parts.push(`Lunghezza ${saved.lunghezza ? fmt(saved.lunghezza) + " m" : "-"}`);
+  if (saved.nonDisponibile)
+    parts.push(`dati non disponibili${saved.motivo ? ": " + saved.motivo : ""}`);
+  return parts.join(" · ");
+};
+
 // ultima fune / catena montata su una gru (dagli interventi della gru)
 export const lastRopeOf = (logs, id) => {
   const key = (ds) => {

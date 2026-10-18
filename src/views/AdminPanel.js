@@ -43,7 +43,8 @@ import { db, appId } from "../firebase";
 import { describeError, getSafeMatricola, getLevenshteinDistance } from "../utils";
 import { PRO_INPUT, getButtonPrimaryClass, getProPanelClass } from "../ui";
 import { AdminTab } from "../components/AdminTab";
-import { buildBackupHtml, openPrintWindow } from "../reports";
+import { buildBackupPdf, pdfFileName } from "../pdf";
+import { openPdf } from "../components/PdfHost";
 import {
   FONT_OPTIONS,
   FONT_SCALE_OPTIONS,
@@ -295,25 +296,28 @@ export const AdminPanel = ({
     } catch (e) {}
   }, [view]);
 
-  // Backup completo: documento da salvare in PDF con "Stampa / Salva PDF"
-  const downloadBackup = () =>
-    openPrintWindow(
-      buildBackupHtml({
-        appTitle: layoutConfig?.appTitle,
-        logs: allLogs,
-        customers,
-        machines,
-        technicians,
-        machineTypes,
-        generatedAt: new Date().toLocaleString("it-IT", {
-          day: "2-digit",
-          month: "2-digit",
-          year: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
+  // Backup completo dell'archivio in un file PDF
+  const downloadBackup = () => {
+    const generatedAt = new Date().toLocaleString("it-IT", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    openPdf(
+      () =>
+        buildBackupPdf({
+          logs: allLogs,
+          customers,
+          machines,
+          technicians,
+          machineTypes,
+          generatedAt,
         }),
-      })
+      pdfFileName("Backup archivio", new Date().toISOString().slice(0, 10))
     );
+  };
 
   // Statistiche dell'archivio (sezione System)
   const dbStats = useMemo(() => {

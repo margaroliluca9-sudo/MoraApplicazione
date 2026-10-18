@@ -2,7 +2,6 @@
 //  - "L'ultima volta…": cose lasciate in sospeso (spariscono da sole quando un
 //    rapporto successivo dice che quel pezzo è stato sostituito/riparato/sistemato)
 //  - guasto che si ripete: stesso componente in 2+ interventi negli ultimi 60 giorni
-//  - riassunto della gru in una riga
 //  - matricole scritte in modo diverso (stesso cliente)
 import { getSafeMatricola } from "./utils";
 
@@ -119,27 +118,6 @@ export const repeatedFaults = (machineLogs, { now = new Date(), days = 60, min =
     .filter(([, dates]) => dates.length >= min)
     .map(([id, dates]) => ({ id, label: componentLabel(id), count: dates.length, dates: dates.sort((a, b) => dayKey(a) - dayKey(b)) }))
     .sort((a, b) => b.count - a.count);
-};
-
-// --- 8. riassunto della gru ---
-export const machineSummary = (machineLogs) => {
-  const logs = [...(machineLogs || [])].sort((a, b) => orderKey(b) - orderKey(a));
-  if (!logs.length) return null;
-  const firstYear = Math.min(...logs.map((l) => (toDate(l.dateString) || new Date()).getFullYear()));
-  const freq = {};
-  for (const l of logs) {
-    const ids = new Set();
-    for (const sent of sentencesOf(l.description)) {
-      const s = sent.replace(OIL, " ");
-      if (FAULT.test(s) || PENDING.test(s)) componentsIn(s).forEach((c) => ids.add(c));
-    }
-    for (const c of ids) freq[c] = (freq[c] || 0) + 1;
-  }
-  const top = Object.entries(freq)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 3)
-    .map(([id, n]) => ({ id, label: componentLabel(id), count: n }));
-  return { count: logs.length, firstYear, last: logs[0], top };
 };
 
 // --- 9. matricole scritte in modo diverso (solo stesso cliente) ---

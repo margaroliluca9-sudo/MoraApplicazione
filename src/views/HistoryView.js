@@ -16,8 +16,9 @@ import { getTechsString, formatCapacity } from "../utils";
 import { getProPanelClass } from "../ui";
 import { DeleteConfirmDialog } from "../components/DeleteConfirmDialog";
 import { EditLogModal } from "../components/modals/EditLogModal";
-import { buildSingleLogReportHtml, openPrintWindow } from "../reports";
-import { formatRope } from "../ropes";
+import { buildInterventionPdf, pdfFileName } from "../pdf";
+import { openPdf } from "../components/PdfHost";
+import { formatRope, formatRopeLong, ROPE_ITEMS } from "../ropes";
 
 export const HistoryView = ({
   logs,
@@ -115,14 +116,11 @@ export const HistoryView = ({
     } else onAuthAdmin();
   };
 
-  // Stampa il rapporto del singolo intervento
+  // Stampa il rapporto del singolo intervento (modulo "Servizio Assistenza Tecnica")
   const printLog = (log) =>
-    openPrintWindow(
-      buildSingleLogReportHtml({
-        appTitle: layoutConfig?.appTitle,
-        log,
-        today: new Date().toLocaleDateString("it-IT"),
-      })
+    openPdf(
+      () => buildInterventionPdf({ log }),
+      pdfFileName("Assistenza", log.ticketNumber, log.customer, (log.dateString || "").replace(/\//g, "-"))
     );
 
   const handleEdit = (log) => {
@@ -256,6 +254,7 @@ export const HistoryView = ({
                 <p className="text-slate-600 text-xs italic bg-slate-50 p-3 rounded-xl border border-slate-100 whitespace-pre-wrap break-words">
                   "{log.description}"
                 </p>
+                <RopeInfo log={log} />
                 <div className="flex justify-between items-center pt-1">
                   <div className="flex items-center gap-2">
                     <User className="w-3 h-3 text-slate-400" />
@@ -424,6 +423,7 @@ export const HistoryView = ({
                     </td>
                     <td className="px-4 py-4 text-xs text-slate-600 italic break-words whitespace-pre-wrap align-top border-r border-slate-100 overflow-hidden">
                       "{log.description}"
+                      <RopeInfo log={log} />
                     </td>
                     <td className="px-4 py-4 text-[10px] font-bold uppercase text-slate-600 align-top border-r border-slate-100 overflow-hidden">
                       {getTechsString(log)}
@@ -504,6 +504,25 @@ export const HistoryView = ({
           layoutConfig={layoutConfig}
         />
       )}
+    </div>
+  );
+};
+
+// Dati della fune / catena sostituita (Storico)
+const RopeInfo = ({ log }) => {
+  const items = ROPE_ITEMS.filter(({ id }) => log && log[id]);
+  if (!items.length) return null;
+  return (
+    <div className="mt-2 space-y-1 not-italic">
+      {items.map(({ id, title }) => (
+        <div
+          key={id}
+          data-rope-info={id}
+          className="text-[11px] font-bold text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1 whitespace-normal"
+        >
+          {title} sostituita: {formatRopeLong(log[id])}
+        </div>
+      ))}
     </div>
   );
 };
