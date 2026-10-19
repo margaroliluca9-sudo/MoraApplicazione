@@ -109,7 +109,7 @@ export const shortWhen = (m, now = new Date()) => {
 };
 
 // invio di un messaggio (la foto va in un documento a parte)
-export const sendMessage = async ({ conv, text, photo, author }) => {
+export const sendMessage = async ({ conv, text, photo, author, via }) => {
   let photoId = null;
   if (photo) {
     const p = await addDoc(chatRef("chat_photos"), { conv, data: photo, createdAt: serverTimestamp() });
@@ -125,6 +125,7 @@ export const sendMessage = async ({ conv, text, photo, author }) => {
     createdAt: serverTimestamp(),
     at: Date.now(),
   };
+  if (via) data.via = via; // "online" = scritto dal menu Tecnici online
   const ref = await addDoc(chatRef("chat_messages"), data);
   return { ...data, id: ref.id };
 };
@@ -242,7 +243,7 @@ export const notificationFor = (m) => ({
   title: m.conv === GROUP ? `Gruppo tecnici · ${m.author}` : `${m.author} (privato)`,
   text: m.text ? m.text + (m.photoId ? " (foto)" : "") : m.photoId ? "Ha mandato una foto" : "",
   tag: "chat-" + m.conv,
-  url: "/?chat=" + encodeURIComponent(m.conv),
+  url: (m.via === "online" ? "/?online=" : "/?chat=") + encodeURIComponent(m.conv),
 });
 
 // chi deve ricevere la notifica: gruppo = tutti tranne chi scrive; privata = solo l'altro
