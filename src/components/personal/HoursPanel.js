@@ -316,7 +316,7 @@ export const HoursPanel = ({ me, hours = [], reminder = null, onBack, onClose, c
             </Field>
           )}
           <Field label="Nota (facoltativa)">
-            <input className={INPUT} value={edit.note || ""} aria-label="Nota" placeholder="Es. AMUT guasto urgente, visita medica" onChange={(e) => setEdit({ ...edit, note: e.target.value })} />
+            <input className={INPUT} value={edit.note || ""} aria-label="Nota" placeholder="Es. Rossi guasto urgente, visita medica" onChange={(e) => setEdit({ ...edit, note: e.target.value })} />
           </Field>
           {error && <p className="text-sm font-bold text-red-600">{error}</p>}
         </Sheet>

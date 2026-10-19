@@ -190,7 +190,7 @@ export const CalendarPanel = ({ me, events, logs, onBack, onClose, color = "blue
           }
         >
           <Field label="Cosa">
-            <input className={INPUT} value={edit.title} aria-label="Cosa" placeholder="Es. AMUT – sostituzione fune gru 6" onChange={(e) => setEdit({ ...edit, title: e.target.value })} />
+            <input className={INPUT} value={edit.title} aria-label="Cosa" placeholder="Es. Mario Rossi Srl – sostituzione fune gru 6" onChange={(e) => setEdit({ ...edit, title: e.target.value })} />
           </Field>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Giorno">
