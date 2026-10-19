@@ -61,7 +61,7 @@ const reportStepsFor = ({ hasVan }) =>
     {
       icon: Building2,
       title: "4. Il cliente",
-      text: "Sotto «Cliente» ci sono gli «Ultimi» clienti dove sei stato: un tocco e è scritto. Altrimenti inizia a scrivere il nome: compaiono i clienti già presenti, tocca quello giusto. Se è nuovo scrivilo per intero: viene aggiunto da solo quando salvi.",
+      text: "Inizia a scrivere il nome: compaiono i clienti già presenti, tocca quello giusto. Se è nuovo scrivilo per intero: viene aggiunto da solo quando salvi.",
     },
     {
       icon: Factory,
@@ -246,7 +246,6 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
       title: "Nuovo Rapporto",
       points: [
         "Scegli tecnico principale (e quelli aggiuntivi), data, N. assistenza, cliente e gru.",
-        "Sotto «Cliente» gli «Ultimi» clienti dove sei stato: un tocco e è scritto.",
         "Scrivendo il cliente compaiono le sue gru: tocca quella giusta e tipo e portata si compilano da soli.",
         "Sotto la gru l'assistente ricorda cosa era rimasto in sospeso l'ultima volta e i guasti che si ripetono.",
         "Fune o catena sostituita: se lo scrivi nella descrizione, l'app chiede certificato, diametro e lunghezza (o «dati non disponibili» con il motivo).",

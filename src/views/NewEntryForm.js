@@ -142,21 +142,6 @@ export const NewEntryForm = ({
     [allLogs]
   );
 
-  // ultimi clienti dove è stato questo tecnico (per sceglierli con un tocco)
-  const recentCustomers = useMemo(() => {
-    const me = String(formData.technician || "").trim().toLowerCase();
-    if (!me) return [];
-    const out = [];
-    (allLogs || []).forEach((l) => {
-      if (out.length >= 4 || !l.customer) return;
-      const mine =
-        String(l.technician || "").trim().toLowerCase() === me ||
-        (l.additionalTechnicians || []).some((t) => String(t).trim().toLowerCase() === me);
-      if (mine && !out.includes(l.customer)) out.push(l.customer);
-    });
-    return out;
-  }, [allLogs, formData.technician]);
-
   const sortedTechs = [...technicians].sort((a, b) =>
     a.name.localeCompare(b.name)
   );
@@ -684,22 +669,6 @@ export const NewEntryForm = ({
                 <ChevronDown className="w-4 h-4" />
               </div>
             </div>
-            {!formData.customer && recentCustomers.length > 0 && (
-              <div className="flex flex-wrap items-center gap-1.5 pt-1.5" data-section="recent-customers">
-                <span className="text-[11px] font-black text-slate-400 uppercase tracking-wide mr-0.5">Ultimi:</span>
-                {recentCustomers.map((c) => (
-                  <button
-                    type="button"
-                    key={c}
-                    data-recent-customer={c}
-                    onClick={() => setFormData({ ...formData, customer: c })}
-                    className={`h-9 px-3 rounded-full bg-${color}-50 border border-${color}-200 text-${color}-800 text-xs font-bold active:scale-95`}
-                  >
-                    {c}
-                  </button>
-                ))}
-              </div>
-            )}
             {showCustomerSuggestions && (
               <ul className="absolute z-50 left-0 right-0 mt-2 bg-white border border-slate-200 rounded-xl shadow-xl max-h-48 overflow-y-auto animate-in fade-in slide-in-from-top-2">
                 {customers
