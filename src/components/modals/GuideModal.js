@@ -439,7 +439,7 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
       icon: Settings,
       title: "Impostazioni (solo admin)",
       points: [
-        "Design: colori, carattere, grandezza delle lettere, animazione di avvio, chat tra tecnici sì/no, messaggi da «Tecnici online» sì/no.",
+        "Design: colori, carattere, grandezza delle lettere, animazione di avvio, chat tra tecnici sì/no, messaggi da «Tecnici online» sì/no. «La mia area: cosa vedono i tecnici»: accendi o spegni per tutti Oggi, I miei interventi, Stampa, Calendario, Note, Scansiona foglio, Promemoria, Magazzino, Le mie ore, Cosa ho cambiato e i numeri del mese (i dati restano salvati).",
         "Staff: tecnici e password. Tipi, Clienti, Gru: anagrafiche, doppioni e unione.",
         "Furgoni: crei i furgoni, scegli chi li usa («Nessuno» = tutto come prima), vedi tutti i magazzini e stampi la lista d'ordine.",
         "System: tecnici collegati, archivio e backup in PDF.",
