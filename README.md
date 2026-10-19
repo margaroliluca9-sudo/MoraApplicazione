@@ -26,6 +26,10 @@ App "Assistenza Mora" per registrare e consultare gli interventi sulle gru
 | `api/reminders.js` + `.github/workflows/promemoria.yml` | Avvisi di promemoria e impegni: ogni 5 minuti GitHub chiama /api/reminders, che manda la notifica ai telefoni del tecnico e segna l'avviso come mandato |
 | `home.js` + `components/HomeGrid.js` | Home personalizzata da ogni tecnico ("Modifica la tua Home"): ordine col dito, grandezza Piccolo/Medio/Grande, colore, riquadri nascosti, riquadri informativi (Oggi, Ultimi interventi, Il mio mese, Furgone), barra di ricerca sì/no, riquadri compatti, ripristino. Salvata in `home_prefs/<tecnico>` |
 | `components/PrintLogButton.js` | Pulsante «Stampa» del singolo intervento, presente in ogni pagina dove compare un intervento (foglio senza firme) |
+| `components/LookEditor.js` + `home.js` (look) | «Modifica aspetto»: modelli di grafica pronti (Classico Mora, Officina, Notte, Compatto, Elegante, Lettura facile, Rosso Mora) e ogni dettaglio (colore, tema, carattere, lettere, angoli, spaziatura), solo per il tecnico. Tenendo premuto un riquadro della Home si entra in modifica e lo si trascina (come sull'iPhone) |
+| `components/modals/GuideModal.js` + `components/modals/PracticeModal.js` | Guida all'app (in fondo alla Home): tutorial «Solo l'intervento», «Tutta l'app», «Tutte le funzioni», guida dedicata all'ufficio, «Prova un rapporto» con dati di esempio che non salva niente |
+| `season.js` + `components/SplashScreen.js` | Animazione di avvio che cambia col periodo: Natale, Pasqua (calcolata ogni anno), estate, Halloween; si spegne da Design. Per vederla: `?stagione=natale` |
+| Ruoli (Impostazioni → Staff) | «Tecnico» (tutta l'app) o «Ufficio» (solo Interventi ed Esplora, sola lettura con stampa, guida dedicata; escluso dagli elenchi dei tecnici) |
 | `views/DashboardView.js` | Home: ricerca unica, riquadri, "I miei interventi" |
 | `views/NewEntryForm.js` | Nuovo rapporto d'intervento |
 | `views/ExploreView.js` | Esplora clienti e macchine |
