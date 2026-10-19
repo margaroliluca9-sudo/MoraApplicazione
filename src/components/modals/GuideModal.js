@@ -340,7 +340,7 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
         "I miei interventi: quelli di questo mese o tutti.",
         "Stampa interventi: scegli e stampa insieme i rapporti tuoi e dei colleghi.",
         "Calendario: i tuoi impegni (con avviso) e i pallini verdi dei giorni in cui hai fatto interventi.",
-        "Note: testo, elenco da spuntare, nota fissata in cima.",
+        "Note: testo, elenco da spuntare, nota fissata in cima. «Scansiona foglio»: fotografi il foglio dove hai preso le misure, la foto diventa come una scansione e l'intelligenza artificiale scrive nel testo quello che c'è sul foglio (controlla sempre le misure). «Foto» tiene solo la foto; ✨ sotto una foto la fa leggere dopo. Fino a 3 foto per nota. Senza rete la foto si salva, la lettura si fa quando torna la rete.",
         "Promemoria: con giorno e ora ti avvisa sul telefono; senza ora alle 8:00. Sotto ci sono i contatti rapidi con il tasto per chiamare.",
         "In fondo: interventi fatti e clienti visitati nel mese.",
         "Cosa ho cambiato (in fondo): quanti pezzi hai sostituito quest'anno, dal più cambiato (es. «11 funi, 15 guidafuni, 7 contattori»). Conta quello che scrivi nei rapporti come «sostituito», «cambiato», «montato» e la fune o catena sostituita; «da sostituire» o «consigliato» non contano. Toccando un pezzo vedi dove l'hai cambiato (cliente, gru, data). «Anno» o il mese corrente, frecce per gli anni passati.",
