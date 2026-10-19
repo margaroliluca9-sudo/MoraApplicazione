@@ -345,7 +345,7 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
         "In fondo: interventi fatti e clienti visitati nel mese.",
         "⚙ Impostazioni (in alto a destra o in fondo): notifiche sì/no e quali, animazione all'avvio, farti vedere o no tra i «Tecnici online». Valgono per il tuo telefono.",
         "Le mie ore (da accendere in ⚙ Impostazioni → Funzioni in più): un calendario solo per gli orari. Dal lunedì al venerdì ogni giorno conta da solo come giornata normale (8 h, in grigio), festivi esclusi: segni solo quando cambia qualcosa. Per oggi «+30 min» o «+1 h»; toccando un giorno scegli Lavoro (ore fatte a passi di 15 minuti), Ferie, Permesso (quante ore), Malattia o Riposo, con una nota.",
-        "Nel calendario: il numero sono le ore fatte, in verde «+» lo straordinario, in arancio «−» le ore in meno, F ferie, P permesso, M malattia, R riposo. Sotto il riepilogo del mese (ore lavorate, straordinari, ore in meno, permessi, ferie, malattia) e «Manda» per mandarlo su WhatsApp o per mail. «Orario normale» (8 h) si cambia in fondo. Le vedi solo tu.",
+        "Nel calendario: il numero sono le ore fatte, in verde «+» lo straordinario, in arancio «−» le ore in meno (sabato, domenica e feste: tutte le ore segnate sono straordinario), F ferie, P permesso, M malattia, R riposo. Sotto il riepilogo del mese (ore lavorate, straordinari, ore in meno, permessi, ferie, malattia) e «Manda» per mandarlo su WhatsApp o per mail. «Orario normale» (8 h) si cambia in fondo. Le vedi solo tu.",
         "«Ricordamelo» (in fondo a Le mie ore): dal lunedì al venerdì all'ora che scegli (17:30 di base) arriva la notifica «Hai fatto ore in più o in meno?». Toccala e segni il giorno. Se l'hai già segnato non arriva. Servono le notifiche accese.",
       ],
     },

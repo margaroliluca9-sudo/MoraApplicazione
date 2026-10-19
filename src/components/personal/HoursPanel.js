@@ -5,7 +5,7 @@ import { ChevronLeft, ChevronRight, Plus, Minus, Share2, Check, BellRing } from 
 import { Switch } from "./SettingsPanel";
 import { todayIso, longDay, monthGrid } from "../../personal";
 import {
-  KINDS, fmtMin, fmtDelta, byDate, deltaOf, monthSummary, cellLabel, monthLabel, summaryText,
+  KINDS, fmtMin, fmtDelta, byDate, deltaOf, isFreeDay, monthSummary, cellLabel, monthLabel, summaryText,
   saveDay, removeDay, getStd, setStd, withDefaults, getSince, saveHoursReminder,
 } from "../../hours";
 import { describeError } from "../../utils";
@@ -73,7 +73,7 @@ export const HoursPanel = ({ me, hours = [], reminder = null, onBack, onClose, c
   const open = (date) => {
     setError("");
     const h = map[date];
-    setEdit(h && !h.auto ? { ...h, exists: true } : { date, kind: h ? h.kind : "lavoro", minutes: h ? h.minutes : std, note: "", exists: false });
+    setEdit(h && !h.auto ? { ...h, exists: true } : { date, kind: h ? h.kind : "lavoro", minutes: h ? h.minutes : isFreeDay(date) ? 240 : std, note: "", exists: false });
   };
   const quick = async (h, msg) => {
     setError("");
@@ -296,7 +296,7 @@ export const HoursPanel = ({ me, hours = [], reminder = null, onBack, onClose, c
           <div className="flex flex-wrap gap-2" role="group" aria-label="Tipo di giornata">
             {KINDS.map((k) => (
               <button key={k.id} type="button" data-kind={k.id} aria-pressed={edit.kind === k.id}
-                onClick={() => setEdit({ ...edit, kind: k.id, minutes: k.id === "lavoro" ? (edit.kind === "lavoro" ? edit.minutes : std) : k.id === "permesso" ? 120 : 0 })}
+                onClick={() => setEdit({ ...edit, kind: k.id, minutes: k.id === "lavoro" ? (edit.kind === "lavoro" ? edit.minutes : isFreeDay(edit.date) ? 240 : std) : k.id === "permesso" ? 120 : 0 })}
                 className={`h-10 px-4 rounded-full text-sm font-bold border-2 ${edit.kind === k.id ? "border-slate-800 bg-slate-800 text-white" : "border-slate-200 text-slate-600"}`}>
                 {k.label}
               </button>
