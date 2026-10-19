@@ -13,7 +13,7 @@ export const PERSONAL = {
   notes: "personal_notes",
   reminders: "personal_reminders",
   contacts: "personal_contacts",
-  overtime: "personal_overtime", // straordinari (vedi overtime.js)
+  hours: "personal_hours", // le mie ore (vedi hours.js)
 };
 
 // --- date ---

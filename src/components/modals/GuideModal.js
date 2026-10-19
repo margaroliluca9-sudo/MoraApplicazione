@@ -168,7 +168,7 @@ const appStepsFor = ({ hasVan, chatEnabled, isAdmin }) =>
     {
       icon: UserCircle,
       title: "La mia area",
-      text: "Il riquadro «La mia area»: è solo tuo. In cima «Oggi» con impegni e promemoria, poi I miei interventi, Stampa interventi, Calendario, Note, Promemoria" + (hasVan ? ", Magazzino" : "") + " e i numeri del mese. Con ⚙ in alto a destra le tue Impostazioni (notifiche e altro); lì puoi accendere anche gli «Straordinari», per segnare le ore in più.",
+      text: "Il riquadro «La mia area»: è solo tuo. In cima «Oggi» con impegni e promemoria, poi I miei interventi, Stampa interventi, Calendario, Note, Promemoria" + (hasVan ? ", Magazzino" : "") + " e i numeri del mese. Con ⚙ in alto a destra le tue Impostazioni (notifiche e altro); lì puoi accendere anche «Le mie ore», il calendario degli orari (straordinari, ferie, permessi).",
       go: { label: "Apri La mia area", to: "area" },
     },
     {
@@ -344,7 +344,8 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
         "Promemoria: con giorno e ora ti avvisa sul telefono; senza ora alle 8:00. Sotto ci sono i contatti rapidi con il tasto per chiamare.",
         "In fondo: interventi fatti e clienti visitati nel mese.",
         "⚙ Impostazioni (in alto a destra o in fondo): notifiche sì/no e quali, animazione all'avvio, farti vedere o no tra i «Tecnici online». Valgono per il tuo telefono.",
-        "Straordinari (da accendere in ⚙ Impostazioni → Funzioni in più): con +30 min, +1 h, +1 h 30, +2 h segni le ore in più di oggi; con «Aggiungi» scegli il giorno, il tempo (a passi di 15 minuti) e una nota. Vedi il totale del mese e con «Manda» lo mandi su WhatsApp o per mail. Li vedi solo tu.",
+        "Le mie ore (da accendere in ⚙ Impostazioni → Funzioni in più): un calendario solo per gli orari. Per oggi tocchi «8 h» (giornata normale), «+30 min» o «+1 h»; toccando un giorno scegli Lavoro (ore fatte a passi di 15 minuti), Ferie, Permesso (quante ore), Malattia o Riposo, con una nota.",
+        "Nel calendario: il numero sono le ore fatte, in verde «+» lo straordinario, in arancio «−» le ore in meno, F ferie, P permesso, M malattia, R riposo. Sotto il riepilogo del mese (ore lavorate, straordinari, ore in meno, permessi, ferie, malattia) e «Manda» per mandarlo su WhatsApp o per mail. «Orario normale» (8 h) si cambia in fondo. Le vedi solo tu.",
       ],
     },
     hasVan && {

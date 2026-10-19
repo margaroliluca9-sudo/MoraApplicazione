@@ -2,9 +2,9 @@
 // Ogni tecnico vede solo le sue cose.
 import React, { useEffect, useMemo, useState } from "react";
 import { X, CalendarDays, StickyNote, MessageSquare, Bell, Truck, ClipboardList, Printer, WifiOff, Settings, Timer } from "lucide-react";
-import { OvertimePanel } from "../personal/OvertimePanel";
+import { HoursPanel } from "../personal/HoursPanel";
 import { getSettings } from "../../settings";
-import { fmtMin, monthTotal } from "../../overtime";
+import { fmtMin, monthSummary, getStd } from "../../hours";
 import { SettingsPanel } from "../personal/SettingsPanel";
 import { todayItems, monthNumbers, longDay, todayIso } from "../../personal";
 import { vanOf, itemsOf, lowItems } from "../../van";
@@ -34,6 +34,8 @@ const Tile = ({ id, icon: Icon, label, sub, tone, onClick, badge, alert, wide })
   </button>
 );
 
+const MONTH_SHORT = ["gen", "feb", "mar", "apr", "mag", "giu", "lug", "ago", "set", "ott", "nov", "dic"];
+
 export const PersonalAreaModal = ({
   me,
   logs = [],
@@ -41,7 +43,7 @@ export const PersonalAreaModal = ({
   notes = [],
   reminders = [],
   contacts = [],
-  overtime = [],
+  hours = [],
   vans = [],
   vanItems = [],
   chatUnread = 0,
@@ -56,10 +58,10 @@ export const PersonalAreaModal = ({
   initialPanel = null,
 }) => {
   const [panel, setPanel] = useState(initialPanel);
-  // "Straordinari" si vede solo se acceso in Impostazioni
-  const [showOvertime, setShowOvertime] = useState(() => getSettings().overtime === true);
+  // "Le mie ore" si vede solo se acceso in Impostazioni
+  const [showHours, setShowHours] = useState(() => getSettings().hours === true);
   useEffect(() => {
-    const on = (e) => setShowOvertime(((e && e.detail) || getSettings()).overtime === true);
+    const on = (e) => setShowHours(((e && e.detail) || getSettings()).hours === true);
     window.addEventListener("mora-settings", on);
     return () => window.removeEventListener("mora-settings", on);
   }, []);
@@ -85,17 +87,20 @@ export const PersonalAreaModal = ({
   const openRem = reminders.filter((r) => !r.done).length;
   const back = () => setPanel(null);
   // numero dispari di riquadri: l'ultimo diventa largo
-  const oddTiles = (5 + (chatEnabled ? 1 : 0) + (van ? 1 : 0) + (showOvertime ? 1 : 0)) % 2 === 1;
+  const oddTiles = (5 + (chatEnabled ? 1 : 0) + (van ? 1 : 0) + (showHours ? 1 : 0)) % 2 === 1;
   const nowD = new Date();
-  const overMonth = monthTotal(overtime, nowD.getFullYear(), nowD.getMonth());
+  const hoursSum = monthSummary(hours, nowD.getFullYear(), nowD.getMonth(), getStd());
+  const hoursSub = hoursSum.workDays
+    ? `${fmtMin(hoursSum.worked)} a ${MONTH_SHORT[nowD.getMonth()]}${hoursSum.extra ? " · +" + fmtMin(hoursSum.extra) : ""}`
+    : "Orari, ferie, permessi";
 
   let body;
   if (panel === "calendar")
     body = <CalendarPanel me={me} events={events} logs={logs} color={color} onBack={back} onClose={onClose} onOpenMachine={onOpenMachine} />;
   else if (panel === "print")
     body = <PrintPanel me={me} logs={logs} technicians={technicians} color={color} onBack={back} onClose={onClose} />;
-  else if (panel === "overtime" && showOvertime)
-    body = <OvertimePanel me={me} overtime={overtime} color={color} onBack={back} onClose={onClose} />;
+  else if (panel === "hours" && showHours)
+    body = <HoursPanel me={me} hours={hours} color={color} onBack={back} onClose={onClose} />;
   else if (panel === "settings") body = <SettingsPanel me={me} color={color} onBack={back} onClose={onClose} />;
   else if (panel === "notes") body = <NotesPanel me={me} notes={notes} color={color} onBack={back} onClose={onClose} />;
   else if (panel === "reminders")
@@ -181,9 +186,8 @@ export const PersonalAreaModal = ({
               <Tile id="chat" icon={MessageSquare} label="Chat" tone="bg-emerald-50 text-emerald-700" onClick={onOpenChat} badge={chatUnread}
                 sub={chatUnread === 0 ? "Gruppo e privati" : chatUnread === 1 ? "1 messaggio nuovo" : `${chatUnread} messaggi nuovi`} />
             )}
-            {showOvertime && (
-              <Tile id="overtime" icon={Timer} label="Straordinari" tone="bg-rose-50 text-rose-700" onClick={() => setPanel("overtime")}
-                sub={overMonth ? `${fmtMin(overMonth)} questo mese` : "Niente questo mese"} />
+            {showHours && (
+              <Tile id="hours" icon={Timer} label="Le mie ore" tone="bg-rose-50 text-rose-700" onClick={() => setPanel("hours")} sub={hoursSub} />
             )}
             <Tile id="reminders" icon={Bell} label="Promemoria" tone="bg-orange-50 text-orange-700" onClick={() => setPanel("reminders")} wide={oddTiles && !van}
               sub={openRem === 1 ? "1 attivo · contatti" : `${openRem} attivi · contatti`} />
