@@ -138,7 +138,7 @@ const Toggle = ({ label, sub, on, onChange, id }) => (
   </button>
 );
 
-export const HomeGrid = ({ items, home, me, color = "blue", searchBox, onEditingChange = () => {}, onSaved = () => {} }) => {
+export const HomeGrid = ({ items, home, me, color = "blue", searchBox, onEditingChange = () => {}, onSaved = () => {}, footer = null }) => {
   const [draft, setDraft] = useState(null); // copia in modifica
   const [sel, setSel] = useState(null); // riquadro scelto (foglio opzioni)
   const [adding, setAdding] = useState(false);
@@ -287,9 +287,12 @@ export const HomeGrid = ({ items, home, me, color = "blue", searchBox, onEditing
           </button>
         </div>
       ) : (
-        <button type="button" data-action="home-edit" onClick={start} className="mx-auto flex items-center gap-2 px-4 h-11 rounded-full text-sm font-bold text-slate-500 hover:bg-white">
-          <Pencil className="w-4 h-4" /> Modifica la tua Home
-        </button>
+        <div className="flex flex-wrap items-center justify-center gap-2" data-section="home-footer">
+          <button type="button" data-action="home-edit" onClick={start} className="flex items-center gap-2 px-4 h-11 rounded-full text-sm font-bold text-slate-500 hover:bg-white">
+            <Pencil className="w-4 h-4" /> Modifica la tua Home
+          </button>
+          {footer}
+        </div>
       )}
 
       {editing && it && (

@@ -557,18 +557,6 @@ export const DashboardView = ({
           onOpenMachine={onOpenMachine}
         />
       )}
-      {!guideSeen && (
-        <div className="flex items-center gap-3 p-3 rounded-2xl border border-amber-200 bg-amber-50" data-section="guide-banner">
-          <BookOpen className="w-5 h-5 text-amber-700 shrink-0" />
-          <button type="button" onClick={openGuide} className="flex-1 text-left">
-            <span className="block font-black text-amber-900 text-sm">L'app ha tante funzioni nuove</span>
-            <span className="block text-xs font-semibold text-amber-800">Tocca qui per il tutorial</span>
-          </button>
-          <button type="button" onClick={markGuideSeen} aria-label="Chiudi avviso" className="p-2 rounded-full hover:bg-amber-100">
-            <X className="w-4 h-4 text-amber-700" />
-          </button>
-        </div>
-      )}
       <HomeGrid
         items={items}
         home={home}
@@ -576,22 +564,20 @@ export const DashboardView = ({
         color={color}
         searchBox={searchBox}
         onSaved={setPrefs}
+        footer={
+          <button
+            type="button"
+            data-action="open-guide"
+            onClick={openGuide}
+            className="relative flex items-center gap-2 px-4 h-11 rounded-full text-sm font-bold text-slate-500 hover:bg-white"
+          >
+            <BookOpen className="w-4 h-4" /> Guida all'app
+            {!guideSeen && (
+              <span data-guide-new className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full bg-red-600" aria-label="Nuova" />
+            )}
+          </button>
+        }
       />
-      <button
-        type="button"
-        data-action="open-guide"
-        onClick={openGuide}
-        className="w-full p-4 rounded-3xl border border-slate-200 bg-white shadow-sm flex items-center gap-4 text-left"
-      >
-        <span className={`p-3 rounded-2xl bg-${color}-50 text-${color}-600 shrink-0`}>
-          <BookOpen className="w-7 h-7" />
-        </span>
-        <span className="flex-1 min-w-0">
-          <span className="block text-base font-black text-slate-800 uppercase tracking-tight">Guida all'app</span>
-          <span className="block text-xs text-slate-500 mt-0.5">Tutorial e spiegazione di tutte le funzioni</span>
-        </span>
-        <ChevronRight className="w-5 h-5 text-slate-400 shrink-0" />
-      </button>
       {showGuide && (
         <GuideModal
           color={color}
