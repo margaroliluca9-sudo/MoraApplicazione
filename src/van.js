@@ -62,7 +62,7 @@ const DONE =
 const NOT_DONE =
   /\b(da\s+(sostituire|cambiare|montare|ordinare|fare)|sostituire|cambiare|consiglia\w*|occorre|bisogna|valutare|preventiv\w*|rilievo|in\s+attesa|ordinat[aoie]|fornit[aoie]\s+da(l|i)?\s+client\w*|di\s+loro\s+fornitura|da\s+loro|per\s+(la\s+)?sostituzion\w*)\b/i;
 const OIL = /\b(cambio|cambiat[aoie]|sostitu\w+)\s+(dell'|del\s+|dello\s+|di\s+)?(olio|grasso|lubrificante)\b/gi;
-const ABBR = ["matr", "mat", "n", "nr", "num", "diam", "rif", "art", "cert", "es", "ecc", "sig", "mt"];
+const ABBR = ["matr", "mat", "n", "nr", "num", "diam", "d", "rif", "art", "cert", "es", "ecc", "sig", "mt"];
 // frasi: a capo, "/", ";", e "." a fine frase (non "n." o "mt.")
 export const partsSentences = (text) =>
   String(text || "")
@@ -101,7 +101,7 @@ const qtyFor = (sentence, toks, firstIdx, unit) => {
 };
 
 // pezzi montati secondo la descrizione: [{ item, qty, unknown, text }]
-export const findUsedParts = (description, items) => {
+const matchDone = (description, items, allow) => {
   const found = new Map();
   for (const raw of partsSentences(description)) {
     const sentence = raw.replace(OIL, " ");
@@ -110,7 +110,7 @@ export const findUsedParts = (description, items) => {
     const stems = toks.map(stem);
     const hits = [];
     for (const item of items || []) {
-      if (!autoAllowed(item)) continue;
+      if (!allow(item)) continue;
       let best = null;
       for (const ph of phrasesOf(item)) {
         if (!ph.every((s) => stems.includes(s))) continue;
@@ -131,6 +131,9 @@ export const findUsedParts = (description, items) => {
   }
   return [...found.values()];
 };
+export const findUsedParts = (description, items) => matchDone(description, items, autoAllowed);
+// tutti i pezzi sostituiti (anche funi, catene, motori): per «Cosa ho cambiato» in La mia area
+export const findDoneParts = (description, items) => matchDone(description, items, () => true);
 
 // --- scritture ---
 const now = () => Date.now();
