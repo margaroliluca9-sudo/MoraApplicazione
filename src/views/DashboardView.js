@@ -29,6 +29,7 @@ import {
 import { ChatModal } from "../components/modals/ChatModal";
 import { unreadTotal } from "../chat";
 import { PersonalAreaModal } from "../components/modals/PersonalAreaModal";
+import { HomeHero } from "../components/HomeHero";
 import { todayItems, monthNumbers, relDay, isoFromLogDate } from "../personal";
 import { HomeGrid } from "../components/HomeGrid";
 import { GuideModal } from "../components/modals/GuideModal";
@@ -55,6 +56,29 @@ const dateKey = (ds) => {
     : 0;
 };
 const MAX = { customers: 5, machines: 5, logs: 8 };
+
+// ora per il cielo in cima alla Home (per provarlo: "?ora=21")
+const heroNow = () => {
+  const d = new Date();
+  try {
+    const q = new URLSearchParams(window.location.search);
+    const g = q.get("giorno"); // solo per le prove: aaaa-mm-gg
+    if (/^\d{4}-\d{2}-\d{2}$/.test(g || "")) d.setFullYear(Number(g.slice(0, 4)), Number(g.slice(5, 7)) - 1, Number(g.slice(8, 10)));
+    const h = q.get("ora");
+    if (h !== null && h !== "") d.setHours(Number(h), 0, 0, 0);
+  } catch (e) {
+    // niente
+  }
+  return d;
+};
+// solo per le prove: ?meteo=pioggia,camion,neve,aereo
+const heroForce = () => {
+  try {
+    return (new URLSearchParams(window.location.search).get("meteo") || "").split(",").filter(Boolean);
+  } catch (e) {
+    return [];
+  }
+};
 
 export const DashboardView = ({
   onNavigate,
@@ -546,7 +570,12 @@ export const DashboardView = ({
         home={home}
         me={currentTechName}
         color={color}
-        searchBox={searchBox}
+        searchBox={
+          <div className="space-y-4">
+            <HomeHero me={currentTechName} logs={logs} todayCount={isOffice ? 0 : todayCount} now={heroNow()} force={heroForce()} />
+            {searchBox}
+          </div>
+        }
         onSaved={setPrefs}
         onPreviewLook={onPreviewLook}
         baseLook={layoutConfig}

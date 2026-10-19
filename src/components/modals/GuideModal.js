@@ -365,6 +365,20 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
       ],
     },
     {
+      id: "hero",
+      icon: Sun,
+      title: "Il cielo in cima alla Home",
+      points: [
+        "In cima alla Home c'è il saluto con il giorno, quante cose hai da fare e una curiosità sul tuo lavoro (interventi del mese, il cliente dove vai di più, il collega con cui lavori di più…).",
+        "Il cielo segue l'ora: alba, giorno, tramonto e notte con la luna e le stelle.",
+        "Ogni volta che apri l'app (o ci torni dopo un po') la scena cambia: sfumatura del cielo, tempo (sereno, nuvole, pioggia, temporale, nebbia, vento, arcobaleno, neve d'inverno), sfondo (capannone, città, colline, montagne), colore della trave e il carico appeso al gancio.",
+        "E ogni volta passa qualcuno: camion, muletto, aereo, elicottero, mongolfiera, palloncino, uccelli, aquilone, un gatto sulla trave; di notte stelle cadenti, lucciole d'estate… e ogni tanto qualcosa di molto strano.",
+        "Durante l'anno: lucine sulla trave a Natale, pipistrelli ad Halloween, sole grande d'estate. Nel weekend il carroponte riposa.",
+        "Tocca il cielo: il gancio scende con le funi, si ferma, risale e dondola. A volte lo fa da solo.",
+        "Ogni 50 interventi nell'anno (50, 100, 150…) quel giorno arrivano i coriandoli.",
+      ],
+    },
+    {
       id: "home",
       icon: LayoutGrid,
       title: "Modifica aspetto",
