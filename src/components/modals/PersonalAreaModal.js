@@ -15,6 +15,7 @@ import { VanView } from "../VanView";
 import { PrintPanel } from "../personal/PrintPanel";
 import { PartsPanel } from "../personal/PartsPanel";
 import { myChanges, partLabel } from "../../myParts";
+import { areaOn } from "../../areaTiles";
 
 const Tile = ({ id, icon: Icon, label, sub, tone, onClick, badge, alert, wide }) => (
   <button
@@ -59,7 +60,10 @@ export const PersonalAreaModal = ({
   onClose,
   color = "blue",
   initialPanel = null,
+  areaTiles = null,
 }) => {
+  // parti accese o spente dall'admin
+  const on = (id) => areaOn({ areaTiles }, id);
   const [panel, setPanel] = useState(initialPanel);
   // "Le mie ore" si vede solo se acceso in Impostazioni
   const [showHours, setShowHours] = useState(() => getSettings().hours === true);
@@ -91,7 +95,8 @@ export const PersonalAreaModal = ({
   const openRem = reminders.filter((r) => !r.done).length;
   const back = () => setPanel(null);
   // numero dispari di riquadri: l'ultimo diventa largo
-  const oddTiles = (5 + (chatEnabled ? 1 : 0) + (van ? 1 : 0) + (showHours ? 1 : 0)) % 2 === 1;
+  const hoursOn = showHours && on("hours");
+  const vanOn = !!van && on("van");
   const nowD = new Date();
   const hoursSum = monthSummary(withDefaults(hours, nowD.getFullYear(), nowD.getMonth(), getStd(), getSince()), nowD.getFullYear(), nowD.getMonth(), getStd());
   const hoursSub = hoursSum.workDays
@@ -99,19 +104,19 @@ export const PersonalAreaModal = ({
     : "Orari, ferie, permessi";
 
   let body;
-  if (panel === "calendar")
+  if (panel === "calendar" && on("calendar"))
     body = <CalendarPanel me={me} events={events} logs={logs} color={color} onBack={back} onClose={onClose} onOpenMachine={onOpenMachine} />;
-  else if (panel === "print")
+  else if (panel === "print" && on("print"))
     body = <PrintPanel me={me} logs={logs} technicians={technicians} color={color} onBack={back} onClose={onClose} />;
-  else if (panel === "hours" && showHours)
+  else if (panel === "hours" && hoursOn)
     body = <HoursPanel me={me} hours={hours} reminder={hoursReminder} color={color} onBack={back} onClose={onClose} />;
-  else if (panel === "parts")
+  else if (panel === "parts" && on("parts"))
     body = <PartsPanel me={me} logs={logs} color={color} onBack={back} onClose={onClose} onOpenMachine={onOpenMachine} />;
-  else if (panel === "settings") body = <SettingsPanel me={me} color={color} onBack={back} onClose={onClose} />;
-  else if (panel === "notes") body = <NotesPanel me={me} notes={notes} color={color} onBack={back} onClose={onClose} />;
-  else if (panel === "reminders")
+  else if (panel === "settings") body = <SettingsPanel me={me} color={color} onBack={back} onClose={onClose} hoursAllowed={on("hours")} />;
+  else if (panel === "notes" && on("notes")) body = <NotesPanel me={me} notes={notes} color={color} onBack={back} onClose={onClose} scanOn={on("noteScan")} />;
+  else if (panel === "reminders" && on("reminders"))
     body = <RemindersPanel me={me} reminders={reminders} contacts={contacts} color={color} onBack={back} onClose={onClose} />;
-  else if (panel === "van" && van) {
+  else if (panel === "van" && vanOn) {
     const others = (van.users || []).filter((u) => u !== String(me).trim().toLowerCase());
     body = (
       <VanView
@@ -151,12 +156,15 @@ export const PersonalAreaModal = ({
           </div>
         )}
         <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50">
+          {on("today") && (
           <section className="bg-white rounded-3xl border border-slate-200 p-4 space-y-3" data-section="area-today">
             <div className="flex justify-between items-baseline">
               <h4 className="font-black text-slate-800 uppercase text-sm tracking-wide">Oggi</h4>
-              <button type="button" onClick={() => setPanel("calendar")} className={`text-sm font-bold text-${color}-700`}>
-                Calendario
-              </button>
+              {on("calendar") && (
+                <button type="button" onClick={() => setPanel("calendar")} className={`text-sm font-bold text-${color}-700`}>
+                  Calendario
+                </button>
+              )}
             </div>
             {!items.length && <p className="text-sm text-slate-500">Niente in programma per oggi.</p>}
             {items.map((it) => (
@@ -178,31 +186,32 @@ export const PersonalAreaModal = ({
               </button>
             ))}
           </section>
+          )}
 
           <section className="grid grid-cols-2 gap-3">
-            <Tile id="mine" icon={ClipboardList} label="I miei interventi" tone="bg-slate-100 text-slate-700" onClick={onOpenMine}
-              sub={myMonthCount === 1 ? "1 questo mese" : `${myMonthCount} questo mese`} />
-            <Tile id="print" icon={Printer} label="Stampa interventi" tone="bg-green-50 text-green-700" onClick={() => setPanel("print")}
-              sub="Tuoi e dei colleghi" />
-            <Tile id="calendar" icon={CalendarDays} label="Calendario" tone="bg-blue-50 text-blue-700" onClick={() => setPanel("calendar")}
-              sub={todayEvents === 0 ? "Nessun impegno oggi" : todayEvents === 1 ? "1 impegno oggi" : `${todayEvents} impegni oggi`} />
-            <Tile id="notes" icon={StickyNote} label="Note" tone="bg-amber-50 text-amber-700" onClick={() => setPanel("notes")}
-              sub={notes.length === 1 ? "1 nota · solo tu" : `${notes.length} note · solo tu`} />
-            {chatEnabled && (
-              <Tile id="chat" icon={MessageSquare} label="Chat" tone="bg-emerald-50 text-emerald-700" onClick={onOpenChat} badge={chatUnread}
-                sub={chatUnread === 0 ? "Gruppo e privati" : chatUnread === 1 ? "1 messaggio nuovo" : `${chatUnread} messaggi nuovi`} />
-            )}
-            {showHours && (
-              <Tile id="hours" icon={Timer} label="Le mie ore" tone="bg-rose-50 text-rose-700" onClick={() => setPanel("hours")} sub={hoursSub} />
-            )}
-            <Tile id="reminders" icon={Bell} label="Promemoria" tone="bg-orange-50 text-orange-700" onClick={() => setPanel("reminders")} wide={oddTiles && !van}
-              sub={openRem === 1 ? "1 attivo · contatti" : `${openRem} attivi · contatti`} />
-            {van && (
-              <Tile id="van" icon={Truck} label="Magazzino" tone="bg-purple-50 text-purple-700" onClick={() => setPanel("van")} alert={low > 0} wide={oddTiles}
-                sub={low > 0 ? `${van.name} · ${low} da riordinare` : `${van.name} · ${vanList.length} articoli`} />
-            )}
+            {[
+              on("mine") && <Tile key="mine" id="mine" icon={ClipboardList} label="I miei interventi" tone="bg-slate-100 text-slate-700" onClick={onOpenMine}
+                sub={myMonthCount === 1 ? "1 questo mese" : `${myMonthCount} questo mese`} />,
+              on("print") && <Tile key="print" id="print" icon={Printer} label="Stampa interventi" tone="bg-green-50 text-green-700" onClick={() => setPanel("print")}
+                sub="Tuoi e dei colleghi" />,
+              on("calendar") && <Tile key="calendar" id="calendar" icon={CalendarDays} label="Calendario" tone="bg-blue-50 text-blue-700" onClick={() => setPanel("calendar")}
+                sub={todayEvents === 0 ? "Nessun impegno oggi" : todayEvents === 1 ? "1 impegno oggi" : `${todayEvents} impegni oggi`} />,
+              on("notes") && <Tile key="notes" id="notes" icon={StickyNote} label="Note" tone="bg-amber-50 text-amber-700" onClick={() => setPanel("notes")}
+                sub={notes.length === 1 ? "1 nota · solo tu" : `${notes.length} note · solo tu`} />,
+              chatEnabled && <Tile key="chat" id="chat" icon={MessageSquare} label="Chat" tone="bg-emerald-50 text-emerald-700" onClick={onOpenChat} badge={chatUnread}
+                sub={chatUnread === 0 ? "Gruppo e privati" : chatUnread === 1 ? "1 messaggio nuovo" : `${chatUnread} messaggi nuovi`} />,
+              hoursOn && <Tile key="hours" id="hours" icon={Timer} label="Le mie ore" tone="bg-rose-50 text-rose-700" onClick={() => setPanel("hours")} sub={hoursSub} />,
+              on("reminders") && <Tile key="reminders" id="reminders" icon={Bell} label="Promemoria" tone="bg-orange-50 text-orange-700" onClick={() => setPanel("reminders")}
+                sub={openRem === 1 ? "1 attivo · contatti" : `${openRem} attivi · contatti`} />,
+              vanOn && <Tile key="van" id="van" icon={Truck} label="Magazzino" tone="bg-purple-50 text-purple-700" onClick={() => setPanel("van")} alert={low > 0}
+                sub={low > 0 ? `${van.name} · ${low} da riordinare` : `${van.name} · ${vanList.length} articoli`} />,
+            ]
+              .filter(Boolean)
+              // numero dispari di riquadri: l'ultimo diventa largo
+              .map((t, i, all) => (all.length % 2 === 1 && i === all.length - 1 ? React.cloneElement(t, { wide: true }) : t))}
           </section>
 
+          {on("numbers") && (
           <section className="flex gap-3" data-section="area-numbers">
             <div className={`flex-1 rounded-3xl bg-${color}-600 text-white p-4`}>
               <div className="text-3xl font-black leading-none">{nums.jobs}</div>
@@ -213,6 +222,8 @@ export const PersonalAreaModal = ({
               <div className="text-sm font-semibold mt-1">{nums.customers === 1 ? "cliente visitato" : "clienti visitati"}</div>
             </div>
           </section>
+          )}
+          {on("parts") && (
           <button type="button" onClick={() => setPanel("parts")} data-area-tile="parts" className="w-full text-left bg-white rounded-3xl border border-slate-200 p-4 flex items-center gap-3 active:scale-[0.99] transition-transform">
             <span className="w-10 h-10 rounded-xl flex items-center justify-center bg-teal-50 text-teal-700 shrink-0">
               <Wrench className="w-5 h-5" />
@@ -225,6 +236,7 @@ export const PersonalAreaModal = ({
             </span>
             <ChevronRight className="w-5 h-5 text-slate-400 shrink-0" />
           </button>
+          )}
           <button type="button" onClick={() => setPanel("settings")} data-action="area-settings-link" className="w-full flex items-center justify-center gap-1.5 py-2 text-sm font-bold text-slate-400">
             <Settings className="w-4 h-4" /> Impostazioni · notifiche e altro
           </button>

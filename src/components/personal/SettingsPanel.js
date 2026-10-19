@@ -42,7 +42,7 @@ const PUSH_HELP = {
   unsupported: "Questo telefono o browser non supporta le notifiche.",
 };
 
-export const SettingsPanel = ({ me, color = "blue", onBack, onClose }) => {
+export const SettingsPanel = ({ me, color = "blue", onBack, onClose, hoursAllowed = true }) => {
   const [push, setPush] = useState("checking");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -123,6 +123,7 @@ export const SettingsPanel = ({ me, color = "blue", onBack, onClose }) => {
           </Row>
         </section>
 
+        {hoursAllowed && (
         <section className="space-y-2" data-section="settings-extra">
           <h4 className="px-2 text-xs font-black text-slate-500 uppercase tracking-wide">Funzioni in più</h4>
           <div className="bg-white rounded-3xl border border-slate-200 px-4 py-1 divide-y divide-slate-100">
@@ -131,6 +132,7 @@ export const SettingsPanel = ({ me, color = "blue", onBack, onClose }) => {
             </Row>
           </div>
         </section>
+        )}
         <p className="text-xs text-slate-400 text-center px-4">L'aspetto dell'app (colori, lettere, Home) si cambia da «Modifica aspetto» in fondo alla Home.</p>
       </div>
     </div>

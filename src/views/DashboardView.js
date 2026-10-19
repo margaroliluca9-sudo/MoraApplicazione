@@ -525,6 +525,7 @@ export const DashboardView = ({
       )}
       {area && currentTechName && (
         <PersonalAreaModal
+          areaTiles={layoutConfig?.areaTiles || null}
           key={area}
           me={currentTechName}
           logs={logs}

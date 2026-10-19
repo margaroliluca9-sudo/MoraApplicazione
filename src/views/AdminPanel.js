@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from "react";
+import { AREA_TILES, areaOn } from "../areaTiles";
 import {
   Factory,
   User,
@@ -892,6 +893,39 @@ export const AdminPanel = ({
               >
                 {layoutConfig.showSplash === false ? "Attiva" : "Disattiva"}
               </button>
+            </div>
+
+            <div className="p-3 rounded-xl border border-slate-200 bg-slate-50 space-y-2" data-section="area-tiles-admin">
+              <div>
+                <span className="text-xs font-bold text-slate-700 block">«La mia area»: cosa vedono i tecnici</span>
+                <span className="text-[10px] text-slate-500">Spegni una parte e sparisce per tutti. I dati restano salvati: riaccendendola torna tutto com'era.</span>
+              </div>
+              {AREA_TILES.map((t) => {
+                const isOn = areaOn(layoutConfig, t.id);
+                return (
+                  <div key={t.id} className="flex items-center justify-between gap-3 bg-white rounded-lg border border-slate-200 px-3 py-2" data-area-admin={t.id}>
+                    <div className="min-w-0">
+                      <span className={`text-xs font-bold block ${isOn ? "text-slate-700" : "text-slate-400 line-through"}`}>{t.label}</span>
+                      <span className="text-[10px] text-slate-500">{t.sub}</span>
+                    </div>
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={isOn}
+                      aria-label={t.label}
+                      onClick={() =>
+                        onUpdateLayout({
+                          ...layoutConfig,
+                          areaTiles: { ...(layoutConfig.areaTiles || {}), [t.id]: !isOn },
+                        })
+                      }
+                      className={`relative w-12 h-7 rounded-full shrink-0 transition-colors ${isOn ? "bg-emerald-500" : "bg-slate-300"}`}
+                    >
+                      <span className={`absolute top-1 w-5 h-5 rounded-full bg-white shadow transition-all ${isOn ? "left-6" : "left-1"}`} />
+                    </button>
+                  </div>
+                );
+              })}
             </div>
 
             <button

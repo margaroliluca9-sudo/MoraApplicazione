@@ -18,7 +18,7 @@ const when = (ms) => {
   return `${d.getDate()}/${d.getMonth() + 1}`;
 };
 
-export const NotesPanel = ({ me, notes, onBack, onClose, color = "blue" }) => {
+export const NotesPanel = ({ me, notes, onBack, onClose, color = "blue", scanOn = true }) => {
   const [edit, setEdit] = useState(null);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(""); // "foto" | "scan" | "leggo"
@@ -168,11 +168,13 @@ export const NotesPanel = ({ me, notes, onBack, onClose, color = "blue" }) => {
           <Field label="Titolo">
             <input className={INPUT} value={edit.title} aria-label="Titolo" onChange={(e) => setEdit({ ...edit, title: e.target.value })} />
           </Field>
-          <div className="grid grid-cols-2 gap-2" data-section="note-photo-buttons">
+          <div className={`grid ${scanOn ? "grid-cols-2" : "grid-cols-1"} gap-2`} data-section="note-photo-buttons">
+            {scanOn && (
             <button type="button" data-action="note-scan" disabled={!!busy} onClick={() => pickPhoto("scan")}
               className={`h-12 rounded-xl bg-${color}-600 text-white font-black text-sm flex items-center justify-center gap-2 disabled:opacity-50`}>
               {busy === "scan" || busy === "leggo" ? <Loader2 className="w-5 h-5 animate-spin" /> : <ScanLine className="w-5 h-5" />} Scansiona foglio
             </button>
+            )}
             <button type="button" data-action="note-photo" disabled={!!busy} onClick={() => pickPhoto("foto")}
               className="h-12 rounded-xl border-2 border-slate-300 text-slate-700 font-black text-sm flex items-center justify-center gap-2 disabled:opacity-50">
               {busy === "foto" ? <Loader2 className="w-5 h-5 animate-spin" /> : <Camera className="w-5 h-5" />} Foto
@@ -192,9 +194,11 @@ export const NotesPanel = ({ me, notes, onBack, onClose, color = "blue" }) => {
                     <img src={ph} alt="" className="w-full h-full object-cover" />
                   </button>
                   <div className="flex justify-between">
+                    {scanOn ? (
                     <button type="button" aria-label="Leggi il testo del foglio" title="Leggi il testo" disabled={!!busy} onClick={() => readInto(ph)} className="p-1.5 rounded-lg hover:bg-slate-100 disabled:opacity-40">
                       <Sparkles className="w-4 h-4 text-amber-500" />
                     </button>
+                    ) : <span />}
                     <button type="button" aria-label="Ruota foto" onClick={() => rotatePhoto(i)} className="p-1.5 rounded-lg hover:bg-slate-100">
                       <RotateCw className="w-4 h-4 text-slate-500" />
                     </button>
