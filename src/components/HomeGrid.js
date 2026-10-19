@@ -18,14 +18,23 @@ import { Sheet, PrimaryBtn, GhostBtn } from "./personal/PersonalUi";
 import { LookEditor } from "./LookEditor";
 
 const tone = (c, theme) => (c === "auto" ? theme : c);
+// riquadri che "ballano" in modifica, come sull'iPhone (niente animazione se il telefono la riduce)
+const WIGGLE_CSS = `
+@keyframes moraWiggle { 0% { transform: rotate(-0.7deg); } 50% { transform: rotate(0.7deg); } 100% { transform: rotate(-0.7deg); } }
+.mora-wiggle { animation: moraWiggle 0.3s ease-in-out infinite; }
+.mora-wiggle:nth-child(2n) { animation-delay: -0.15s; }
+.mora-press { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
+@media (prefers-reduced-motion: reduce) { .mora-wiggle { animation: none; } }
+`;
 
 // un riquadro (in base alla grandezza)
-const Tile = ({ item, size, color, compact, editing, dragging, onClick, onHide, handleProps }) => {
+const Tile = ({ item, size, color, compact, editing, dragging, onClick, onHide, handleProps, pressProps }) => {
   const Icon = item.icon;
   const span = size === "l" ? "col-span-2" : "col-span-1";
   const pad = compact ? "p-3" : size === "s" ? "p-3" : "p-5";
   const ring = editing ? "outline outline-2 outline-dashed outline-offset-2 outline-slate-300" : "";
-  const drag = dragging ? "opacity-60 scale-[0.98]" : "";
+  const drag = dragging ? "scale-105 shadow-2xl z-20 opacity-90" : "";
+  const tp = { "data-home-tile": item.id, "data-tile": item.id, "data-size": size, onClick, ...pressProps };
   const iconBox = `bg-${color}-50 text-${color}-600`;
   const badge = !editing && item.badge > 0 && (
     <span data-badge className="absolute top-2.5 right-2.5 min-w-[24px] h-6 px-1.5 rounded-full bg-red-600 text-white text-xs font-black flex items-center justify-center shadow">
@@ -58,12 +67,12 @@ const Tile = ({ item, size, color, compact, editing, dragging, onClick, onHide, 
       )}
     </>
   );
-  const common = `relative ${span} rounded-3xl transition-all active:scale-[0.98] ${ring} ${drag}`;
+  const common = `relative ${span} rounded-3xl transition-all mora-press ${editing && !dragging ? "mora-wiggle" : "active:scale-[0.98]"} ${ring} ${drag}`;
 
   // NUOVO RAPPORTO: colorato pieno
   if (item.primary)
     return (
-      <button type="button" data-home-tile={item.id} data-tile={item.id} data-size={size} onClick={onClick}
+      <button type="button" {...tp}
         className={`${common} ${pad} bg-${color}-600 hover:bg-${color}-700 text-white shadow-lg flex ${size === "l" ? "flex-col md:flex-row py-7" : "flex-col"} items-center justify-center gap-3`}>
         {editBits}
         <span className="p-3 bg-white/20 rounded-full"><Icon className={size === "l" ? "w-9 h-9" : "w-7 h-7"} /></span>
@@ -77,7 +86,7 @@ const Tile = ({ item, size, color, compact, editing, dragging, onClick, onHide, 
   // riquadri informativi
   if (item.widget)
     return (
-      <button type="button" data-home-tile={item.id} data-tile={item.id} data-size={size} onClick={onClick}
+      <button type="button" {...tp}
         className={`${common} ${pad} text-left bg-white border border-slate-200 shadow-sm flex flex-col gap-2 min-h-[120px]`}>
         {editBits}
         <span className={`flex items-center gap-2 ${editing ? "pl-9" : ""}`}>
@@ -90,7 +99,7 @@ const Tile = ({ item, size, color, compact, editing, dragging, onClick, onHide, 
 
   if (size === "s")
     return (
-      <button type="button" data-home-tile={item.id} data-tile={item.id} data-size={size} onClick={onClick}
+      <button type="button" {...tp}
         className={`${common} ${pad} bg-white border border-slate-200 shadow-sm flex items-center gap-2.5 text-left min-h-[64px] ${editing || item.badge > 0 ? "pr-10" : ""}`}>
         {editBits}
         {badge}
@@ -101,7 +110,7 @@ const Tile = ({ item, size, color, compact, editing, dragging, onClick, onHide, 
 
   if (size === "l")
     return (
-      <button type="button" data-home-tile={item.id} data-tile={item.id} data-size={size} onClick={onClick}
+      <button type="button" {...tp}
         className={`${common} ${pad} bg-white border border-slate-200 shadow-sm flex items-center gap-4 text-left`}>
         {editBits}
         {badge}
@@ -114,7 +123,7 @@ const Tile = ({ item, size, color, compact, editing, dragging, onClick, onHide, 
     );
 
   return (
-    <button type="button" data-home-tile={item.id} data-tile={item.id} data-size={size} onClick={onClick}
+    <button type="button" {...tp}
       className={`${common} ${pad} bg-white border border-slate-200 shadow-sm flex flex-col items-center justify-center gap-3 text-center`}>
       {editBits}
       {badge}
@@ -210,27 +219,107 @@ export const HomeGrid = ({ items, home, me, color = "blue", searchBox, onEditing
     setBusy(false);
   };
 
-  // trascinamento col dito (o mouse) sulla maniglia
+  // TIENI PREMUTO (come sull'iPhone): dopo mezzo secondo la Home entra in modifica
+  // e, senza staccare il dito, il riquadro si trascina. In modifica si trascina subito.
+  const press = useRef(null); // { id, x, y, timer }
+  const dragRef = useRef(null);
+  const suppressClick = useRef(false);
+  const gridRef = useRef(null);
+  const lastSwap = useRef({ target: null, at: 0 }); // contro i "rimbalzi" tra due riquadri
+  const capture = (el, pointerId) => {
+    try {
+      if (el && pointerId != null) el.setPointerCapture(pointerId);
+    } catch (err) {
+      // niente
+    }
+  };
+  const beginDrag = (id, el, pointerId) => {
+    lastSwap.current = { target: null, at: 0 };
+    dragRef.current = id;
+    setDragId(id);
+    suppressClick.current = true;
+    capture(el, pointerId);
+  };
+  const endPress = () => {
+    if (press.current && press.current.timer) clearTimeout(press.current.timer);
+    press.current = null;
+    dragRef.current = null;
+    setDragId(null);
+  };
+  const dragOver = (id, e) => {
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    const t = el && el.closest("[data-home-tile]");
+    const target = t && t.getAttribute("data-home-tile");
+    if (!target || target === id) return;
+    // appena scambiato con questo riquadro: aspetto che il dito si sposti davvero
+    const now = Date.now();
+    if (lastSwap.current.target === target && now - lastSwap.current.at < 400) return;
+    lastSwap.current = { target, at: now };
+    setDraft((d) => (d ? { ...d, order: moveTo(d.order, id, target) } : d));
+  };
+  // durante il trascinamento la pagina non deve scorrere
+  useEffect(() => {
+    const el = gridRef.current;
+    if (!el) return undefined;
+    const stopScroll = (e) => {
+      if (dragRef.current) e.preventDefault();
+    };
+    el.addEventListener("touchmove", stopScroll, { passive: false });
+    return () => el.removeEventListener("touchmove", stopScroll);
+  }, []);
+  const pressProps = (id) => ({
+    onPointerDown: (e) => {
+      if (e.button) return;
+      suppressClick.current = false;
+      const el = e.currentTarget;
+      const pointerId = e.pointerId;
+      press.current = { id, x: e.clientX, y: e.clientY, timer: null };
+      if (!editing)
+        press.current.timer = setTimeout(() => {
+          if (!press.current || press.current.id !== id) return;
+          start();
+          if (navigator.vibrate) navigator.vibrate(15);
+          beginDrag(id, el, pointerId);
+        }, 500);
+    },
+    onPointerMove: (e) => {
+      const pr = press.current;
+      if (!pr || pr.id !== id) return;
+      const moved = Math.hypot(e.clientX - pr.x, e.clientY - pr.y);
+      if (!dragRef.current) {
+        if (!editing && moved > 10 && pr.timer) {
+          clearTimeout(pr.timer); // sta scorrendo la pagina: niente modifica e niente apertura
+          press.current = null;
+          suppressClick.current = true;
+        } else if (editing && moved > 8) beginDrag(id, e.currentTarget, e.pointerId);
+        return;
+      }
+      if (dragRef.current === id) dragOver(id, e);
+    },
+    onPointerUp: endPress,
+    onPointerCancel: endPress,
+    onContextMenu: (e) => e.preventDefault(),
+    onClickCapture: (e) => {
+      if (suppressClick.current) {
+        suppressClick.current = false;
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    },
+  });
+  // maniglia ⠿ (in modifica): trascina subito
   const handleProps = (id) => ({
     onPointerDown: (e) => {
       e.preventDefault();
       e.stopPropagation();
-      try {
-        e.currentTarget.setPointerCapture(e.pointerId);
-      } catch (err) {
-        // niente
-      }
-      setDragId(id);
+      press.current = { id, x: e.clientX, y: e.clientY, timer: null };
+      beginDrag(id, e.currentTarget, e.pointerId);
     },
     onPointerMove: (e) => {
-      if (dragId !== id) return;
-      const el = document.elementFromPoint(e.clientX, e.clientY);
-      const t = el && el.closest("[data-home-tile]");
-      const target = t && t.getAttribute("data-home-tile");
-      if (target && target !== id) setDraft((d) => ({ ...d, order: moveTo(d.order, id, target) }));
+      if (dragRef.current === id) dragOver(id, e);
     },
-    onPointerUp: () => setDragId(null),
-    onPointerCancel: () => setDragId(null),
+    onPointerUp: endPress,
+    onPointerCancel: endPress,
     onClick: (e) => e.stopPropagation(),
   });
 
@@ -239,8 +328,11 @@ export const HomeGrid = ({ items, home, me, color = "blue", searchBox, onEditing
 
   return (
     <div className="space-y-4" data-section="home-grid">
-      {editing ? (
-        <div className="sticky top-0 z-30 -mx-1 px-3 py-3 rounded-2xl bg-white border border-slate-200 shadow-md space-y-2" data-section="home-edit-bar">
+      {/* la ricerca resta al suo posto: entrando in modifica i riquadri non si spostano sotto il dito */}
+      {h.search && searchBox}
+      {editing && (
+        <div className="fixed top-0 inset-x-0 z-[60] px-3 pt-3 pb-3 bg-white border-b border-slate-200 shadow-lg space-y-2" style={{ paddingTop: "max(12px, env(safe-area-inset-top))" }} data-section="home-edit-bar">
+          <div className="max-w-3xl mx-auto space-y-2">
           <div className="flex items-center gap-2">
             <div className="flex-1 min-w-0">
               <h3 className="font-black text-slate-800 text-lg leading-tight">Modifica aspetto</h3>
@@ -251,17 +343,14 @@ export const HomeGrid = ({ items, home, me, color = "blue", searchBox, onEditing
               <Check className="w-4 h-4" /> Fatto
             </button>
           </div>
-          <p className="text-xs text-slate-600 font-semibold">Scegli un modello di grafica qui sotto. Nei riquadri: trascina ⠿ per spostare, tocca per grandezza e colore, × per nascondere.</p>
+          <p className="text-xs text-slate-600 font-semibold">Trascina i riquadri per spostarli, toccali per grandezza e colore, × per nasconderli. Più sotto: modelli di grafica e opzioni.</p>
           {error && <p className="text-sm font-bold text-red-600">{error}</p>}
+          </div>
         </div>
-      ) : (
-        h.search && searchBox
       )}
 
-      {editing && <LookEditor look={draft.look} base={baseLook} onChange={setLook} />}
-      {editing && <h4 className="font-black text-slate-800 uppercase text-sm tracking-wide px-1 pt-1">Riquadri della Home</h4>}
-
-      <div className={`grid grid-cols-2 md:grid-cols-4 ${gap}`} data-section="home-tiles">
+      <style>{WIGGLE_CSS}</style>
+      <div ref={gridRef} className={`grid grid-cols-2 md:grid-cols-4 ${gap}`} data-section="home-tiles">
         {h.order.map((id) => {
           const item = items[id];
           if (!item) return null;
@@ -277,6 +366,7 @@ export const HomeGrid = ({ items, home, me, color = "blue", searchBox, onEditing
               onClick={editing ? () => setSel(id) : item.action}
               onHide={() => hide(id)}
               handleProps={handleProps(id)}
+              pressProps={pressProps(id)}
             />
           );
         })}
@@ -287,6 +377,8 @@ export const HomeGrid = ({ items, home, me, color = "blue", searchBox, onEditing
           </button>
         )}
       </div>
+
+      {editing && <LookEditor look={draft.look} base={baseLook} onChange={setLook} />}
 
       {editing ? (
         <div className="bg-white rounded-3xl border border-slate-200 p-4 space-y-1" data-section="home-options">

@@ -210,7 +210,7 @@ const appStepsFor = ({ hasVan, chatEnabled, isAdmin }) =>
     {
       icon: LayoutGrid,
       title: "Modifica aspetto",
-      text: "In fondo alla Home: scegli un modello di grafica (Classico Mora, Officina, Notte, Compatto, Elegante, Lettura facile, Rosso Mora) oppure personalizza colore, tema, carattere, lettere, angoli e spaziatura. Poi sposti i riquadri col dito, scegli grandezza e colore, nascondi quelli che non usi e aggiungi Oggi, Ultimi interventi, Il mio mese" + (hasVan ? ", Furgone." : ".") + " Vale solo per te.",
+      text: "Tieni premuto un riquadro della Home (come sull'iPhone) oppure tocca «Modifica aspetto» in fondo: scegli un modello di grafica (Classico Mora, Officina, Notte, Compatto, Elegante, Lettura facile, Rosso Mora) oppure personalizza colore, tema, carattere, lettere, angoli e spaziatura. I riquadri li trascini col dito, scegli grandezza e colore, nascondi quelli che non usi e aggiungi Oggi, Ultimi interventi, Il mio mese" + (hasVan ? ", Furgone." : ".") + " Vale solo per te.",
       go: { label: "Apri Modifica aspetto", to: "home-edit" },
     },
     {
@@ -351,7 +351,8 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
         "In fondo alla Home tocca «Modifica aspetto». Quello che scegli vale solo per te e lo vedi subito.",
         "Modelli pronti: Classico Mora, Officina (lettere grandi, per i guanti), Notte (scuro), Compatto, Elegante, Lettura facile, Rosso Mora.",
         "«Personalizza ogni dettaglio»: colore principale, tema (automatico, chiaro, scuro), carattere, grandezza delle lettere, angoli e spaziatura. «Come l'app» torna alla grafica dell'admin.",
-        "Riquadri: trascina ⠿ per spostarli, × per nasconderli.",
+        "Come sull'iPhone: tieni premuto un riquadro della Home per mezzo secondo, i riquadri iniziano a muoversi e, senza staccare il dito, lo trascini dove vuoi.",
+        "In modifica: trascina qualsiasi riquadro, toccalo per grandezza e colore, × per nasconderlo.",
         "Tocca un riquadro per scegliere grandezza (Piccolo, Medio, Grande), colore e posizione.",
         "«Aggiungi riquadro»: rimetti quelli nascosti o aggiungi Oggi, Ultimi interventi, Il mio mese" + (hasVan ? ", Furgone." : "."),
         "Opzioni: barra di ricerca, riquadri compatti, «Ripristina tutto come prima».",
