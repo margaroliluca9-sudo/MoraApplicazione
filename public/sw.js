@@ -99,6 +99,7 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(req.url);
   const own = url.origin === self.location.origin;
   if (own && url.pathname.startsWith("/api/")) return; // notifiche, promemoria: sempre in rete
+  if (own && url.pathname.startsWith("/guida/")) return; // video della Guida: direttamente dal sito (pesano e vanno a pezzi)
   if (req.mode === "navigate" && own) {
     event.respondWith(openPage(req));
     return;

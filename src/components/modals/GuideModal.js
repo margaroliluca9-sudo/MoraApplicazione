@@ -34,7 +34,10 @@ import {
   Pencil,
   StickyNote,
   FlaskConical,
+  PlayCircle,
 } from "lucide-react";
+import { VideoPlayer } from "./VideoPlayer";
+import { videosFor, videoById, videoForStep, videosForSection, videoPoster } from "../../guideVideos";
 
 // TUTORIAL 1: solo l'intervento, passo per passo (go = pulsante "Prova adesso")
 const reportStepsFor = ({ hasVan }) =>
@@ -532,11 +535,13 @@ const officeSections = [
 ];
 
 // un tutorial a passi
-const Tour = ({ steps, onGo, onEnd, endLabel, color, id }) => {
+const Tour = ({ steps, onGo, onEnd, endLabel, color, id, videos = [], onVideo = () => {} }) => {
   const [step, setStep] = useState(0);
   const s = steps[Math.min(step, steps.length - 1)];
   const Icon = s.icon;
   const last = step >= steps.length - 1;
+  const vid = videoForStep(s.title);
+  const video = vid && videos.some((v) => v.id === vid) ? videoById(vid) : null;
   return (
     <div className="flex-1 flex flex-col p-5 min-h-0" data-section={"guide-tour-" + id}>
       <div className="flex-1 overflow-y-auto flex flex-col items-center justify-center text-center gap-4 px-2">
@@ -548,6 +553,12 @@ const Tour = ({ steps, onGo, onEnd, endLabel, color, id }) => {
         </p>
         <h4 className="text-2xl font-black text-slate-800 leading-tight">{s.title}</h4>
         <p className="text-base text-slate-600 leading-relaxed max-w-md">{s.text}</p>
+        {video && (
+          <button type="button" data-guide-video={video.id} onClick={() => onVideo(video)}
+            className={`h-11 pl-3 pr-5 rounded-full bg-${color}-600 text-white font-black text-sm flex items-center gap-2 shadow-sm`}>
+            <PlayCircle className="w-5 h-5" /> Guarda il video · {video.sec} s
+          </button>
+        )}
         {s.go && (
           <button type="button" data-guide-go={s.go.to} onClick={() => onGo(s.go.to)}
             className={`h-11 px-5 rounded-full border-2 border-${color}-600 text-${color}-700 font-black text-sm`}>
@@ -580,6 +591,8 @@ export const GuideModal = ({ onClose, onGo = () => {}, hasVan = false, chatEnabl
   const [tab, setTab] = useState(office ? "office" : "report");
   const [open, setOpen] = useState(null);
   const [q, setQ] = useState("");
+  const [playing, setPlaying] = useState(null); // video aperto
+  const videos = videosFor({ office, hasVan });
   const sections = office ? officeSections : sectionsFor({ hasVan, chatEnabled, isAdmin });
   const norm = (t) => String(t).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   const shown = q.trim()
@@ -599,16 +612,18 @@ export const GuideModal = ({ onClose, onGo = () => {}, hasVan = false, chatEnabl
           </button>
         </div>
         <div className="px-4 pt-3 shrink-0">
-          <div className={`grid ${office ? "grid-cols-2" : "grid-cols-3"} p-1 rounded-2xl bg-slate-100`} role="tablist">
+          <div className={`grid ${office ? "grid-cols-3" : "grid-cols-4"} p-1 rounded-2xl bg-slate-100`} role="tablist">
             {(office
               ? [
                   ["office", "Tutorial"],
                   ["all", "Tutte le funzioni"],
+                  ["video", "Video"],
                 ]
               : [
                   ["report", "Solo l'intervento"],
                   ["app", "Tutta l'app"],
                   ["all", "Tutte le funzioni"],
+                  ["video", "Video"],
                 ]
             ).map(([id, label]) => (
               <button key={id} type="button" role="tab" aria-selected={tab === id} data-guide-tab={id} onClick={() => setTab(id)}
@@ -620,10 +635,10 @@ export const GuideModal = ({ onClose, onGo = () => {}, hasVan = false, chatEnabl
         </div>
 
         {office && tab === "office" && (
-          <Tour key="office" id="office" steps={officeSteps} onGo={onGo} color={color}
+          <Tour key="office" id="office" steps={officeSteps} onGo={onGo} color={color} videos={videos} onVideo={setPlaying}
             endLabel="Tutte le funzioni" onEnd={() => setTab("all")} />
         )}
-        {!office && tab !== "all" && (
+        {!office && (tab === "report" || tab === "app") && (
           <div className="px-4 pt-3 shrink-0">
             <button type="button" data-guide-go="practice" onClick={() => onGo("practice")}
               className="w-full h-12 rounded-2xl bg-amber-400 text-amber-950 font-black text-sm flex items-center justify-center gap-2">
@@ -632,11 +647,11 @@ export const GuideModal = ({ onClose, onGo = () => {}, hasVan = false, chatEnabl
           </div>
         )}
         {tab === "report" && (
-          <Tour key="report" id="report" steps={reportStepsFor({ hasVan })} onGo={onGo} color={color}
+          <Tour key="report" id="report" steps={reportStepsFor({ hasVan })} onGo={onGo} color={color} videos={videos} onVideo={setPlaying}
             endLabel="Tutta l'app" onEnd={() => setTab("app")} />
         )}
         {tab === "app" && (
-          <Tour key="app" id="app" steps={appStepsFor({ hasVan, chatEnabled, isAdmin })} onGo={onGo} color={color}
+          <Tour key="app" id="app" steps={appStepsFor({ hasVan, chatEnabled, isAdmin })} onGo={onGo} color={color} videos={videos} onVideo={setPlaying}
             endLabel="Tutte le funzioni" onEnd={() => setTab("all")} />
         )}
         {tab === "all" && (
@@ -657,6 +672,19 @@ export const GuideModal = ({ onClose, onGo = () => {}, hasVan = false, chatEnabl
                     <span className="flex-1 font-black text-slate-800">{x.title}</span>
                     <ChevronDown className={`w-5 h-5 text-slate-400 transition-transform ${isOpen ? "rotate-180" : ""}`} />
                   </button>
+                  {isOpen && videosForSection(x.id).some((id) => videos.some((v) => v.id === id)) && (
+                    <div className="px-4 pt-1 pb-2 flex flex-wrap gap-2 bg-white">
+                      {videosForSection(x.id)
+                        .filter((id) => videos.some((v) => v.id === id))
+                        .map((id) => videoById(id))
+                        .map((v) => (
+                          <button key={v.id} type="button" data-guide-video={v.id} onClick={() => setPlaying(v)}
+                            className={`h-9 pl-2.5 pr-3.5 rounded-full bg-${color}-50 text-${color}-700 border border-${color}-200 font-black text-xs flex items-center gap-1.5`}>
+                            <PlayCircle className="w-4 h-4" /> Video: {v.title}
+                          </button>
+                        ))}
+                    </div>
+                  )}
                   {isOpen && (
                     <ul className="px-5 pb-4 pt-1 space-y-2 bg-white">
                       {x.points.map((pt, i) => (
@@ -672,7 +700,33 @@ export const GuideModal = ({ onClose, onGo = () => {}, hasVan = false, chatEnabl
             })}
           </div>
         )}
+        {tab === "video" && (
+          <div className="flex-1 overflow-y-auto p-4" data-section="guide-videos">
+            <p className="text-sm text-slate-500 font-semibold mb-3">Brevi video: tocca e guarda come si fa. Servono la rete.</p>
+            <div className="grid grid-cols-2 gap-3">
+              {videos.map((v) => (
+                <button key={v.id} type="button" data-guide-video={v.id} onClick={() => setPlaying(v)}
+                  className="text-left rounded-2xl border border-slate-200 overflow-hidden bg-white active:scale-[0.98]">
+                  <span className="relative block aspect-[3/4] bg-slate-100 overflow-hidden">
+                    <img src={videoPoster(v)} alt="" loading="lazy" className="w-full h-full object-cover object-top" />
+                    <span className="absolute inset-0 flex items-center justify-center bg-slate-900/10">
+                      <span className={`w-12 h-12 rounded-full bg-${color}-600/90 text-white flex items-center justify-center shadow-lg`}>
+                        <PlayCircle className="w-7 h-7" />
+                      </span>
+                    </span>
+                    <span className="absolute bottom-1.5 right-1.5 px-1.5 py-0.5 rounded-md bg-slate-900/75 text-white text-[11px] font-bold">{v.sec} s</span>
+                  </span>
+                  <span className="block px-3 py-2">
+                    <span className="block font-black text-slate-800 text-sm leading-tight">{v.title}</span>
+                    <span className="block text-[11px] text-slate-500 leading-tight mt-0.5">{v.about}</span>
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
+      {playing && <VideoPlayer video={playing} onClose={() => setPlaying(null)} />}
     </div>
   );
 };
