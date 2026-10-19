@@ -57,11 +57,11 @@ export const autoAllowed = (item) => {
   return !!first && !NEVER_AUTO.has(first);
 };
 
-const DONE =
+export const DONE =
   /\b(sostitu(it|t)[aoie]|sostituzion[ei]|sostituendo|cambiat[aoie]|cambio|montat[aoie]|installat[aoie]|aggiunt[aoie]|mess[oaie]|inserit[aoie]|rimpiazzat[aoie]|nuov[aoie])\b/i;
-const NOT_DONE =
+export const NOT_DONE =
   /\b(da\s+(sostituire|cambiare|montare|ordinare|fare)|sostituire|cambiare|consiglia\w*|occorre|bisogna|valutare|preventiv\w*|rilievo|in\s+attesa|ordinat[aoie]|fornit[aoie]\s+da(l|i)?\s+client\w*|di\s+loro\s+fornitura|da\s+loro|per\s+(la\s+)?sostituzion\w*)\b/i;
-const OIL = /\b(cambio|cambiat[aoie]|sostitu\w+)\s+(dell'|del\s+|dello\s+|di\s+)?(olio|grasso|lubrificante)\b/gi;
+export const OIL = /\b(cambio|cambiat[aoie]|sostitu\w+)\s+(dell'|del\s+|dello\s+|di\s+)?(olio|grasso|lubrificante)\b/gi;
 const ABBR = ["matr", "mat", "n", "nr", "num", "diam", "d", "rif", "art", "cert", "es", "ecc", "sig", "mt"];
 // frasi: a capo, "/", ";", e "." a fine frase (non "n." o "mt.")
 export const partsSentences = (text) =>
