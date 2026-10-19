@@ -14,6 +14,11 @@ import {
   MinusCircle,
   Camera,
   Image as ImageIcon,
+  CheckCircle2,
+  Printer,
+  History as HistoryIcon,
+  RotateCcw,
+  Zap,
 } from "lucide-react";
 import {
   collection,
@@ -46,6 +51,8 @@ import {
 } from "../ropes";
 import { vanOf, applyReport, findUsedParts, itemsOf } from "../van";
 import { showVanUsage } from "../components/VanHost";
+import { loadDraft, saveDraft, clearDraft, draftWhen, quickPhrases, addPhrase } from "../reportHelpers";
+import { printIntervention } from "../components/PrintLogButton";
 
 export const NewEntryForm = ({
   user,
@@ -87,6 +94,18 @@ export const NewEntryForm = ({
   const [isLocked, setIsLocked] = useState(false);
 
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+  // BOZZA: il rapporto si salva da solo sul telefono finché non lo invii
+  const [pendingDraft, setPendingDraft] = useState(() => (practice ? null : loadDraft()));
+  // dopo "Salva": riepilogo con "Altra gru, stesso cliente", "Stampa", "Vai allo Storico"
+  const [savedLog, setSavedLog] = useState(null);
+  const [showPhrases, setShowPhrases] = useState(false);
+  const phrases = useMemo(() => quickPhrases(allLogs || [], formData.technician), [allLogs, formData.technician]);
+  useEffect(() => {
+    if (practice || pendingDraft || savedLog) return undefined;
+    if (!formData.customer && !formData.description) return undefined;
+    const t = setTimeout(() => saveDraft(formData), 600);
+    return () => clearTimeout(t);
+  }, [formData, practice, pendingDraft, savedLog]);
   const [formError, setFormError] = useState("");
 
   const color = layoutConfig?.themeColor || "blue";
@@ -357,6 +376,14 @@ export const NewEntryForm = ({
         finalDateString = `${parseInt(d, 10)}/${parseInt(m, 10)}/${y}`;
       }
 
+      const logData = {
+        ...formDataToSave,
+        additionalTechnicians: cleanAdditionalTechs,
+        machineId: cleanMachineId,
+        customer: cleanCustomer,
+        dateString: finalDateString,
+        userId: user.uid,
+      };
       const logRef = await addDoc(
         collection(
           db,
@@ -366,16 +393,9 @@ export const NewEntryForm = ({
           "data",
           "maintenance_logs"
         ),
-        {
-          ...formDataToSave,
-          additionalTechnicians: cleanAdditionalTechs,
-          machineId: cleanMachineId,
-          customer: cleanCustomer,
-          dateString: finalDateString,
-          userId: user.uid,
-          createdAt: serverTimestamp(),
-        }
+        { ...logData, createdAt: serverTimestamp() }
       );
+      clearDraft();
 
       const existingCustomer = customers.find((c) => c.name === cleanCustomer);
       if (!existingCustomer) {
@@ -438,8 +458,10 @@ export const NewEntryForm = ({
           .catch((err) => console.error("Magazzino furgone:", err));
       }
 
-      onSuccess();
+      // riepilogo invece di andare subito allo Storico
+      setSavedLog({ ...logData, id: logRef && logRef.id });
       setIsLocked(true);
+      window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (e) {
       console.error(e);
       alert("Errore salvataggio: " + describeError(e));
@@ -721,6 +743,29 @@ export const NewEntryForm = ({
                 })
               }
             />
+            <div className="pt-1" data-section="quick-phrases">
+                <button type="button" onClick={() => setShowPhrases(!showPhrases)} className={`text-[11px] font-black uppercase tracking-wide text-${color}-700 flex items-center gap-1 min-h-[32px]`}>
+                  <Zap className="w-3.5 h-3.5" /> Frasi rapide {showPhrases ? "▲" : "▼"}
+                </button>
+                {showPhrases && (
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {phrases.map((ph) => (
+                      <button
+                        key={ph}
+                        type="button"
+                        data-phrase={ph}
+                        onClick={() => {
+                          const description = addPhrase(formData.description, ph);
+                          setFormData({ ...formData, description, ropes: autoTick(formData.ropes, description) });
+                        }}
+                        className="px-3 py-2 rounded-full bg-slate-100 border border-slate-200 text-xs font-bold text-slate-700 active:scale-95"
+                      >
+                        + {ph}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
           </div>
         );
       case "ropes":
@@ -914,6 +959,57 @@ export const NewEntryForm = ({
           <HardHat className="w-5 h-5" />
         </div>
       </div>
+      {pendingDraft && (
+        <div className="mx-6 mt-5 p-4 rounded-2xl border-2 border-amber-300 bg-amber-50 space-y-3" data-section="draft-banner">
+          <p className="text-sm font-black text-amber-900">Hai un rapporto non finito</p>
+          <p className="text-xs font-semibold text-amber-800">
+            {[pendingDraft.data.customer, pendingDraft.data.machineId].filter(Boolean).join(" · ") || "Senza cliente"} · {draftWhen(pendingDraft.savedAt)}
+            {pendingDraft.data.description ? ` · «${String(pendingDraft.data.description).slice(0, 60)}${pendingDraft.data.description.length > 60 ? "…" : ""}»` : ""}
+          </p>
+          <div className="flex gap-2">
+            <button type="button" data-action="draft-resume" onClick={() => { setFormData((p) => ({ ...p, ...pendingDraft.data })); setPendingDraft(null); }}
+              className={`flex-1 h-11 rounded-xl bg-${color}-600 text-white font-black text-sm`}>
+              Riprendi
+            </button>
+            <button type="button" data-action="draft-discard" onClick={() => { clearDraft(); setPendingDraft(null); }}
+              className="h-11 px-4 rounded-xl border border-amber-300 bg-white text-amber-900 font-bold text-sm">
+              Scarta
+            </button>
+          </div>
+        </div>
+      )}
+      {savedLog ? (
+        <div className="p-6 space-y-4" data-section="report-saved">
+          <div className="flex items-center gap-3">
+            <CheckCircle2 className="w-10 h-10 text-emerald-600 shrink-0" />
+            <div className="min-w-0">
+              <h3 className="font-black text-slate-800 text-xl">Rapporto salvato</h3>
+              <p className="text-sm font-semibold text-slate-500 truncate">
+                {savedLog.customer} · gru {savedLog.machineId || "-"} · {savedLog.dateString}
+              </p>
+            </div>
+          </div>
+          <button type="button" data-action="same-customer" onClick={() => {
+              setFormData((p) => ({ ...p, machineId: "", machineType: "", capacity: "", description: "", ticketNumber: "", photos: [], ropes: { fune: emptyRope(), catena: emptyRope() } }));
+              setLastIntervention(null);
+              setSavedLog(null);
+            }}
+            className={`w-full h-14 rounded-2xl bg-${color}-600 text-white font-black flex items-center justify-center gap-2`}>
+            <RotateCcw className="w-5 h-5" /> Altra gru, stesso cliente
+          </button>
+          <div className="grid grid-cols-2 gap-3">
+            <button type="button" data-action="print-saved" onClick={() => printIntervention(savedLog)}
+              className="h-12 rounded-xl border border-slate-300 text-slate-700 font-bold flex items-center justify-center gap-2">
+              <Printer className="w-5 h-5" /> Stampa
+            </button>
+            <button type="button" data-action="go-history" onClick={onSuccess}
+              className="h-12 rounded-xl border border-slate-300 text-slate-700 font-bold flex items-center justify-center gap-2">
+              <HistoryIcon className="w-5 h-5" /> Vai allo Storico
+            </button>
+          </div>
+          <p className="text-xs text-slate-500 text-center font-semibold">«Altra gru» tiene tecnici, data e cliente: scegli solo la gru e scrivi la descrizione.</p>
+        </div>
+      ) : (
       <form onSubmit={handleSubmit} className="p-6 space-y-6">
         {formOrder.map((key) => (
           <React.Fragment key={key}>
@@ -988,6 +1084,7 @@ export const NewEntryForm = ({
           </button>
         </div>
       </form>
+      )}
 
       {showClearConfirm && (
         <div className="fixed inset-0 z-[300] bg-slate-900/60 flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in">
@@ -1020,6 +1117,7 @@ export const NewEntryForm = ({
                     dateString: getTodayString(),
                   }));
                   setLastIntervention(null);
+                  clearDraft();
                   setShowClearConfirm(false);
                 }}
                 className="py-3 bg-red-600 text-white rounded-lg font-bold text-xs uppercase shadow-md hover:bg-red-700 active:scale-95 transition-all"
