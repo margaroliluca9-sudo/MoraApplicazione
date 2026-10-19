@@ -80,33 +80,15 @@ export const DashboardView = ({
   const color = layoutConfig?.themeColor || "blue";
   const [query, setQuery] = useState("");
   const [showMine, setShowMine] = useState(false);
-  // GUIDA ALL'APP (riquadro in fondo alla Home) + avviso "Novità" finché non l'hai aperta
+  // GUIDA ALL'APP (pulsante in fondo alla Home, accanto a "Modifica la tua Home")
   const [showGuide, setShowGuide] = useState(false);
-  const guideKey = "mora_guide_seen_" + String(currentTechName || "").trim().toLowerCase();
-  const [guideSeen, setGuideSeen] = useState(() => {
-    try {
-      return localStorage.getItem(guideKey) === "1";
-    } catch (e) {
-      return true;
-    }
-  });
-  const markGuideSeen = () => {
-    setGuideSeen(true);
-    try {
-      localStorage.setItem(guideKey, "1");
-    } catch (e) {
-      // niente
-    }
-  };
-  const openGuide = () => {
-    markGuideSeen();
-    setShowGuide(true);
-  };
+  const openGuide = () => setShowGuide(true);
   const guideGo = (to) => {
     setShowGuide(false);
     if (to === "new") onNavigate("new");
     else if (to === "area") setArea("home");
     else if (to === "van") setArea("van");
+    else if (to === "print") setArea("print");
     else if (to === "chat") {
       setChatConv(null);
       setShowChat(true);
@@ -531,6 +513,7 @@ export const DashboardView = ({
           vans={vans}
           vanItems={vanItems}
           chatUnread={unread}
+          technicians={technicians}
           chatEnabled={chatEnabled}
           myMonthCount={myMonthCount}
           onOpenMine={() => setShowMine(true)}
@@ -569,12 +552,9 @@ export const DashboardView = ({
             type="button"
             data-action="open-guide"
             onClick={openGuide}
-            className="relative flex items-center gap-2 px-4 h-11 rounded-full text-sm font-bold text-slate-500 hover:bg-white"
+            className="flex items-center gap-2 px-4 h-11 rounded-full text-sm font-bold text-slate-500 hover:bg-white"
           >
             <BookOpen className="w-4 h-4" /> Guida all'app
-            {!guideSeen && (
-              <span data-guide-new className="absolute top-1.5 right-1.5 w-2.5 h-2.5 rounded-full bg-red-600" aria-label="Nuova" />
-            )}
           </button>
         }
       />

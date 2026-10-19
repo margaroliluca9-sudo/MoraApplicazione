@@ -103,7 +103,7 @@ const reportStepsFor = ({ hasVan }) =>
     {
       icon: Printer,
       title: (hasVan ? "13" : "12") + ". Stampa e manda",
-      text: "Tocca «Stampa» sull'intervento: si crea il foglio con l'intestazione Mora. Con «Condividi o stampa» lo mandi su WhatsApp o per mail, oppure lo stampi.",
+      text: "Tocca «Stampa» sull'intervento: si crea il foglio con l'intestazione Mora. Con «Condividi o stampa» lo mandi su WhatsApp o per mail, oppure lo stampi. Per stamparne tanti insieme (anche dei colleghi) usa «Stampa interventi» nella tua area.",
     },
   ].filter(Boolean);
 
@@ -164,8 +164,14 @@ const appStepsFor = ({ hasVan, chatEnabled, isAdmin }) =>
     {
       icon: UserCircle,
       title: "La mia area",
-      text: "Il riquadro con il tuo nome: è solo tuo. In cima «Oggi» con impegni e promemoria, poi I miei interventi, Calendario, Note, Promemoria" + (hasVan ? ", Magazzino" : "") + " e i numeri del mese.",
+      text: "Il riquadro «La mia area»: è solo tuo. In cima «Oggi» con impegni e promemoria, poi I miei interventi, Stampa interventi, Calendario, Note, Promemoria" + (hasVan ? ", Magazzino" : "") + " e i numeri del mese.",
       go: { label: "Apri La mia area", to: "area" },
+    },
+    {
+      icon: Printer,
+      title: "Stampa interventi",
+      text: "Nella tua area: scegli il giorno (o un periodo) e il tecnico, tocca gli interventi che vuoi, tuoi o dei colleghi, e stampali tutti insieme. «Stampa rapporti» fa un foglio per intervento, «Elenco» una tabella riassuntiva.",
+      go: { label: "Apri Stampa interventi", to: "print" },
     },
     {
       icon: CalendarDays,
@@ -261,6 +267,8 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
         "Il pulsante «Stampa» c'è su ogni intervento: Storico, storico della gru, I miei interventi, Esplora, Database, Ufficio, ricerca e calendario.",
         "Il foglio ha l'intestazione Mora, i dati della gru, la descrizione e le foto.",
         "Dalla finestra del PDF: «Condividi o stampa» (WhatsApp, mail, stampante), «Apri PDF» oppure «Scarica».",
+        "Più interventi insieme: La mia area → «Stampa interventi». Scegli giorno o periodo (Oggi, Ieri, Ultimi 7 giorni o le date), il tecnico (tutti, solo i tuoi o un collega), tocca quelli che vuoi o «Seleziona tutti».",
+        "«Stampa rapporti» crea un unico PDF con un foglio per ogni intervento; «Elenco» crea una tabella riassuntiva.",
       ],
     },
     {
@@ -302,6 +310,7 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
         "È personale: le tue cose non le vede nessun altro.",
         "Oggi: impegni e promemoria del giorno.",
         "I miei interventi: quelli di questo mese o tutti.",
+        "Stampa interventi: scegli e stampa insieme i rapporti tuoi e dei colleghi.",
         "Calendario: i tuoi impegni (con avviso) e i pallini verdi dei giorni in cui hai fatto interventi.",
         "Note: testo, elenco da spuntare, nota fissata in cima.",
         "Promemoria: con giorno e ora ti avvisa sul telefono; senza ora alle 8:00. Sotto ci sono i contatti rapidi con il tasto per chiamare.",

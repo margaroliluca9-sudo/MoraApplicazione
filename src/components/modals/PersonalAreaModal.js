@@ -1,13 +1,14 @@
 // LA MIA AREA: Oggi, Calendario, Note, Chat, Promemoria e contatti, Magazzino (solo con furgone), numeri del mese.
 // Ogni tecnico vede solo le sue cose.
 import React, { useMemo, useState } from "react";
-import { X, CalendarDays, StickyNote, MessageSquare, Bell, Truck, ClipboardList } from "lucide-react";
+import { X, CalendarDays, StickyNote, MessageSquare, Bell, Truck, ClipboardList, Printer } from "lucide-react";
 import { todayItems, monthNumbers, longDay, todayIso } from "../../personal";
 import { vanOf, itemsOf, lowItems } from "../../van";
 import { CalendarPanel } from "../personal/CalendarPanel";
 import { NotesPanel } from "../personal/NotesPanel";
 import { RemindersPanel } from "../personal/RemindersPanel";
 import { VanView } from "../VanView";
+import { PrintPanel } from "../personal/PrintPanel";
 
 const Tile = ({ id, icon: Icon, label, sub, tone, onClick, badge, alert, wide }) => (
   <button
@@ -42,6 +43,7 @@ export const PersonalAreaModal = ({
   chatEnabled = false,
   onOpenChat = () => {},
   myMonthCount = 0,
+  technicians = [],
   onOpenMine = () => {},
   onOpenMachine,
   onClose,
@@ -58,10 +60,14 @@ export const PersonalAreaModal = ({
   const todayEvents = events.filter((e) => e.date === today).length;
   const openRem = reminders.filter((r) => !r.done).length;
   const back = () => setPanel(null);
+  // numero dispari di riquadri: l'ultimo diventa largo
+  const oddTiles = (5 + (chatEnabled ? 1 : 0) + (van ? 1 : 0)) % 2 === 1;
 
   let body;
   if (panel === "calendar")
     body = <CalendarPanel me={me} events={events} logs={logs} color={color} onBack={back} onClose={onClose} onOpenMachine={onOpenMachine} />;
+  else if (panel === "print")
+    body = <PrintPanel me={me} logs={logs} technicians={technicians} color={color} onBack={back} onClose={onClose} />;
   else if (panel === "notes") body = <NotesPanel me={me} notes={notes} color={color} onBack={back} onClose={onClose} />;
   else if (panel === "reminders")
     body = <RemindersPanel me={me} reminders={reminders} contacts={contacts} color={color} onBack={back} onClose={onClose} />;
@@ -125,8 +131,10 @@ export const PersonalAreaModal = ({
           </section>
 
           <section className="grid grid-cols-2 gap-3">
-            <Tile id="mine" icon={ClipboardList} label="I miei interventi" tone="bg-slate-100 text-slate-700" onClick={onOpenMine} wide={!van && chatEnabled}
+            <Tile id="mine" icon={ClipboardList} label="I miei interventi" tone="bg-slate-100 text-slate-700" onClick={onOpenMine}
               sub={myMonthCount === 1 ? "1 questo mese" : `${myMonthCount} questo mese`} />
+            <Tile id="print" icon={Printer} label="Stampa interventi" tone="bg-green-50 text-green-700" onClick={() => setPanel("print")}
+              sub="Tuoi e dei colleghi" />
             <Tile id="calendar" icon={CalendarDays} label="Calendario" tone="bg-blue-50 text-blue-700" onClick={() => setPanel("calendar")}
               sub={todayEvents === 0 ? "Nessun impegno oggi" : todayEvents === 1 ? "1 impegno oggi" : `${todayEvents} impegni oggi`} />
             <Tile id="notes" icon={StickyNote} label="Note" tone="bg-amber-50 text-amber-700" onClick={() => setPanel("notes")}
@@ -135,10 +143,10 @@ export const PersonalAreaModal = ({
               <Tile id="chat" icon={MessageSquare} label="Chat" tone="bg-emerald-50 text-emerald-700" onClick={onOpenChat} badge={chatUnread}
                 sub={chatUnread === 0 ? "Gruppo e privati" : chatUnread === 1 ? "1 messaggio nuovo" : `${chatUnread} messaggi nuovi`} />
             )}
-            <Tile id="reminders" icon={Bell} label="Promemoria" tone="bg-orange-50 text-orange-700" onClick={() => setPanel("reminders")}
+            <Tile id="reminders" icon={Bell} label="Promemoria" tone="bg-orange-50 text-orange-700" onClick={() => setPanel("reminders")} wide={oddTiles && !van}
               sub={openRem === 1 ? "1 attivo · contatti" : `${openRem} attivi · contatti`} />
             {van && (
-              <Tile id="van" icon={Truck} label="Magazzino" tone="bg-purple-50 text-purple-700" onClick={() => setPanel("van")} alert={low > 0} wide={!chatEnabled}
+              <Tile id="van" icon={Truck} label="Magazzino" tone="bg-purple-50 text-purple-700" onClick={() => setPanel("van")} alert={low > 0} wide={oddTiles}
                 sub={low > 0 ? `${van.name} · ${low} da riordinare` : `${van.name} · ${vanList.length} articoli`} />
             )}
           </section>

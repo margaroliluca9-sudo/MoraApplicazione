@@ -429,6 +429,20 @@ export const buildInterventionPdf = async ({ log, today }) => {
   return flow.finish("Documento generato dall'app Assistenza Mora.");
 };
 
+// PIÙ INTERVENTI IN UN SOLO PDF: ogni rapporto come quello singolo, uno dopo l'altro
+export const buildInterventionsPdf = async ({ logs = [], today }) => {
+  const { PDFDocument } = await loadLib();
+  const out = await PDFDocument.create();
+  out.setTitle(`Rapporti di intervento (${logs.length})`);
+  out.setAuthor(COMPANY.name);
+  for (const log of logs) {
+    const one = await PDFDocument.load(await buildInterventionPdf({ log, today }));
+    const pages = await out.copyPages(one, one.getPageIndices());
+    pages.forEach((pg) => out.addPage(pg));
+  }
+  return out.save();
+};
+
 // colonne "Data / Tecnico", "Cliente / Impianto", "Descrizione" (Ufficio e Backup)
 const LOG_COLUMNS = [
   { label: "Data / Tecnico", w: 0.17 },
