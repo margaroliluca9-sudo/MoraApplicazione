@@ -17,7 +17,6 @@ import {
   MessageSquare,
   Folder,
   Briefcase,
-  Database,
   Settings,
   Smartphone,
   Sun,
@@ -89,7 +88,7 @@ const reportStepsFor = ({ hasVan }) =>
     {
       icon: Save,
       title: "10. Salva",
-      text: "Tocca «Salva». Se manca qualcosa l'app te lo dice in rosso. Senza rete il rapporto resta sul telefono e parte da solo quando torna la connessione. Dopo il salvataggio vedi «Rapporto salvato»: «Altra gru, stesso cliente» per la gru successiva (tecnici, data e cliente restano), «Stampa» o «Vai allo Storico».",
+      text: "Tocca «Salva» (resta sempre in fondo allo schermo). Se manca qualcosa l'app te lo dice in rosso. Senza rete il rapporto resta sul telefono e parte da solo quando torna la connessione. Dopo il salvataggio vedi «Rapporto salvato»: «Altra gru, stesso cliente» per la gru successiva (tecnici, data e cliente restano), «Stampa» o «Vai allo Storico».",
     },
     hasVan && {
       icon: Truck,
@@ -99,7 +98,7 @@ const reportStepsFor = ({ hasVan }) =>
     {
       icon: Pencil,
       title: (hasVan ? "12" : "11") + ". Hai sbagliato?",
-      text: "Nello Storico puoi modificare o eliminare il rapporto entro 3 minuti dal salvataggio. Dopo serve la password dell'admin.",
+      text: "Nello Storico puoi modificare o eliminare il rapporto entro 3 minuti dal salvataggio. Dopo compare un lucchetto: toccalo e serve la password dell'admin.",
     },
     {
       icon: Printer,
@@ -120,7 +119,7 @@ const appStepsFor = ({ hasVan, chatEnabled, isAdmin }) =>
     {
       icon: LayoutGrid,
       title: "La Home",
-      text: "In alto la ricerca, poi i riquadri delle pagine. In basso la barra con Nuovo, Storico e Admin. Il pulsante in alto a destra cambia tema: automatico, chiaro o scuro.",
+      text: "In alto la ricerca, poi i riquadri delle pagine. In basso la barra con Nuovo, Storico e Admin. Il pulsante in alto a destra (sole e luna) cambia tema: automatico, chiaro o scuro.",
     },
     {
       icon: Search,
@@ -130,7 +129,7 @@ const appStepsFor = ({ hasVan, chatEnabled, isAdmin }) =>
     {
       icon: Factory,
       title: "La scheda della gru",
-      text: "Si apre toccando una gru (dalla ricerca, da Esplora o dallo Storico): tutti gli interventi su quella gru, foto, fune e catena sostituite e l'assistente con le cose in sospeso.",
+      text: "Si apre toccando una gru (dalla ricerca, da Esplora o dallo Storico): in cima quanti interventi e l'ultimo, poi tutti gli interventi su quella gru, foto, fune e catena sostituite e l'assistente con le cose in sospeso. Con «Nuovo rapporto su questa gru» il modulo si apre con cliente e gru già scritti.",
     },
     {
       icon: PlusCircle,
@@ -141,7 +140,7 @@ const appStepsFor = ({ hasVan, chatEnabled, isAdmin }) =>
     {
       icon: History,
       title: "Storico",
-      text: "Tutti gli interventi dal più recente, con la ricerca per cliente, gru o parole della descrizione. Da qui stampi, modifichi (entro 3 minuti, poi con la password admin) e apri le foto.",
+      text: "Tutti gli interventi divisi per giorno (Oggi, Ieri, Settimana scorsa, poi mese per mese), con la ricerca per cliente, gru o parole della descrizione. Da qui stampi, modifichi (entro 3 minuti, poi con il lucchetto e la password admin) e apri le foto.",
     },
     {
       icon: Printer,
@@ -151,17 +150,12 @@ const appStepsFor = ({ hasVan, chatEnabled, isAdmin }) =>
     {
       icon: Folder,
       title: "Esplora",
-      text: "Sfogli i clienti, apri le loro gru e leggi gli interventi di ognuna.",
+      text: "«Per cliente»: sfogli i clienti, apri le loro gru e leggi gli interventi di ognuna. «Elenco gru e interventi»: tutte le gru e tutti gli interventi in un elenco, con ricerca (era il Database).",
     },
     {
       icon: Briefcase,
       title: "Ufficio",
       text: "Calendario degli interventi del mese o dell'anno, ricerca per N. assistenza e report in PDF o Excel filtrando per date, cliente, gru e tecnico.",
-    },
-    {
-      icon: Database,
-      title: "Database",
-      text: "Elenco veloce di clienti, gru e interventi, con ricerca.",
     },
     {
       icon: UserCircle,
@@ -248,6 +242,7 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
         "Sotto la gru l'assistente ricorda cosa era rimasto in sospeso l'ultima volta e i guasti che si ripetono.",
         "Fune o catena sostituita: se lo scrivi nella descrizione, l'app chiede certificato, diametro e lunghezza (o «dati non disponibili» con il motivo).",
         "Puoi aggiungere fino a 3 foto dalla fotocamera o dalla galleria.",
+        "Il pulsante «Salva» resta sempre in fondo allo schermo, anche mentre scorri il modulo.",
         "Il rapporto si salva da solo sul telefono mentre scrivi: se l'app si chiude, riaprendo trovi «Hai un rapporto non finito» con «Riprendi» o «Scarta».",
         "Dopo «Salva» compare «Rapporto salvato»: «Altra gru, stesso cliente» tiene tecnici, data e cliente e svuota il resto; poi «Stampa» o «Vai allo Storico».",
         "Senza rete il rapporto resta salvato sul telefono e parte da solo quando torna la connessione.",
@@ -267,9 +262,11 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
       icon: History,
       title: "Storico",
       points: [
-        "Tutti gli interventi, dal più recente, con la ricerca (cliente, gru, parole della descrizione, fune e catena).",
+        "Tutti gli interventi, dal più recente, divisi per giorno: Oggi, Ieri, Questa settimana, Settimana scorsa e poi mese per mese.",
+        "La ricerca trova cliente, gru, parole della descrizione, fune e catena.",
+        "Tocca «Gru …» su un intervento per aprire la scheda di quella gru.",
         "Fune e catena sostituite sono indicate sotto la descrizione.",
-        "Modificare o eliminare: entro 3 minuti dal salvataggio lo puoi fare tu, dopo serve la password admin.",
+        "Modificare o eliminare: entro 3 minuti dal salvataggio lo puoi fare tu (matita e cestino), dopo compare un lucchetto e serve la password admin.",
       ],
     },
     {
@@ -277,7 +274,7 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
       icon: Printer,
       title: "Stampare",
       points: [
-        "Il pulsante «Stampa» c'è su ogni intervento: Storico, storico della gru, I miei interventi, Esplora, Database, Ufficio, ricerca e calendario.",
+        "Il pulsante «Stampa» c'è su ogni intervento: Storico, scheda della gru, I miei interventi, Esplora, Ufficio, ricerca e calendario.",
         "Il foglio ha l'intestazione Mora, i dati della gru, la descrizione e le foto.",
         "Dalla finestra del PDF: «Condividi o stampa» (WhatsApp, mail, stampante), «Apri PDF» oppure «Scarica».",
         "Più interventi insieme: La mia area → «Stampa interventi». Scegli giorno o periodo (Oggi, Ieri, Ultimi 7 giorni o le date), il tecnico (tutti, solo i tuoi o un collega), tocca quelli che vuoi o «Seleziona tutti».",
@@ -291,13 +288,17 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
       points: [
         "Cerca insieme clienti, gru e interventi: nome, matricola, N. assistenza, tecnico, data o parole della descrizione.",
         "Tocca un risultato per aprire la scheda della gru con tutto il suo storico.",
+        "Nella scheda della gru: in cima quanti interventi e l'ultimo; «Nuovo rapporto su questa gru» apre il modulo con cliente, gru, tipo e portata già scritti.",
       ],
     },
     {
       id: "explore",
       icon: Folder,
       title: "Esplora",
-      points: ["Sfoglia i clienti, apri le loro gru e leggi gli interventi di ogni gru, con foto e stampa."],
+      points: [
+        "«Per cliente»: sfoglia i clienti, apri le loro gru e leggi gli interventi di ogni gru, con foto e stampa.",
+        "«Elenco gru e interventi» (era il Database): tutti i clienti, le gru e gli interventi in elenco, con ricerca veloce.",
+      ],
     },
     {
       id: "office",
@@ -308,12 +309,6 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
         "Ricerca per N. assistenza.",
         "Report in PDF o file Excel, filtrando per date, cliente, gru e tecnico.",
       ],
-    },
-    {
-      id: "database",
-      icon: Database,
-      title: "Database",
-      points: ["Elenco di clienti, gru e interventi con ricerca veloce."],
     },
     {
       id: "area",
@@ -385,7 +380,7 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
       id: "theme",
       icon: Sun,
       title: "Tema chiaro o scuro",
-      points: ["Il pulsante in alto a destra cambia tema: automatico (come il telefono), chiaro o scuro."],
+      points: ["Il pulsante in alto a destra (sole e luna) cambia tema: automatico (come il telefono), chiaro o scuro."],
     },
     {
       id: "offline",

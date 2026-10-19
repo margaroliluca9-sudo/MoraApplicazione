@@ -835,8 +835,7 @@ export default function App() {
         </div>
       )}
 
-      {/* sul telefono si torna con "Home" nella barra in basso */}
-      {activeTab !== "dashboard" && !isMobileView && (
+      {activeTab !== "dashboard" && (
         <div className="sticky top-[76px] z-40 w-full py-3 px-4">
           <div className="max-w-6xl mx-auto">
             <button
@@ -1057,13 +1056,6 @@ export default function App() {
             </>
           ) : (
             <>
-              <NavButton
-                icon={Home}
-                label="Home"
-                active={activeTab === "dashboard"}
-                onClick={() => setActiveTab("dashboard")}
-                color={color}
-              />
               <NavButton
                 icon={PlusCircle}
                 label="Nuovo"
