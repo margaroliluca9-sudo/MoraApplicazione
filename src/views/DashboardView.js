@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { onSnapshot } from "firebase/firestore";
 import {
   PlusCircle,
   Search,
@@ -33,9 +32,9 @@ import { PersonalAreaModal } from "../components/modals/PersonalAreaModal";
 import { todayItems, monthNumbers, relDay, isoFromLogDate } from "../personal";
 import { HomeGrid } from "../components/HomeGrid";
 import { GuideModal } from "../components/modals/GuideModal";
-import { WIDGETS, HOME_PREFS, resolveHome, cachedPrefs, cachePrefs } from "../home";
+import { PracticeModal } from "../components/modals/PracticeModal";
+import { WIDGETS, resolveHome } from "../home";
 import { vanOf, itemsOf, lowItems, fmtQty } from "../van";
-import { chatDoc, key as techKey } from "../chat";
 import { PrintLogButton } from "../components/PrintLogButton";
 
 // --- VIEWS PRINCIPALI ---
@@ -76,12 +75,17 @@ export const DashboardView = ({
   vans = [],
   vanItems = [],
   chatEnabled = false,
+  machineTypes = [],
+  homePrefs = null,
+  onHomePrefs = () => {},
+  onPreviewLook = () => {},
 }) => {
   const color = layoutConfig?.themeColor || "blue";
   const [query, setQuery] = useState("");
   const [showMine, setShowMine] = useState(false);
-  // GUIDA ALL'APP (pulsante in fondo alla Home, accanto a "Modifica la tua Home")
+  // GUIDA ALL'APP (pulsante in fondo alla Home, accanto a "Modifica aspetto")
   const [showGuide, setShowGuide] = useState(false);
+  const [showPractice, setShowPractice] = useState(false);
   const openGuide = () => setShowGuide(true);
   const guideGo = (to) => {
     setShowGuide(false);
@@ -89,29 +93,15 @@ export const DashboardView = ({
     else if (to === "area") setArea("home");
     else if (to === "van") setArea("van");
     else if (to === "print") setArea("print");
+    else if (to === "practice") setShowPractice(true);
     else if (to === "chat") {
       setChatConv(null);
       setShowChat(true);
     } else if (to === "home-edit") setTimeout(() => window.dispatchEvent(new CustomEvent("mora-edit-home")), 50);
   };
-  // HOME PERSONALIZZATA: preferenze del tecnico (prima la copia sul telefono, poi il database)
-  const [prefs, setPrefs] = useState(() => cachedPrefs(currentTechName));
-  useEffect(() => {
-    const me = techKey(currentTechName);
-    if (!me) return undefined;
-    setPrefs(cachedPrefs(currentTechName));
-    const unsub = onSnapshot(
-      chatDoc(HOME_PREFS, me),
-      (snap) => {
-        const d = snap.exists() ? snap.data() : null;
-        const p = d && !d.reset ? d : null;
-        cachePrefs(currentTechName, p);
-        setPrefs(p);
-      },
-      () => {},
-    );
-    return () => unsub();
-  }, [currentTechName]);
+  // HOME PERSONALIZZATA: preferenze del tecnico (le carica App, valgono anche per l'aspetto)
+  const prefs = homePrefs;
+  const setPrefs = onHomePrefs;
   // CHAT: si apre anche dalla notifica (indirizzo "?chat=..." o messaggio dell'app)
   const convFromUrl = () => {
     try {
@@ -547,6 +537,8 @@ export const DashboardView = ({
         color={color}
         searchBox={searchBox}
         onSaved={setPrefs}
+        onPreviewLook={onPreviewLook}
+        baseLook={layoutConfig}
         footer={
           <button
             type="button"
@@ -558,6 +550,17 @@ export const DashboardView = ({
           </button>
         }
       />
+      {showPractice && (
+        <PracticeModal
+          onClose={() => setShowPractice(false)}
+          technicians={technicians}
+          machineTypes={machineTypes}
+          layoutConfig={layoutConfig}
+          vans={vans}
+          vanItems={vanItems}
+          color={color}
+        />
+      )}
       {showGuide && (
         <GuideModal
           color={color}

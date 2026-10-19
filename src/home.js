@@ -1,7 +1,8 @@
 // HOME PERSONALIZZATA: ogni tecnico sceglie ordine, grandezza, colore e quali riquadri vedere.
 //  .../public/data/home_prefs/<nome tecnico in minuscolo>
 //    { order: [id...] (riquadri visibili, in ordine), hidden: [id...], sizes: { id: "s"|"m"|"l" },
-//      colors: { id: "blue"|... }, search: true|false, compact: true|false }
+//      colors: { id: "blue"|... }, search: true|false, compact: true|false,
+//      look: { preset, themeColor, mode, fontFamily, fontScale, radiusStyle, density } }   (aspetto dell'app)
 // Senza preferenze salvate la Home è quella standard decisa dall'admin.
 import { setDoc } from "firebase/firestore";
 import { chatDoc, key } from "./chat";
@@ -29,6 +30,37 @@ export const WIDGETS = ["w_today", "w_recent", "w_month", "w_van"];
 export const isWidget = (id) => String(id).startsWith("w_");
 export const sizesFor = (id) => (id === "new" || isWidget(id) ? ["m", "l"] : ["s", "m", "l"]);
 export const defaultSize = (id) => (id === "new" || isWidget(id) ? "l" : "m");
+
+// --- ASPETTO PERSONALE (vale solo per il tecnico, sopra le scelte dell'admin) ---
+export const LOOK_KEYS = ["themeColor", "mode", "fontFamily", "fontScale", "radiusStyle", "density"];
+export const THEME_COLORS = ["blue", "red", "green", "purple", "orange", "slate"];
+export const MODES = [
+  { id: "auto", label: "Automatico" },
+  { id: "light", label: "Chiaro" },
+  { id: "dark", label: "Scuro" },
+];
+// modelli pronti
+export const PRESETS = [
+  { id: "classico", label: "Classico Mora", about: "Blu, come l'app di sempre", look: { themeColor: "blue", mode: "auto", fontFamily: "barlow", fontScale: "normal", radiusStyle: "normal", density: "normal" } },
+  { id: "officina", label: "Officina", about: "Lettere grandi, alto contrasto, per i guanti", look: { themeColor: "orange", mode: "light", fontFamily: "roboto", fontScale: "xlarge", radiusStyle: "square", density: "comfortable" } },
+  { id: "notte", label: "Notte", about: "Scuro, riposa gli occhi", look: { themeColor: "purple", mode: "dark", fontFamily: "inter", fontScale: "normal", radiusStyle: "round", density: "normal" } },
+  { id: "compatto", label: "Compatto", about: "Più cose nello schermo", look: { themeColor: "green", mode: "auto", fontFamily: "system", fontScale: "small", radiusStyle: "square", density: "compact" } },
+  { id: "elegante", label: "Elegante", about: "Grigio, angoli morbidi, ariosa", look: { themeColor: "slate", mode: "light", fontFamily: "montserrat", fontScale: "normal", radiusStyle: "round", density: "comfortable" } },
+  { id: "vista", label: "Lettura facile", about: "Lettere molto grandi e spazi ampi", look: { themeColor: "blue", mode: "light", fontFamily: "lato", fontScale: "xlarge", radiusStyle: "normal", density: "comfortable" } },
+  { id: "rosso", label: "Rosso Mora", about: "Rosso deciso, tema scuro", look: { themeColor: "red", mode: "dark", fontFamily: "barlow", fontScale: "normal", radiusStyle: "normal", density: "normal" } },
+];
+// aspetto pulito (solo valori ammessi); null = come l'admin
+export const cleanLook = (look) => {
+  if (!look || typeof look !== "object") return null;
+  const out = {};
+  LOOK_KEYS.forEach((k) => {
+    if (look[k] != null && look[k] !== "") out[k] = String(look[k]);
+  });
+  if (out.themeColor && !THEME_COLORS.includes(out.themeColor)) delete out.themeColor;
+  if (out.mode && !MODES.some((m) => m.id === out.mode)) delete out.mode;
+  if (look.preset) out.preset = String(look.preset);
+  return Object.keys(out).length ? out : null;
+};
 
 const cacheKey = (me) => "mora_home_" + key(me);
 export const cachedPrefs = (me) => {
@@ -75,6 +107,7 @@ export const resolveHome = (base, prefs, available) => {
     colors,
     search: p.search !== false,
     compact: !!p.compact,
+    look: cleanLook(p.look),
   };
 };
 
@@ -103,6 +136,7 @@ export const savePrefs = async (me, home) => {
     colors: home.colors,
     search: home.search,
     compact: home.compact,
+    look: cleanLook(home.look),
     updatedAt: Date.now(),
   };
   cachePrefs(me, data);

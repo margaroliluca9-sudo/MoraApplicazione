@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   PlusCircle,
   History,
@@ -47,7 +47,8 @@ import { NavButton } from "./components/NavButton";
 import { AdminLoginModal } from "./components/AdminLoginModal";
 import { PhotoViewerModal } from "./components/PhotoViewerModal";
 import { PdfHost } from "./components/PdfHost";
-import { refreshPush, key as techKey } from "./chat";
+import { refreshPush, key as techKey, chatDoc } from "./chat";
+import { HOME_PREFS, cachedPrefs, cachePrefs, cleanLook } from "./home";
 import { PERSONAL } from "./personal";
 import { VAN } from "./van";
 import { VanHost } from "./components/VanHost";
@@ -103,10 +104,48 @@ export default function App() {
     ...DEFAULT_LAYOUT,
     ...getCachedLayout(),
   }));
+  // ASPETTO PERSONALE ("Modifica aspetto"): preferenze del tecnico, sopra quelle dell'admin
+  const [homePrefs, setHomePrefs] = useState(() => cachedPrefs(currentTechName));
+  const [previewLook, setPreviewLook] = useState(undefined); // anteprima mentre modifica
+  const modeBeforePreview = useRef(null);
   useEffect(() => {
-    applyAppearance(layoutConfig);
+    const me = techKey(currentTechName);
+    setHomePrefs(cachedPrefs(currentTechName));
+    if (!user || !me) return undefined;
+    const unsub = onSnapshot(
+      chatDoc(HOME_PREFS, me),
+      (snap) => {
+        const d = snap.exists() ? snap.data() : null;
+        const p = d && !d.reset ? d : null;
+        cachePrefs(currentTechName, p);
+        setHomePrefs(p);
+      },
+      () => {}
+    );
+    return () => unsub();
+  }, [user, currentTechName]);
+  const look = previewLook !== undefined ? previewLook : cleanLook(homePrefs && homePrefs.look);
+  const viewConfig = useMemo(() => {
+    if (!look) return layoutConfig;
+    const { mode, preset, ...rest } = look;
+    return { ...layoutConfig, ...rest };
+  }, [layoutConfig, look]);
+  useEffect(() => {
+    applyAppearance(viewConfig);
+  }, [viewConfig]);
+  useEffect(() => {
     cacheLayout(layoutConfig);
   }, [layoutConfig]);
+  // tema chiaro/scuro scelto nell'aspetto: lo applico anche al pulsante in alto
+  const lookMode = look ? look.mode : undefined;
+  useEffect(() => {
+    if (lookMode) setThemeMode(lookMode);
+  }, [lookMode]);
+  const handlePreviewLook = (next, phase) => {
+    if (phase === "start") modeBeforePreview.current = themeMode;
+    if (phase === "cancel" && modeBeforePreview.current) setThemeMode(modeBeforePreview.current);
+    setPreviewLook(phase === "cancel" || phase === "save" ? undefined : next);
+  };
   const [isAppLoading, setIsAppLoading] = useState(true);
   const [globalPhotoView, setGlobalPhotoView] = useState(null);
 
@@ -578,7 +617,7 @@ export default function App() {
   };
   logoutRef.current = handleLogout;
 
-  const color = layoutConfig.themeColor || "blue";
+  const color = viewConfig.themeColor || "blue";
 
   if (isAppLoading && layoutConfig.showSplash === false)
     return <div className="mora-app min-h-screen bg-slate-100" />;
@@ -796,7 +835,7 @@ export default function App() {
             {activeTab === "dashboard" && (
               <DashboardView
                 onNavigate={setActiveTab}
-                layoutConfig={layoutConfig}
+                layoutConfig={viewConfig}
                 onAdminAccess={handleAdminAccess}
                 logs={logs}
                 customers={customers}
@@ -813,6 +852,10 @@ export default function App() {
                 vans={vans}
                 vanItems={vanItems}
                 chatEnabled={chatEnabled}
+                homePrefs={homePrefs}
+                machineTypes={machineTypes}
+                onHomePrefs={setHomePrefs}
+                onPreviewLook={handlePreviewLook}
               />
             )}
             {activeTab === "explore" && (
@@ -835,7 +878,7 @@ export default function App() {
                 isMobile={isMobileView}
                 onAuthAdmin={() => setShowAdminLogin(true)}
                 isAdmin={isAdminAuthenticated}
-                layoutConfig={layoutConfig}
+                layoutConfig={viewConfig}
                 onOpenCustomer={openCustomerDetail}
                 onOpenMachine={openMachineDetail}
                 onOpenPhotos={setGlobalPhotoView}
@@ -846,7 +889,7 @@ export default function App() {
                 logs={logs}
                 machines={machines}
                 customers={customers}
-                layoutConfig={layoutConfig}
+                layoutConfig={viewConfig}
                 technicians={technicians}
                 onOpenPhotos={setGlobalPhotoView}
               />
@@ -871,7 +914,7 @@ export default function App() {
                 onSuccess={() => setActiveTab("history")}
                 isMobile={isMobileView}
                 onTechUpdate={setCurrentTechName}
-                layoutConfig={layoutConfig}
+                layoutConfig={viewConfig}
                 allLogs={logs}
                 vans={vans}
                 vanItems={vanItems}

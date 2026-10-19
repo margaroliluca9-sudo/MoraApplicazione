@@ -34,6 +34,7 @@ import {
   Save,
   Pencil,
   StickyNote,
+  FlaskConical,
 } from "lucide-react";
 
 // TUTORIAL 1: solo l'intervento, passo per passo (go = pulsante "Prova adesso")
@@ -42,8 +43,8 @@ const reportStepsFor = ({ hasVan }) =>
     {
       icon: PlusCircle,
       title: "1. Apri il rapporto",
-      text: "Tocca «Nuovo Rapporto» in Home oppure «Nuovo» nella barra in basso. Il modulo è sempre lo stesso: i campi con l'asterisco rosso sono obbligatori.",
-      go: { label: "Apri Nuovo Rapporto", to: "new" },
+      text: "Tocca «Nuovo Rapporto» in Home oppure «Nuovo» nella barra in basso. I campi con l'asterisco rosso sono obbligatori. Vuoi esercitarti? «Prova un rapporto» usa clienti di esempio e non salva niente.",
+      go: { label: "Prova un rapporto (non salva)", to: "practice" },
     },
     {
       icon: Users,
@@ -113,7 +114,8 @@ const appStepsFor = ({ hasVan, chatEnabled, isAdmin }) =>
     {
       icon: BookOpen,
       title: "Benvenuto",
-      text: "Un giro completo dell'app, pagina per pagina. Per scrivere un rapporto passo per passo c'è il tutorial «Solo l'intervento».",
+      text: "Un giro completo dell'app, pagina per pagina. Per scrivere un rapporto passo per passo c'è il tutorial «Solo l'intervento». Per esercitarti senza salvare niente usa «Prova un rapporto».",
+      go: { label: "Prova un rapporto (non salva)", to: "practice" },
     },
     {
       icon: LayoutGrid,
@@ -207,9 +209,9 @@ const appStepsFor = ({ hasVan, chatEnabled, isAdmin }) =>
     },
     {
       icon: LayoutGrid,
-      title: "La tua Home",
-      text: "«Modifica la tua Home» in fondo: sposti i riquadri col dito, scegli grandezza e colore, nascondi quelli che non usi e aggiungi Oggi, Ultimi interventi, Il mio mese" + (hasVan ? ", Furgone." : "."),
-      go: { label: "Modifica la Home", to: "home-edit" },
+      title: "Modifica aspetto",
+      text: "In fondo alla Home: scegli un modello di grafica (Classico Mora, Officina, Notte, Compatto, Elegante, Lettura facile, Rosso Mora) oppure personalizza colore, tema, carattere, lettere, angoli e spaziatura. Poi sposti i riquadri col dito, scegli grandezza e colore, nascondi quelli che non usi e aggiungi Oggi, Ultimi interventi, Il mio mese" + (hasVan ? ", Furgone." : ".") + " Vale solo per te.",
+      go: { label: "Apri Modifica aspetto", to: "home-edit" },
     },
     {
       icon: Smartphone,
@@ -247,6 +249,15 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
         "Fune o catena sostituita: se lo scrivi nella descrizione, l'app chiede certificato, diametro e lunghezza (o «dati non disponibili» con il motivo).",
         "Puoi aggiungere fino a 3 foto dalla fotocamera o dalla galleria.",
         "Senza rete il rapporto resta salvato sul telefono e parte da solo quando torna la connessione.",
+      ],
+    },
+    {
+      id: "practice",
+      icon: FlaskConical,
+      title: "Prova un rapporto (senza salvare)",
+      points: [
+        "Dalla Guida tocca «Prova un rapporto»: si apre il modulo vero con clienti e gru di esempio (ESEMPIO SRL, OFFICINA PROVA SPA).",
+        "Puoi provare tutto: assistente, fune e catena, foto. Quando tocchi Salva non viene salvato niente: l'app ti mostra cosa sarebbe successo" + (hasVan ? ", anche quali pezzi verrebbero tolti dal furgone." : "."),
       ],
     },
     {
@@ -335,14 +346,16 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
     {
       id: "home",
       icon: LayoutGrid,
-      title: "Modifica la tua Home",
+      title: "Modifica aspetto",
       points: [
-        "In fondo alla Home tocca «Modifica la tua Home».",
-        "Trascina ⠿ per spostare un riquadro, × per nasconderlo.",
+        "In fondo alla Home tocca «Modifica aspetto». Quello che scegli vale solo per te e lo vedi subito.",
+        "Modelli pronti: Classico Mora, Officina (lettere grandi, per i guanti), Notte (scuro), Compatto, Elegante, Lettura facile, Rosso Mora.",
+        "«Personalizza ogni dettaglio»: colore principale, tema (automatico, chiaro, scuro), carattere, grandezza delle lettere, angoli e spaziatura. «Come l'app» torna alla grafica dell'admin.",
+        "Riquadri: trascina ⠿ per spostarli, × per nasconderli.",
         "Tocca un riquadro per scegliere grandezza (Piccolo, Medio, Grande), colore e posizione.",
         "«Aggiungi riquadro»: rimetti quelli nascosti o aggiungi Oggi, Ultimi interventi, Il mio mese" + (hasVan ? ", Furgone." : "."),
-        "Opzioni: barra di ricerca, riquadri compatti, ripristina la Home standard.",
-        "La tua Home la ritrovi uguale anche su un altro telefono.",
+        "Opzioni: barra di ricerca, riquadri compatti, «Ripristina tutto come prima».",
+        "«Fatto» salva, «Annulla» rimette com'era. Ritrovi tutto uguale anche su un altro telefono.",
       ],
     },
     chatEnabled && {
@@ -471,6 +484,14 @@ export const GuideModal = ({ onClose, onGo = () => {}, hasVan = false, chatEnabl
           </div>
         </div>
 
+        {tab !== "all" && (
+          <div className="px-4 pt-3 shrink-0">
+            <button type="button" data-guide-go="practice" onClick={() => onGo("practice")}
+              className="w-full h-12 rounded-2xl bg-amber-400 text-amber-950 font-black text-sm flex items-center justify-center gap-2">
+              <FlaskConical className="w-5 h-5" /> Prova un rapporto · non salva niente
+            </button>
+          </div>
+        )}
         {tab === "report" && (
           <Tour key="report" id="report" steps={reportStepsFor({ hasVan })} onGo={onGo} color={color}
             endLabel="Tutta l'app" onEnd={() => setTab("app")} />

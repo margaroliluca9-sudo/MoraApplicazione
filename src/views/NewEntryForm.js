@@ -44,7 +44,7 @@ import {
   toSavedRope,
   detectReplacements,
 } from "../ropes";
-import { vanOf, applyReport } from "../van";
+import { vanOf, applyReport, findUsedParts, itemsOf } from "../van";
 import { showVanUsage } from "../components/VanHost";
 
 export const NewEntryForm = ({
@@ -60,6 +60,9 @@ export const NewEntryForm = ({
   allLogs,
   vans = [],
   vanItems = [],
+  // PROVA (dalla Guida): si compila tutto ma non si salva niente
+  practice = false,
+  onPractice = () => {},
 }) => {
   const [formData, setFormData] = useState({
     technician: "",
@@ -310,6 +313,25 @@ export const NewEntryForm = ({
       return;
     }
     setFormError("");
+    if (practice) {
+      const { ropes } = formData;
+      const van = vanOf(vans, formData.technician);
+      onPractice({
+        technician: formData.technician,
+        others: formData.additionalTechnicians.filter((t) => t.trim() !== ""),
+        customer: formData.customer.toUpperCase().trim(),
+        machineId: formData.machineId.toUpperCase().trim(),
+        machineType: formData.machineType,
+        description: formData.description,
+        photos: formData.photos.length,
+        fune: toSavedRope(ropes && ropes.fune),
+        catena: toSavedRope(ropes && ropes.catena),
+        newCustomer: !customers.find((c) => c.name === formData.customer.toUpperCase().trim()),
+        van: van ? van.name : "",
+        parts: van ? findUsedParts(formData.description, itemsOf(vanItems, van.id)).map((u) => ({ name: u.item.name, qty: u.qty, unit: u.item.unit || "pz", unknown: u.unknown })) : [],
+      });
+      return;
+    }
     setIsSubmitting(true);
     try {
       if (onTechUpdate) onTechUpdate(formData.technician);

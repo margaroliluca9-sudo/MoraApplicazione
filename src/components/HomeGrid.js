@@ -1,4 +1,4 @@
-// Riquadri della Home: normali e in "Modifica la tua Home" (sposta, grandezza, colore, nascondi, aggiungi).
+// Riquadri della Home: normali e in "Modifica aspetto" (modelli di grafica, sposta, grandezza, colore, nascondi, aggiungi).
 import React, { useEffect, useRef, useState } from "react";
 import { GripVertical, X, Plus, Pencil, ChevronLeft, ChevronRight, EyeOff, RotateCcw, Check } from "lucide-react";
 import {
@@ -15,6 +15,7 @@ import {
 } from "../home";
 import { describeError } from "../utils";
 import { Sheet, PrimaryBtn, GhostBtn } from "./personal/PersonalUi";
+import { LookEditor } from "./LookEditor";
 
 const tone = (c, theme) => (c === "auto" ? theme : c);
 
@@ -138,7 +139,7 @@ const Toggle = ({ label, sub, on, onChange, id }) => (
   </button>
 );
 
-export const HomeGrid = ({ items, home, me, color = "blue", searchBox, onEditingChange = () => {}, onSaved = () => {}, footer = null }) => {
+export const HomeGrid = ({ items, home, me, color = "blue", searchBox, onEditingChange = () => {}, onSaved = () => {}, footer = null, onPreviewLook = () => {}, baseLook = {} }) => {
   const [draft, setDraft] = useState(null); // copia in modifica
   const [sel, setSel] = useState(null); // riquadro scelto (foglio opzioni)
   const [adding, setAdding] = useState(false);
@@ -162,9 +163,16 @@ export const HomeGrid = ({ items, home, me, color = "blue", searchBox, onEditing
     setDraft({ ...home, order: [...home.order], hidden: [...home.hidden], sizes: { ...home.sizes }, colors: { ...home.colors } });
     setError("");
     onEditingChange(true);
+    onPreviewLook(home.look, "start");
+  };
+  // aspetto: si vede subito su tutta l'app
+  const setLook = (look) => {
+    setDraft((d) => ({ ...d, look }));
+    onPreviewLook(look, "change");
   };
   startRef.current = start;
-  const stop = () => {
+  const stop = (phase = "cancel") => {
+    onPreviewLook(undefined, phase);
     setDraft(null);
     setSel(null);
     setAdding(false);
@@ -184,7 +192,7 @@ export const HomeGrid = ({ items, home, me, color = "blue", searchBox, onEditing
     setBusy(true);
     try {
       onSaved(await savePrefs(me, draft));
-      stop();
+      stop("save");
     } catch (e) {
       setError("Non salvata: " + describeError(e));
     }
@@ -195,7 +203,7 @@ export const HomeGrid = ({ items, home, me, color = "blue", searchBox, onEditing
     try {
       await resetPrefs(me);
       onSaved(null);
-      stop();
+      stop("save");
     } catch (e) {
       setError("Non ripristinata: " + describeError(e));
     }
@@ -235,20 +243,23 @@ export const HomeGrid = ({ items, home, me, color = "blue", searchBox, onEditing
         <div className="sticky top-0 z-30 -mx-1 px-3 py-3 rounded-2xl bg-white border border-slate-200 shadow-md space-y-2" data-section="home-edit-bar">
           <div className="flex items-center gap-2">
             <div className="flex-1 min-w-0">
-              <h3 className="font-black text-slate-800 text-lg leading-tight">Modifica la tua Home</h3>
+              <h3 className="font-black text-slate-800 text-lg leading-tight">Modifica aspetto</h3>
               <p className="text-xs font-bold text-slate-500">Vale solo per te</p>
             </div>
-            <button type="button" onClick={stop} className="h-10 px-3 rounded-xl border border-slate-300 text-slate-700 font-bold text-sm">Annulla</button>
+            <button type="button" onClick={() => stop("cancel")} className="h-10 px-3 rounded-xl border border-slate-300 text-slate-700 font-bold text-sm">Annulla</button>
             <button type="button" data-action="home-done" onClick={save} disabled={busy} className={`h-10 px-4 rounded-xl bg-${color}-600 text-white font-black text-sm flex items-center gap-1.5 disabled:opacity-50`}>
               <Check className="w-4 h-4" /> Fatto
             </button>
           </div>
-          <p className="text-xs text-slate-600 font-semibold">Trascina ⠿ per spostare. Tocca un riquadro per grandezza e colore. × per nasconderlo.</p>
+          <p className="text-xs text-slate-600 font-semibold">Scegli un modello di grafica qui sotto. Nei riquadri: trascina ⠿ per spostare, tocca per grandezza e colore, × per nascondere.</p>
           {error && <p className="text-sm font-bold text-red-600">{error}</p>}
         </div>
       ) : (
         h.search && searchBox
       )}
+
+      {editing && <LookEditor look={draft.look} base={baseLook} onChange={setLook} />}
+      {editing && <h4 className="font-black text-slate-800 uppercase text-sm tracking-wide px-1 pt-1">Riquadri della Home</h4>}
 
       <div className={`grid grid-cols-2 md:grid-cols-4 ${gap}`} data-section="home-tiles">
         {h.order.map((id) => {
@@ -283,13 +294,13 @@ export const HomeGrid = ({ items, home, me, color = "blue", searchBox, onEditing
           <Toggle id="search" label="Barra di ricerca" sub="In alto nella Home" on={draft.search} onChange={(v) => set({ search: v })} />
           <Toggle id="compact" label="Riquadri compatti" sub="Più riquadri nello schermo" on={draft.compact} onChange={(v) => set({ compact: v })} />
           <button type="button" data-action="home-reset" onClick={reset} disabled={busy} className="w-full flex items-center gap-2 py-3 text-slate-600 font-bold">
-            <RotateCcw className="w-4 h-4" /> Ripristina la Home standard
+            <RotateCcw className="w-4 h-4" /> Ripristina tutto come prima
           </button>
         </div>
       ) : (
         <div className="flex flex-wrap items-center justify-center gap-2" data-section="home-footer">
           <button type="button" data-action="home-edit" onClick={start} className="flex items-center gap-2 px-4 h-11 rounded-full text-sm font-bold text-slate-500 hover:bg-white">
-            <Pencil className="w-4 h-4" /> Modifica la tua Home
+            <Pencil className="w-4 h-4" /> Modifica aspetto
           </button>
           {footer}
         </div>
