@@ -28,7 +28,7 @@ export const AssistantPanel = ({ machineLogs }) => {
           <Repeat className="w-4 h-4 shrink-0 text-red-600" />
           <span>
             Guasto che si ripete: {r.label} in {r.count} interventi negli ultimi
-            2 mesi ({r.dates.join(", ")}). Forse conviene cercare la causa.
+            2 mesi ({r.dates.join(", ")}).
           </span>
         </div>
       ))}
