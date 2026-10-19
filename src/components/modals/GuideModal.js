@@ -74,7 +74,7 @@ const reportStepsFor = ({ hasVan }) =>
     {
       icon: FileText,
       title: "7. Scrivi la descrizione",
-      text: "Scrivi chiaro cosa hai fatto, una cosa per frase: «Sostituito contattore salita. Regolato freno. Prove funzionali ok». Così l'assistente e" + (hasVan ? " il magazzino del furgone capiscono" : " la ricerca trovano") + " tutto. Con «Frasi rapide» sotto la descrizione aggiungi con un tocco le frasi che scrivete più spesso.",
+      text: "Scrivi chiaro cosa hai fatto, una cosa per frase: «Sostituito contattore salita. Regolato freno. Prove funzionali ok». Così l'assistente e" + (hasVan ? " il magazzino del furgone capiscono" : " la ricerca trovano") + " tutto.",
     },
     {
       icon: Link2,
@@ -248,7 +248,6 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
         "Sotto la gru l'assistente ricorda cosa era rimasto in sospeso l'ultima volta e i guasti che si ripetono.",
         "Fune o catena sostituita: se lo scrivi nella descrizione, l'app chiede certificato, diametro e lunghezza (o «dati non disponibili» con il motivo).",
         "Puoi aggiungere fino a 3 foto dalla fotocamera o dalla galleria.",
-        "«Frasi rapide» sotto la descrizione: le frasi che scrivete più spesso (prima le tue), si aggiungono con un tocco.",
         "Il rapporto si salva da solo sul telefono mentre scrivi: se l'app si chiude, riaprendo trovi «Hai un rapporto non finito» con «Riprendi» o «Scarta».",
         "Dopo «Salva» compare «Rapporto salvato»: «Altra gru, stesso cliente» tiene tecnici, data e cliente e svuota il resto; poi «Stampa» o «Vai allo Storico».",
         "Senza rete il rapporto resta salvato sul telefono e parte da solo quando torna la connessione.",

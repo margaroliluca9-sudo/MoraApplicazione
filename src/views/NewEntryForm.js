@@ -18,7 +18,6 @@ import {
   Printer,
   History as HistoryIcon,
   RotateCcw,
-  Zap,
 } from "lucide-react";
 import {
   collection,
@@ -51,7 +50,7 @@ import {
 } from "../ropes";
 import { vanOf, applyReport, findUsedParts, itemsOf } from "../van";
 import { showVanUsage } from "../components/VanHost";
-import { loadDraft, saveDraft, clearDraft, draftWhen, quickPhrases, addPhrase } from "../reportHelpers";
+import { loadDraft, saveDraft, clearDraft, draftWhen } from "../reportHelpers";
 import { printIntervention } from "../components/PrintLogButton";
 
 export const NewEntryForm = ({
@@ -98,8 +97,6 @@ export const NewEntryForm = ({
   const [pendingDraft, setPendingDraft] = useState(() => (practice ? null : loadDraft()));
   // dopo "Salva": riepilogo con "Altra gru, stesso cliente", "Stampa", "Vai allo Storico"
   const [savedLog, setSavedLog] = useState(null);
-  const [showPhrases, setShowPhrases] = useState(false);
-  const phrases = useMemo(() => quickPhrases(allLogs || [], formData.technician), [allLogs, formData.technician]);
   useEffect(() => {
     if (practice || pendingDraft || savedLog) return undefined;
     if (!formData.customer && !formData.description) return undefined;
@@ -743,29 +740,6 @@ export const NewEntryForm = ({
                 })
               }
             />
-            <div className="pt-1" data-section="quick-phrases">
-                <button type="button" onClick={() => setShowPhrases(!showPhrases)} className={`text-[11px] font-black uppercase tracking-wide text-${color}-700 flex items-center gap-1 min-h-[32px]`}>
-                  <Zap className="w-3.5 h-3.5" /> Frasi rapide {showPhrases ? "▲" : "▼"}
-                </button>
-                {showPhrases && (
-                  <div className="flex flex-wrap gap-1.5 pt-1">
-                    {phrases.map((ph) => (
-                      <button
-                        key={ph}
-                        type="button"
-                        data-phrase={ph}
-                        onClick={() => {
-                          const description = addPhrase(formData.description, ph);
-                          setFormData({ ...formData, description, ropes: autoTick(formData.ropes, description) });
-                        }}
-                        className="px-3 py-2 rounded-full bg-slate-100 border border-slate-200 text-xs font-bold text-slate-700 active:scale-95"
-                      >
-                        + {ph}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
           </div>
         );
       case "ropes":
