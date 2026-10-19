@@ -1,16 +1,18 @@
 // LA MIA AREA · Le mie ore: calendario degli orari (ore fatte, straordinari, ore in meno,
 // ferie, permessi, malattia) con il riepilogo del mese.
 import React, { useState } from "react";
-import { ChevronLeft, ChevronRight, Plus, Minus, Share2, Check } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Minus, Share2, Check, BellRing } from "lucide-react";
+import { Switch } from "./SettingsPanel";
 import { todayIso, longDay, monthGrid } from "../../personal";
 import {
   KINDS, fmtMin, fmtDelta, byDate, deltaOf, monthSummary, cellLabel, monthLabel, summaryText,
-  saveDay, removeDay, getStd, setStd,
+  saveDay, removeDay, getStd, setStd, withDefaults, getSince, saveHoursReminder,
 } from "../../hours";
 import { describeError } from "../../utils";
 import { PanelHeader, Sheet, Field, INPUT, PrimaryBtn, GhostBtn } from "./PersonalUi";
 
 const TONE = {
+  auto: "text-slate-400",
   slate: "text-slate-600",
   emerald: "text-emerald-700",
   amber: "text-amber-700",
@@ -19,6 +21,12 @@ const TONE = {
   red: "text-red-700",
 };
 const DOT = { slate: "bg-slate-400", emerald: "bg-emerald-500", amber: "bg-amber-500", blue: "bg-blue-500", purple: "bg-purple-500", red: "bg-red-500" };
+
+// ore per il promemoria: dalle 12:00 alle 21:00 ogni 15 minuti
+const REM_TIMES = Array.from({ length: 37 }, (_, i) => {
+  const m = 12 * 60 + i * 15;
+  return `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+});
 
 const Stepper = ({ value, onChange, step = 15, min = 0, max = 960, label }) => (
   <div className="flex items-center gap-3">
@@ -32,7 +40,7 @@ const Stepper = ({ value, onChange, step = 15, min = 0, max = 960, label }) => (
   </div>
 );
 
-export const HoursPanel = ({ me, hours = [], onBack, onClose, color = "blue" }) => {
+export const HoursPanel = ({ me, hours = [], reminder = null, onBack, onClose, color = "blue" }) => {
   const now = new Date();
   const [cur, setCur] = useState({ y: now.getFullYear(), m: now.getMonth() });
   const [std, setStdState] = useState(getStd);
@@ -40,10 +48,22 @@ export const HoursPanel = ({ me, hours = [], onBack, onClose, color = "blue" }) 
   const [error, setError] = useState("");
   const [flash, setFlash] = useState("");
   const today = todayIso();
-  const map = byDate(hours);
+  const since = getSince();
+  // con i giorni normali automatici (lun–ven, 8 h) fino a oggi
+  const all = withDefaults(hours, cur.y, cur.m, std, since);
+  const map = byDate(all);
   const cells = monthGrid(cur.y, cur.m);
-  const sum = monthSummary(hours, cur.y, cur.m, std);
-  const todayH = map[today];
+  const sum = monthSummary(all, cur.y, cur.m, std);
+  const todayH = byDate(withDefaults(hours, now.getFullYear(), now.getMonth(), std, since))[today];
+  const [rem, setRem] = useState(() => ({ enabled: !!(reminder && reminder.enabled), time: (reminder && reminder.time) || "17:30" }));
+  const saveRem = async (next) => {
+    setRem(next);
+    try {
+      await saveHoursReminder(me, next);
+    } catch (e) {
+      setError("Non salvato: " + describeError(e));
+    }
+  };
 
   const shift = (d) =>
     setCur(({ y, m }) => {
@@ -53,7 +73,7 @@ export const HoursPanel = ({ me, hours = [], onBack, onClose, color = "blue" }) 
   const open = (date) => {
     setError("");
     const h = map[date];
-    setEdit(h ? { ...h, exists: true } : { date, kind: "lavoro", minutes: std, note: "", exists: false });
+    setEdit(h && !h.auto ? { ...h, exists: true } : { date, kind: h ? h.kind : "lavoro", minutes: h ? h.minutes : std, note: "", exists: false });
   };
   const quick = async (h, msg) => {
     setError("");
@@ -83,7 +103,7 @@ export const HoursPanel = ({ me, hours = [], onBack, onClose, color = "blue" }) 
     }
   };
   const share = async () => {
-    const text = summaryText(me, hours, cur.y, cur.m, std);
+    const text = summaryText(me, all, cur.y, cur.m, std);
     try {
       if (navigator.share) await navigator.share({ title: "Le mie ore", text });
       else {
@@ -100,7 +120,9 @@ export const HoursPanel = ({ me, hours = [], onBack, onClose, color = "blue" }) 
   };
   const todayText = !todayH
     ? "da segnare"
-    : todayH.kind === "lavoro"
+    : todayH.auto
+      ? todayH.kind === "lavoro" ? `${fmtMin(todayH.minutes)} (normale)` : "festa"
+      : todayH.kind === "lavoro"
       ? fmtMin(todayH.minutes) + (deltaOf(todayH, std) ? ` (${fmtDelta(deltaOf(todayH, std))})` : "")
       : todayH.kind === "permesso"
         ? "permesso " + fmtMin(todayH.minutes)
@@ -171,7 +193,8 @@ export const HoursPanel = ({ me, hours = [], onBack, onClose, color = "blue" }) 
             })}
           </div>
           <div className="flex flex-wrap gap-x-3 gap-y-1 justify-center pt-3 text-[11px] font-bold text-slate-500">
-            <span className="flex items-center gap-1"><span className={`w-2 h-2 rounded-full ${DOT.slate}`} />8 = ore fatte</span>
+            <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-slate-300" />8 grigio = normale (automatico)</span>
+            <span className="flex items-center gap-1"><span className={`w-2 h-2 rounded-full ${DOT.slate}`} />8 = segnato da te</span>
             <span className="flex items-center gap-1"><span className={`w-2 h-2 rounded-full ${DOT.emerald}`} />+ in più</span>
             <span className="flex items-center gap-1"><span className={`w-2 h-2 rounded-full ${DOT.amber}`} />− in meno</span>
             <span className="flex items-center gap-1"><span className={`w-2 h-2 rounded-full ${DOT.blue}`} />F ferie</span>
@@ -219,10 +242,38 @@ export const HoursPanel = ({ me, hours = [], onBack, onClose, color = "blue" }) 
           </div>
         </section>
 
+        <section className="bg-white rounded-3xl border border-slate-200 p-4 space-y-3" data-section="hours-reminder">
+          <div className="flex items-center gap-3">
+            <span className="w-10 h-10 rounded-xl bg-slate-100 text-slate-600 flex items-center justify-center shrink-0">
+              <BellRing className="w-5 h-5" />
+            </span>
+            <div className="flex-1">
+              <div className="font-bold text-slate-800">Ricordamelo</div>
+              <div className="text-xs text-slate-500">Dal lunedì al venerdì una notifica: «Hai fatto ore in più o in meno?»</div>
+            </div>
+            <Switch id="hours-reminder" label="Ricordamelo" on={rem.enabled} onChange={(v) => saveRem({ ...rem, enabled: v })} />
+          </div>
+          {rem.enabled && (
+            <div className="flex items-center gap-3 pl-[52px]">
+              <span className="text-sm font-bold text-slate-600 flex-1">Alle ore</span>
+              <select value={rem.time} aria-label="Ora del promemoria" data-field="hours-reminder-time"
+                onChange={(e) => saveRem({ ...rem, time: e.target.value })}
+                className="h-11 px-3 rounded-xl border border-slate-300 bg-slate-50 font-black text-slate-800">
+                {REM_TIMES.map((t) => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
+            </div>
+          )}
+          {rem.enabled && (
+            <p className="text-xs text-slate-500 pl-[52px]">Servono le notifiche accese (⚙ Impostazioni). Se hai già segnato il giorno non arriva.</p>
+          )}
+        </section>
+
         <section className="bg-white rounded-3xl border border-slate-200 p-4 flex items-center gap-3">
           <div className="flex-1">
             <div className="font-bold text-slate-800">Orario normale</div>
-            <div className="text-xs text-slate-500">Quello che conta come giornata piena</div>
+            <div className="text-xs text-slate-500">Da lunedì a venerdì conta da solo, se non scrivi altro</div>
           </div>
           <button type="button" aria-label="Orario normale meno 30 minuti" onClick={() => changeStd(Math.max(60, std - 30))} className="w-10 h-10 rounded-xl border border-slate-300 flex items-center justify-center"><Minus className="w-4 h-4" /></button>
           <span className="w-16 text-center font-black text-slate-800" data-hours-std>{fmtMin(std)}</span>

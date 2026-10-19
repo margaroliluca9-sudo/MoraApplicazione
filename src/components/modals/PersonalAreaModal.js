@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { X, CalendarDays, StickyNote, MessageSquare, Bell, Truck, ClipboardList, Printer, WifiOff, Settings, Timer } from "lucide-react";
 import { HoursPanel } from "../personal/HoursPanel";
 import { getSettings } from "../../settings";
-import { fmtMin, monthSummary, getStd } from "../../hours";
+import { fmtMin, monthSummary, getStd, withDefaults, getSince } from "../../hours";
 import { SettingsPanel } from "../personal/SettingsPanel";
 import { todayItems, monthNumbers, longDay, todayIso } from "../../personal";
 import { vanOf, itemsOf, lowItems } from "../../van";
@@ -44,6 +44,7 @@ export const PersonalAreaModal = ({
   reminders = [],
   contacts = [],
   hours = [],
+  hoursReminder = null,
   vans = [],
   vanItems = [],
   chatUnread = 0,
@@ -89,7 +90,7 @@ export const PersonalAreaModal = ({
   // numero dispari di riquadri: l'ultimo diventa largo
   const oddTiles = (5 + (chatEnabled ? 1 : 0) + (van ? 1 : 0) + (showHours ? 1 : 0)) % 2 === 1;
   const nowD = new Date();
-  const hoursSum = monthSummary(hours, nowD.getFullYear(), nowD.getMonth(), getStd());
+  const hoursSum = monthSummary(withDefaults(hours, nowD.getFullYear(), nowD.getMonth(), getStd(), getSince()), nowD.getFullYear(), nowD.getMonth(), getStd());
   const hoursSub = hoursSum.workDays
     ? `${fmtMin(hoursSum.worked)} a ${MONTH_SHORT[nowD.getMonth()]}${hoursSum.extra ? " · +" + fmtMin(hoursSum.extra) : ""}`
     : "Orari, ferie, permessi";
@@ -100,7 +101,7 @@ export const PersonalAreaModal = ({
   else if (panel === "print")
     body = <PrintPanel me={me} logs={logs} technicians={technicians} color={color} onBack={back} onClose={onClose} />;
   else if (panel === "hours" && showHours)
-    body = <HoursPanel me={me} hours={hours} color={color} onBack={back} onClose={onClose} />;
+    body = <HoursPanel me={me} hours={hours} reminder={hoursReminder} color={color} onBack={back} onClose={onClose} />;
   else if (panel === "settings") body = <SettingsPanel me={me} color={color} onBack={back} onClose={onClose} />;
   else if (panel === "notes") body = <NotesPanel me={me} notes={notes} color={color} onBack={back} onClose={onClose} />;
   else if (panel === "reminders")

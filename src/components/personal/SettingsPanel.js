@@ -4,6 +4,7 @@ import { Bell, BellOff, Loader2, MessageCircle, CalendarClock, Sparkles, Users, 
 import { PanelHeader } from "./PersonalUi";
 import { getPushState, enablePush, disablePush } from "../../chat";
 import { getSettings, setSetting, syncNotifyKinds, testNotification, markAsked } from "../../settings";
+import { markSince } from "../../hours";
 import { describeError } from "../../utils";
 
 // interruttore grande, facile da toccare
@@ -55,6 +56,7 @@ export const SettingsPanel = ({ me, color = "blue", onBack, onClose }) => {
     };
   }, []);
   const change = (k, v) => {
+    if (k === "hours" && v) markSince(); // i giorni automatici contano da oggi
     const next = setSetting(k, v);
     setSt(next);
     if ((k === "chat" || k === "reminders") && push === "on") syncNotifyKinds(next).catch(() => {});

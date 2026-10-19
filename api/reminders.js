@@ -1,5 +1,6 @@
 // AVVISI DI PROMEMORIA E IMPEGNI ("La mia area").
 // Viene chiamato ogni 5 minuti (GitHub Actions, .github/workflows/promemoria.yml).
+// Manda anche il promemoria di «Le mie ore» (hours_reminders) dal lunedì al venerdì.
 // Cerca i promemoria/impegni con l'avviso scaduto e non ancora mandato, manda la notifica
 // ai telefoni di quel tecnico e li segna come avvisati.
 const { encrypt, vapidAuth, allowedEndpoint } = require("./notify");
@@ -123,6 +124,71 @@ const messageFor = (kind, d) =>
         url: "/?area=reminders",
       };
 
+// --- LE MIE ORE: "Hai fatto ore in più o in meno?" dal lunedì al venerdì all'ora scelta ---
+// ora italiana (il server è in UTC)
+const romeNow = (now) => {
+  const f = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/Rome", year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", hour12: false, weekday: "short",
+  });
+  const p = Object.fromEntries(f.formatToParts(new Date(now)).map((x) => [x.type, x.value]));
+  return { iso: `${p.year}-${p.month}-${p.day}`, min: (Number(p.hour) % 24) * 60 + Number(p.minute), dow: p.weekday };
+};
+const easterOf = (year) => {
+  const a = year % 19, b = Math.floor(year / 100), c = year % 100, d = Math.floor(b / 4), e = b % 4;
+  const f = Math.floor((b + 8) / 25), g = Math.floor((b - f + 1) / 3), h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4), k = c % 4, l = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const month = Math.floor((h + l - 7 * m + 114) / 31), day = ((h + l - 7 * m + 114) % 31) + 1;
+  return new Date(Date.UTC(year, month - 1, day));
+};
+const isHoliday = (iso) => {
+  if (["01-01", "01-06", "04-25", "05-01", "06-02", "08-15", "11-01", "12-08", "12-25", "12-26"].includes(iso.slice(5))) return true;
+  const e = easterOf(Number(iso.slice(0, 4)));
+  return new Date(e.getTime() + 86400000).toISOString().slice(0, 10) === iso; // Pasquetta
+};
+const listAll = async (coll) => {
+  const out = [];
+  let page = "";
+  for (let i = 0; i < 5; i++) {
+    const j = await call(`${BASE}/${DATA}/${coll}?pageSize=300${page ? "&pageToken=" + page : ""}`);
+    (j.documents || []).forEach((d) => out.push(docOf(d)));
+    if (!j.nextPageToken) break;
+    page = j.nextPageToken;
+  }
+  return out;
+};
+const exists = async (coll, id) => {
+  try {
+    await call(`${BASE}/${DATA}/${coll}/${encodeURIComponent(id)}`);
+    return true;
+  } catch (e) {
+    if (/Firestore 404/.test(String(e.message))) return false;
+    throw e;
+  }
+};
+const HOURS_MSG = {
+  title: "Le mie ore",
+  body: "Hai fatto ore in più o in meno oggi? Tocca per segnarlo (se è una giornata normale non serve).",
+  url: "/?area=hours",
+};
+// promemoria delle ore da mandare adesso
+const hoursDue = async (now) => {
+  const r = romeNow(now);
+  if (r.dow === "Sat" || r.dow === "Sun" || isHoliday(r.iso)) return [];
+  const docs = await listAll("hours_reminders");
+  return docs.filter((d) => {
+    if (!d.enabled || !d.owner || d.lastSent === r.iso) return false;
+    const [h, m] = String(d.time || "17:30").split(":").map(Number);
+    const t = (h || 0) * 60 + (m || 0);
+    return r.min >= t && r.min < t + 180;
+  }).map((d) => ({ d, iso: r.iso }));
+};
+const markHoursSent = (doc, iso) =>
+  call(`https://firestore.googleapis.com/v1/${doc.name}?updateMask.fieldPaths=lastSent`, {
+    method: "PATCH",
+    body: JSON.stringify({ fields: { lastSent: { stringValue: iso } } }),
+  });
+
 const run = async (now = Date.now()) => {
   const due = [];
   for (const [kind, coll] of [["reminder", "personal_reminders"], ["event", "personal_events"]]) {
@@ -130,7 +196,8 @@ const run = async (now = Date.now()) => {
       if (d.notifyAt && d.notifyAt <= now + 60000) due.push({ kind, d });
     }
   }
-  if (!due.length) return { due: 0, sent: 0 };
+  const hours = await hoursDue(now).catch(() => []);
+  if (!due.length && !hours.length) return { due: 0, sent: 0, hours: 0 };
   const subs = (await subscriptions()).filter((s) => allowedEndpoint(s.endpoint) && s.keys && s.keys.p256dh && s.keys.auth);
   let sent = 0;
   for (const { kind, d } of due) {
@@ -147,7 +214,19 @@ const run = async (now = Date.now()) => {
     }
     await markSent(d, now);
   }
-  return { due: due.length, sent };
+  for (const { d, iso } of hours) {
+    const owner = key(d.owner);
+    // se ha già segnato il giorno non serve ricordarlo
+    const done = await exists("personal_hours", `${owner}_${iso}`.replace(/[^a-z0-9_-]/gi, "_"));
+    if (!done) {
+      const payload = JSON.stringify({ ...HOURS_MSG, tag: "ore-" + iso });
+      const mine = subs.filter((s) => key(s.technician) === owner && s.reminders !== false);
+      const res = await Promise.all(mine.map((s) => send(s, payload)));
+      sent += res.filter((st) => st >= 200 && st < 300).length;
+    }
+    await markHoursSent(d, iso);
+  }
+  return { due: due.length, hours: hours.length, sent };
 };
 
 const handler = async (req, res) => {
@@ -163,3 +242,5 @@ module.exports = handler;
 module.exports.run = run;
 module.exports.fromFields = fromFields;
 module.exports.messageFor = messageFor;
+module.exports.romeNow = romeNow;
+module.exports.isHoliday = isHoliday;

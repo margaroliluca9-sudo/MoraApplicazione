@@ -6,7 +6,8 @@
 // Un documento per giorno (id = owner_data). Le vede solo il tecnico.
 import { setDoc, deleteDoc } from "firebase/firestore";
 import { chatDoc, key } from "./chat";
-import { MONTHS, parseIso } from "./personal";
+import { MONTHS, parseIso, isoOf } from "./personal";
+import { easterOf } from "./season";
 
 export const HOURS = "personal_hours";
 export const STD_DEFAULT = 480; // orario normale: 8 ore
@@ -45,6 +46,32 @@ export const byDate = (list) => {
 };
 export const deltaOf = (h, std = STD_DEFAULT) => (h && h.kind === "lavoro" ? (Number(h.minutes) || 0) - std : 0);
 
+// FESTE NAZIONALI (non contano come giorno di lavoro)
+const FIXED = ["01-01", "01-06", "04-25", "05-01", "06-02", "08-15", "11-01", "12-08", "12-25", "12-26"];
+export const isHoliday = (iso) => {
+  const md = String(iso).slice(5);
+  if (FIXED.includes(md)) return true;
+  const y = Number(String(iso).slice(0, 4));
+  const e = easterOf(y);
+  const pasquetta = new Date(e.getFullYear(), e.getMonth(), e.getDate() + 1);
+  return isoOf(pasquetta) === iso;
+};
+// DI BASE: dal lunedì al venerdì (non festivi) sono giornate normali di lavoro, fino a oggi,
+// dal giorno in cui il tecnico ha acceso «Le mie ore». Si cambiano toccando il giorno.
+export const withDefaults = (list, y, m, std = STD_DEFAULT, since = "", today = isoOf(new Date())) => {
+  const map = byDate(list);
+  const out = [...(list || [])];
+  const days = new Date(y, m + 1, 0).getDate();
+  for (let d = 1; d <= days; d++) {
+    const iso = isoOf(new Date(y, m, d));
+    if (iso > today || (since && iso < since) || map[iso]) continue;
+    const dow = new Date(y, m, d).getDay();
+    if (dow === 0 || dow === 6) continue;
+    out.push(isHoliday(iso) ? { date: iso, kind: "festa", minutes: 0, auto: true } : { date: iso, kind: "lavoro", minutes: std, auto: true });
+  }
+  return out;
+};
+
 // riepilogo del mese
 export const monthSummary = (list, y, m, std = STD_DEFAULT) => {
   const k = ymOf(y, m);
@@ -69,6 +96,7 @@ export const cellLabel = (h, std = STD_DEFAULT) => {
   if (!h) return null;
   if (h.kind === "lavoro") {
     const d = deltaOf(h, std);
+    if (h.auto) return { text: short(h.minutes), tone: "auto" };
     if (d > 0) return { text: "+" + short(d), tone: "emerald" };
     if (d < 0) return { text: "-" + short(-d), tone: "amber" };
     return { text: short(h.minutes), tone: "slate" };
@@ -106,7 +134,8 @@ export const summaryText = (me, list, y, m, std = STD_DEFAULT) => {
   const k = ymOf(y, m);
   const days = (list || []).filter((h) => String(h.date).slice(0, 7) === k).sort((a, b) => a.date.localeCompare(b.date));
   const s = monthSummary(list, y, m, std);
-  const lines = days.map((h) => `${shortDay(h.date)}: ${dayText(h, std)}${h.note ? " – " + h.note : ""}`);
+  // i giorni normali messi in automatico non li elenco (contano nel totale)
+  const lines = days.filter((h) => !h.auto || h.kind !== "lavoro").map((h) => `${shortDay(h.date)}: ${dayText(h, std)}${h.note ? " – " + h.note : ""}`);
   const tot = [
     `Ore lavorate: ${fmtMin(s.worked)} in ${s.workDays} giorni`,
     s.extra ? `Straordinari: ${fmtMin(s.extra)}` : "",
@@ -115,7 +144,8 @@ export const summaryText = (me, list, y, m, std = STD_DEFAULT) => {
     s.permesso ? `Permessi: ${fmtMin(s.permesso)}` : "",
     s.malattia ? `Malattia: ${s.malattia} ${s.malattia === 1 ? "giorno" : "giorni"}` : "",
   ].filter(Boolean);
-  return `Ore di ${monthLabel(y, m).toLowerCase()} – ${me}\n${lines.join("\n")}\n\n${tot.join("\n")}`;
+  const intro = `(gli altri giorni da lunedì a venerdì: ${fmtMin(std)})`;
+  return `Ore di ${monthLabel(y, m).toLowerCase()} – ${me}\n${lines.join("\n")}${lines.length ? "\n" : ""}${intro}\n\n${tot.join("\n")}`;
 };
 
 export const saveDay = (me, h) =>
@@ -139,6 +169,34 @@ export const getStd = () => {
     return STD_DEFAULT;
   }
 };
+// da quando conta i giorni automatici (il giorno in cui si accende «Le mie ore»)
+const SINCE_KEY = "mora_hours_since";
+export const getSince = () => {
+  try {
+    return localStorage.getItem(SINCE_KEY) || "";
+  } catch (e) {
+    return "";
+  }
+};
+export const markSince = () => {
+  try {
+    if (!localStorage.getItem(SINCE_KEY)) localStorage.setItem(SINCE_KEY, isoOf(new Date()));
+  } catch (e) {
+    // niente
+  }
+};
+
+// PROMEMORIA DELLE ORE: notifica dal lunedì al venerdì all'ora scelta (la manda /api/reminders)
+//  .../public/data/hours_reminders/<tecnico> { owner, enabled, time "17:30", lastSent }
+export const HOURS_REMINDERS = "hours_reminders";
+export const saveHoursReminder = (me, r) =>
+  setDoc(chatDoc(HOURS_REMINDERS, key(me).replace(/[^a-z0-9_-]/gi, "_")), {
+    owner: key(me),
+    enabled: !!r.enabled,
+    time: /^\d{2}:\d{2}$/.test(r.time || "") ? r.time : "17:30",
+    updatedAt: Date.now(),
+  }, { merge: true });
+
 export const setStd = (n) => {
   try {
     localStorage.setItem(STD_KEY, String(n));

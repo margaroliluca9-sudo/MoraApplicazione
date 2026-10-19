@@ -14,6 +14,7 @@ export const PERSONAL = {
   reminders: "personal_reminders",
   contacts: "personal_contacts",
   hours: "personal_hours", // le mie ore (vedi hours.js)
+  hoursReminder: "hours_reminders", // promemoria delle ore (uno per tecnico)
 };
 
 // --- date ---

@@ -509,6 +509,7 @@ export const DashboardView = ({
           reminders={personal.reminders || []}
           contacts={personal.contacts || []}
           hours={personal.hours || []}
+          hoursReminder={(personal.hoursReminder || [])[0] || null}
           vans={vans}
           vanItems={vanItems}
           chatUnread={unread}
