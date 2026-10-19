@@ -987,6 +987,7 @@ export default function App() {
                 onOpenMachine={openMachineDetail}
                 onOpenPhotos={setGlobalPhotoView}
                 readOnly={isOffice}
+                me={isOffice ? "" : currentTechName}
               />
             )}
             {activeTab === "office" && (

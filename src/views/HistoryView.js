@@ -52,8 +52,10 @@ export const HistoryView = ({
   onOpenMachine,
   onOpenPhotos,
   readOnly = false, // ufficio: solo consultazione e stampa
+  me = "", // tecnico collegato: filtro «I miei»
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
+  const [show, setShow] = useState("all"); // all | mine | photos
   const [page, setPage] = useState(1);
   const [isDeleting, setIsDeleting] = useState(null);
   const [isEditing, setIsEditing] = useState(null);
@@ -106,7 +108,13 @@ export const HistoryView = ({
   }, [handleMouseMove, handleMouseUp]);
   // ---------------------------------------------------------
 
+  const meKey = String(me || "").trim().toLowerCase();
+  const isMine = (l) =>
+    String(l.technician || "").trim().toLowerCase() === meKey ||
+    (l.additionalTechnicians || []).some((t) => String(t).trim().toLowerCase() === meKey);
   const filtered = logs.filter((l) => {
+    if (show === "mine" && !isMine(l)) return false;
+    if (show === "photos" && !(l.photos && l.photos.length)) return false;
     const s = searchTerm.toLowerCase();
     return (
       (l.customer && l.customer.toLowerCase().includes(s)) ||
@@ -186,6 +194,32 @@ export const HistoryView = ({
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
         />
+      </div>
+      <div className="flex gap-2 max-w-xl mx-auto -mt-3" data-section="history-filter">
+        {[
+          ["all", "Tutti"],
+          ...(meKey ? [["mine", "I miei"]] : []),
+          ["photos", "Con foto"],
+        ].map(([id, label]) => (
+          <button
+            key={id}
+            type="button"
+            data-history-filter={id}
+            aria-pressed={show === id}
+            onClick={() => {
+              setShow(id);
+              setPage(1);
+            }}
+            className={`h-9 px-4 rounded-full text-sm font-bold border ${
+              show === id ? `bg-${color}-600 border-${color}-600 text-white` : "bg-white border-slate-200 text-slate-600"
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+        {(show !== "all" || searchTerm) && (
+          <span className="self-center ml-auto text-xs font-bold text-slate-400">{filtered.length} interventi</span>
+        )}
       </div>
       <div
         className={`rounded-3xl overflow-hidden shadow-xl ${getProPanelClass(
