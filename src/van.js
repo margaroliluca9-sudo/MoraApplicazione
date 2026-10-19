@@ -208,7 +208,7 @@ export const assignTech = async (vans, techName, vanId) => {
   }
 };
 
-// testo dei movimenti: "Montato da Marco: AMUT · gru 6"
+// testo dei movimenti: "Montato da Marco: MARIO ROSSI SRL · gru 6"
 export const moveLabel = (m) => {
   const who = m.author ? ` (${m.author})` : "";
   if (m.kind === "rapporto") return `Montato${who}${m.note ? ": " + m.note : ""}`;

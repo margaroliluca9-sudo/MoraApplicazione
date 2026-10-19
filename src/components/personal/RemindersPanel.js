@@ -137,7 +137,7 @@ export const RemindersPanel = ({ me, reminders, contacts, onBack, onClose, color
           }
         >
           <Field label="Cosa ricordare">
-            <input className={INPUT} value={edit.title} aria-label="Cosa ricordare" placeholder="Es. Richiamare sig. Drappo (AMUT)" onChange={(e) => setEdit({ ...edit, title: e.target.value })} />
+            <input className={INPUT} value={edit.title} aria-label="Cosa ricordare" placeholder="Es. Richiamare sig. Rossi (Mario Rossi Srl)" onChange={(e) => setEdit({ ...edit, title: e.target.value })} />
           </Field>
           <div className="grid grid-cols-2 gap-3">
             <Field label="Giorno">
@@ -171,7 +171,7 @@ export const RemindersPanel = ({ me, reminders, contacts, onBack, onClose, color
             <input className={INPUT} value={contact.name} aria-label="Nome" onChange={(e) => setContact({ ...contact, name: e.target.value })} />
           </Field>
           <Field label="Chi è (facoltativo)">
-            <input className={INPUT} value={contact.role} aria-label="Chi è" placeholder="Es. AMUT – manutenzione" onChange={(e) => setContact({ ...contact, role: e.target.value })} />
+            <input className={INPUT} value={contact.role} aria-label="Chi è" placeholder="Es. Mario Rossi Srl – manutenzione" onChange={(e) => setContact({ ...contact, role: e.target.value })} />
           </Field>
           <Field label="Telefono">
             <input type="tel" className={INPUT} value={contact.phone} aria-label="Telefono" onChange={(e) => setContact({ ...contact, phone: e.target.value })} />

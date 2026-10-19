@@ -44,7 +44,6 @@ export const byDate = (list) => {
   });
   return o;
 };
-export const deltaOf = (h, std = STD_DEFAULT) => (h && h.kind === "lavoro" ? (Number(h.minutes) || 0) - std : 0);
 
 // FESTE NAZIONALI (non contano come giorno di lavoro)
 const FIXED = ["01-01", "01-06", "04-25", "05-01", "06-02", "08-15", "11-01", "12-08", "12-25", "12-26"];
@@ -56,6 +55,14 @@ export const isHoliday = (iso) => {
   const pasquetta = new Date(e.getFullYear(), e.getMonth(), e.getDate() + 1);
   return isoOf(pasquetta) === iso;
 };
+// sabato, domenica e feste: niente orario normale, tutte le ore fatte sono straordinario
+export const isFreeDay = (iso) => {
+  const d = parseIso(iso);
+  return !!d && (d.getDay() === 0 || d.getDay() === 6 || isHoliday(iso));
+};
+export const stdOf = (iso, std = STD_DEFAULT) => (iso && isFreeDay(iso) ? 0 : std);
+export const deltaOf = (h, std = STD_DEFAULT) => (h && h.kind === "lavoro" ? (Number(h.minutes) || 0) - stdOf(h.date, std) : 0);
+
 // DI BASE: dal lunedì al venerdì (non festivi) sono giornate normali di lavoro, fino a oggi,
 // dal giorno in cui il tecnico ha acceso «Le mie ore». Si cambiano toccando il giorno.
 export const withDefaults = (list, y, m, std = STD_DEFAULT, since = "", today = isoOf(new Date())) => {
@@ -82,7 +89,7 @@ export const monthSummary = (list, y, m, std = STD_DEFAULT) => {
       const min = Number(h.minutes) || 0;
       s.worked += min;
       s.workDays += 1;
-      const d = min - std;
+      const d = deltaOf(h, std);
       if (d > 0) s.extra += d;
       if (d < 0) s.less += -d;
     } else if (h.kind === "permesso") s.permesso += Number(h.minutes) || 0;
@@ -97,6 +104,7 @@ export const cellLabel = (h, std = STD_DEFAULT) => {
   if (h.kind === "lavoro") {
     const d = deltaOf(h, std);
     if (h.auto) return { text: short(h.minutes), tone: "auto" };
+    if (isFreeDay(h.date)) return { text: "+" + short(h.minutes), tone: "emerald" };
     if (d > 0) return { text: "+" + short(d), tone: "emerald" };
     if (d < 0) return { text: "-" + short(-d), tone: "amber" };
     return { text: short(h.minutes), tone: "slate" };
@@ -144,7 +152,7 @@ export const summaryText = (me, list, y, m, std = STD_DEFAULT) => {
     s.permesso ? `Permessi: ${fmtMin(s.permesso)}` : "",
     s.malattia ? `Malattia: ${s.malattia} ${s.malattia === 1 ? "giorno" : "giorni"}` : "",
   ].filter(Boolean);
-  const intro = `(gli altri giorni da lunedì a venerdì: ${fmtMin(std)})`;
+  const intro = `(gli altri giorni da lunedì a venerdì: ${fmtMin(std)}; sabato, domenica e feste tutto straordinario)`;
   return `Ore di ${monthLabel(y, m).toLowerCase()} – ${me}\n${lines.join("\n")}${lines.length ? "\n" : ""}${intro}\n\n${tot.join("\n")}`;
 };
 
