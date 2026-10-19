@@ -61,7 +61,7 @@ const reportStepsFor = ({ hasVan }) =>
     {
       icon: Building2,
       title: "4. Il cliente",
-      text: "Inizia a scrivere il nome: compaiono i clienti già presenti, tocca quello giusto. Se è nuovo scrivilo per intero: viene aggiunto da solo quando salvi.",
+      text: "Sotto «Cliente» ci sono gli «Ultimi» clienti dove sei stato: un tocco e è scritto. Altrimenti inizia a scrivere il nome: compaiono i clienti già presenti, tocca quello giusto. Se è nuovo scrivilo per intero: viene aggiunto da solo quando salvi.",
     },
     {
       icon: Factory,
@@ -148,7 +148,7 @@ const appStepsFor = ({ hasVan, chatEnabled, isAdmin }) =>
     {
       icon: History,
       title: "Storico",
-      text: "Tutti gli interventi divisi per giorno (Oggi, Ieri, Settimana scorsa, poi mese per mese), con la ricerca per cliente, gru o parole della descrizione. Da qui stampi, modifichi (entro 3 minuti, poi con il lucchetto e la password admin) e apri le foto.",
+      text: "Tutti gli interventi divisi per giorno (Oggi, Ieri, Settimana scorsa, poi mese per mese), con la ricerca per cliente, gru o parole della descrizione e i filtri «I miei» e «Con foto». Da qui stampi, modifichi (entro 3 minuti, poi con il lucchetto e la password admin) e apri le foto.",
     },
     {
       icon: Printer,
@@ -246,6 +246,7 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
       title: "Nuovo Rapporto",
       points: [
         "Scegli tecnico principale (e quelli aggiuntivi), data, N. assistenza, cliente e gru.",
+        "Sotto «Cliente» gli «Ultimi» clienti dove sei stato: un tocco e è scritto.",
         "Scrivendo il cliente compaiono le sue gru: tocca quella giusta e tipo e portata si compilano da soli.",
         "Sotto la gru l'assistente ricorda cosa era rimasto in sospeso l'ultima volta e i guasti che si ripetono.",
         "Fune o catena sostituita: se lo scrivi nella descrizione, l'app chiede certificato, diametro e lunghezza (o «dati non disponibili» con il motivo).",
@@ -272,6 +273,7 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
       points: [
         "Tutti gli interventi, dal più recente, divisi per giorno: Oggi, Ieri, Questa settimana, Settimana scorsa e poi mese per mese.",
         "La ricerca trova cliente, gru, parole della descrizione, fune e catena.",
+        "Sotto la ricerca: «Tutti», «I miei» (solo quelli dove c'eri tu) e «Con foto».",
         "Tocca «Gru …» su un intervento per aprire la scheda di quella gru.",
         "Fune e catena sostituite sono indicate sotto la descrizione.",
         "Modificare o eliminare: entro 3 minuti dal salvataggio lo puoi fare tu (matita e cestino), dopo compare un lucchetto e serve la password admin.",
