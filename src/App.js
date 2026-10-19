@@ -13,6 +13,8 @@ import {
   Smartphone,
   WifiOff,
   UploadCloud,
+  Home,
+  Folder,
 } from "lucide-react";
 import { signInAnonymously, onAuthStateChanged } from "firebase/auth";
 import {
@@ -32,6 +34,7 @@ import { getSafeMatricola } from "./utils";
 import { PRO_BUTTON_SECONDARY } from "./ui";
 import { GlobalLoginScreen } from "./components/GlobalLoginScreen";
 import { SplashScreen } from "./components/SplashScreen";
+import { SEASONS, seasonOf } from "./season";
 import { CraneMark } from "./components/CraneMark";
 import {
   THEME_MODES,
@@ -61,6 +64,17 @@ import { OfficeView } from "./views/OfficeView";
 import { NewEntryForm } from "./views/NewEntryForm";
 import { HistoryView } from "./views/HistoryView";
 import { AdminPanel } from "./views/AdminPanel";
+
+// animazione di avvio del periodo dell'anno (si può provare con "?stagione=natale")
+const splashSeason = (cfg) => {
+  try {
+    const forced = new URLSearchParams(window.location.search).get("stagione");
+    if (SEASONS.includes(forced)) return forced;
+  } catch (e) {
+    // niente
+  }
+  return cfg.seasonalSplash === false ? "normale" : seasonOf();
+};
 
 export default function App() {
   // TEMA chiaro / scuro (scelto su ogni dispositivo)
@@ -141,6 +155,14 @@ export default function App() {
   useEffect(() => {
     if (lookMode) setThemeMode(lookMode);
   }, [lookMode]);
+  // RUOLI: "tecnico" (tutta l'app) o "ufficio" (solo interventi ed Esplora). Lo decide l'admin in Staff.
+  const meTech = technicians.find((t) => techKey(t.name) === techKey(currentTechName));
+  const isOffice = !!meTech && meTech.role === "ufficio";
+  // chi fa i rapporti: solo i tecnici (quelli dell'ufficio non compaiono negli elenchi)
+  const fieldTechs = useMemo(() => technicians.filter((t) => t.role !== "ufficio"), [technicians]);
+  useEffect(() => {
+    if (isOffice && !["dashboard", "history", "explore"].includes(activeTab)) setActiveTab("dashboard");
+  }, [isOffice, activeTab]);
   const handlePreviewLook = (next, phase) => {
     if (phase === "start") modeBeforePreview.current = themeMode;
     if (phase === "cancel" && modeBeforePreview.current) setThemeMode(modeBeforePreview.current);
@@ -627,6 +649,7 @@ export default function App() {
       <SplashScreen
         dark={isDark}
         title={layoutConfig.appTitle || "Assistenza Mora"}
+        season={splashSeason(layoutConfig)}
       />
     );
 
@@ -845,7 +868,7 @@ export default function App() {
                 onOpenMachine={openMachineDetail}
                 chatMessages={chatMessages}
                 chatReads={chatReads}
-                technicians={technicians}
+                technicians={fieldTechs}
                 isAdmin={isAdminAuthenticated}
                 onOpenPhotos={setGlobalPhotoView}
                 personal={personal}
@@ -856,6 +879,7 @@ export default function App() {
                 machineTypes={machineTypes}
                 onHomePrefs={setHomePrefs}
                 onPreviewLook={handlePreviewLook}
+                isOffice={isOffice}
               />
             )}
             {activeTab === "explore" && (
@@ -872,7 +896,7 @@ export default function App() {
                 logs={logs}
                 machines={machines}
                 customers={customers}
-                technicians={technicians}
+                technicians={fieldTechs}
                 machineTypes={machineTypes}
                 loading={loading}
                 isMobile={isMobileView}
@@ -882,6 +906,7 @@ export default function App() {
                 onOpenCustomer={openCustomerDetail}
                 onOpenMachine={openMachineDetail}
                 onOpenPhotos={setGlobalPhotoView}
+                readOnly={isOffice}
               />
             )}
             {activeTab === "office" && (
@@ -890,7 +915,7 @@ export default function App() {
                 machines={machines}
                 customers={customers}
                 layoutConfig={viewConfig}
-                technicians={technicians}
+                technicians={fieldTechs}
                 onOpenPhotos={setGlobalPhotoView}
               />
             )}
@@ -908,7 +933,7 @@ export default function App() {
               <NewEntryForm
                 user={user}
                 customers={customers}
-                technicians={technicians}
+                technicians={fieldTechs}
                 machineTypes={machineTypes}
                 machines={machines}
                 onSuccess={() => setActiveTab("history")}
@@ -971,27 +996,55 @@ export default function App() {
 
       {isMobileView && (
         <nav className="fixed bottom-0 left-0 right-0 p-3 flex justify-around z-50 bg-white border-t border-slate-200 shadow-[0_-5px_20px_rgba(0,0,0,0.05)]">
-          <NavButton
-            icon={PlusCircle}
-            label="Nuovo"
-            active={activeTab === "new"}
-            onClick={() => setActiveTab("new")}
-            color={color}
-          />
-          <NavButton
-            icon={History}
-            label="Storico"
-            active={activeTab === "history"}
-            onClick={() => setActiveTab("history")}
-            color={color}
-          />
-          <NavButton
-            icon={Settings}
-            label="Admin"
-            active={activeTab === "admin"}
-            onClick={handleAdminAccess}
-            color={color}
-          />
+          {isOffice ? (
+            <>
+              <NavButton
+                icon={Home}
+                label="Home"
+                active={activeTab === "dashboard"}
+                onClick={() => setActiveTab("dashboard")}
+                color={color}
+              />
+              <NavButton
+                icon={History}
+                label="Interventi"
+                active={activeTab === "history"}
+                onClick={() => setActiveTab("history")}
+                color={color}
+              />
+              <NavButton
+                icon={Folder}
+                label="Esplora"
+                active={activeTab === "explore"}
+                onClick={() => setActiveTab("explore")}
+                color={color}
+              />
+            </>
+          ) : (
+            <>
+              <NavButton
+                icon={PlusCircle}
+                label="Nuovo"
+                active={activeTab === "new"}
+                onClick={() => setActiveTab("new")}
+                color={color}
+              />
+              <NavButton
+                icon={History}
+                label="Storico"
+                active={activeTab === "history"}
+                onClick={() => setActiveTab("history")}
+                color={color}
+              />
+              <NavButton
+                icon={Settings}
+                label="Admin"
+                active={activeTab === "admin"}
+                onClick={handleAdminAccess}
+                color={color}
+              />
+            </>
+          )}
         </nav>
       )}
 

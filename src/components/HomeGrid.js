@@ -148,7 +148,7 @@ const Toggle = ({ label, sub, on, onChange, id }) => (
   </button>
 );
 
-export const HomeGrid = ({ items, home, me, color = "blue", searchBox, onEditingChange = () => {}, onSaved = () => {}, footer = null, onPreviewLook = () => {}, baseLook = {} }) => {
+export const HomeGrid = ({ items, home, me, color = "blue", searchBox, onEditingChange = () => {}, onSaved = () => {}, footer = null, onPreviewLook = () => {}, baseLook = {}, editable = true }) => {
   const [draft, setDraft] = useState(null); // copia in modifica
   const [sel, setSel] = useState(null); // riquadro scelto (foglio opzioni)
   const [adding, setAdding] = useState(false);
@@ -274,7 +274,7 @@ export const HomeGrid = ({ items, home, me, color = "blue", searchBox, onEditing
       const el = e.currentTarget;
       const pointerId = e.pointerId;
       press.current = { id, x: e.clientX, y: e.clientY, timer: null };
-      if (!editing)
+      if (!editing && editable)
         press.current.timer = setTimeout(() => {
           if (!press.current || press.current.id !== id) return;
           start();
@@ -391,9 +391,11 @@ export const HomeGrid = ({ items, home, me, color = "blue", searchBox, onEditing
         </div>
       ) : (
         <div className="flex flex-wrap items-center justify-center gap-2" data-section="home-footer">
-          <button type="button" data-action="home-edit" onClick={start} className="flex items-center gap-2 px-4 h-11 rounded-full text-sm font-bold text-slate-500 hover:bg-white">
-            <Pencil className="w-4 h-4" /> Modifica aspetto
-          </button>
+          {editable && (
+            <button type="button" data-action="home-edit" onClick={start} className="flex items-center gap-2 px-4 h-11 rounded-full text-sm font-bold text-slate-500 hover:bg-white">
+              <Pencil className="w-4 h-4" /> Modifica aspetto
+            </button>
+          )}
           {footer}
         </div>
       )}

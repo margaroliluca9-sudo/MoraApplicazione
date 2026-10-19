@@ -33,6 +33,7 @@ export const HistoryView = ({
   onOpenCustomer,
   onOpenMachine,
   onOpenPhotos,
+  readOnly = false, // ufficio: solo consultazione e stampa
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(1);
@@ -266,20 +267,24 @@ export const HistoryView = ({
                     >
                       <Printer className="w-4 h-4" />
                     </button>
-                    <button
-                      onClick={() => handleEdit(log)}
-                      className="p-2 bg-slate-100 text-slate-400 rounded-lg hover:text-blue-500"
-                      title="Modifica"
-                    >
-                      <Edit className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(log)}
-                      className="p-2 bg-slate-100 text-slate-400 rounded-lg hover:text-red-500"
-                      title="Elimina"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                    {!readOnly && (
+                      <>
+                        <button
+                          onClick={() => handleEdit(log)}
+                          className="p-2 bg-slate-100 text-slate-400 rounded-lg hover:text-blue-500"
+                          title="Modifica"
+                        >
+                          <Edit className="w-4 h-4" />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(log)}
+                          className="p-2 bg-slate-100 text-slate-400 rounded-lg hover:text-red-500"
+                          title="Elimina"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
+                      </>
+                    )}
                   </div>
                 </div>
               </div>
@@ -433,20 +438,24 @@ export const HistoryView = ({
                         >
                           <Printer className="w-4 h-4" />
                         </button>
-                        <button
-                          onClick={() => handleEdit(log)}
-                          className={`text-${color}-500 hover:scale-110`}
-                          title="Modifica"
-                        >
-                          <Edit className="w-4 h-4" />
-                        </button>
-                        <button
-                          onClick={() => handleDelete(log)}
-                          className="text-red-500 hover:scale-110"
-                          title="Elimina"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        {!readOnly && (
+                          <>
+                            <button
+                              onClick={() => handleEdit(log)}
+                              className={`text-${color}-500 hover:scale-110`}
+                              title="Modifica"
+                            >
+                              <Edit className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDelete(log)}
+                              className="text-red-500 hover:scale-110"
+                              title="Elimina"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </>
+                        )}
                       </div>
                     </td>
                   </tr>

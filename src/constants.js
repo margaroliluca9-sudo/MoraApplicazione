@@ -23,6 +23,8 @@ export const DEFAULT_LAYOUT = {
   radiusStyle: "normal",
   density: "normal",
   showSplash: true,
+  // animazione di avvio delle feste (Natale, Pasqua, estate, Halloween)
+  seasonalSplash: true,
   // Admin > Design: chat tra tecnici (spenta finché l'admin non la attiva)
   chatEnabled: false,
   formSettings: {

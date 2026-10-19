@@ -79,6 +79,7 @@ export const DashboardView = ({
   homePrefs = null,
   onHomePrefs = () => {},
   onPreviewLook = () => {},
+  isOffice = false, // ufficio: solo interventi ed Esplora
 }) => {
   const color = layoutConfig?.themeColor || "blue";
   const [query, setQuery] = useState("");
@@ -94,6 +95,8 @@ export const DashboardView = ({
     else if (to === "van") setArea("van");
     else if (to === "print") setArea("print");
     else if (to === "practice") setShowPractice(true);
+    else if (to === "history") onNavigate("history");
+    else if (to === "explore") onNavigate("explore");
     else if (to === "chat") {
       setChatConv(null);
       setShowChat(true);
@@ -333,8 +336,13 @@ export const DashboardView = ({
     if (id === "w_van" && !myVan) return;
     items[id] = widgets[id];
   });
-  const available = Object.keys(items).filter((id) => id !== "mine" && id !== "chat" && (id !== "area" || currentTechName));
-  const home = resolveHome(order, prefs, available);
+  const available = isOffice
+    ? ["history", "explore"]
+    : Object.keys(items).filter((id) => id !== "mine" && id !== "chat" && (id !== "area" || currentTechName));
+  const home = isOffice
+    ? resolveHome(["history", "explore"], { order: ["history", "explore"], sizes: { history: "l", explore: "l" } }, available)
+    : resolveHome(order, prefs, available);
+  if (isOffice) items.history = { ...items.history, label: "Interventi", desc: "Tutti gli interventi, con la stampa" };
 
   const Section = ({ title, icon: Icon, total, max, children }) => (
     <div className="space-y-2">
@@ -531,6 +539,7 @@ export const DashboardView = ({
         />
       )}
       <HomeGrid
+        editable={!isOffice}
         items={items}
         home={home}
         me={currentTechName}
@@ -563,6 +572,7 @@ export const DashboardView = ({
       )}
       {showGuide && (
         <GuideModal
+          role={isOffice ? "ufficio" : "tecnico"}
           color={color}
           hasVan={!!myVan}
           chatEnabled={chatEnabled}

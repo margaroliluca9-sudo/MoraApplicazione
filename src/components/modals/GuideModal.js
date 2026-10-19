@@ -141,7 +141,7 @@ const appStepsFor = ({ hasVan, chatEnabled, isAdmin }) =>
     {
       icon: History,
       title: "Storico",
-      text: "Tutti gli interventi dal più recente, con filtri. Da qui stampi, modifichi (entro 3 minuti, poi con la password admin) e apri le foto.",
+      text: "Tutti gli interventi dal più recente, con la ricerca per cliente, gru o parole della descrizione. Da qui stampi, modifichi (entro 3 minuti, poi con la password admin) e apri le foto.",
     },
     {
       icon: Printer,
@@ -265,7 +265,7 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
       icon: History,
       title: "Storico",
       points: [
-        "Tutti gli interventi, dal più recente, con filtri e ricerca.",
+        "Tutti gli interventi, dal più recente, con la ricerca (cliente, gru, parole della descrizione, fune e catena).",
         "Fune e catena sostituite sono indicate sotto la descrizione.",
         "Modificare o eliminare: entro 3 minuti dal salvataggio lo puoi fare tu, dopo serve la password admin.",
       ],
@@ -404,6 +404,115 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
     },
   ].filter(Boolean);
 
+// GUIDA DI CHI È IN UFFICIO: vede solo gli interventi ed Esplora
+const officeSteps = [
+  {
+    icon: BookOpen,
+    title: "Benvenuto",
+    text: "La tua app è fatta per consultare: trovi tutti gli interventi dei tecnici, le schede delle gru e dei clienti, e stampi i rapporti che ti servono.",
+  },
+  {
+    icon: LayoutGrid,
+    title: "La Home",
+    text: "In alto la ricerca, poi due riquadri: «Interventi» ed «Esplora». Gli stessi li trovi nella barra in basso, con «Home». In fondo c'è sempre questa guida.",
+  },
+  {
+    icon: Search,
+    title: "Cerca qualsiasi cosa",
+    text: "Nella barra in alto scrivi un cliente, una matricola, un N. assistenza, un tecnico, una data o una parola della descrizione: trovi clienti, gru e interventi.",
+  },
+  {
+    icon: History,
+    title: "Interventi",
+    text: "Tutti gli interventi dal più recente. Con «Cerca» trovi quelli di un cliente, di una gru o con una parola della descrizione; apri le foto e vedere fune e catena sostituite. Qui si consulta soltanto: non si modifica niente.",
+    go: { label: "Apri Interventi", to: "history" },
+  },
+  {
+    icon: Printer,
+    title: "Stampare",
+    text: "Ogni intervento ha il pulsante «Stampa»: crea il rapporto con l'intestazione Mora, i dati della gru, la descrizione e le foto. Poi «Condividi o stampa» (mail, WhatsApp, stampante), «Apri PDF» o «Scarica».",
+  },
+  {
+    icon: Folder,
+    title: "Esplora",
+    text: "Sfogli i clienti, apri le loro gru e leggi gli interventi di ognuna, con foto e stampa.",
+    go: { label: "Apri Esplora", to: "explore" },
+  },
+  {
+    icon: Factory,
+    title: "La scheda della gru",
+    text: "Toccando una gru vedi tutto il suo storico: date, tecnici, descrizioni, foto, fune e catena sostituite, e cosa era rimasto in sospeso.",
+  },
+  {
+    icon: Sun,
+    title: "Tema e app sul telefono",
+    text: "Il pulsante in alto a destra cambia tema (automatico, chiaro, scuro). Puoi installare l'app: iPhone → Condividi → «Aggiungi alla schermata Home»; Android → «Installa app».",
+  },
+  {
+    icon: BookOpen,
+    title: "Fatto!",
+    text: "Per i dettagli apri «Tutte le funzioni» e cerca una parola (es. stampa, foto, cliente).",
+  },
+];
+const officeSections = [
+  {
+    id: "search",
+    icon: Search,
+    title: "Ricerca",
+    points: [
+      "In Home: cerca insieme clienti, gru e interventi (nome, matricola, N. assistenza, tecnico, data, parole della descrizione).",
+      "Tocca un risultato per aprire la scheda della gru con tutto il suo storico.",
+    ],
+  },
+  {
+    id: "history",
+    icon: History,
+    title: "Interventi",
+    points: [
+      "Tutti gli interventi dal più recente. «Cerca» trova cliente, gru o parole della descrizione. Per un tecnico o una data usa la ricerca in Home.",
+      "Foto: tocca «FOTO» per vederle. Fune e catena sostituite sono scritte sotto la descrizione.",
+      "Solo consultazione: modifiche ed eliminazioni le fanno i tecnici o l'admin.",
+    ],
+  },
+  {
+    id: "print",
+    icon: Printer,
+    title: "Stampare",
+    points: [
+      "Il pulsante «Stampa» c'è su ogni intervento (Interventi, scheda della gru, Esplora, ricerca).",
+      "Il foglio ha l'intestazione Mora, i dati della gru, la descrizione e le foto.",
+      "Dalla finestra del PDF: «Condividi o stampa», «Apri PDF» oppure «Scarica».",
+    ],
+  },
+  {
+    id: "explore",
+    icon: Folder,
+    title: "Esplora",
+    points: ["Sfoglia i clienti, apri le loro gru e leggi gli interventi di ognuna, con foto e stampa."],
+  },
+  {
+    id: "machine",
+    icon: Factory,
+    title: "Scheda della gru",
+    points: ["Storico completo della gru: date, tecnici, descrizioni, foto, fune e catena sostituite, cose rimaste in sospeso."],
+  },
+  {
+    id: "phone",
+    icon: Smartphone,
+    title: "Installare l'app",
+    points: [
+      "iPhone: apri l'app in Safari, tocca Condividi → «Aggiungi alla schermata Home».",
+      "Android: dal menu di Chrome tocca «Installa app».",
+    ],
+  },
+  {
+    id: "theme",
+    icon: Sun,
+    title: "Tema chiaro o scuro",
+    points: ["Il pulsante in alto a destra cambia tema: automatico, chiaro o scuro."],
+  },
+];
+
 // un tutorial a passi
 const Tour = ({ steps, onGo, onEnd, endLabel, color, id }) => {
   const [step, setStep] = useState(0);
@@ -448,11 +557,12 @@ const Tour = ({ steps, onGo, onEnd, endLabel, color, id }) => {
   );
 };
 
-export const GuideModal = ({ onClose, onGo = () => {}, hasVan = false, chatEnabled = false, isAdmin = false, color = "blue" }) => {
-  const [tab, setTab] = useState("report");
+export const GuideModal = ({ onClose, onGo = () => {}, hasVan = false, chatEnabled = false, isAdmin = false, color = "blue", role = "tecnico" }) => {
+  const office = role === "ufficio";
+  const [tab, setTab] = useState(office ? "office" : "report");
   const [open, setOpen] = useState(null);
   const [q, setQ] = useState("");
-  const sections = sectionsFor({ hasVan, chatEnabled, isAdmin });
+  const sections = office ? officeSections : sectionsFor({ hasVan, chatEnabled, isAdmin });
   const norm = (t) => String(t).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   const shown = q.trim()
     ? sections.filter((x) => norm(x.title + " " + x.points.join(" ")).includes(norm(q.trim())))
@@ -471,12 +581,18 @@ export const GuideModal = ({ onClose, onGo = () => {}, hasVan = false, chatEnabl
           </button>
         </div>
         <div className="px-4 pt-3 shrink-0">
-          <div className="grid grid-cols-3 p-1 rounded-2xl bg-slate-100" role="tablist">
-            {[
-              ["report", "Solo l'intervento"],
-              ["app", "Tutta l'app"],
-              ["all", "Tutte le funzioni"],
-            ].map(([id, label]) => (
+          <div className={`grid ${office ? "grid-cols-2" : "grid-cols-3"} p-1 rounded-2xl bg-slate-100`} role="tablist">
+            {(office
+              ? [
+                  ["office", "Tutorial"],
+                  ["all", "Tutte le funzioni"],
+                ]
+              : [
+                  ["report", "Solo l'intervento"],
+                  ["app", "Tutta l'app"],
+                  ["all", "Tutte le funzioni"],
+                ]
+            ).map(([id, label]) => (
               <button key={id} type="button" role="tab" aria-selected={tab === id} data-guide-tab={id} onClick={() => setTab(id)}
                 className={`min-h-[40px] px-1 rounded-xl text-[13px] leading-tight font-black ${tab === id ? "bg-white text-slate-800 shadow-sm" : "text-slate-500"}`}>
                 {label}
@@ -485,7 +601,11 @@ export const GuideModal = ({ onClose, onGo = () => {}, hasVan = false, chatEnabl
           </div>
         </div>
 
-        {tab !== "all" && (
+        {office && tab === "office" && (
+          <Tour key="office" id="office" steps={officeSteps} onGo={onGo} color={color}
+            endLabel="Tutte le funzioni" onEnd={() => setTab("all")} />
+        )}
+        {!office && tab !== "all" && (
           <div className="px-4 pt-3 shrink-0">
             <button type="button" data-guide-go="practice" onClick={() => onGo("practice")}
               className="w-full h-12 rounded-2xl bg-amber-400 text-amber-950 font-black text-sm flex items-center justify-center gap-2">

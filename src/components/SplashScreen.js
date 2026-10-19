@@ -1,7 +1,10 @@
 import React from "react";
+import { greetingOf } from "../season";
 
 // Schermata di avvio: un carroponte solleva la cassa "MORA", accanto una gru a bandiera.
 // Dura circa 2,4 secondi. Con "Riduci movimento" attivo mostra subito l'immagine finale.
+// Cambia da sola col periodo dell'anno (season.js): Natale (regalo, neve, lucine),
+// Pasqua (uovo, prato, fiori), Estate (sole, pallone), Halloween (zucca, pipistrelli).
 const SPLASH_CSS = `
 .mora-splash {
   --k: .85;
@@ -60,6 +63,27 @@ const SPLASH_CSS = `
 @keyframes ms-fade-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes ms-load    { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 
+/* --- periodi dell'anno --- */
+.mora-splash.s-natale { --s-bg: #0a1830; --s-accent: #ef4444; }
+.mora-splash.s-natale.light { --s-bg: #eef4fb; --s-accent: #dc2626; }
+.mora-splash.s-pasqua, .mora-splash.s-pasqua.light { --s-bg: #fdf7ee; --s-grid: rgba(190, 140, 200, 0.10); --s-text: #3b2a4d; --s-muted: #8a6f9e; --s-accent: #c084fc; --s-steel: #6b5b7b; --s-steel-dark: #ede4f5; --s-hazard: #3b2a4d; }
+.mora-splash.s-estate { --s-bg: #0d2033; --s-accent: #f59e0b; }
+.mora-splash.s-estate.light { --s-bg: #fff8e8; --s-accent: #f59e0b; }
+.mora-splash.s-halloween, .mora-splash.s-halloween.light { --s-bg: #1a0f24; --s-grid: rgba(249, 115, 22, 0.06); --s-text: #fde7d3; --s-muted: #c08a5e; --s-accent: #f97316; --s-steel: #9d8bb0; --s-steel-dark: #2a1b38; --s-hazard: #120a19; }
+.mora-splash .snow { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.mora-splash .snow i { position: absolute; top: -12px; border-radius: 50%; background: #fff; opacity: .85; animation: ms-snow linear infinite; }
+.mora-splash.light .snow i { background: #9ec5f0; }
+.mora-splash .bulb { animation: ms-blink 1.1s ease-in-out infinite alternate; }
+.mora-splash .bulb.b2 { animation-delay: .55s; }
+.mora-splash .sun-rays { transform-origin: 318px 22px; animation: ms-spin 12s linear infinite; }
+.mora-splash .bat { animation: ms-bat 3.2s ease-in-out infinite; }
+.mora-splash .bat.b2 { animation-delay: -1.6s; animation-duration: 3.8s; }
+.mora-splash .petal { transform-origin: center; animation: ms-bob 1.6s ease-in-out infinite alternate; }
+@keyframes ms-snow  { from { transform: translateY(0); } to { transform: translateY(110vh); } }
+@keyframes ms-blink { from { opacity: .35; } to { opacity: 1; } }
+@keyframes ms-spin  { to { transform: rotate(360deg); } }
+@keyframes ms-bat   { 0% { transform: translate(0, 0); } 50% { transform: translate(-26px, 8px); } 100% { transform: translate(0, 0); } }
+
 @media (prefers-reduced-motion: reduce) {
   .mora-splash * { animation: none !important; }
 }
@@ -77,6 +101,84 @@ const S = {
 };
 const LABEL_FONT = "Barlow Condensed, Arial Narrow, sans-serif";
 
+// carico appeso al carroponte
+const Load = ({ season }) => {
+  const slings = <path d="M180 199 L160 206 M180 199 L200 206" stroke={S.steel} strokeWidth="1.2" />;
+  if (season === "natale")
+    return (
+      <g>
+        {slings}
+        <rect x="152" y="206" width="56" height="34" rx="2" fill="#b91c1c" stroke="#7f1d1d" strokeWidth="1.5" />
+        <rect x="194" y="206" width="7" height="34" fill="#facc15" />
+        <rect x="152" y="212" width="56" height="5" fill="#facc15" />
+        <path d="M197.5 206 q-12 -10 -14 -2 q2 6 14 2 q12 4 14 -2 q-2 -8 -14 2z" fill="#facc15" stroke="#a16207" strokeWidth=".8" />
+        <text x="173" y="233" textAnchor="middle" fontFamily={LABEL_FONT} fontWeight="800" fontSize="11" letterSpacing="1.5" fill="#fff">MORA</text>
+      </g>
+    );
+  if (season === "pasqua")
+    return (
+      <g>
+        <path d="M180 199 L172 204 M180 199 L188 204" stroke={S.steel} strokeWidth="1.2" />
+        <ellipse cx="180" cy="222" rx="24" ry="19" fill="#fbcfe8" stroke="#db2777" strokeWidth="1.2" />
+        <path d="M157 216 l6 -5 l6 5 l6 -5 l6 5 l6 -5 l6 5 l6 -5 l4 4" fill="none" stroke="#a855f7" strokeWidth="2" />
+        <path d="M158 230 h44" stroke="#22c55e" strokeWidth="2.2" />
+        <text x="180" y="227" textAnchor="middle" fontFamily={LABEL_FONT} fontWeight="800" fontSize="9" letterSpacing="1.5" fill="#831843">MORA</text>
+      </g>
+    );
+  if (season === "halloween")
+    return (
+      <g>
+        <path d="M180 199 L176 205 M180 199 L184 205" stroke={S.steel} strokeWidth="1.2" />
+        <rect x="177" y="203" width="6" height="7" rx="1.5" fill="#4d7c0f" />
+        <ellipse cx="168" cy="224" rx="14" ry="16" fill="#ea580c" />
+        <ellipse cx="192" cy="224" rx="14" ry="16" fill="#ea580c" />
+        <ellipse cx="180" cy="224" rx="15" ry="17" fill="#f97316" stroke="#9a3412" strokeWidth="1" />
+        <path d="M168 217 l5 -6 l5 6z M182 217 l5 -6 l5 6z" fill="#1a0f24" />
+        <path d="M166 228 q14 12 28 0 l-4 4 l-3 -3 l-3 4 l-4 -4 l-4 4 l-3 -4 l-3 3z" fill="#1a0f24" />
+      </g>
+    );
+  return (
+    <g>
+      {slings}
+      <rect x="152" y="206" width="56" height="34" rx="2" fill={S.crate} stroke={S.crateEdge} strokeWidth="1.5" />
+      <line x1="152" y1="217" x2="208" y2="217" stroke={S.crateEdge} strokeWidth="1" />
+      <text x="180" y="233" textAnchor="middle" fontFamily={LABEL_FONT} fontWeight="800" fontSize="12" letterSpacing="2" fill={S.text}>
+        MORA
+      </text>
+    </g>
+  );
+};
+
+// oggettino appeso alla gru a bandiera
+const JibCharm = ({ season }) => {
+  if (season === "natale")
+    return (
+      <g>
+        <circle cx="125.5" cy="179" r="5.5" fill="#ef4444" stroke="#7f1d1d" strokeWidth=".8" />
+        <rect x="123.5" y="172" width="4" height="2.5" fill="#facc15" />
+        <circle cx="123.8" cy="177.5" r="1.3" fill="#fff" opacity=".7" />
+      </g>
+    );
+  if (season === "pasqua") return <ellipse cx="125.5" cy="180" rx="5" ry="6.5" fill="#bfdbfe" stroke="#3b82f6" strokeWidth=".8" />;
+  if (season === "estate")
+    return (
+      <g>
+        <circle cx="125.5" cy="180" r="6.5" fill="#fff" stroke="#0ea5e9" strokeWidth=".8" />
+        <path d="M119 180 a6.5 6.5 0 0 1 13 0z" fill="#ef4444" />
+        <path d="M125.5 173.5 v13" stroke="#facc15" strokeWidth="2" />
+      </g>
+    );
+  if (season === "halloween")
+    return (
+      <g>
+        <path d="M120 186 v-8 a5.5 5.5 0 0 1 11 0 v8 l-2 -2 l-1.8 2 l-1.8 -2 l-1.8 2 l-1.8 -2z" fill="#f8fafc" />
+        <circle cx="123.8" cy="178" r="1" fill="#1a0f24" />
+        <circle cx="127.2" cy="178" r="1" fill="#1a0f24" />
+      </g>
+    );
+  return null;
+};
+
 const Column = ({ x, className }) => (
   <g className={className}>
     <rect x={x} y="70" width="12" height="170" fill={S.steelDark} stroke={S.steel} strokeWidth="1.5" />
@@ -86,13 +188,37 @@ const Column = ({ x, className }) => (
   </g>
 );
 
-export const SplashScreen = ({ dark = true, title = "Assistenza Mora" }) => (
+const LABELS = {
+  normale: "un carroponte solleva una cassa, accanto una gru a bandiera",
+  natale: "sotto la neve un carroponte con le lucine solleva un regalo",
+  pasqua: "su un prato fiorito un carroponte solleva un uovo di Pasqua",
+  estate: "sotto il sole un carroponte solleva una cassa, la gru a bandiera regge un pallone",
+  halloween: "di notte un carroponte solleva una zucca, volano i pipistrelli",
+};
+
+// neve (posizioni fisse: niente casualità, sempre uguale)
+const FLAKES = Array.from({ length: 28 }, (_, i) => ({
+  left: (i * 37) % 100,
+  size: 3 + ((i * 7) % 5),
+  dur: 4 + ((i * 13) % 6),
+  delay: -((i * 11) % 9),
+}));
+
+export const SplashScreen = ({ dark = true, title = "Assistenza Mora", season = "normale" }) => (
   <div
-    className={`mora-splash${dark ? "" : " light"}`}
+    className={`mora-splash${dark ? "" : " light"} s-${season}`}
     role="img"
-    aria-label="Avvio dell'app: un carroponte solleva una cassa, accanto una gru a bandiera"
+    aria-label={"Avvio dell'app: " + (LABELS[season] || LABELS.normale)}
+    data-season={season}
   >
     <style>{SPLASH_CSS}</style>
+    {season === "natale" && (
+      <div className="snow" aria-hidden="true">
+        {FLAKES.map((f, i) => (
+          <i key={i} style={{ left: f.left + "%", width: f.size, height: f.size, animationDuration: f.dur + "s", animationDelay: f.delay + "s" }} />
+        ))}
+      </div>
+    )}
     <svg viewBox="0 0 360 260" aria-hidden="true">
       <defs>
         <pattern id="mora-hazard" width="10" height="10" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
@@ -101,7 +227,41 @@ export const SplashScreen = ({ dark = true, title = "Assistenza Mora" }) => (
         </pattern>
       </defs>
 
+      {season === "estate" && (
+        <g>
+          <g className="sun-rays">
+            {Array.from({ length: 12 }, (_, i) => (
+              <line key={i} x1="318" y1="2" x2="318" y2="-6" stroke="#f59e0b" strokeWidth="2.4" strokeLinecap="round" transform={`rotate(${i * 30} 318 22)`} />
+            ))}
+          </g>
+          <circle cx="318" cy="22" r="14" fill="#fbbf24" />
+        </g>
+      )}
+      {season === "halloween" && (
+        <g>
+          <circle cx="316" cy="20" r="15" fill="#fde68a" opacity=".9" />
+          <circle cx="322" cy="16" r="13" fill="var(--s-bg)" />
+          <path className="bat" d="M250 26 q6 -8 12 0 q3 -4 6 0 q3 -4 6 0 q6 -8 12 0 q-9 2 -18 8 q-9 -6 -18 -8z" fill="#2a1b38" stroke="#f97316" strokeWidth=".8" />
+          <path className="bat b2" d="M70 30 q5 -7 10 0 q2.5 -3.5 5 0 q2.5 -3.5 5 0 q5 -7 10 0 q-7.5 2 -15 7 q-7.5 -5 -15 -7z" fill="#2a1b38" stroke="#f97316" strokeWidth=".8" />
+        </g>
+      )}
       <line className="ground" x1="10" y1="240" x2="350" y2="240" stroke={S.steel} strokeWidth="2" strokeLinecap="round" />
+      {season === "pasqua" && (
+        <g>
+          {[22, 58, 104, 230, 262, 296, 336].map((x) => (
+            <path key={x} d={`M${x} 240 q2 -9 4 0 q2 -7 4 0 q2 -10 4 0`} fill="none" stroke="#65a30d" strokeWidth="1.6" strokeLinecap="round" />
+          ))}
+          {[[44, "#f9a8d4"], [248, "#fde047"], [318, "#a5b4fc"]].map(([x, c]) => (
+            <g key={x} className="petal">
+              <line x1={x} y1="240" x2={x} y2="228" stroke="#65a30d" strokeWidth="1.4" />
+              {[0, 72, 144, 216, 288].map((r) => (
+                <ellipse key={r} cx={x} cy="222" rx="2.6" ry="4.6" fill={c} transform={`rotate(${r} ${x} 226)`} />
+              ))}
+              <circle cx={x} cy="226" r="2.2" fill="#f59e0b" />
+            </g>
+          ))}
+        </g>
+      )}
       <Column x={34} className="col" />
       <Column x={314} className="col r" />
 
@@ -112,6 +272,14 @@ export const SplashScreen = ({ dark = true, title = "Assistenza Mora" }) => (
         <rect x="30" y="58" width="300" height="16" fill={S.girder} />
         <rect x="30" y="70" width="300" height="4" fill="url(#mora-hazard)" />
         <rect x="30" y="58" width="300" height="16" fill="none" stroke={S.hazard} strokeOpacity=".35" strokeWidth="1" />
+        {season === "natale" && (
+          <g>
+            <path d="M30 76 Q 60 86 90 76 T 150 76 T 210 76 T 270 76 T 330 76" fill="none" stroke="#14532d" strokeWidth="1.2" />
+            {[45, 75, 105, 135, 165, 195, 225, 255, 285, 315].map((x, i) => (
+              <circle key={x} className={`bulb${i % 2 ? " b2" : ""}`} cx={x} cy={i % 2 ? 79 : 82} r="2.6" fill={["#ef4444", "#facc15", "#22c55e", "#3b82f6"][i % 4]} />
+            ))}
+          </g>
+        )}
         <rect x="250" y="60" width="44" height="9" rx="1.5" fill={S.hazard} />
         <text x="272" y="67" textAnchor="middle" fontFamily={LABEL_FONT} fontWeight="800" fontSize="7.5" fill={S.girder} letterSpacing=".5">
           2000 kg
@@ -133,15 +301,10 @@ export const SplashScreen = ({ dark = true, title = "Assistenza Mora" }) => (
         </g>
       </g>
 
-      {/* carico a terra, agganciato e sollevato */}
+      {/* carico a terra, agganciato e sollevato (cambia col periodo dell'anno) */}
       <g className="pendulum">
         <g className="load">
-          <path d="M180 199 L160 206 M180 199 L200 206" stroke={S.steel} strokeWidth="1.2" />
-          <rect x="152" y="206" width="56" height="34" rx="2" fill={S.crate} stroke={S.crateEdge} strokeWidth="1.5" />
-          <line x1="152" y1="217" x2="208" y2="217" stroke={S.crateEdge} strokeWidth="1" />
-          <text x="180" y="233" textAnchor="middle" fontFamily={LABEL_FONT} fontWeight="800" fontSize="12" letterSpacing="2" fill={S.text}>
-            MORA
-          </text>
+          <Load season={season} />
         </g>
       </g>
 
@@ -158,13 +321,14 @@ export const SplashScreen = ({ dark = true, title = "Assistenza Mora" }) => (
           <rect x="124" y="138" width="10" height="6" rx="1" fill={S.steelDark} stroke={S.steel} strokeWidth="1" />
           <line x1="129" y1="144" x2="129" y2="166" stroke={S.steel} strokeWidth="1.2" />
           <path d="M129 166 v3 a3.5 3.5 0 1 1 -3.5 3.5" fill="none" stroke={S.steel} strokeWidth="1.8" strokeLinecap="round" />
+          <JibCharm season={season} />
         </g>
       </g>
     </svg>
 
     <div className="s-wordmark">
       <div className="s-title">{title}</div>
-      <div className="s-sub">Gru e carroponti</div>
+      <div className="s-sub">{greetingOf(season)}</div>
     </div>
     <div className="s-bar">
       <i />

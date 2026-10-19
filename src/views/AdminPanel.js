@@ -658,7 +658,7 @@ export const AdminPanel = ({
         <VanAdmin
           vans={vans}
           vanItems={vanItems}
-          technicians={technicians}
+          technicians={technicians.filter((t) => t.role !== "ufficio")}
           color={layoutConfig.themeColor}
           me={currentTechName}
         />
@@ -798,6 +798,39 @@ export const AdminPanel = ({
               </button>
             </div>
 
+            <div
+              className="flex items-center justify-between gap-3 p-3 rounded-xl border border-slate-200 bg-slate-50"
+              data-section="season-toggle"
+            >
+              <div>
+                <span className="text-xs font-bold text-slate-700 block">
+                  Animazione delle feste
+                </span>
+                <span className="text-[10px] text-slate-500">
+                  {layoutConfig.seasonalSplash === false
+                    ? "Spenta: sempre l'animazione classica"
+                    : "Natale, Pasqua, estate e Halloween cambiano da soli"}
+                </span>
+              </div>
+              <button
+                type="button"
+                aria-pressed={layoutConfig.seasonalSplash !== false}
+                onClick={() =>
+                  onUpdateLayout({
+                    ...layoutConfig,
+                    seasonalSplash: layoutConfig.seasonalSplash === false,
+                  })
+                }
+                className={`px-4 py-2 rounded-lg font-bold text-xs uppercase shrink-0 ${
+                  layoutConfig.seasonalSplash === false
+                    ? "bg-white border border-slate-300 text-slate-600"
+                    : `bg-${layoutConfig.themeColor}-600 text-white`
+                }`}
+              >
+                {layoutConfig.seasonalSplash === false ? "Attiva" : "Disattiva"}
+              </button>
+            </div>
+
             <div className="flex items-center justify-between gap-3 p-3 rounded-xl border border-slate-200 bg-slate-50">
               <div>
                 <span className="text-xs font-bold text-slate-700 block">
@@ -878,7 +911,13 @@ export const AdminPanel = ({
               Aggiungi
             </button>
           </div>
-          <div className="space-y-2 max-h-[300px] overflow-y-auto custom-scrollbar">
+          {view === "techs" && (
+            <p className="text-[11px] text-slate-500 font-semibold mb-3" data-section="staff-roles-hint">
+              <b>Tecnico</b>: tutta l'app. <b>Ufficio</b>: vede solo gli interventi (Storico, con la stampa) ed
+              Esplora, con la sua guida; non compare tra i tecnici dei rapporti.
+            </p>
+          )}
+          <div className="space-y-2 max-h-[420px] overflow-y-auto custom-scrollbar">
             {(view === "techs" ? technicians : machineTypes).map((i) =>
               renaming && renaming.id === i.id ? (
                 <div
@@ -926,10 +965,39 @@ export const AdminPanel = ({
                   key={i.id}
                   className="flex justify-between p-3 bg-slate-50 rounded-xl border border-slate-100 items-center"
                 >
-                  <span className="font-bold text-xs uppercase text-slate-700">
+                  <span className="font-bold text-xs uppercase text-slate-700 min-w-0 truncate">
                     {String(i.name)}
                   </span>
                   <div className="flex gap-3 items-center">
+                    {view === "techs" && (
+                      <div className="flex rounded-lg border border-slate-200 overflow-hidden shrink-0" role="group" aria-label={"Ruolo di " + i.name} data-role-of={i.name}>
+                        {[
+                          ["tecnico", "Tecnico"],
+                          ["ufficio", "Ufficio"],
+                        ].map(([r, label]) => {
+                          const on = (i.role === "ufficio" ? "ufficio" : "tecnico") === r;
+                          return (
+                            <button
+                              key={r}
+                              type="button"
+                              data-role={r}
+                              aria-pressed={on}
+                              onClick={() =>
+                                !on &&
+                                updateDoc(doc(db, "artifacts", appId, "public", "data", "technicians", i.id), { role: r }).catch((e) =>
+                                  alert("Ruolo non salvato: " + describeError(e))
+                                )
+                              }
+                              className={`px-2.5 py-1.5 text-[10px] font-black uppercase ${
+                                on ? `bg-${layoutConfig.themeColor}-600 text-white` : "bg-white text-slate-500"
+                              }`}
+                            >
+                              {label}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
                     <button
                       onClick={() =>
                         setRenaming({ id: i.id, value: String(i.name) })
