@@ -800,6 +800,39 @@ export const AdminPanel = ({
 
             <div
               className="flex items-center justify-between gap-3 p-3 rounded-xl border border-slate-200 bg-slate-50"
+              data-section="online-toggle"
+            >
+              <div>
+                <span className="text-xs font-bold text-slate-700 block">
+                  Messaggi da «Tecnici online»
+                </span>
+                <span className="text-[10px] text-slate-500">
+                  {layoutConfig.onlineMessages !== false
+                    ? "Attivi: toccando «tecnici online» in alto si vede chi è collegato e gli si scrive"
+                    : "Spenti: si vede solo chi è online, senza messaggi"}
+                </span>
+              </div>
+              <button
+                type="button"
+                aria-pressed={layoutConfig.onlineMessages !== false}
+                onClick={() =>
+                  onUpdateLayout({
+                    ...layoutConfig,
+                    onlineMessages: layoutConfig.onlineMessages === false,
+                  })
+                }
+                className={`px-4 py-2 rounded-lg font-bold text-xs uppercase shrink-0 ${
+                  layoutConfig.onlineMessages !== false
+                    ? `bg-${layoutConfig.themeColor}-600 text-white`
+                    : "bg-white border border-slate-300 text-slate-600"
+                }`}
+              >
+                {layoutConfig.onlineMessages !== false ? "Disattiva" : "Attiva"}
+              </button>
+            </div>
+
+            <div
+              className="flex items-center justify-between gap-3 p-3 rounded-xl border border-slate-200 bg-slate-50"
               data-section="season-toggle"
             >
               <div>

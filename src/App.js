@@ -2,8 +2,6 @@ import React, { useState, useEffect, useRef, useMemo } from "react";
 import {
   PlusCircle,
   History,
-  User,
-  X,
   Settings,
   ChevronDown,
   RefreshCw,
@@ -47,6 +45,7 @@ import {
 } from "./theme";
 import { applyAppearance, getCachedLayout, cacheLayout } from "./appearance";
 import { NavButton } from "./components/NavButton";
+import { OnlineMenu, onlineUnread } from "./components/OnlineMenu";
 import { AdminLoginModal } from "./components/AdminLoginModal";
 import { PhotoViewerModal } from "./components/PhotoViewerModal";
 import { PdfHost } from "./components/PdfHost";
@@ -217,7 +216,17 @@ export default function App() {
   const [isAppUnlocked, setIsAppUnlocked] = useState(false);
   const [onlineUsersCount, setOnlineUsersCount] = useState(0);
   const [activeUsersList, setActiveUsersList] = useState([]);
-  const [showOnlineDropdown, setShowOnlineDropdown] = useState(false);
+  // "Tecnici online": si apre anche dalla notifica di un messaggio ("?online=dm:...")
+  const [onlineConv, setOnlineConv] = useState(() => {
+    try {
+      const c = new URLSearchParams(window.location.search).get("online");
+      if (c) window.history.replaceState(null, "", window.location.pathname);
+      return c || null;
+    } catch (e) {
+      return null;
+    }
+  });
+  const [showOnlineDropdown, setShowOnlineDropdown] = useState(() => onlineConv !== null);
 
   const [viewingMachineHistory, setViewingMachineHistory] = useState(null);
   const [viewingCustomerDetail, setViewingCustomerDetail] = useState(null);
@@ -506,8 +515,11 @@ export default function App() {
   // CHAT: messaggi (le foto sono a parte) e fin dove ha letto ognuno.
   // Solo se l'admin l'ha attivata (Impostazioni > Design > Chat tra tecnici).
   const chatEnabled = layoutConfig.chatEnabled === true;
+  // messaggi veloci dal menu "Tecnici online" (stessi messaggi della chat, si spengono a parte)
+  const onlineMessages = layoutConfig.onlineMessages !== false;
+  const needChat = chatEnabled || onlineMessages;
   useEffect(() => {
-    if (!user || !chatEnabled) {
+    if (!user || !needChat) {
       setChatMessages([]);
       setChatReads([]);
       return undefined;
@@ -526,7 +538,11 @@ export default function App() {
       unsubChat();
       unsubReads();
     };
-  }, [user, chatEnabled]);
+  }, [user, needChat]);
+  const onlineBadge = useMemo(
+    () => (onlineMessages ? onlineUnread(chatMessages, chatReads, currentTechName) : 0),
+    [onlineMessages, chatMessages, chatReads, currentTechName]
+  );
 
   // LA MIA AREA: carico solo i documenti del tecnico collegato
   useEffect(() => {
@@ -559,10 +575,16 @@ export default function App() {
           const q = new URL(e.data.url, window.location.origin).searchParams;
           conv = q.get("chat") || "group";
           if (q.has("area")) panel = q.get("area") || "home";
+          if (q.has("online")) panel = "online:" + q.get("online");
         } catch (err) {
           // niente
         }
         setActiveTab("dashboard");
+        if (panel && panel.startsWith("online:")) {
+          setOnlineConv(panel.slice(7));
+          setShowOnlineDropdown(true);
+          return;
+        }
         if (panel) {
           setTimeout(
             () => window.dispatchEvent(new CustomEvent("mora-open-area", { detail: { panel } })),
@@ -703,21 +725,14 @@ export default function App() {
                   {layoutConfig.appTitle}
                   {onlineUsersCount > 0 && (
                     <div
+                      data-action="online-toggle"
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (isAdminAuthenticated)
-                          setShowOnlineDropdown(!showOnlineDropdown);
+                        setOnlineConv(null);
+                        setShowOnlineDropdown(!showOnlineDropdown);
                       }}
-                      className={`flex items-center gap-1.5 px-2 py-0.5 bg-green-50 border border-green-200 rounded-full ${
-                        isAdminAuthenticated
-                          ? "cursor-pointer hover:bg-green-100 shadow-sm transition-all"
-                          : ""
-                      }`}
-                      title={
-                        isAdminAuthenticated
-                          ? "Clicca per vedere i tecnici"
-                          : `${onlineUsersCount} Tecnici Online`
-                      }
+                      className="relative flex items-center gap-1.5 px-2 py-0.5 bg-green-50 border border-green-200 rounded-full cursor-pointer hover:bg-green-100 shadow-sm transition-all"
+                      title="Tocca per vedere chi è online"
                     >
                       <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
                       <span className="text-[9px] font-black text-green-700 uppercase mt-0.5">
@@ -726,64 +741,36 @@ export default function App() {
                           ? "tecnico online"
                           : "tecnici online"}
                       </span>
-                      {isAdminAuthenticated && (
-                        <ChevronDown
-                          className={`w-3 h-3 text-green-600 transition-transform ${
-                            showOnlineDropdown ? "rotate-180" : ""
-                          }`}
-                        />
+                      <ChevronDown
+                        className={`w-3 h-3 text-green-600 transition-transform ${
+                          showOnlineDropdown ? "rotate-180" : ""
+                        }`}
+                      />
+                      {onlineBadge > 0 && (
+                        <span data-online-badge className="absolute -top-2 -right-2 min-w-[18px] h-[18px] px-1 rounded-full bg-red-600 text-white text-[10px] font-black flex items-center justify-center">
+                          {onlineBadge}
+                        </span>
                       )}
                     </div>
                   )}
                 </h1>
 
-                {showOnlineDropdown && isAdminAuthenticated && (
-                  <div
-                    className="absolute top-full left-0 mt-3 w-64 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 animate-in fade-in slide-in-from-top-2 overflow-hidden"
-                    onClick={(e) => e.stopPropagation()}
-                  >
-                    <div className="p-3 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-                      <span className="text-[10px] font-black uppercase text-slate-700">
-                        In Diretta ({onlineUsersCount})
-                      </span>
-                      <button
-                        onClick={() => setShowOnlineDropdown(false)}
-                        className="p-1 hover:bg-slate-200 rounded-full transition-colors"
-                      >
-                        <X className="w-4 h-4 text-slate-500" />
-                      </button>
-                    </div>
-                    <div className="max-h-60 overflow-y-auto p-2 space-y-1 custom-scrollbar">
-                      {activeUsersList.map((u) => (
-                        <div
-                          key={u.id || u.technician}
-                          className="flex items-center gap-3 p-2 hover:bg-slate-50 rounded-xl transition-colors"
-                        >
-                          <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center text-green-600 shrink-0 shadow-inner">
-                            <User className="w-4 h-4" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="text-xs font-bold text-slate-800 truncate leading-tight">
-                              {u.technician}
-                            </div>
-                            <div className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">
-                              {u.device}
-                            </div>
-                          </div>
-                          <div className="text-[9px] font-bold text-slate-400 shrink-0">
-                            {u.lastActive
-                              ? new Date(
-                                  u.lastActive.seconds * 1000
-                                ).toLocaleTimeString([], {
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                })
-                              : "Ora"}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
+                {showOnlineDropdown && (
+                  <OnlineMenu
+                    users={activeUsersList}
+                    me={currentTechName}
+                    isAdmin={isAdminAuthenticated}
+                    canWrite={onlineMessages && !!currentTechName}
+                    messages={chatMessages}
+                    reads={chatReads}
+                    technicians={technicians}
+                    color={color}
+                    startConv={onlineConv}
+                    onClose={() => {
+                      setShowOnlineDropdown(false);
+                      setOnlineConv(null);
+                    }}
+                  />
                 )}
               </div>
               <span

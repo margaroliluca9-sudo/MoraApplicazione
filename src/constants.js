@@ -27,6 +27,7 @@ export const DEFAULT_LAYOUT = {
   seasonalSplash: true,
   // Admin > Design: chat tra tecnici (spenta finché l'admin non la attiva)
   chatEnabled: false,
+  onlineMessages: true, // messaggi veloci dal menu "Tecnici online"
   formSettings: {
     showMachineId: true,
     showMachineType: true,
