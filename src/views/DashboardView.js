@@ -29,6 +29,7 @@ import {
 import { ChatModal } from "../components/modals/ChatModal";
 import { unreadTotal } from "../chat";
 import { PersonalAreaModal } from "../components/modals/PersonalAreaModal";
+import { HomeHero } from "../components/HomeHero";
 import { todayItems, monthNumbers, relDay, isoFromLogDate } from "../personal";
 import { HomeGrid } from "../components/HomeGrid";
 import { GuideModal } from "../components/modals/GuideModal";
@@ -55,6 +56,18 @@ const dateKey = (ds) => {
     : 0;
 };
 const MAX = { customers: 5, machines: 5, logs: 8 };
+
+// ora per il cielo in cima alla Home (per provarlo: "?ora=21")
+const heroNow = () => {
+  const d = new Date();
+  try {
+    const h = new URLSearchParams(window.location.search).get("ora");
+    if (h !== null && h !== "") d.setHours(Number(h), 0, 0, 0);
+  } catch (e) {
+    // niente
+  }
+  return d;
+};
 
 export const DashboardView = ({
   onNavigate,
@@ -546,7 +559,12 @@ export const DashboardView = ({
         home={home}
         me={currentTechName}
         color={color}
-        searchBox={searchBox}
+        searchBox={
+          <div className="space-y-4">
+            <HomeHero me={currentTechName} logs={logs} todayCount={isOffice ? 0 : todayCount} now={heroNow()} />
+            {searchBox}
+          </div>
+        }
         onSaved={setPrefs}
         onPreviewLook={onPreviewLook}
         baseLook={layoutConfig}
