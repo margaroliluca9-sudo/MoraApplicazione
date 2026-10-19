@@ -122,6 +122,11 @@ const appStepsFor = ({ hasVan, chatEnabled, isAdmin }) =>
       text: "In alto la ricerca, poi i riquadri delle pagine. In basso la barra con Nuovo, Storico e Admin. Il pulsante in alto a destra (sole e luna) cambia tema: automatico, chiaro o scuro.",
     },
     {
+      icon: Users,
+      title: "Tecnici online",
+      text: "In alto accanto al nome dell'app c'è «… tecnici online»: toccalo e vedi chi è collegato adesso. Con «Scrivi» mandi un messaggio privato a un collega (anche a chi hai scritto di recente e ora non è collegato). Il pallino rosso dice quanti messaggi devi leggere.",
+    },
+    {
       icon: Search,
       title: "La ricerca",
       text: "Scrivi un cliente, una matricola, un N. assistenza, un tecnico o una parola della descrizione: trovi clienti, gru e interventi. Tocca un risultato per aprire la gru.",
@@ -220,7 +225,7 @@ const appStepsFor = ({ hasVan, chatEnabled, isAdmin }) =>
     isAdmin && {
       icon: Settings,
       title: "Impostazioni (admin)",
-      text: "Design (colori, lettere, chat sì/no), Staff, Tipi, Clienti, Gru (doppioni e unione), Furgoni (chi usa quale furgone, lista d'ordine) e System (collegati e backup).",
+      text: "Design (colori, lettere, chat sì/no, messaggi da «Tecnici online» sì/no), Staff, Tipi, Clienti, Gru (doppioni e unione), Furgoni (chi usa quale furgone, lista d'ordine) e System (collegati e backup).",
     },
     {
       icon: BookOpen,
@@ -279,6 +284,17 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
         "Dalla finestra del PDF: «Condividi o stampa» (WhatsApp, mail, stampante), «Apri PDF» oppure «Scarica».",
         "Più interventi insieme: La mia area → «Stampa interventi». Scegli giorno o periodo (Oggi, Ieri, Ultimi 7 giorni o le date), il tecnico (tutti, solo i tuoi o un collega), tocca quelli che vuoi o «Seleziona tutti».",
         "«Stampa rapporti» crea un unico PDF con un foglio per ogni intervento; «Elenco» crea una tabella riassuntiva.",
+      ],
+    },
+    {
+      id: "online",
+      icon: Users,
+      title: "Tecnici online e messaggi",
+      points: [
+        "In alto accanto al nome dell'app: «… tecnici online». Toccalo per vedere chi è collegato adesso e da quanto.",
+        "«Scrivi» apre una conversazione privata con quel collega; sotto, in «Messaggi recenti», ritrovi chi ti ha scritto anche se ora non è collegato.",
+        "Il pallino rosso sulla scritta dice quanti messaggi devi leggere. Con le notifiche attive (Promemoria → «Attiva notifiche») arriva anche sul telefono.",
+        "Sono gli stessi messaggi privati della Chat: se l'admin accende la Chat in «La mia area» li ritrovi anche lì. L'admin può spegnere i messaggi da Impostazioni → Design.",
       ],
     },
     {
@@ -398,7 +414,7 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
       icon: Settings,
       title: "Impostazioni (solo admin)",
       points: [
-        "Design: colori, carattere, grandezza delle lettere, animazione di avvio, chat tra tecnici sì/no.",
+        "Design: colori, carattere, grandezza delle lettere, animazione di avvio, chat tra tecnici sì/no, messaggi da «Tecnici online» sì/no.",
         "Staff: tecnici e password. Tipi, Clienti, Gru: anagrafiche, doppioni e unione.",
         "Furgoni: crei i furgoni, scegli chi li usa («Nessuno» = tutto come prima), vedi tutti i magazzini e stampi la lista d'ordine.",
         "System: tecnici collegati, archivio e backup in PDF.",
