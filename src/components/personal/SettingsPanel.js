@@ -1,9 +1,10 @@
 // La mia area → ⚙ Impostazioni: le scelte personali (valgono per questo telefono)
 import React, { useEffect, useState } from "react";
-import { Bell, BellOff, Loader2, MessageCircle, CalendarClock, Sparkles, Users, Send } from "lucide-react";
+import { Bell, BellOff, Loader2, MessageCircle, CalendarClock, Sparkles, Users, Send, Timer } from "lucide-react";
 import { PanelHeader } from "./PersonalUi";
 import { getPushState, enablePush, disablePush } from "../../chat";
 import { getSettings, setSetting, syncNotifyKinds, testNotification, markAsked } from "../../settings";
+import { markSince } from "../../hours";
 import { describeError } from "../../utils";
 
 // interruttore grande, facile da toccare
@@ -55,6 +56,7 @@ export const SettingsPanel = ({ me, color = "blue", onBack, onClose }) => {
     };
   }, []);
   const change = (k, v) => {
+    if (k === "hours" && v) markSince(); // i giorni automatici contano da oggi
     const next = setSetting(k, v);
     setSt(next);
     if ((k === "chat" || k === "reminders") && push === "on") syncNotifyKinds(next).catch(() => {});
@@ -119,6 +121,15 @@ export const SettingsPanel = ({ me, color = "blue", onBack, onClose }) => {
           <Row icon={Users} title="Farmi vedere tra i «Tecnici online»" sub="Se lo spegni i colleghi non ti vedono collegato (l'admin sì)">
             <Switch id="showOnline" label="Farmi vedere online" on={st.showOnline !== false} onChange={(v) => change("showOnline", v)} />
           </Row>
+        </section>
+
+        <section className="space-y-2" data-section="settings-extra">
+          <h4 className="px-2 text-xs font-black text-slate-500 uppercase tracking-wide">Funzioni in più</h4>
+          <div className="bg-white rounded-3xl border border-slate-200 px-4 py-1 divide-y divide-slate-100">
+            <Row icon={Timer} title="Le mie ore" sub="Calendario degli orari in La mia area: ore fatte, straordinari, ore in meno, ferie, permessi, malattia">
+              <Switch id="hours" label="Le mie ore" on={st.hours === true} onChange={(v) => change("hours", v)} />
+            </Row>
+          </div>
         </section>
         <p className="text-xs text-slate-400 text-center px-4">L'aspetto dell'app (colori, lettere, Home) si cambia da «Modifica aspetto» in fondo alla Home.</p>
       </div>

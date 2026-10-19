@@ -9,7 +9,7 @@ import { chatDoc, subId, myEndpoint } from "./chat";
 const KEY = "mora_personal_settings";
 const ASKED = "mora_notify_asked_v1"; // domanda "attivi le notifiche?" già fatta su questo telefono
 
-export const DEFAULT_SETTINGS = { chat: true, reminders: true, splash: true, showOnline: true };
+export const DEFAULT_SETTINGS = { chat: true, reminders: true, splash: true, showOnline: true, hours: false };
 
 export const getSettings = () => {
   try {

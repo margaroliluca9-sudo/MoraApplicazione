@@ -1,7 +1,10 @@
 // LA MIA AREA: Oggi, Calendario, Note, Chat, Promemoria e contatti, Magazzino (solo con furgone), numeri del mese.
 // Ogni tecnico vede solo le sue cose.
 import React, { useEffect, useMemo, useState } from "react";
-import { X, CalendarDays, StickyNote, MessageSquare, Bell, Truck, ClipboardList, Printer, WifiOff, Settings } from "lucide-react";
+import { X, CalendarDays, StickyNote, MessageSquare, Bell, Truck, ClipboardList, Printer, WifiOff, Settings, Timer } from "lucide-react";
+import { HoursPanel } from "../personal/HoursPanel";
+import { getSettings } from "../../settings";
+import { fmtMin, monthSummary, getStd, withDefaults, getSince } from "../../hours";
 import { SettingsPanel } from "../personal/SettingsPanel";
 import { todayItems, monthNumbers, longDay, todayIso } from "../../personal";
 import { vanOf, itemsOf, lowItems } from "../../van";
@@ -31,6 +34,8 @@ const Tile = ({ id, icon: Icon, label, sub, tone, onClick, badge, alert, wide })
   </button>
 );
 
+const MONTH_SHORT = ["gen", "feb", "mar", "apr", "mag", "giu", "lug", "ago", "set", "ott", "nov", "dic"];
+
 export const PersonalAreaModal = ({
   me,
   logs = [],
@@ -38,6 +43,8 @@ export const PersonalAreaModal = ({
   notes = [],
   reminders = [],
   contacts = [],
+  hours = [],
+  hoursReminder = null,
   vans = [],
   vanItems = [],
   chatUnread = 0,
@@ -52,6 +59,13 @@ export const PersonalAreaModal = ({
   initialPanel = null,
 }) => {
   const [panel, setPanel] = useState(initialPanel);
+  // "Le mie ore" si vede solo se acceso in Impostazioni
+  const [showHours, setShowHours] = useState(() => getSettings().hours === true);
+  useEffect(() => {
+    const on = (e) => setShowHours(((e && e.detail) || getSettings()).hours === true);
+    window.addEventListener("mora-settings", on);
+    return () => window.removeEventListener("mora-settings", on);
+  }, []);
   // senza rete: lo dico anche qui (la striscia della Home resta sotto)
   const [offline, setOffline] = useState(() => typeof navigator !== "undefined" && navigator.onLine === false);
   useEffect(() => {
@@ -74,13 +88,20 @@ export const PersonalAreaModal = ({
   const openRem = reminders.filter((r) => !r.done).length;
   const back = () => setPanel(null);
   // numero dispari di riquadri: l'ultimo diventa largo
-  const oddTiles = (5 + (chatEnabled ? 1 : 0) + (van ? 1 : 0)) % 2 === 1;
+  const oddTiles = (5 + (chatEnabled ? 1 : 0) + (van ? 1 : 0) + (showHours ? 1 : 0)) % 2 === 1;
+  const nowD = new Date();
+  const hoursSum = monthSummary(withDefaults(hours, nowD.getFullYear(), nowD.getMonth(), getStd(), getSince()), nowD.getFullYear(), nowD.getMonth(), getStd());
+  const hoursSub = hoursSum.workDays
+    ? `${fmtMin(hoursSum.worked)} a ${MONTH_SHORT[nowD.getMonth()]}${hoursSum.extra ? " · +" + fmtMin(hoursSum.extra) : ""}`
+    : "Orari, ferie, permessi";
 
   let body;
   if (panel === "calendar")
     body = <CalendarPanel me={me} events={events} logs={logs} color={color} onBack={back} onClose={onClose} onOpenMachine={onOpenMachine} />;
   else if (panel === "print")
     body = <PrintPanel me={me} logs={logs} technicians={technicians} color={color} onBack={back} onClose={onClose} />;
+  else if (panel === "hours" && showHours)
+    body = <HoursPanel me={me} hours={hours} reminder={hoursReminder} color={color} onBack={back} onClose={onClose} />;
   else if (panel === "settings") body = <SettingsPanel me={me} color={color} onBack={back} onClose={onClose} />;
   else if (panel === "notes") body = <NotesPanel me={me} notes={notes} color={color} onBack={back} onClose={onClose} />;
   else if (panel === "reminders")
@@ -165,6 +186,9 @@ export const PersonalAreaModal = ({
             {chatEnabled && (
               <Tile id="chat" icon={MessageSquare} label="Chat" tone="bg-emerald-50 text-emerald-700" onClick={onOpenChat} badge={chatUnread}
                 sub={chatUnread === 0 ? "Gruppo e privati" : chatUnread === 1 ? "1 messaggio nuovo" : `${chatUnread} messaggi nuovi`} />
+            )}
+            {showHours && (
+              <Tile id="hours" icon={Timer} label="Le mie ore" tone="bg-rose-50 text-rose-700" onClick={() => setPanel("hours")} sub={hoursSub} />
             )}
             <Tile id="reminders" icon={Bell} label="Promemoria" tone="bg-orange-50 text-orange-700" onClick={() => setPanel("reminders")} wide={oddTiles && !van}
               sub={openRem === 1 ? "1 attivo · contatti" : `${openRem} attivi · contatti`} />

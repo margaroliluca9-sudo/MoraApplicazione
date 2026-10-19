@@ -12,6 +12,7 @@ export const VIDEOS = [
   { id: "tecnici-online", title: "Tecnici online", about: "Chi è collegato e scrivergli", sec: 23 },
   { id: "senza-rete", title: "Senza rete", about: "Nel capannone senza internet", sec: 15, office: true },
   { id: "notifiche", title: "Notifiche e impostazioni", about: "Avvisi sul telefono e le tue scelte", sec: 28 },
+  { id: "le-mie-ore", title: "Le mie ore", about: "Orari, straordinari, ferie e permessi", sec: 40 },
   { id: "furgone", title: "Il tuo furgone", about: "Pezzi a bordo e scarico automatico", sec: 19, van: true },
 ];
 
@@ -61,7 +62,7 @@ const BY_SECTION = {
   search: ["scheda-gru"],
   machine: ["scheda-gru"],
   explore: ["esplora"],
-  area: ["la-mia-area", "notifiche"],
+  area: ["la-mia-area", "notifiche", "le-mie-ore"],
   phone: ["notifiche"],
   van: ["furgone"],
   home: ["modifica-aspetto"],

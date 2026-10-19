@@ -130,7 +130,7 @@ export default function App() {
   // magazzino furgoni (tutti) e "La mia area" (solo le cose del tecnico collegato)
   const [vans, setVans] = useState([]);
   const [vanItems, setVanItems] = useState([]);
-  const [personal, setPersonal] = useState({ events: [], notes: [], reminders: [], contacts: [] });
+  const [personal, setPersonal] = useState({ events: [], notes: [], reminders: [], contacts: [], hours: [] });
   const [loading, setLoading] = useState(true);
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
   const [showAdminLogin, setShowAdminLogin] = useState(false);
@@ -599,7 +599,7 @@ export default function App() {
   // LA MIA AREA: carico solo i documenti del tecnico collegato
   useEffect(() => {
     const me = techKey(currentTechName);
-    setPersonal({ events: [], notes: [], reminders: [], contacts: [] });
+    setPersonal({ events: [], notes: [], reminders: [], contacts: [], hours: [] });
     if (!user || !me) return undefined;
     const unsubs = Object.entries(PERSONAL).map(([kind, name]) =>
       onSnapshot(
