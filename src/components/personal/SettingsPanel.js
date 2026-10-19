@@ -1,6 +1,6 @@
 // La mia area → ⚙ Impostazioni: le scelte personali (valgono per questo telefono)
 import React, { useEffect, useState } from "react";
-import { Bell, BellOff, Loader2, MessageCircle, CalendarClock, Sparkles, Users, Send } from "lucide-react";
+import { Bell, BellOff, Loader2, MessageCircle, CalendarClock, Sparkles, Users, Send, Timer } from "lucide-react";
 import { PanelHeader } from "./PersonalUi";
 import { getPushState, enablePush, disablePush } from "../../chat";
 import { getSettings, setSetting, syncNotifyKinds, testNotification, markAsked } from "../../settings";
@@ -119,6 +119,15 @@ export const SettingsPanel = ({ me, color = "blue", onBack, onClose }) => {
           <Row icon={Users} title="Farmi vedere tra i «Tecnici online»" sub="Se lo spegni i colleghi non ti vedono collegato (l'admin sì)">
             <Switch id="showOnline" label="Farmi vedere online" on={st.showOnline !== false} onChange={(v) => change("showOnline", v)} />
           </Row>
+        </section>
+
+        <section className="space-y-2" data-section="settings-extra">
+          <h4 className="px-2 text-xs font-black text-slate-500 uppercase tracking-wide">Funzioni in più</h4>
+          <div className="bg-white rounded-3xl border border-slate-200 px-4 py-1 divide-y divide-slate-100">
+            <Row icon={Timer} title="Straordinari" sub="Segna le ore in più di ogni giorno e vedi il totale del mese, in La mia area">
+              <Switch id="overtime" label="Straordinari" on={st.overtime === true} onChange={(v) => change("overtime", v)} />
+            </Row>
+          </div>
         </section>
         <p className="text-xs text-slate-400 text-center px-4">L'aspetto dell'app (colori, lettere, Home) si cambia da «Modifica aspetto» in fondo alla Home.</p>
       </div>

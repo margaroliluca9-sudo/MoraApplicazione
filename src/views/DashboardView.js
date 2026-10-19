@@ -508,6 +508,7 @@ export const DashboardView = ({
           notes={personal.notes || []}
           reminders={personal.reminders || []}
           contacts={personal.contacts || []}
+          overtime={personal.overtime || []}
           vans={vans}
           vanItems={vanItems}
           chatUnread={unread}

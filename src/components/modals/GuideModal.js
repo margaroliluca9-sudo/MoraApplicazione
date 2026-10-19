@@ -168,7 +168,7 @@ const appStepsFor = ({ hasVan, chatEnabled, isAdmin }) =>
     {
       icon: UserCircle,
       title: "La mia area",
-      text: "Il riquadro «La mia area»: è solo tuo. In cima «Oggi» con impegni e promemoria, poi I miei interventi, Stampa interventi, Calendario, Note, Promemoria" + (hasVan ? ", Magazzino" : "") + " e i numeri del mese. Con ⚙ in alto a destra le tue Impostazioni (notifiche e altro).",
+      text: "Il riquadro «La mia area»: è solo tuo. In cima «Oggi» con impegni e promemoria, poi I miei interventi, Stampa interventi, Calendario, Note, Promemoria" + (hasVan ? ", Magazzino" : "") + " e i numeri del mese. Con ⚙ in alto a destra le tue Impostazioni (notifiche e altro); lì puoi accendere anche gli «Straordinari», per segnare le ore in più.",
       go: { label: "Apri La mia area", to: "area" },
     },
     {
@@ -344,6 +344,7 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
         "Promemoria: con giorno e ora ti avvisa sul telefono; senza ora alle 8:00. Sotto ci sono i contatti rapidi con il tasto per chiamare.",
         "In fondo: interventi fatti e clienti visitati nel mese.",
         "⚙ Impostazioni (in alto a destra o in fondo): notifiche sì/no e quali, animazione all'avvio, farti vedere o no tra i «Tecnici online». Valgono per il tuo telefono.",
+        "Straordinari (da accendere in ⚙ Impostazioni → Funzioni in più): con +30 min, +1 h, +1 h 30, +2 h segni le ore in più di oggi; con «Aggiungi» scegli il giorno, il tempo (a passi di 15 minuti) e una nota. Vedi il totale del mese e con «Manda» lo mandi su WhatsApp o per mail. Li vedi solo tu.",
       ],
     },
     hasVan && {
