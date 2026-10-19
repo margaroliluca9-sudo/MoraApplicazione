@@ -61,12 +61,23 @@ const MAX = { customers: 5, machines: 5, logs: 8 };
 const heroNow = () => {
   const d = new Date();
   try {
-    const h = new URLSearchParams(window.location.search).get("ora");
+    const q = new URLSearchParams(window.location.search);
+    const g = q.get("giorno"); // solo per le prove: aaaa-mm-gg
+    if (/^\d{4}-\d{2}-\d{2}$/.test(g || "")) d.setFullYear(Number(g.slice(0, 4)), Number(g.slice(5, 7)) - 1, Number(g.slice(8, 10)));
+    const h = q.get("ora");
     if (h !== null && h !== "") d.setHours(Number(h), 0, 0, 0);
   } catch (e) {
     // niente
   }
   return d;
+};
+// solo per le prove: ?meteo=pioggia,camion,neve,aereo
+const heroForce = () => {
+  try {
+    return (new URLSearchParams(window.location.search).get("meteo") || "").split(",").filter(Boolean);
+  } catch (e) {
+    return [];
+  }
 };
 
 export const DashboardView = ({
@@ -561,7 +572,7 @@ export const DashboardView = ({
         color={color}
         searchBox={
           <div className="space-y-4">
-            <HomeHero me={currentTechName} logs={logs} todayCount={isOffice ? 0 : todayCount} now={heroNow()} />
+            <HomeHero me={currentTechName} logs={logs} todayCount={isOffice ? 0 : todayCount} now={heroNow()} force={heroForce()} />
             {searchBox}
           </div>
         }

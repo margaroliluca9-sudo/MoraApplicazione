@@ -365,6 +365,19 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
       ],
     },
     {
+      id: "hero",
+      icon: Sun,
+      title: "Il cielo in cima alla Home",
+      points: [
+        "In cima alla Home c'è il saluto con il giorno, quante cose hai da fare e una curiosità sul tuo lavoro (interventi del mese, il cliente dove vai di più, il collega con cui lavori di più…).",
+        "Il cielo segue l'ora: alba, giorno, tramonto e notte con luna, stelle e finestre accese.",
+        "Ogni giorno cambia qualcosa da solo: nuvole, uccelli, colore della trave, a volte la pioggia, un aereo o un camion che passa sotto la gru.",
+        "Durante l'anno: neve d'inverno, lucine sulla trave a Natale, pipistrelli ad Halloween, sole grande d'estate. Nel weekend il carroponte riposa.",
+        "Tocca il cielo: il gancio scende con le funi, si ferma, risale e dondola.",
+        "Ogni 50 interventi nell'anno (50, 100, 150…) quel giorno arrivano i coriandoli.",
+      ],
+    },
+    {
       id: "home",
       icon: LayoutGrid,
       title: "Modifica aspetto",
