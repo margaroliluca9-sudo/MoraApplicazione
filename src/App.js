@@ -10,7 +10,7 @@ import {
   ArrowLeft,
   Sun,
   Moon,
-  Smartphone,
+  SunMoon,
   WifiOff,
   UploadCloud,
   Home,
@@ -79,6 +79,8 @@ const splashSeason = (cfg) => {
 export default function App() {
   // TEMA chiaro / scuro (scelto su ogni dispositivo)
   const [themeMode, setThemeMode] = useState(getThemeMode);
+  // "Nuovo rapporto su questa gru": dati già scritti nel modulo
+  const [newPrefill, setNewPrefill] = useState(null);
   const [isDark, setIsDark] = useState(() => isDarkMode(getThemeMode()));
   useEffect(() => {
     setIsDark(applyTheme(themeMode));
@@ -91,10 +93,13 @@ export default function App() {
       (m) => THEME_MODES[(THEME_MODES.indexOf(m) + 1) % THEME_MODES.length]
     );
   const ThemeIcon =
-    themeMode === "dark" ? Moon : themeMode === "light" ? Sun : Smartphone;
+    themeMode === "dark" ? Moon : themeMode === "light" ? Sun : SunMoon;
 
   const [user, setUser] = useState(null);
   const [activeTab, setActiveTab] = useState("dashboard");
+  useEffect(() => {
+    if (activeTab !== "new") setNewPrefill(null);
+  }, [activeTab]);
   const [logs, setLogs] = useState([]);
   const [customers, setCustomers] = useState([]);
   const [technicians, setTechnicians] = useState([]);
@@ -830,7 +835,8 @@ export default function App() {
         </div>
       )}
 
-      {activeTab !== "dashboard" && (
+      {/* sul telefono si torna con "Home" nella barra in basso */}
+      {activeTab !== "dashboard" && !isMobileView && (
         <div className="sticky top-[76px] z-40 w-full py-3 px-4">
           <div className="max-w-6xl mx-auto">
             <button
@@ -881,6 +887,24 @@ export default function App() {
                 onPreviewLook={handlePreviewLook}
                 isOffice={isOffice}
               />
+            )}
+            {!isOffice && (activeTab === "explore" || activeTab === "database") && (
+              <div className="flex gap-1 p-1 mb-3 bg-slate-200/70 rounded-xl max-w-md" data-section="explore-switch">
+                {[
+                  ["explore", "Per cliente"],
+                  ["database", "Elenco gru e interventi"],
+                ].map(([t, l]) => (
+                  <button
+                    key={t}
+                    type="button"
+                    data-explore-tab={t}
+                    onClick={() => setActiveTab(t)}
+                    className={`flex-1 h-10 rounded-lg text-sm font-black ${activeTab === t ? "bg-white text-slate-800 shadow-sm" : "text-slate-500"}`}
+                  >
+                    {l}
+                  </button>
+                ))}
+              </div>
             )}
             {activeTab === "explore" && (
               <ExploreView
@@ -936,6 +960,8 @@ export default function App() {
                 technicians={fieldTechs}
                 machineTypes={machineTypes}
                 machines={machines}
+                key={newPrefill ? newPrefill.key : "new"}
+                prefill={newPrefill && newPrefill.data}
                 onSuccess={() => setActiveTab("history")}
                 isMobile={isMobileView}
                 onTechUpdate={setCurrentTechName}
@@ -981,6 +1007,15 @@ export default function App() {
           onOpenCustomer={openCustomerDetail}
           onOpenPhotos={setGlobalPhotoView}
           themeColor={color}
+          onNewReport={
+            isOffice
+              ? null
+              : (m) => {
+                  setNewPrefill({ key: Date.now(), data: m });
+                  setViewingMachineHistory(null);
+                  setActiveTab("new");
+                }
+          }
         />
       )}
       {viewingCustomerDetail && (
@@ -1022,6 +1057,13 @@ export default function App() {
             </>
           ) : (
             <>
+              <NavButton
+                icon={Home}
+                label="Home"
+                active={activeTab === "dashboard"}
+                onClick={() => setActiveTab("dashboard")}
+                color={color}
+              />
               <NavButton
                 icon={PlusCircle}
                 label="Nuovo"

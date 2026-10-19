@@ -32,8 +32,8 @@ export const NavButton = React.memo(
           <Icon className="w-5 h-5" strokeWidth={active ? 2.5 : 2} />
         </div>
         <span
-          className={`text-[9px] font-bold uppercase tracking-tight mt-1 transition-colors ${
-            active ? `text-${color}-800` : "text-slate-400"
+          className={`text-[11px] font-black uppercase tracking-tight mt-0.5 transition-colors ${
+            active ? `text-${color}-800` : "text-slate-500"
           }`}
         >
           {label}

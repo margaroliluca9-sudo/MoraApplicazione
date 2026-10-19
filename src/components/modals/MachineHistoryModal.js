@@ -7,6 +7,7 @@ import {
   ClipboardList,
   ArrowLeft,
   Camera,
+  PlusCircle,
 } from "lucide-react";
 import { getTechsString, formatCapacity, getSafeMatricola } from "../../utils";
 import { getProPanelClass } from "../../ui";
@@ -21,6 +22,7 @@ export const MachineHistoryModal = ({
   onOpenCustomer,
   onOpenPhotos,
   themeColor,
+  onNewReport = null, // "Nuovo rapporto su questa gru" (non per l'ufficio)
 }) => {
   const machineLogs = useMemo(() => {
     const mat = getSafeMatricola(machine).toLowerCase();
@@ -102,6 +104,29 @@ export const MachineHistoryModal = ({
                 ) : null;
               })}
             </div>
+          </div>
+          <div className="relative z-10 space-y-3" data-section="machine-summary">
+            <p className="text-sm font-semibold text-slate-600">
+              <b className="text-slate-800">{machineLogs.length} {machineLogs.length === 1 ? "intervento" : "interventi"}</b>
+              {machineLogs[0] ? ` · ultimo il ${machineLogs[0].dateString} (${getTechsString(machineLogs[0])})` : ""}
+            </p>
+            {onNewReport && (
+              <button
+                type="button"
+                data-action="new-on-machine"
+                onClick={() =>
+                  onNewReport({
+                    customer: machine.customerName,
+                    machineId: getSafeMatricola(machine),
+                    machineType: machine.type || "",
+                    capacity: machine.capacity || "",
+                  })
+                }
+                className={`w-full h-12 rounded-xl bg-${color}-600 text-white font-black flex items-center justify-center gap-2 active:scale-[0.98]`}
+              >
+                <PlusCircle className="w-5 h-5" /> Nuovo rapporto su questa gru
+              </button>
+            )}
           </div>
         </div>
         <div className="flex-1 overflow-y-auto p-5 custom-scrollbar bg-slate-100">

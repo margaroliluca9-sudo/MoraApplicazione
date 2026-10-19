@@ -164,7 +164,7 @@ export const DashboardView = ({
     "admin",
   ];
   // "I miei interventi" e "Chat" stanno dentro "La mia area" (non più in Home)
-  order = order.filter((k) => k !== "mine" && k !== "chat");
+  order = order.filter((k) => k !== "mine" && k !== "chat" && k !== "database"); // Database è dentro Esplora
   // riquadro "La mia area" subito dopo "Nuovo Rapporto"
   if (currentTechName && !order.includes("area")) {
     const k = order.indexOf("new");
@@ -217,7 +217,7 @@ export const DashboardView = ({
       id: "explore",
       label: "Esplora",
       icon: Folder,
-      desc: "Sfoglia clienti e macchine",
+      desc: "Clienti, gru e interventi",
       action: () => onNavigate("explore"),
     },
     history: {

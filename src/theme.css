@@ -3,11 +3,11 @@
 
 :root {
   --mora-page: #f1f5f9;
-  --mora-grid: rgba(29, 78, 216, 0.045);
+  --mora-grid: transparent;
 }
 html.dark {
   --mora-page: #0b1220;
-  --mora-grid: rgba(120, 150, 200, 0.06);
+  --mora-grid: transparent;
   color-scheme: dark;
 }
 

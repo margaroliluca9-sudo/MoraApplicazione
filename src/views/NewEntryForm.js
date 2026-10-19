@@ -69,6 +69,8 @@ export const NewEntryForm = ({
   // PROVA (dalla Guida): si compila tutto ma non si salva niente
   practice = false,
   onPractice = () => {},
+  // dalla scheda della gru: cliente e gru già scritti
+  prefill = null,
 }) => {
   const [formData, setFormData] = useState({
     technician: "",
@@ -82,6 +84,7 @@ export const NewEntryForm = ({
     photos: [],
     ropes: { fune: emptyRope(), catena: emptyRope() },
     dateString: getTodayString(), // Formato YYYY-MM-DD per l'input date
+    ...(prefill || {}),
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -94,7 +97,7 @@ export const NewEntryForm = ({
 
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   // BOZZA: il rapporto si salva da solo sul telefono finché non lo invii
-  const [pendingDraft, setPendingDraft] = useState(() => (practice ? null : loadDraft()));
+  const [pendingDraft, setPendingDraft] = useState(() => (practice || prefill ? null : loadDraft()));
   // dopo "Salva": riepilogo con "Altra gru, stesso cliente", "Stampa", "Vai allo Storico"
   const [savedLog, setSavedLog] = useState(null);
   useEffect(() => {
@@ -473,7 +476,7 @@ export const NewEntryForm = ({
         return (
           <div key="tech" className="space-y-3">
             <div className="space-y-1">
-              <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">
+              <label className="text-xs font-black text-slate-700 uppercase tracking-wide ml-1">
                 Tecnico Principale <span className="text-red-500">*</span>
               </label>
               <div className="relative">
@@ -509,8 +512,8 @@ export const NewEntryForm = ({
 
             <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
               <div className="flex justify-between items-center mb-2">
-                <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">
-                  Hanno Lavorato Con Te?
+                <label className="text-[11px] font-black text-slate-700 uppercase tracking-wide ml-1">
+                  Hanno lavorato con te?
                 </label>
                 <button
                   type="button"
@@ -562,7 +565,7 @@ export const NewEntryForm = ({
         return (
           <div key="mach" className="grid grid-cols-2 gap-4">
             <div className="space-y-1 relative">
-              <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">
+              <label className="text-xs font-black text-slate-700 uppercase tracking-wide ml-1">
                 Matricola/Campata
               </label>
               <div className="relative">
@@ -625,7 +628,7 @@ export const NewEntryForm = ({
               )}
             </div>
             <div className="space-y-1">
-              <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">
+              <label className="text-xs font-black text-slate-700 uppercase tracking-wide ml-1">
                 Tipo <span className="text-red-500">*</span>
               </label>
               <select
@@ -648,7 +651,7 @@ export const NewEntryForm = ({
       case "customer":
         return (
           <div key="cust" className="space-y-1 relative">
-            <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">
+            <label className="text-xs font-black text-slate-700 uppercase tracking-wide ml-1">
               Cliente <span className="text-red-500">*</span>
             </label>
             <div className="relative">
@@ -725,7 +728,7 @@ export const NewEntryForm = ({
       case "description":
         return (
           <div key="desc" className="space-y-1">
-            <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">
+            <label className="text-xs font-black text-slate-700 uppercase tracking-wide ml-1">
               Descrizione <span className="text-red-500">*</span>
             </label>
             <textarea
@@ -819,10 +822,10 @@ export const NewEntryForm = ({
           </div>
         );
       case "capacity":
-        const commonCapacities = suggestedCapacities;
+        const commonCapacities = [...suggestedCapacities].sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
         return layoutConfig.formSettings.showCapacity ? (
           <div key="cap" className="space-y-2">
-            <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">
+            <label className="text-xs font-black text-slate-700 uppercase tracking-wide ml-1">
               Portata in Kilogrammi <span className="text-red-500">*</span>
             </label>
             <input
@@ -861,7 +864,7 @@ export const NewEntryForm = ({
       case "date":
         return (
           <div key="date" className="space-y-1 relative">
-            <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">
+            <label className="text-xs font-black text-slate-700 uppercase tracking-wide ml-1">
               Data Intervento <span className="text-red-500">*</span>
             </label>
             <input
@@ -878,7 +881,7 @@ export const NewEntryForm = ({
       case "ticketNumber":
         return (
           <div key="ticketNumber" className="space-y-1">
-            <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">
+            <label className="text-xs font-black text-slate-700 uppercase tracking-wide ml-1">
               Numero Assistenza (Opzionale)
             </label>
             <input
@@ -900,7 +903,7 @@ export const NewEntryForm = ({
           >
             {layoutConfig.customFields.map((f, i) => (
               <div key={i} className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">
+                <label className="text-xs font-black text-slate-700 uppercase tracking-wide ml-1">
                   {f.label}
                 </label>
                 <input
@@ -919,7 +922,7 @@ export const NewEntryForm = ({
 
   return (
     <div
-      className={`overflow-hidden animate-in slide-in-from-bottom-6 duration-500 ${getProPanelClass(
+      className={`overflow-clip animate-in slide-in-from-bottom-6 duration-500 ${getProPanelClass(
         color
       )}`}
     >
@@ -1033,7 +1036,7 @@ export const NewEntryForm = ({
           </div>
         )}
 
-        <div className="flex gap-3 pt-2">
+        <div data-section="save-bar" className={`flex gap-3 sticky z-20 -mx-6 px-6 py-3 bg-white/95 backdrop-blur border-t border-slate-200 ${isMobile ? "bottom-[86px]" : "bottom-0"}`}>
           <button
             type="button"
             onClick={() => setShowClearConfirm(true)}

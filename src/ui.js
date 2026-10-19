@@ -10,4 +10,4 @@ export const getButtonPrimaryClass = (color) =>
   `bg-${color}-700 text-white shadow-md hover:bg-${color}-800 active:scale-95 transition-all border border-transparent font-bold tracking-wide`;
 
 export const getProPanelClass = (color) =>
-  `bg-white rounded-xl shadow-md border-t-4 border-t-${color}-600 border-x border-b border-slate-200`;
+  `bg-white rounded-2xl shadow-sm border border-slate-200`;
