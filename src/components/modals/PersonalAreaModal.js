@@ -1,7 +1,7 @@
 // LA MIA AREA: Oggi, Calendario, Note, Chat, Promemoria e contatti, Magazzino (solo con furgone), numeri del mese.
 // Ogni tecnico vede solo le sue cose.
 import React, { useEffect, useMemo, useState } from "react";
-import { X, CalendarDays, StickyNote, MessageSquare, Bell, Truck, ClipboardList, Printer, WifiOff, Settings, Timer } from "lucide-react";
+import { X, CalendarDays, StickyNote, MessageSquare, Bell, Truck, ClipboardList, Printer, WifiOff, Settings, Timer, Wrench, ChevronRight } from "lucide-react";
 import { HoursPanel } from "../personal/HoursPanel";
 import { getSettings } from "../../settings";
 import { fmtMin, monthSummary, getStd, withDefaults, getSince } from "../../hours";
@@ -13,6 +13,8 @@ import { NotesPanel } from "../personal/NotesPanel";
 import { RemindersPanel } from "../personal/RemindersPanel";
 import { VanView } from "../VanView";
 import { PrintPanel } from "../personal/PrintPanel";
+import { PartsPanel } from "../personal/PartsPanel";
+import { myChanges, partLabel } from "../../myParts";
 
 const Tile = ({ id, icon: Icon, label, sub, tone, onClick, badge, alert, wide }) => (
   <button
@@ -84,6 +86,7 @@ export const PersonalAreaModal = ({
   const low = lowItems(vanList).length;
   const items = useMemo(() => todayItems(events, reminders), [events, reminders]);
   const nums = useMemo(() => monthNumbers(logs, me), [logs, me]);
+  const changed = useMemo(() => myChanges(logs, me, { year: new Date().getFullYear() }), [logs, me]);
   const todayEvents = events.filter((e) => e.date === today).length;
   const openRem = reminders.filter((r) => !r.done).length;
   const back = () => setPanel(null);
@@ -102,6 +105,8 @@ export const PersonalAreaModal = ({
     body = <PrintPanel me={me} logs={logs} technicians={technicians} color={color} onBack={back} onClose={onClose} />;
   else if (panel === "hours" && showHours)
     body = <HoursPanel me={me} hours={hours} reminder={hoursReminder} color={color} onBack={back} onClose={onClose} />;
+  else if (panel === "parts")
+    body = <PartsPanel me={me} logs={logs} color={color} onBack={back} onClose={onClose} onOpenMachine={onOpenMachine} />;
   else if (panel === "settings") body = <SettingsPanel me={me} color={color} onBack={back} onClose={onClose} />;
   else if (panel === "notes") body = <NotesPanel me={me} notes={notes} color={color} onBack={back} onClose={onClose} />;
   else if (panel === "reminders")
@@ -208,6 +213,18 @@ export const PersonalAreaModal = ({
               <div className="text-sm font-semibold mt-1">{nums.customers === 1 ? "cliente visitato" : "clienti visitati"}</div>
             </div>
           </section>
+          <button type="button" onClick={() => setPanel("parts")} data-area-tile="parts" className="w-full text-left bg-white rounded-3xl border border-slate-200 p-4 flex items-center gap-3 active:scale-[0.99] transition-transform">
+            <span className="w-10 h-10 rounded-xl flex items-center justify-center bg-teal-50 text-teal-700 shrink-0">
+              <Wrench className="w-5 h-5" />
+            </span>
+            <span className="flex-1 min-w-0">
+              <span className="block font-black text-slate-800 text-base">Cosa ho cambiato</span>
+              <span className="block text-sm font-semibold text-slate-500 truncate">
+                {changed.length ? changed.slice(0, 3).map((r) => partLabel(r.part, r.qty)).join(" · ") + " quest'anno" : "Funi, guidafuni, contattori… quest'anno"}
+              </span>
+            </span>
+            <ChevronRight className="w-5 h-5 text-slate-400 shrink-0" />
+          </button>
           <button type="button" onClick={() => setPanel("settings")} data-action="area-settings-link" className="w-full flex items-center justify-center gap-1.5 py-2 text-sm font-bold text-slate-400">
             <Settings className="w-4 h-4" /> Impostazioni · notifiche e altro
           </button>
