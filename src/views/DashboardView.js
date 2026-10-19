@@ -29,7 +29,7 @@ import {
 import { ChatModal } from "../components/modals/ChatModal";
 import { unreadTotal } from "../chat";
 import { PersonalAreaModal } from "../components/modals/PersonalAreaModal";
-import { todayItems, monthNumbers, relDay, isoFromLogDate } from "../personal";
+import { todayItems, monthNumbers, relDay, isoFromLogDate, longDay, todayIso } from "../personal";
 import { HomeGrid } from "../components/HomeGrid";
 import { GuideModal } from "../components/modals/GuideModal";
 import { PracticeModal } from "../components/modals/PracticeModal";
@@ -384,6 +384,20 @@ export const DashboardView = ({
     </div>
   );
 
+  // saluto in cima alla Home
+  const hourNow = new Date().getHours();
+  const greeting = currentTechName ? (
+    <div className="px-1" data-section="home-greeting">
+      <p className="text-2xl font-black text-slate-800 leading-tight">
+        {hourNow < 13 ? "Buongiorno" : hourNow < 18 ? "Buon pomeriggio" : "Buonasera"}, {currentTechName}
+      </p>
+      <p className="text-sm font-semibold text-slate-500 mt-0.5">
+        {longDay(todayIso())}
+        {!isOffice && todayCount > 0 ? ` · ${todayCount === 1 ? "1 cosa" : todayCount + " cose"} da fare oggi` : ""}
+      </p>
+    </div>
+  ) : null;
+
   if (searching) {
     const { cs, ms, ls } = results;
     const none = !cs.length && !ms.length && !ls.length;
@@ -546,7 +560,12 @@ export const DashboardView = ({
         home={home}
         me={currentTechName}
         color={color}
-        searchBox={searchBox}
+        searchBox={
+          <div className="space-y-4">
+            {greeting}
+            {searchBox}
+          </div>
+        }
         onSaved={setPrefs}
         onPreviewLook={onPreviewLook}
         baseLook={layoutConfig}

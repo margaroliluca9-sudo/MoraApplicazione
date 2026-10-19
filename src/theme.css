@@ -85,3 +85,8 @@ html.dark .mora-theme-btn {
   outline: 3px solid #3b82f6;
   outline-offset: 2px;
 }
+
+/* spunta di "Rapporto salvato" che compare con un piccolo rimbalzo */
+@keyframes moraPop { 0% { transform: scale(0.4); opacity: 0; } 60% { transform: scale(1.12); opacity: 1; } 100% { transform: scale(1); } }
+.mora-pop { animation: moraPop 0.45s ease-out both; }
+@media (prefers-reduced-motion: reduce) { .mora-pop { animation: none; } }

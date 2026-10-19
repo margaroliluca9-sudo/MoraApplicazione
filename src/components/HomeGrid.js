@@ -17,7 +17,9 @@ import { describeError } from "../utils";
 import { Sheet, PrimaryBtn, GhostBtn } from "./personal/PersonalUi";
 import { LookEditor } from "./LookEditor";
 
-const tone = (c, theme) => (c === "auto" ? theme : c);
+// ogni riquadro ha il suo colore (si riconosce a colpo d'occhio); "Come l'app" = questo colore
+const TILE_COLOR = { area: "purple", explore: "green", history: "orange", office: "slate", database: "blue", admin: "slate" };
+const tone = (c, theme, id) => (c === "auto" ? TILE_COLOR[id] || theme : c);
 // riquadri che "ballano" in modifica, come sull'iPhone (niente animazione se il telefono la riduce)
 const WIGGLE_CSS = `
 @keyframes moraWiggle { 0% { transform: rotate(-0.7deg); } 50% { transform: rotate(0.7deg); } 100% { transform: rotate(-0.7deg); } }
@@ -359,7 +361,7 @@ export const HomeGrid = ({ items, home, me, color = "blue", searchBox, onEditing
               key={id}
               item={item}
               size={h.sizes[id] || defaultSize(id)}
-              color={tone(h.colors[id] || "auto", color)}
+              color={tone(h.colors[id] || "auto", color, id)}
               compact={h.compact}
               editing={editing}
               dragging={dragId === id}

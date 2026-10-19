@@ -35,6 +35,17 @@ export const dayGroup = (dateString, now = new Date()) => {
   if (diff > dow && diff <= dow + 7) return "Settimana scorsa";
   return `${MESI[m - 1]} ${y}`;
 };
+// iniziali del cliente in un quadratino colorato (sempre lo stesso colore per lo stesso cliente)
+const AVATAR = ["bg-blue-100 text-blue-800", "bg-emerald-100 text-emerald-800", "bg-amber-100 text-amber-800", "bg-purple-100 text-purple-800", "bg-rose-100 text-rose-800", "bg-cyan-100 text-cyan-800", "bg-orange-100 text-orange-800", "bg-indigo-100 text-indigo-800"];
+const initialsOf = (name) => {
+  const w = String(name || "?").replace(/[^A-Za-zÀ-ÿ0-9 ]/g, " ").split(/\s+/).filter((x) => x && !["SPA", "SRL", "SNC", "SAS", "DI", "DE", "E"].includes(x.toUpperCase()));
+  return ((w[0] || "?").charAt(0) + (w[1] ? w[1].charAt(0) : (w[0] || "").charAt(1) || "")).toUpperCase();
+};
+const avatarTone = (name) => {
+  let h = 0;
+  for (const ch of String(name || "")) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return AVATAR[h % AVATAR.length];
+};
 const isRecent = (log) => !!(log && log.createdAt && Date.now() - log.createdAt.seconds * 1000 < 3 * 60 * 1000);
 
 export const HistoryView = ({
@@ -241,8 +252,11 @@ export const HistoryView = ({
                   )}
                   <div className="p-4 space-y-2" data-log-card>
                     <div className="flex justify-between items-start gap-2">
+                      <span className={`w-10 h-10 rounded-xl shrink-0 flex items-center justify-center text-sm font-black ${avatarTone(log.customer)}`} aria-hidden="true">
+                        {initialsOf(log.customer)}
+                      </span>
                       <h4
-                        className="font-black text-slate-800 uppercase text-base leading-tight break-words cursor-pointer"
+                        className="flex-1 min-w-0 font-black text-slate-800 uppercase text-base leading-tight break-words cursor-pointer pt-0.5"
                         onClick={() => onOpenCustomer(log.customer)}
                       >
                         {log.customer}

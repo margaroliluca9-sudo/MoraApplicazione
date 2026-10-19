@@ -459,6 +459,11 @@ export const NewEntryForm = ({
       }
 
       // riepilogo invece di andare subito allo Storico
+      try {
+        if (navigator.vibrate) navigator.vibrate(40); // piccola vibrazione: salvato
+      } catch (e) {
+        // niente
+      }
       setSavedLog({ ...logData, id: logRef && logRef.id });
       setIsLocked(true);
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -958,7 +963,12 @@ export const NewEntryForm = ({
       {savedLog ? (
         <div className="p-6 space-y-4" data-section="report-saved">
           <div className="flex items-center gap-3">
-            <CheckCircle2 className="w-10 h-10 text-emerald-600 shrink-0" />
+            <span className="relative w-14 h-14 shrink-0" data-saved-check>
+              <span className="absolute inset-0 rounded-full bg-emerald-400/40 animate-ping" style={{ animationIterationCount: 2 }} />
+              <span className="relative w-14 h-14 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-lg mora-pop">
+                <CheckCircle2 className="w-8 h-8" />
+              </span>
+            </span>
             <div className="min-w-0">
               <h3 className="font-black text-slate-800 text-xl">Rapporto salvato</h3>
               <p className="text-sm font-semibold text-slate-500 truncate">
