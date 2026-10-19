@@ -1,7 +1,8 @@
 // LA MIA AREA: Oggi, Calendario, Note, Chat, Promemoria e contatti, Magazzino (solo con furgone), numeri del mese.
 // Ogni tecnico vede solo le sue cose.
 import React, { useEffect, useMemo, useState } from "react";
-import { X, CalendarDays, StickyNote, MessageSquare, Bell, Truck, ClipboardList, Printer, WifiOff } from "lucide-react";
+import { X, CalendarDays, StickyNote, MessageSquare, Bell, Truck, ClipboardList, Printer, WifiOff, Settings } from "lucide-react";
+import { SettingsPanel } from "../personal/SettingsPanel";
 import { todayItems, monthNumbers, longDay, todayIso } from "../../personal";
 import { vanOf, itemsOf, lowItems } from "../../van";
 import { CalendarPanel } from "../personal/CalendarPanel";
@@ -80,6 +81,7 @@ export const PersonalAreaModal = ({
     body = <CalendarPanel me={me} events={events} logs={logs} color={color} onBack={back} onClose={onClose} onOpenMachine={onOpenMachine} />;
   else if (panel === "print")
     body = <PrintPanel me={me} logs={logs} technicians={technicians} color={color} onBack={back} onClose={onClose} />;
+  else if (panel === "settings") body = <SettingsPanel me={me} color={color} onBack={back} onClose={onClose} />;
   else if (panel === "notes") body = <NotesPanel me={me} notes={notes} color={color} onBack={back} onClose={onClose} />;
   else if (panel === "reminders")
     body = <RemindersPanel me={me} reminders={reminders} contacts={contacts} color={color} onBack={back} onClose={onClose} />;
@@ -109,6 +111,9 @@ export const PersonalAreaModal = ({
               {longDay(today)} · {me}
             </p>
           </div>
+          <button type="button" onClick={() => setPanel("settings")} aria-label="Impostazioni" data-action="area-settings" className="w-11 h-11 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-100">
+            <Settings className="w-5 h-5" />
+          </button>
           <button type="button" onClick={onClose} aria-label="Chiudi" className="w-11 h-11 rounded-full border border-slate-200 flex items-center justify-center">
             <X className="w-5 h-5 text-slate-500" />
           </button>
@@ -179,6 +184,9 @@ export const PersonalAreaModal = ({
               <div className="text-sm font-semibold mt-1">{nums.customers === 1 ? "cliente visitato" : "clienti visitati"}</div>
             </div>
           </section>
+          <button type="button" onClick={() => setPanel("settings")} data-action="area-settings-link" className="w-full flex items-center justify-center gap-1.5 py-2 text-sm font-bold text-slate-400">
+            <Settings className="w-4 h-4" /> Impostazioni · notifiche e altro
+          </button>
         </div>
       </div>
     );

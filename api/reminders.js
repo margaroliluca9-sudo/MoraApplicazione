@@ -141,7 +141,7 @@ const run = async (now = Date.now()) => {
     if (now - d.notifyAt <= LATE_LIMIT) {
       const m = messageFor(kind, d);
       const payload = JSON.stringify({ title: m.title.slice(0, 80), body: m.body.slice(0, 300), tag: m.tag.slice(0, 64), url: m.url });
-      const mine = subs.filter((s) => key(s.technician) === key(d.owner));
+      const mine = subs.filter((s) => key(s.technician) === key(d.owner) && s.reminders !== false);
       const res = await Promise.all(mine.map((s) => send(s, payload)));
       sent += res.filter((st) => st >= 200 && st < 300).length;
     }

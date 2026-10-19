@@ -46,10 +46,12 @@ import {
 import { applyAppearance, getCachedLayout, cacheLayout } from "./appearance";
 import { NavButton } from "./components/NavButton";
 import { OnlineMenu, onlineUnread } from "./components/OnlineMenu";
+import { NotifyPrompt } from "./components/modals/NotifyPrompt";
+import { getSettings, wasAsked, markAsked, installTipShown } from "./settings";
 import { AdminLoginModal } from "./components/AdminLoginModal";
 import { PhotoViewerModal } from "./components/PhotoViewerModal";
 import { PdfHost } from "./components/PdfHost";
-import { refreshPush, key as techKey, chatDoc } from "./chat";
+import { refreshPush, getPushState, key as techKey, chatDoc } from "./chat";
 import { HOME_PREFS, cachedPrefs, cachePrefs, cleanLook } from "./home";
 import { PERSONAL } from "./personal";
 import { VAN } from "./van";
@@ -233,8 +235,17 @@ export default function App() {
   }, []);
 
   const [isAppUnlocked, setIsAppUnlocked] = useState(false);
-  const [onlineUsersCount, setOnlineUsersCount] = useState(0);
+  const [, setOnlineUsersCount] = useState(0);
   const [activeUsersList, setActiveUsersList] = useState([]);
+  // IMPOSTAZIONI PERSONALI (La mia area → Impostazioni): animazione, farsi vedere online
+  const [mySettings, setMySettings] = useState(getSettings);
+  useEffect(() => {
+    const on = (e) => setMySettings((e && e.detail) || getSettings());
+    window.addEventListener("mora-settings", on);
+    return () => window.removeEventListener("mora-settings", on);
+  }, []);
+  // dopo l'aggiornamento: "Vuoi le notifiche?" (una volta per telefono)
+  const [notifyAsk, setNotifyAsk] = useState(null);
   // "Tecnici online": si apre anche dalla notifica di un messaggio ("?online=dm:...")
   const [onlineConv, setOnlineConv] = useState(() => {
     try {
@@ -270,7 +281,7 @@ export default function App() {
     onAuthStateChanged(auth, (u) => {
       setUser(u);
       // con l'animazione di avvio attiva si aspetta che finisca (~2,4 s)
-      const splashOn = getCachedLayout().showSplash !== false;
+      const splashOn = getCachedLayout().showSplash !== false && getSettings().splash !== false;
       setTimeout(() => setIsAppLoading(false), splashOn ? 2500 : 300);
     });
   }, []);
@@ -304,6 +315,7 @@ export default function App() {
             device: device,
             userAgent: navigator.userAgent.substring(0, 50),
             lastActive: serverTimestamp(),
+            hidden: getSettings().showOnline === false, // non farmi vedere tra i "Tecnici online"
           },
           { merge: true }
         );
@@ -331,7 +343,7 @@ export default function App() {
     }
 
     return () => clearInterval(interval);
-  }, [user, currentTechName]);
+  }, [user, currentTechName, mySettings.showOnline]);
 
   // RETE: avviso quando il telefono è offline e rapporti non ancora inviati
   const [isOnline, setIsOnline] = useState(
@@ -574,6 +586,11 @@ export default function App() {
       unsubReads();
     };
   }, [user, needChat]);
+  // chi si è nascosto non compare tra i "Tecnici online" (l'admin vede tutti)
+  const visibleUsers = useMemo(
+    () => activeUsersList.filter((u) => !u.hidden || isAdminAuthenticated || techKey(u.technician) === techKey(currentTechName)),
+    [activeUsersList, isAdminAuthenticated, currentTechName]
+  );
   const onlineBadge = useMemo(
     () => (onlineMessages ? onlineUnread(chatMessages, chatReads, currentTechName) : 0),
     [onlineMessages, chatMessages, chatReads, currentTechName]
@@ -599,6 +616,17 @@ export default function App() {
   useEffect(() => {
     if (user && currentTechName) refreshPush(currentTechName);
   }, [user, currentTechName]);
+  useEffect(() => {
+    if (!user || !currentTechName || isAppLoading || !isAppUnlocked) return undefined;
+    if (wasAsked() && installTipShown()) return undefined;
+    const t = setTimeout(async () => {
+      const st = await getPushState();
+      if (st === "off" && !wasAsked()) setNotifyAsk("off");
+      else if (st === "install" && !installTipShown()) setNotifyAsk("install");
+      else if (st === "on" || st === "denied") markAsked();
+    }, 2500);
+    return () => clearTimeout(t);
+  }, [user, currentTechName, isAppLoading, isAppUnlocked]);
   // tocco su una notifica con l'app già aperta: vado a quella conversazione
   useEffect(() => {
     if (typeof navigator === "undefined" || !navigator.serviceWorker) return;
@@ -703,7 +731,7 @@ export default function App() {
 
   const color = viewConfig.themeColor || "blue";
 
-  if (isAppLoading && layoutConfig.showSplash === false)
+  if (isAppLoading && (layoutConfig.showSplash === false || mySettings.splash === false))
     return <div className="mora-app min-h-screen bg-slate-100" />;
 
   if (isAppLoading)
@@ -758,7 +786,7 @@ export default function App() {
               <div className="relative">
                 <h1 className="text-lg font-black uppercase tracking-tighter leading-none text-slate-800 flex items-center gap-2">
                   {layoutConfig.appTitle}
-                  {onlineUsersCount > 0 && (
+                  {visibleUsers.length > 0 && (
                     <div
                       data-action="online-toggle"
                       onClick={(e) => {
@@ -771,8 +799,8 @@ export default function App() {
                     >
                       <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
                       <span className="text-[9px] font-black text-green-700 uppercase mt-0.5">
-                        {onlineUsersCount}{" "}
-                        {onlineUsersCount === 1
+                        {visibleUsers.length}{" "}
+                        {visibleUsers.length === 1
                           ? "tecnico online"
                           : "tecnici online"}
                       </span>
@@ -792,7 +820,7 @@ export default function App() {
 
                 {showOnlineDropdown && (
                   <OnlineMenu
-                    users={activeUsersList}
+                    users={visibleUsers}
                     me={currentTechName}
                     isAdmin={isAdminAuthenticated}
                     canWrite={onlineMessages && !!currentTechName}
@@ -1111,6 +1139,9 @@ export default function App() {
         </nav>
       )}
 
+      {notifyAsk && (
+        <NotifyPrompt me={currentTechName} state={notifyAsk} color={color} onDone={() => setNotifyAsk(null)} />
+      )}
       {showAdminLogin && (
         <AdminLoginModal
           onSuccess={() => {

@@ -153,7 +153,7 @@ export const OnlineMenu = ({
               </div>
             )}
             {others.map((u) =>
-              row(u.technician, isAdmin ? `${u.device || ""} · ${since(u)}` : `attivo ${since(u)}`, key(u.technician))
+              row(u.technician, isAdmin ? `${u.device || ""} · ${since(u)}${u.hidden ? " · nascosto ai colleghi" : ""}` : `attivo ${since(u)}`, key(u.technician))
             )}
             {others.length === 0 && (
               <p className="text-sm text-slate-500 p-2">Nessun collega collegato in questo momento.</p>

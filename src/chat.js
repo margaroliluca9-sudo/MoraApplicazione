@@ -181,13 +181,26 @@ export const getPushState = async () => {
 
 const saveSubscription = async (sub, techName) => {
   const j = sub.toJSON();
-  await setDoc(chatDoc("push_subscriptions", subId(j.endpoint)), {
-    endpoint: j.endpoint,
-    keys: j.keys,
-    technician: techName || "",
-    updatedAt: serverTimestamp(),
-    device: String(navigator.userAgent || "").slice(0, 120),
-  });
+  // quali notifiche vuole (La mia area → Impostazioni): restano anche quando l'iscrizione si aggiorna
+  let kinds = {};
+  try {
+    const st = JSON.parse(localStorage.getItem("mora_personal_settings") || "{}") || {};
+    kinds = { chat: st.chat !== false, reminders: st.reminders !== false };
+  } catch (e) {
+    kinds = {};
+  }
+  await setDoc(
+    chatDoc("push_subscriptions", subId(j.endpoint)),
+    {
+      endpoint: j.endpoint,
+      keys: j.keys,
+      technician: techName || "",
+      updatedAt: serverTimestamp(),
+      device: String(navigator.userAgent || "").slice(0, 120),
+      ...kinds,
+    },
+    { merge: true }
+  );
   return j;
 };
 
@@ -250,6 +263,7 @@ export const notificationFor = (m) => ({
 export const recipientsFor = (m, subs, mine = "") =>
   (subs || []).filter((s) => {
     if (!s.endpoint || s.endpoint === mine || key(s.technician) === m.authorKey) return false;
+    if (s.chat === false) return false; // ha spento le notifiche dei messaggi
     return m.conv === GROUP || dmMembers(m.conv).includes(key(s.technician));
   });
 

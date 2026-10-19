@@ -168,7 +168,7 @@ const appStepsFor = ({ hasVan, chatEnabled, isAdmin }) =>
     {
       icon: UserCircle,
       title: "La mia area",
-      text: "Il riquadro «La mia area»: è solo tuo. In cima «Oggi» con impegni e promemoria, poi I miei interventi, Stampa interventi, Calendario, Note, Promemoria" + (hasVan ? ", Magazzino" : "") + " e i numeri del mese.",
+      text: "Il riquadro «La mia area»: è solo tuo. In cima «Oggi» con impegni e promemoria, poi I miei interventi, Stampa interventi, Calendario, Note, Promemoria" + (hasVan ? ", Magazzino" : "") + " e i numeri del mese. Con ⚙ in alto a destra le tue Impostazioni (notifiche e altro).",
       go: { label: "Apri La mia area", to: "area" },
     },
     {
@@ -218,7 +218,7 @@ const appStepsFor = ({ hasVan, chatEnabled, isAdmin }) =>
     {
       icon: Smartphone,
       title: "App e notifiche",
-      text: "Installa l'app sul telefono (iPhone: Condividi → «Aggiungi alla schermata Home»; Android: «Installa app»). Poi in Promemoria tocca «Attiva notifiche».",
+      text: "Installa l'app sul telefono (iPhone: Condividi → «Aggiungi alla schermata Home»; Android: «Installa app»). Le notifiche le attivi da La mia area → ⚙ Impostazioni (in alto a destra): lì scegli anche quali ricevere e fai una notifica di prova.",
     },
     {
       icon: WifiOff,
@@ -296,7 +296,7 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
       points: [
         "In alto accanto al nome dell'app: «… tecnici online». Toccalo per vedere chi è collegato adesso e da quanto.",
         "«Scrivi» apre una conversazione privata con quel collega; sotto, in «Messaggi recenti», ritrovi chi ti ha scritto anche se ora non è collegato.",
-        "Il pallino rosso sulla scritta dice quanti messaggi devi leggere. Con le notifiche attive (Promemoria → «Attiva notifiche») arriva anche sul telefono.",
+        "Il pallino rosso sulla scritta dice quanti messaggi devi leggere. Con le notifiche attive (La mia area → ⚙ Impostazioni) arriva anche sul telefono.",
         "Sono gli stessi messaggi privati della Chat: se l'admin accende la Chat in «La mia area» li ritrovi anche lì. L'admin può spegnere i messaggi da Impostazioni → Design.",
       ],
     },
@@ -342,6 +342,7 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
         "Note: testo, elenco da spuntare, nota fissata in cima.",
         "Promemoria: con giorno e ora ti avvisa sul telefono; senza ora alle 8:00. Sotto ci sono i contatti rapidi con il tasto per chiamare.",
         "In fondo: interventi fatti e clienti visitati nel mese.",
+        "⚙ Impostazioni (in alto a destra o in fondo): notifiche sì/no e quali, animazione all'avvio, farti vedere o no tra i «Tecnici online». Valgono per il tuo telefono.",
       ],
     },
     hasVan && {
@@ -392,7 +393,9 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
       points: [
         "iPhone: apri l'app in Safari, tocca Condividi → «Aggiungi alla schermata Home» e poi aprila da lì.",
         "Android: dal menu di Chrome tocca «Installa app» o «Aggiungi a schermata Home».",
-        "Poi in Promemoria tocca «Attiva notifiche». Gli avvisi possono arrivare con qualche minuto di ritardo.",
+        "Notifiche: La mia area → ⚙ Impostazioni (in alto a destra o in fondo) → «Notifiche». Il telefono chiede il permesso: tocca «Consenti».",
+        "Sempre lì scegli quali ricevere (messaggi dei colleghi, promemoria e impegni) e con «Prova una notifica» controlli che arrivino.",
+        "Se il telefono le ha bloccate: impostazioni del telefono → Notifiche → Assistenza Mora (o il browser) → Consenti. Gli avvisi possono arrivare con qualche minuto di ritardo.",
       ],
     },
     {
