@@ -169,6 +169,8 @@ export const saveNote = async (me, n) => {
     text: String(n.text || ""),
     items: (n.items || []).filter((i) => String(i.t || "").trim()).map((i) => ({ t: String(i.t).trim(), done: !!i.done })),
     pinned: !!n.pinned,
+    // foto o fogli scansionati (data URL JPEG, al massimo 3)
+    photos: (n.photos || []).filter((x) => typeof x === "string" && x.startsWith("data:image/")).slice(0, 3),
   };
   if (n.id) return setDoc(chatDoc(PERSONAL.notes, n.id), stamp(me, data));
   return addDoc(chatRef(PERSONAL.notes), { ...stamp(me, data), createdAt: serverTimestamp() });
