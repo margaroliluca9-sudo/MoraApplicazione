@@ -1,6 +1,6 @@
 // La mia area → ⚙ Impostazioni: le scelte personali (valgono per questo telefono)
 import React, { useEffect, useState } from "react";
-import { Bell, BellOff, Loader2, MessageCircle, CalendarClock, Sparkles, Users, Send, Timer } from "lucide-react";
+import { Bell, BellOff, Loader2, MessageCircle, CalendarClock, Sparkles, Users, Send, Timer, Sun } from "lucide-react";
 import { PanelHeader } from "./PersonalUi";
 import { getPushState, enablePush, disablePush } from "../../chat";
 import { getSettings, setSetting, syncNotifyKinds, testNotification, markAsked } from "../../settings";
@@ -117,6 +117,9 @@ export const SettingsPanel = ({ me, color = "blue", onBack, onClose }) => {
         <section className="bg-white rounded-3xl border border-slate-200 px-4 py-1 divide-y divide-slate-100">
           <Row icon={Sparkles} title="Animazione all'avvio" sub="La gru che si muove quando apri l'app (e quella delle feste)">
             <Switch id="splash" label="Animazione all'avvio" on={st.splash !== false} onChange={(v) => change("splash", v)} />
+          </Row>
+          <Row icon={Sun} title="Cielo animato in Home" sub="Il cielo con la gru che lavora in cima alla Home. Spento resta un'immagine ferma">
+            <Switch id="heroAnim" label="Cielo animato in Home" on={st.heroAnim !== false} onChange={(v) => change("heroAnim", v)} />
           </Row>
           <Row icon={Users} title="Farmi vedere tra i «Tecnici online»" sub="Se lo spegni i colleghi non ti vedono collegato (l'admin sì)">
             <Switch id="showOnline" label="Farmi vedere online" on={st.showOnline !== false} onChange={(v) => change("showOnline", v)} />
