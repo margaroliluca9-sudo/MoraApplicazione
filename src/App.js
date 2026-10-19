@@ -65,6 +65,25 @@ import { NewEntryForm } from "./views/NewEntryForm";
 import { HistoryView } from "./views/HistoryView";
 import { AdminPanel } from "./views/AdminPanel";
 
+// SENZA RETE: "aggiornati oggi alle 8:42" / "ieri alle 17:10" / "il 16/10 alle 9:00"
+const readLastSync = () => {
+  try {
+    return Number(localStorage.getItem("mora_last_sync")) || 0;
+  } catch (e) {
+    return 0;
+  }
+};
+const syncWhen = (ms) => {
+  const d = new Date(ms);
+  const t = new Date();
+  const hm = `${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`;
+  const day = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const diff = Math.round((day(t) - day(d)) / 86400000);
+  if (diff === 0) return "oggi alle " + hm;
+  if (diff === 1) return "ieri alle " + hm;
+  return `il ${d.getDate()}/${d.getMonth() + 1} alle ${hm}`;
+};
+
 // animazione di avvio del periodo dell'anno (si può provare con "?stagione=natale")
 const splashSeason = (cfg) => {
   try {
@@ -310,6 +329,20 @@ export default function App() {
     typeof navigator === "undefined" ? true : navigator.onLine !== false
   );
   const [pendingCount, setPendingCount] = useState(0);
+  // ultima volta che i dati sono arrivati dal server (per dire "aggiornati alle...")
+  const [lastSync, setLastSync] = useState(readLastSync);
+  const markSynced = () => {
+    const now = Date.now();
+    setLastSync((prev) => {
+      if (now - prev < 60000) return prev;
+      try {
+        localStorage.setItem("mora_last_sync", String(now));
+      } catch (e) {
+        // niente
+      }
+      return now;
+    });
+  };
   useEffect(() => {
     const on = () => setIsOnline(true);
     const off = () => setIsOnline(false);
@@ -433,6 +466,8 @@ export default function App() {
       collection(db, "artifacts", appId, "public", "data", "maintenance_logs"),
       { includeMetadataChanges: true },
       (s) => {
+        // dati arrivati dal server (non dalla copia sul telefono): segno l'ora
+        if (s.metadata && s.metadata.fromCache === false) markSynced();
         // interventi salvati sul telefono ma non ancora arrivati al server
         setPendingCount(
           s.docs.filter((d) => d.metadata && d.metadata.hasPendingWrites).length
@@ -808,7 +843,7 @@ export default function App() {
         <div
           role="status"
           data-section="network-status"
-          className={`px-4 py-2.5 text-xs font-bold flex items-center justify-center gap-2 text-center border-b ${
+          className={`px-4 py-2.5 text-xs font-bold flex items-center justify-center gap-2.5 border-b ${
             !isOnline
               ? "bg-amber-50 text-amber-800 border-amber-200"
               : "bg-blue-50 text-blue-800 border-blue-200"
@@ -819,19 +854,26 @@ export default function App() {
           ) : (
             <UploadCloud className="w-4 h-4 shrink-0 animate-pulse" />
           )}
-          <span>
-            {!isOnline
-              ? pendingCount > 0
-                ? `Senza rete: ${pendingCount} ${
-                    pendingCount === 1 ? "rapporto salvato" : "rapporti salvati"
-                  } sul telefono, ${
-                    pendingCount === 1 ? "verrà inviato" : "verranno inviati"
-                  } appena torna la connessione.`
-                : "Senza rete: puoi continuare a lavorare, i rapporti verranno inviati appena torna la connessione."
-              : `Invio di ${pendingCount} ${
-                  pendingCount === 1 ? "rapporto" : "rapporti"
-                } in corso...`}
-          </span>
+          {!isOnline ? (
+            <span className="text-left leading-snug">
+              <span className="block font-black">
+                Sei senza rete: vedi i dati salvati sul telefono
+                {lastSync ? ` (aggiornati ${syncWhen(lastSync)})` : ""}
+              </span>
+              <span className="block font-semibold">
+                {pendingCount > 0
+                  ? `${pendingCount} ${pendingCount === 1 ? "rapporto salvato" : "rapporti salvati"} sul telefono: ${
+                      pendingCount === 1 ? "parte" : "partono"
+                    } appena torna la connessione. `
+                  : ""}
+                La mia area, interventi e clienti si aprono; quello che scrivi parte quando torna la rete. Le novità dei colleghi arrivano dopo.
+              </span>
+            </span>
+          ) : (
+            <span>
+              {`Invio di ${pendingCount} ${pendingCount === 1 ? "rapporto" : "rapporti"} in corso...`}
+            </span>
+          )}
         </div>
       )}
 

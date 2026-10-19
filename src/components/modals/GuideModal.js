@@ -215,7 +215,7 @@ const appStepsFor = ({ hasVan, chatEnabled, isAdmin }) =>
     {
       icon: WifiOff,
       title: "Senza rete",
-      text: "Puoi lavorare anche senza rete: una striscia in alto ti avvisa e i rapporti partono da soli appena torna la connessione.",
+      text: "In un capannone senza internet l'app si apre lo stesso e mostra quello che è salvato sul telefono: La mia area (note, calendario, promemoria), interventi e clienti. La striscia gialla in alto dice da quando sono aggiornati. Quello che scrivi parte da solo appena torna la connessione; le novità dei colleghi arrivano dopo.",
     },
     isAdmin && {
       icon: Settings,
@@ -386,7 +386,12 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
       id: "offline",
       icon: WifiOff,
       title: "Senza rete",
-      points: ["Una striscia in alto avvisa quando sei offline o quando ci sono rapporti ancora da inviare: partono da soli appena torna la rete."],
+      points: [
+        "L'app si apre anche senza internet (in un capannone, in cantina): usa la copia salvata sul telefono.",
+        "Vedi La mia area (note, calendario, promemoria, contatti), gli interventi, i clienti e le gru com'erano l'ultima volta che c'era la rete: la striscia gialla in alto dice «aggiornati oggi alle…».",
+        "Puoi scrivere rapporti, note e impegni: partono da soli appena torna la rete. Le novità dei colleghi arrivano quando torni online.",
+        "Serve averla aperta almeno una volta con la rete su quel telefono.",
+      ],
     },
     isAdmin && {
       id: "admin",

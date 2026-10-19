@@ -1,7 +1,7 @@
 // LA MIA AREA: Oggi, Calendario, Note, Chat, Promemoria e contatti, Magazzino (solo con furgone), numeri del mese.
 // Ogni tecnico vede solo le sue cose.
-import React, { useMemo, useState } from "react";
-import { X, CalendarDays, StickyNote, MessageSquare, Bell, Truck, ClipboardList, Printer } from "lucide-react";
+import React, { useEffect, useMemo, useState } from "react";
+import { X, CalendarDays, StickyNote, MessageSquare, Bell, Truck, ClipboardList, Printer, WifiOff } from "lucide-react";
 import { todayItems, monthNumbers, longDay, todayIso } from "../../personal";
 import { vanOf, itemsOf, lowItems } from "../../van";
 import { CalendarPanel } from "../personal/CalendarPanel";
@@ -51,6 +51,18 @@ export const PersonalAreaModal = ({
   initialPanel = null,
 }) => {
   const [panel, setPanel] = useState(initialPanel);
+  // senza rete: lo dico anche qui (la striscia della Home resta sotto)
+  const [offline, setOffline] = useState(() => typeof navigator !== "undefined" && navigator.onLine === false);
+  useEffect(() => {
+    const on = () => setOffline(false);
+    const off = () => setOffline(true);
+    window.addEventListener("online", on);
+    window.addEventListener("offline", off);
+    return () => {
+      window.removeEventListener("online", on);
+      window.removeEventListener("offline", off);
+    };
+  }, []);
   const today = todayIso();
   const van = vanOf(vans, me);
   const vanList = van ? itemsOf(vanItems, van.id) : [];
@@ -101,6 +113,12 @@ export const PersonalAreaModal = ({
             <X className="w-5 h-5 text-slate-500" />
           </button>
         </div>
+        {offline && (
+          <div data-section="area-offline" className="px-4 py-2 bg-amber-50 border-b border-amber-200 text-amber-800 text-xs font-bold flex items-center gap-2 shrink-0">
+            <WifiOff className="w-4 h-4 shrink-0" />
+            Senza rete: vedi quello che è salvato sul telefono. Quello che scrivi parte quando torna la rete.
+          </div>
+        )}
         <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50">
           <section className="bg-white rounded-3xl border border-slate-200 p-4 space-y-3" data-section="area-today">
             <div className="flex justify-between items-baseline">

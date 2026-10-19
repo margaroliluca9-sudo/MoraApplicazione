@@ -12,6 +12,17 @@ import { applyAppearance, getCachedLayout } from "./appearance";
 applyTheme(getThemeMode());
 applyAppearance(getCachedLayout());
 
+// copia dell'app sul telefono: così si apre anche senza rete (vedi public/sw.js)
+if (
+  typeof navigator !== "undefined" &&
+  "serviceWorker" in navigator &&
+  (window.location.protocol === "https:" || window.location.hostname === "localhost")
+) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js").catch(() => {});
+  });
+}
+
 const rootElement = document.getElementById("root");
 const root = createRoot(rootElement);
 
