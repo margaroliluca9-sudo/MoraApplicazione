@@ -141,6 +141,12 @@ export default function App() {
   const [winW, setWinW] = useState(window.innerWidth);
   // TABLET E PC: schede aperte in alto (come un programma)
   const [openTabs, setOpenTabs] = useState(["dashboard"]);
+  // tablet/computer: «La mia area» in una scheda (con la parte da aprire: calendario, note…)
+  const [areaPanel, setAreaPanel] = useState({ panel: "home", n: 0 });
+  const openAreaTab = (panel) => {
+    setAreaPanel((a) => ({ panel: panel || "home", n: a.n + 1 }));
+    setActiveTab("area");
+  };
   const [currentTechName, setCurrentTechName] = useState(
     localStorage.getItem("mora_tech_last_name") || ""
   );
@@ -697,6 +703,10 @@ export default function App() {
           setShowOnlineDropdown(true);
           return;
         }
+        if (panel && window.innerWidth >= 768) {
+          openAreaTab(panel);
+          return;
+        }
         if (panel) {
           setTimeout(
             () => window.dispatchEvent(new CustomEvent("mora-open-area", { detail: { panel } })),
@@ -821,10 +831,7 @@ export default function App() {
         <Sidebar
           active={activeTab}
           onGo={setActiveTab}
-          onArea={() => {
-            setActiveTab("dashboard");
-            setTimeout(() => window.dispatchEvent(new CustomEvent("mora-open-area", { detail: { panel: "home" } })), 50);
-          }}
+          onArea={() => openAreaTab("home")}
           onAdmin={handleAdminAccess}
           isOffice={isOffice}
           title={layoutConfig.appTitle}
@@ -986,8 +993,13 @@ export default function App() {
           </div>
         ) : (
           <div key={activeTab} className="animate-in fade-in duration-300">
-            {activeTab === "dashboard" && (
+            {(activeTab === "dashboard" || activeTab === "area") && (
               <DashboardView
+                key={activeTab === "area" ? `area${areaPanel.n}` : "home"}
+                areaTab={activeTab === "area"}
+                areaPanel={areaPanel.panel}
+                onOpenAreaTab={isMobileView ? null : openAreaTab}
+                onCloseArea={() => closeTab("area")}
                 onNavigate={setActiveTab}
                 layoutConfig={viewConfig}
                 onAdminAccess={handleAdminAccess}
