@@ -1,0 +1,25 @@
+name: Misura 2
+on:
+  push:
+    branches: [misura2]
+permissions:
+  contents: read
+jobs:
+  conta:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node .github/scripts/backup.js /tmp/b.json > /dev/null
+      - run: |
+          node -e '
+          const b=require("/tmp/b.json").collections;const L=b.maintenance_logs||[];
+          const noC=L.filter(x=>!x.fields.createdAt);const ts=L.filter(x=>x.fields.createdAt).map(x=>x.fields.createdAt.timestampValue||JSON.stringify(x.fields.createdAt)).sort();
+          const kinds={};L.forEach(x=>{const c=x.fields.createdAt;const k=c?Object.keys(c)[0]:"none";kinds[k]=(kinds[k]||0)+1});
+          const ds=noC.map(x=>(x.fields.dateString||{}).stringValue).slice(0,5);
+          const h=(b.personal_hours||[]).map(x=>x.id).slice(0,3);const ev=(b.personal_events||[]).map(x=>Object.keys(x.fields).join("|"));
+          const cm=(b.chat_messages||[]).map(x=>Object.keys(x.fields).sort().join("|")).slice(0,2);
+          console.log("::notice::logs "+L.length+" senzaCreatedAt "+noC.length+" tipi "+JSON.stringify(kinds)+" primo "+ts[0]+" ultimo "+ts[ts.length-1]+" esempiSenza "+JSON.stringify(ds)+" hoursIds "+JSON.stringify(h)+" eventFields "+JSON.stringify(ev)+" chatFields "+JSON.stringify(cm)+" access "+(b.access_logs||[]).length);'
