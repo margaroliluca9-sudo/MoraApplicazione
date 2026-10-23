@@ -14,7 +14,7 @@ jobs:
         with:
           node-version: 22
       - run: echo ok > f.txt && node -v
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         with:
           name: prova
           path: f.txt
