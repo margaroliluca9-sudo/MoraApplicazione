@@ -9,6 +9,8 @@ import { getSettings } from "../settings";
 import { HeroWorld } from "./hero/world";
 import { heroLines } from "./hero/facts";
 import { activeNotices } from "../company";
+import { createPortal } from "react-dom";
+import { CraneGame } from "./CraneGame";
 
 export const skyOf = (hour) =>
   hour >= 5 && hour < 9 ? "alba" : hour >= 9 && hour < 17 ? "giorno" : hour >= 17 && hour < 20 ? "tramonto" : "notte";
@@ -219,7 +221,17 @@ export const HomeHero = ({ me = "", logs = [], todayCount = 0, now = new Date(),
     const r = el.getBoundingClientRect();
     return [(e.clientX - r.left - w.view.ox) / w.view.s, (e.clientY - r.top - w.view.oy) / w.view.s];
   };
+  // GIOCO SEGRETO: 5 tocchi veloci sul cielo (entro 2 secondi e mezzo)
+  const taps = useRef([]);
+  const [game, setGame] = useState(false);
   const down = (e) => {
+    const now2 = Date.now();
+    taps.current = [...taps.current.filter((t) => now2 - t < 2500), now2];
+    if (taps.current.length >= 5) {
+      taps.current = [];
+      setGame(true);
+      return;
+    }
     const p = toWorld(e);
     if (p) world.current.pointerDown(p[0], p[1]);
   };
@@ -283,6 +295,7 @@ export const HomeHero = ({ me = "", logs = [], todayCount = 0, now = new Date(),
         </p>
       </div>
       <style>{"@keyframes moraChip { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }"}</style>
+      {game && createPortal(<CraneGame onClose={() => setGame(false)} />, document.body)}
     </div>
   );
 };

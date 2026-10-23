@@ -6,6 +6,7 @@ import { MAX_NOTE_PHOTOS, scanLook, rotate90, photoFromFile, readSheet } from ".
 import { sortNotes, saveNote, removePersonal } from "../../personal";
 import { describeError } from "../../utils";
 import { PanelHeader, Sheet, Field, INPUT, PrimaryBtn, GhostBtn, Empty } from "./PersonalUi";
+import { SwipeRow } from "../SwipeRow";
 
 const when = (ms) => {
   if (!ms) return "";
@@ -118,8 +119,15 @@ export const NotesPanel = ({ me, notes, onBack, onClose, color = "blue", scanOn 
         {error && !edit && <p className="text-sm font-bold text-red-600">{error}</p>}
         {!list.length && <Empty>Nessuna nota. Scrivi qui codici utili, misure, accessi ai clienti o cose da ricordare.</Empty>}
         {list.map((n) => (
-          <article
+          <SwipeRow
             key={n.id}
+            id={n.id}
+            actions={[
+              { id: "pin", label: n.pinned ? "Sblocca" : "Fissa", icon: Pin, tone: "amber", onClick: () => saveNote(me, { ...n, pinned: !n.pinned }).catch((e) => setError("Non salvato: " + describeError(e))) },
+              { id: "delete", label: "Elimina", icon: Trash2, tone: "red", confirm: true, onClick: () => removePersonal("notes", n.id).catch((e) => setError("Non eliminata: " + describeError(e))) },
+            ]}
+          >
+          <article
             data-note={n.id}
             className={`bg-white rounded-2xl border p-4 space-y-2 ${n.pinned ? "border-amber-300" : "border-slate-200"}`}
           >
@@ -155,6 +163,7 @@ export const NotesPanel = ({ me, notes, onBack, onClose, color = "blue", scanOn 
               </label>
             ))}
           </article>
+          </SwipeRow>
         ))}
       </div>
 
