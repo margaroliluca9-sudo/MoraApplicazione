@@ -32,10 +32,10 @@ export const DuplicatesModal = ({
               <AlertTriangle className="w-5 h-5" />
             </div>
             <div>
-              <h3 className="font-black text-slate-800 uppercase tracking-tight text-lg">
+              <h3 className="font-black text-slate-800 tracking-tight text-lg">
                 Potenziali Conflitti
               </h3>
-              <p className="text-xs font-bold text-slate-500 uppercase">
+              <p className="text-xs font-bold text-slate-500">
                 {pairs.length}{" "}
                 {pairs.length === 1 ? "Elemento simile" : "Elementi simili"}{" "}
                 trovati
@@ -55,7 +55,7 @@ export const DuplicatesModal = ({
               <div className="w-16 h-16 bg-green-100 text-green-500 rounded-full flex items-center justify-center mx-auto mb-3">
                 <CheckCircle className="w-8 h-8" />
               </div>
-              <p className="text-slate-500 font-bold uppercase text-xs">
+              <p className="text-slate-500 font-bold text-xs">
                 Nessun conflitto rilevato! 🎉
               </p>
             </div>
@@ -78,7 +78,7 @@ export const DuplicatesModal = ({
                 >
                   <div className="flex flex-col md:flex-row justify-between items-center gap-4">
                     <div className="flex-1 text-center md:text-left bg-red-50 p-3 rounded-xl border border-red-100 w-full md:w-auto">
-                      <span className="font-black text-sm text-red-700 block uppercase break-words">
+                      <span className="font-black text-sm text-red-700 block break-words">
                         {nameA}
                       </span>
                       <span className="text-[10px] text-red-400 font-bold mt-1 block">
@@ -94,7 +94,7 @@ export const DuplicatesModal = ({
                           setLoadingIdx(null);
                         }}
                         disabled={loadingIdx !== null}
-                        className={`text-xs font-black bg-purple-100 text-purple-700 px-4 py-2 rounded-xl hover:bg-purple-200 transition-colors shadow-sm uppercase flex items-center justify-center gap-2 ${
+                        className={`text-xs font-black bg-purple-100 text-purple-700 px-4 py-2 rounded-xl hover:bg-purple-200 transition-colors shadow-sm flex items-center justify-center gap-2 ${
                           loadingIdx !== null
                             ? "opacity-50 cursor-not-allowed"
                             : ""
@@ -118,7 +118,7 @@ export const DuplicatesModal = ({
                           setLoadingIdx(null);
                         }}
                         disabled={loadingIdx !== null}
-                        className={`text-xs font-black bg-blue-100 text-blue-700 px-4 py-2 rounded-xl hover:bg-blue-200 transition-colors shadow-sm uppercase flex items-center justify-center gap-2 flex-row-reverse md:flex-row ${
+                        className={`text-xs font-black bg-blue-100 text-blue-700 px-4 py-2 rounded-xl hover:bg-blue-200 transition-colors shadow-sm flex items-center justify-center gap-2 flex-row-reverse md:flex-row ${
                           loadingIdx !== null
                             ? "opacity-50 cursor-not-allowed"
                             : ""
@@ -138,7 +138,7 @@ export const DuplicatesModal = ({
                     </div>
 
                     <div className="flex-1 text-center md:text-right bg-blue-50 p-3 rounded-xl border border-blue-100 w-full md:w-auto">
-                      <span className="font-black text-sm text-blue-700 block uppercase break-words">
+                      <span className="font-black text-sm text-blue-700 block break-words">
                         {nameB}
                       </span>
                       <span className="text-[10px] text-blue-400 font-bold mt-1 block">

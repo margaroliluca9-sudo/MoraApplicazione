@@ -69,7 +69,7 @@ export const VanAdmin = ({ vans = [], vanItems = [], technicians = [], color = "
     <div className="space-y-6" data-section="van-admin">
       <div className={`p-5 space-y-4 ${getProPanelClass(color)}`}>
         <div className="flex items-center justify-between gap-3 flex-wrap">
-          <h3 className="font-black text-slate-800 uppercase flex items-center gap-2">
+          <h3 className="font-black text-slate-800 flex items-center gap-2">
             <Truck className={`w-5 h-5 text-${color}-600`} /> Furgoni della ditta
           </h3>
           <button
@@ -116,7 +116,7 @@ export const VanAdmin = ({ vans = [], vanItems = [], technicians = [], color = "
       </div>
 
       <div className={`p-5 space-y-3 ${getProPanelClass(color)}`} data-section="van-permissions">
-        <h3 className="font-black text-slate-800 uppercase">Chi usa quale furgone</h3>
+        <h3 className="font-black text-slate-800">Chi usa quale furgone</h3>
         <p className="text-sm text-slate-600 flex gap-2">
           <Info className="w-4 h-4 shrink-0 mt-0.5 text-slate-400" />
           Chi ha un furgone vede il Magazzino e, quando salva il rapporto, i pezzi montati vengono tolti in automatico. Chi ha «Nessuno» non vede niente di nuovo.
@@ -148,11 +148,11 @@ export const VanAdmin = ({ vans = [], vanItems = [], technicians = [], color = "
       </div>
 
       <div className={`p-5 space-y-3 ${getProPanelClass(color)}`} data-section="van-order">
-        <h3 className="font-black text-slate-800 uppercase">Da riordinare (tutti i furgoni)</h3>
+        <h3 className="font-black text-slate-800">Da riordinare (tutti i furgoni)</h3>
         {!totalLow && <p className="text-sm text-slate-500">Nessun pezzo sotto la scorta minima.</p>}
         {groups.filter((g) => g.rows.length).map((g) => (
           <div key={g.name} className="space-y-1">
-            <p className="text-xs font-black text-slate-500 uppercase">{g.name}</p>
+            <p className="text-xs font-black text-slate-500">{g.name}</p>
             {g.rows.map((r) => (
               <div key={r.name} className="flex justify-between gap-3 text-sm border-b border-slate-100 py-1.5">
                 <span className="font-bold text-slate-800 min-w-0 break-words">{r.name}</span>
@@ -166,7 +166,7 @@ export const VanAdmin = ({ vans = [], vanItems = [], technicians = [], color = "
           data-action="order-pdf"
           disabled={!vans.length}
           onClick={() => openPdf(() => buildVanOrderPdf({ groups, today }), pdfFileName("Lista ordine furgoni", today.replace(/\//g, "-")))}
-          className={`w-full h-12 rounded-xl bg-${color}-600 text-white font-black text-sm uppercase flex items-center justify-center gap-2 disabled:opacity-50`}
+          className={`w-full h-12 rounded-xl bg-${color}-600 text-white font-black text-sm flex items-center justify-center gap-2 disabled:opacity-50`}
         >
           <Printer className="w-4 h-4" /> Lista d'ordine (PDF)
         </button>

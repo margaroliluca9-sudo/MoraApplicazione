@@ -610,44 +610,51 @@ export const AdminPanel = ({
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex p-2 rounded-2xl border border-slate-200 overflow-x-auto gap-2 bg-white no-scrollbar">
+      <div className="flex p-1.5 rounded-full border border-slate-200 overflow-x-auto gap-1 bg-white no-scrollbar shadow-sm" data-section="admin-tabs">
         <AdminTab
+          color={layoutConfig.themeColor}
           active={view === "design"}
           onClick={() => setView("design")}
           icon={Palette}
           label="Design"
         />
         <AdminTab
+          color={layoutConfig.themeColor}
           active={view === "techs"}
           onClick={() => setView("techs")}
           icon={User}
           label="Staff"
         />
         <AdminTab
+          color={layoutConfig.themeColor}
           active={view === "types"}
           onClick={() => setView("types")}
           icon={Layers}
           label="Tipi"
         />
         <AdminTab
+          color={layoutConfig.themeColor}
           active={view === "clients"}
           onClick={() => setView("clients")}
           icon={Users}
           label="Clienti"
         />
         <AdminTab
+          color={layoutConfig.themeColor}
           active={view === "machines"}
           onClick={() => setView("machines")}
           icon={Factory}
           label="Gru"
         />
         <AdminTab
+          color={layoutConfig.themeColor}
           active={view === "vans"}
           onClick={() => setView("vans")}
           icon={Truck}
           label="Furgoni"
         />
         <AdminTab
+          color={layoutConfig.themeColor}
           active={view === "diagnostics"}
           onClick={() => setView("diagnostics")}
           icon={AlertOctagon}
@@ -671,7 +678,7 @@ export const AdminPanel = ({
             layoutConfig.themeColor
           )}`}
         >
-          <h3 className="font-black text-slate-800 mb-4 uppercase">Tema</h3>
+          <h3 className="font-black text-slate-800 mb-4">Tema</h3>
           <div className="flex gap-2 mb-6">
             {["blue", "red", "green", "purple", "orange", "slate"].map((c) => (
               <button
@@ -789,7 +796,7 @@ export const AdminPanel = ({
                     chatEnabled: layoutConfig.chatEnabled !== true,
                   })
                 }
-                className={`px-4 py-2 rounded-lg font-bold text-xs uppercase shrink-0 ${
+                className={`px-4 py-2 rounded-full font-bold text-sm shrink-0 ${
                   layoutConfig.chatEnabled === true
                     ? `bg-${layoutConfig.themeColor}-600 text-white`
                     : "bg-white border border-slate-300 text-slate-600"
@@ -822,7 +829,7 @@ export const AdminPanel = ({
                     onlineMessages: layoutConfig.onlineMessages === false,
                   })
                 }
-                className={`px-4 py-2 rounded-lg font-bold text-xs uppercase shrink-0 ${
+                className={`px-4 py-2 rounded-full font-bold text-sm shrink-0 ${
                   layoutConfig.onlineMessages !== false
                     ? `bg-${layoutConfig.themeColor}-600 text-white`
                     : "bg-white border border-slate-300 text-slate-600"
@@ -855,7 +862,7 @@ export const AdminPanel = ({
                     seasonalSplash: layoutConfig.seasonalSplash === false,
                   })
                 }
-                className={`px-4 py-2 rounded-lg font-bold text-xs uppercase shrink-0 ${
+                className={`px-4 py-2 rounded-full font-bold text-sm shrink-0 ${
                   layoutConfig.seasonalSplash === false
                     ? "bg-white border border-slate-300 text-slate-600"
                     : `bg-${layoutConfig.themeColor}-600 text-white`
@@ -885,7 +892,7 @@ export const AdminPanel = ({
                     showSplash: layoutConfig.showSplash === false,
                   })
                 }
-                className={`px-4 py-2 rounded-lg font-bold text-xs uppercase shrink-0 ${
+                className={`px-4 py-2 rounded-full font-bold text-sm shrink-0 ${
                   layoutConfig.showSplash === false
                     ? "bg-white border border-slate-300 text-slate-600"
                     : `bg-${layoutConfig.themeColor}-600 text-white`
@@ -933,7 +940,7 @@ export const AdminPanel = ({
               onClick={() =>
                 onUpdateLayout({ ...layoutConfig, ...APPEARANCE_DEFAULTS })
               }
-              className="w-full py-2.5 rounded-lg border border-slate-200 bg-white text-slate-600 font-bold text-xs uppercase hover:bg-slate-50"
+              className="w-full py-2.5 rounded-lg border border-slate-200 bg-white text-slate-600 font-bold text-xs hover:bg-slate-50"
             >
               Ripristina grafica predefinita
             </button>
@@ -948,7 +955,7 @@ export const AdminPanel = ({
                   layoutConfig.appTitle,
               })
             }
-            className={`w-full py-3 bg-slate-800 text-white rounded-xl font-bold uppercase text-xs`}
+            className={`w-full py-3 bg-slate-800 text-white rounded-xl font-bold text-xs`}
           >
             Cambia Titolo App
           </button>
@@ -1032,7 +1039,7 @@ export const AdminPanel = ({
                   key={i.id}
                   className="flex justify-between p-3 bg-slate-50 rounded-xl border border-slate-100 items-center"
                 >
-                  <span className="font-bold text-xs uppercase text-slate-700 min-w-0 truncate">
+                  <span className="font-bold text-xs text-slate-700 min-w-0 truncate">
                     {String(i.name)}
                   </span>
                   <div className="flex gap-3 items-center">
@@ -1101,7 +1108,7 @@ export const AdminPanel = ({
           )}`}
         >
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 mb-4">
-            <h4 className="font-black text-slate-800 uppercase shrink-0">
+            <h4 className="font-black text-slate-800 shrink-0">
               Lista Clienti ({processedCustomers.length})
             </h4>
             <div className="flex gap-2 w-full md:w-auto overflow-x-auto pb-2 md:pb-0">
@@ -1196,7 +1203,7 @@ export const AdminPanel = ({
           )}`}
         >
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 mb-4">
-            <h4 className="font-black text-slate-800 uppercase shrink-0">
+            <h4 className="font-black text-slate-800 shrink-0">
               Archivio Gru ({processedMachines.length})
             </h4>
             <div className="flex gap-2 w-full md:w-auto overflow-x-auto pb-2 md:pb-0">
@@ -1293,7 +1300,7 @@ export const AdminPanel = ({
             layoutConfig.themeColor
           )}`}
         >
-          <h4 className="font-black text-slate-800 uppercase mb-4 flex items-center gap-2">
+          <h4 className="font-black text-slate-800 mb-4 flex items-center gap-2">
             <Activity className="w-5 h-5 text-blue-500" /> Stato Sistema
           </h4>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
@@ -1330,7 +1337,7 @@ export const AdminPanel = ({
                 <RefreshCw className="w-5 h-5" />
               </div>
               <div className="text-left">
-                <h5 className="font-bold text-sm text-slate-800 uppercase">
+                <h5 className="font-bold text-sm text-slate-800">
                   Riavvia App
                 </h5>
               </div>
@@ -1343,7 +1350,7 @@ export const AdminPanel = ({
                 <LogOut className="w-5 h-5" />
               </div>
               <div className="text-left">
-                <h5 className="font-bold text-sm text-red-800 uppercase">
+                <h5 className="font-bold text-sm text-red-800">
                   Scollega
                 </h5>
                 <p className="text-[10px] text-red-600 font-bold uppercase">
@@ -1352,7 +1359,7 @@ export const AdminPanel = ({
               </div>
             </button>
           </div>
-          <h4 className="font-black text-slate-800 uppercase mb-4 flex items-center gap-2">
+          <h4 className="font-black text-slate-800 mb-4 flex items-center gap-2">
             <Users className="w-5 h-5 text-green-600" /> Tecnici connessi (
             {activeUsers.length})
           </h4>
@@ -1399,7 +1406,7 @@ export const AdminPanel = ({
           </div>
 
           <div className="flex flex-wrap justify-between items-center gap-3 mb-4">
-            <h4 className="font-black text-slate-800 uppercase flex items-center gap-2">
+            <h4 className="font-black text-slate-800 flex items-center gap-2">
               <Database className="w-5 h-5 text-purple-600" /> Archivio
             </h4>
             <button
@@ -1446,7 +1453,7 @@ export const AdminPanel = ({
           </div>
 
           <div className="flex justify-between items-center mb-4 mt-8">
-            <h4 className="font-black text-slate-800 uppercase flex items-center gap-2">
+            <h4 className="font-black text-slate-800 flex items-center gap-2">
               <Terminal className="w-5 h-5 text-slate-800" /> Log Accessi
             </h4>
             <button
@@ -1481,19 +1488,19 @@ export const AdminPanel = ({
       {showClearLogsConfirm && (
         <div className="fixed inset-0 z-[300] bg-slate-900/60 flex items-center justify-center p-4">
           <div className="p-6 max-w-xs w-full text-center bg-white rounded-xl shadow-xl border-t-4 border-t-red-500">
-            <h4 className="font-black text-slate-800 uppercase text-sm mb-4">
+            <h4 className="font-black text-slate-800 text-sm mb-4">
               Svuotare tutti i log di accesso?
             </h4>
             <div className="grid grid-cols-2 gap-3">
               <button
                 onClick={executeClearLogs}
-                className="py-3 bg-red-600 text-white rounded-lg font-bold text-xs uppercase"
+                className="py-3 bg-red-600 text-white rounded-lg font-bold text-xs"
               >
                 Svuota
               </button>
               <button
                 onClick={() => setShowClearLogsConfirm(false)}
-                className="py-3 bg-slate-100 text-slate-600 rounded-lg font-bold text-xs uppercase"
+                className="py-3 bg-slate-100 text-slate-600 rounded-lg font-bold text-xs"
               >
                 Annulla
               </button>
@@ -1547,19 +1554,19 @@ export const AdminPanel = ({
       {itemToDelete && (
         <div className="fixed inset-0 z-[300] bg-slate-900/60 flex items-center justify-center p-4">
           <div className="p-6 max-w-xs w-full text-center bg-white rounded-xl shadow-xl border-t-4 border-t-red-500">
-            <h4 className="font-black text-slate-800 uppercase text-sm mb-4">
+            <h4 className="font-black text-slate-800 text-sm mb-4">
               Eliminare definitivamente?
             </h4>
             <div className="grid grid-cols-2 gap-3">
               <button
                 onClick={confirmDeleteAdmin}
-                className="py-3 bg-red-600 text-white rounded-lg font-bold text-xs uppercase"
+                className="py-3 bg-red-600 text-white rounded-lg font-bold text-xs"
               >
                 Elimina
               </button>
               <button
                 onClick={() => setItemToDelete(null)}
-                className="py-3 bg-slate-100 text-slate-600 rounded-lg font-bold text-xs uppercase"
+                className="py-3 bg-slate-100 text-slate-600 rounded-lg font-bold text-xs"
               >
                 Annulla
               </button>

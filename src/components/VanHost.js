@@ -68,7 +68,7 @@ export const VanHost = ({ vanItems = [], color = "blue" }) => {
           </span>
           <h4 className="font-black text-slate-800 text-lg">Rapporto salvato</h4>
         </div>
-        <p className="text-xs font-black text-slate-500 uppercase tracking-wide">
+        <p className="text-xs font-black text-slate-500">
           {fix ? "Correggi i pezzi usati" : "Tolti in automatico dal " + data.van.name}
         </p>
 

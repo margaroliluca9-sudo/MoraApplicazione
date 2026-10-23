@@ -152,10 +152,10 @@ export const EditLogModal = ({
       >
         <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-white">
           <div>
-            <h3 className="font-black text-slate-800 uppercase tracking-tight text-lg">
+            <h3 className="font-black text-slate-800 tracking-tight text-lg">
               Modifica Intervento
             </h3>
-            <p className="text-xs text-slate-400 font-bold uppercase tracking-wider">
+            <p className="text-xs text-slate-400 font-bold">
               {log.id.substring(0, 8)}
             </p>
           </div>
@@ -416,7 +416,7 @@ export const EditLogModal = ({
           <button
             onClick={handleSave}
             disabled={loading || uploadingPhotos}
-            className={`w-full py-4 rounded-lg font-bold text-xs uppercase transition-all ${getButtonPrimaryClass(
+            className={`w-full py-4 rounded-lg font-bold text-xs transition-all ${getButtonPrimaryClass(
               color
             )}`}
           >

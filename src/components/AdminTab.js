@@ -1,16 +1,15 @@
 import React from "react";
 
-export const AdminTab = React.memo(
-  ({ active, onClick, icon: Icon, label, color = "blue" }) => (
-    <button
-      onClick={onClick}
-      className={`flex-1 min-w-[90px] flex items-center justify-center gap-2 py-3 px-3 rounded-lg font-bold text-[10px] uppercase tracking-wider transition-all ${
-        active
-          ? `bg-${color}-700 text-white shadow-md border-b-4 border-${color}-900`
-          : "bg-white text-slate-600 hover:bg-slate-50 border border-slate-300 shadow-sm"
-      }`}
-    >
-      <Icon className="w-3.5 h-3.5" /> {label}
-    </button>
-  )
-);
+// pulsanti in alto nelle Impostazioni: pillole in una barra che scorre
+export const AdminTab = React.memo(({ active, onClick, icon: Icon, label, color = "blue" }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    aria-pressed={active}
+    className={`shrink-0 flex items-center gap-2 h-10 px-4 rounded-full font-bold text-sm transition-colors ${
+      active ? `bg-${color}-600 text-white shadow-sm` : "text-slate-600 hover:bg-slate-100"
+    }`}
+  >
+    <Icon className="w-4 h-4" /> {label}
+  </button>
+));

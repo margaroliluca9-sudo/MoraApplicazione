@@ -84,11 +84,11 @@ export const PrintPanel = ({ me, logs = [], technicians = [], onBack, onClose, c
           ))}
         </div>
         <div className="grid grid-cols-2 gap-2">
-          <label className="text-xs font-black text-slate-500 uppercase">
+          <label className="text-xs font-black text-slate-500">
             Dal
             <input type="date" value={from} aria-label="Dal" onChange={(e) => setFrom(e.target.value || today)} className="mt-1 w-full h-10 px-2 rounded-xl border border-slate-300 bg-slate-50 text-sm font-bold text-slate-800 normal-case" />
           </label>
-          <label className="text-xs font-black text-slate-500 uppercase">
+          <label className="text-xs font-black text-slate-500">
             Al
             <input type="date" value={to} aria-label="Al" onChange={(e) => setTo(e.target.value || today)} className="mt-1 w-full h-10 px-2 rounded-xl border border-slate-300 bg-slate-50 text-sm font-bold text-slate-800 normal-case" />
           </label>
@@ -115,7 +115,7 @@ export const PrintPanel = ({ me, logs = [], technicians = [], onBack, onClose, c
         )}
         {days.map((d) => (
           <div key={d.iso} className="space-y-2">
-            <p className="text-xs font-black text-slate-500 uppercase tracking-wide px-1">
+            <p className="text-xs font-black text-slate-500 px-1">
               {relDay(d.iso)} · {itDate(d.iso)}
             </p>
             {d.items.map((l) => {

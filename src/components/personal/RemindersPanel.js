@@ -93,7 +93,7 @@ export const RemindersPanel = ({ me, reminders, contacts, onBack, onClose, color
         )}
 
         <div className="flex items-center justify-between pt-3 px-1">
-          <h4 className="font-black text-slate-800 uppercase text-sm tracking-wide">Contatti rapidi</h4>
+          <h4 className="font-black text-slate-800 text-sm">Contatti rapidi</h4>
           <button type="button" data-action="add-contact" onClick={() => { setError(""); setContact({ name: "", role: "", phone: "" }); }} className={`text-sm font-bold text-${color}-700 flex items-center gap-1 min-h-[36px]`}>
             <Plus className="w-4 h-4" /> Contatto
           </button>

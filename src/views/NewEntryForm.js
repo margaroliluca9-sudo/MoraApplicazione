@@ -721,7 +721,7 @@ export const NewEntryForm = ({
                         setFormData({ ...formData, customer: c.name });
                         setShowCustomerSuggestions(false);
                       }}
-                      className="p-3 hover:bg-slate-50 cursor-pointer font-bold text-xs uppercase text-slate-700 border-b border-slate-50"
+                      className="p-3 hover:bg-slate-50 cursor-pointer font-bold text-xs text-slate-700 border-b border-slate-50"
                     >
                       {c.name}
                     </li>
@@ -1111,7 +1111,7 @@ export const NewEntryForm = ({
           <div className="bg-amber-50 p-4 rounded-xl border border-amber-100 animate-in fade-in slide-in-from-top-2 shadow-sm">
             <div className="flex items-center gap-2 mb-1.5">
               <AlertTriangle className="w-4 h-4 text-amber-600" />
-              <h4 className="text-xs font-black text-amber-800 uppercase tracking-wide">
+              <h4 className="text-xs font-black text-amber-800">
                 Ultimo Intervento ({lastIntervention.dateString})
               </h4>
             </div>
@@ -1142,7 +1142,7 @@ export const NewEntryForm = ({
           <button
             type="submit"
             disabled={isSubmitting || uploadingPhotos}
-            className={`flex-1 h-14 rounded-2xl font-black text-base uppercase tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95 ${getButtonPrimaryClass(
+            className={`flex-1 h-14 rounded-2xl font-black text-base flex items-center justify-center gap-2 transition-all active:scale-95 ${getButtonPrimaryClass(
               color
             )}`}
           >
@@ -1164,7 +1164,7 @@ export const NewEntryForm = ({
               <Trash2 className="w-8 h-8" />
             </div>
             <div>
-              <h4 className="font-black text-slate-800 uppercase text-sm">
+              <h4 className="font-black text-slate-800 text-sm">
                 Svuotare il modulo?
               </h4>
               <p className="text-xs text-slate-500 mt-2">
@@ -1191,14 +1191,14 @@ export const NewEntryForm = ({
                   clearDraft();
                   setShowClearConfirm(false);
                 }}
-                className="py-3 bg-red-600 text-white rounded-lg font-bold text-xs uppercase shadow-md hover:bg-red-700 active:scale-95 transition-all"
+                className="py-3 bg-red-600 text-white rounded-lg font-bold text-xs shadow-md hover:bg-red-700 active:scale-95 transition-all"
               >
                 Svuota
               </button>
               <button
                 type="button"
                 onClick={() => setShowClearConfirm(false)}
-                className="py-3 bg-slate-100 text-slate-600 rounded-lg font-bold text-xs uppercase hover:bg-slate-200 active:scale-95 transition-all"
+                className="py-3 bg-slate-100 text-slate-600 rounded-lg font-bold text-xs hover:bg-slate-200 active:scale-95 transition-all"
               >
                 Annulla
               </button>

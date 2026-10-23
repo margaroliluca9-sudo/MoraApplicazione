@@ -171,7 +171,7 @@ export const PartsPanel = ({ me, logs = [], color = "blue", onBack, onClose, onO
 
         {others.length > 0 && (
           <div className="space-y-2" data-parts-others>
-            <h4 className="px-2 text-xs font-black text-slate-500 uppercase tracking-wide">Altri pezzi cambiati</h4>
+            <h4 className="px-2 text-xs font-black text-slate-500">Altri pezzi cambiati</h4>
             <div className="bg-white rounded-3xl border border-slate-200 divide-y divide-slate-100 overflow-hidden">
               {others.map((r) => (
                 <Row key={"o:" + r.name} id={"altro:" + r.name} qty={r.qty} name={r.name} row={r} color={color}

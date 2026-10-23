@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 
 import { CraneMark } from "./CraneMark";
+import { LoginSky } from "./LoginSky";
 import { isAdminPassword, isStaffPassword } from "../passwords";
 
 // --- SCHERMATA LOGIN GLOBALE ---
@@ -48,18 +49,18 @@ export const GlobalLoginScreen = ({ technicians, onUnlock, color = "blue" }) => 
   };
 
   return (
-    <div className="mora-app min-h-screen bg-slate-100 flex items-center justify-center p-4 animate-in fade-in duration-700">
-      <div
-        className={`max-w-md w-full bg-white p-8 rounded-3xl shadow-2xl border-t-4 border-${color}-600`}
-      >
-        <div className="text-center mb-8">
+    <div className="mora-app min-h-screen bg-slate-100 flex flex-col animate-in fade-in duration-700" data-section="login">
+      <LoginSky className="h-[40vh] min-h-[230px] w-full rounded-b-[36px] shrink-0" />
+      <div className="flex-1 flex justify-center px-4 -mt-24 pb-8 relative">
+      <div className="max-w-md w-full h-fit bg-white px-7 pb-7 pt-0 rounded-[28px] shadow-2xl">
+        <div className="text-center mb-7">
           <div
-            className={`w-20 h-20 bg-${color}-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-${color}-500/30`}
+            className={`w-20 h-20 -mt-10 bg-gradient-to-br from-${color}-500 to-${color}-700 rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-xl shadow-${color}-600/30 ring-4 ring-white`}
           >
             <CraneMark className="w-10 h-10 text-white" />
           </div>
-          <h1 className="text-2xl font-black text-slate-800 uppercase tracking-tight">
-            Accesso Privato
+          <h1 className="text-2xl font-black text-slate-800 tracking-tight">
+            Accesso privato
           </h1>
           <p className="text-sm text-slate-500 font-medium mt-2">
             Area riservata al personale autorizzato.
@@ -68,13 +69,13 @@ export const GlobalLoginScreen = ({ technicians, onUnlock, color = "blue" }) => 
 
         <form onSubmit={handleLogin} className="space-y-5">
           <div className="space-y-1">
-            <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">
-              Il tuo Nome (o Nome Tecnico)
+            <label className="text-sm font-bold text-slate-600 ml-1">
+              Il tuo nome
             </label>
             <div className="relative">
               <input
                 type="text"
-                className={`w-full p-4 bg-slate-50 border border-slate-300 rounded-xl font-bold text-slate-800 outline-none focus:ring-2 focus:ring-${color}-500 transition-all`}
+                className={`w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl font-bold text-slate-800 outline-none focus:ring-2 focus:ring-${color}-500 transition-all`}
                 placeholder="Es. Mario Rossi"
                 value={name}
                 onChange={(e) => {
@@ -87,13 +88,13 @@ export const GlobalLoginScreen = ({ technicians, onUnlock, color = "blue" }) => 
           </div>
 
           <div className="space-y-1">
-            <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">
-              Password Aziendale
+            <label className="text-sm font-bold text-slate-600 ml-1">
+              Password aziendale
             </label>
             <div className="relative">
               <input
                 type="password"
-                className={`w-full p-4 bg-slate-50 border border-slate-300 rounded-xl font-bold text-slate-800 outline-none focus:ring-2 focus:ring-${color}-500 transition-all`}
+                className={`w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl font-bold text-slate-800 outline-none focus:ring-2 focus:ring-${color}-500 transition-all`}
                 placeholder="••••"
                 value={password}
                 onChange={(e) => {
@@ -114,11 +115,12 @@ export const GlobalLoginScreen = ({ technicians, onUnlock, color = "blue" }) => 
 
           <button
             type="submit"
-            className={`w-full py-4 bg-${color}-700 text-white rounded-xl font-black uppercase tracking-widest shadow-lg hover:bg-${color}-800 active:scale-95 transition-all mt-4`}
+            className={`w-full py-4 bg-${color}-600 text-white rounded-2xl font-black text-base shadow-lg shadow-${color}-600/25 hover:bg-${color}-700 active:scale-[0.98] transition-all mt-2`}
           >
             Entra
           </button>
         </form>
+      </div>
       </div>
     </div>
   );

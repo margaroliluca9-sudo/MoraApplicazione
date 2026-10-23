@@ -225,7 +225,7 @@ export const NotesPanel = ({ me, notes, onBack, onClose, color = "blue", scanOn 
             <textarea rows={6} className={INPUT} value={edit.text} aria-label="Testo" onChange={(e) => setEdit({ ...edit, text: e.target.value })} />
           </Field>
           <div className="space-y-2">
-            <span className="text-xs font-black text-slate-500 uppercase tracking-wide">Elenco da spuntare</span>
+            <span className="text-xs font-black text-slate-500">Elenco da spuntare</span>
             {edit.items.map((it, i) => (
               <div key={i} className="flex items-center gap-2">
                 <input type="checkbox" checked={!!it.done} aria-label="Fatto" onChange={() => setItem(i, { done: !it.done })} className="w-5 h-5 accent-blue-600 shrink-0" />

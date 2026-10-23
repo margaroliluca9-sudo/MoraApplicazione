@@ -46,7 +46,7 @@ export const SimpleCalendar = ({ logs, onDayClick, month, year, onMonthChange })
         >
           <ChevronDown className="w-5 h-5 rotate-90" />
         </button>
-        <h3 className="font-black text-slate-800 uppercase">
+        <h3 className="font-black text-slate-800">
           {monthNames[month]} {year}
         </h3>
         <button

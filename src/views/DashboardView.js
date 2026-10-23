@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { EmptyState } from "../components/EmptyState";
 import {
   PlusCircle,
   Search,
@@ -249,7 +250,7 @@ export const DashboardView = ({
   const items = {
     new: {
       id: "new",
-      label: "Nuovo Rapporto",
+      label: "Nuovo rapporto",
       icon: PlusCircle,
       desc: "Registra nuovo intervento",
       action: () => onNavigate("new"),
@@ -433,9 +434,7 @@ export const DashboardView = ({
     searchResults = (
       <div className="space-y-5" data-section="search-results">
         {none && (
-          <p className="text-sm text-slate-400 italic text-center py-8">
-            Nessun risultato per "{query.trim()}".
-          </p>
+          <EmptyState color={color} title={`Nessun risultato per «${query.trim()}»`} text="Prova con un pezzo del nome del cliente, la matricola della gru o il N. assistenza." />
         )}
         {cs.length > 0 && (
           <Section

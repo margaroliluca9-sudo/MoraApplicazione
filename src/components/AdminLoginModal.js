@@ -34,7 +34,7 @@ export const AdminLoginModal = ({
           <div className="w-16 h-16 bg-slate-100 text-slate-700 rounded-2xl flex items-center justify-center mx-auto mb-4 border border-slate-300">
             <Lock className="w-8 h-8" />
           </div>
-          <h3 className="text-lg font-black text-slate-800 uppercase tracking-tight">
+          <h3 className="text-lg font-black text-slate-800 tracking-tight">
             {title}
           </h3>
         </div>
@@ -57,7 +57,7 @@ export const AdminLoginModal = ({
         <div className="flex flex-col gap-3">
           <button
             onClick={handleLogin}
-            className={`w-full py-3 rounded-lg font-bold text-xs uppercase transition-transform active:scale-95 ${getButtonPrimaryClass(
+            className={`w-full py-3 rounded-lg font-bold text-xs transition-transform active:scale-95 ${getButtonPrimaryClass(
               "slate"
             )}`}
           >
@@ -65,7 +65,7 @@ export const AdminLoginModal = ({
           </button>
           <button
             onClick={onCancel}
-            className={`w-full py-3 rounded-lg font-bold text-xs uppercase active:scale-95 ${PRO_BUTTON_SECONDARY}`}
+            className={`w-full py-3 rounded-lg font-bold text-xs active:scale-95 ${PRO_BUTTON_SECONDARY}`}
           >
             Annulla
           </button>

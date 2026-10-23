@@ -28,9 +28,9 @@ const WIGGLE_CSS = `
 `;
 
 // un riquadro (in base alla grandezza)
-const Tile = ({ item, size, color, compact, editing, dragging, onClick, onHide, handleProps, pressProps }) => {
+const Tile = ({ item, size, color, compact, editing, dragging, onClick, onHide, handleProps, pressProps, spanCls }) => {
   const Icon = item.icon;
-  const span = size === "l" ? "col-span-2" : "col-span-1";
+  const span = spanCls || (size === "l" ? "col-span-2" : "col-span-1");
   const pad = compact ? "p-3" : size === "s" ? "p-3" : "p-5";
   const ring = editing ? "outline outline-2 outline-dashed outline-offset-2 outline-slate-300" : "";
   const drag = dragging ? "scale-105 shadow-2xl z-20 opacity-90" : "";
@@ -73,11 +73,13 @@ const Tile = ({ item, size, color, compact, editing, dragging, onClick, onHide, 
   if (item.primary)
     return (
       <button type="button" {...tp}
-        className={`${common} ${pad} bg-${color}-600 hover:bg-${color}-700 text-white shadow-lg flex ${size === "l" ? "flex-col md:flex-row py-7" : "flex-col"} items-center justify-center gap-3`}>
+        className={`${common} ${pad} overflow-hidden bg-gradient-to-br from-${color}-500 to-${color}-700 text-white shadow-lg shadow-${color}-600/25 flex ${size === "l" ? "flex-col md:flex-row py-7" : "flex-col"} items-center justify-center gap-3`}>
         {editBits}
-        <span className="p-3 bg-white/20 rounded-full"><Icon className={size === "l" ? "w-9 h-9" : "w-7 h-7"} /></span>
-        <span className="text-center">
-          <span className={`block font-black uppercase tracking-tight ${size === "l" ? "text-2xl" : "text-base"}`}>{item.label}</span>
+        <span aria-hidden="true" className="pointer-events-none absolute -right-6 -bottom-8 w-40 h-40 rounded-full bg-white/10" />
+        <span aria-hidden="true" className="pointer-events-none absolute -left-10 -top-12 w-36 h-36 rounded-full bg-white/5" />
+        <span className="relative p-3 bg-white/20 rounded-full ring-4 ring-white/10"><Icon className={size === "l" ? "w-9 h-9" : "w-7 h-7"} /></span>
+        <span className="relative text-center">
+          <span className={`block font-black tracking-tight ${size === "l" ? "text-2xl" : "text-base"}`}>{item.label}</span>
           {size === "l" && <span className={`block text-${color}-100 font-medium mt-1 text-sm`}>{item.desc}</span>}
         </span>
       </button>
@@ -91,7 +93,7 @@ const Tile = ({ item, size, color, compact, editing, dragging, onClick, onHide, 
         {editBits}
         <span className={`flex items-center gap-2 ${editing ? "pl-9" : ""}`}>
           <span className={`w-8 h-8 rounded-xl flex items-center justify-center ${iconBox}`}><Icon className="w-4 h-4" /></span>
-          <span className="font-black text-slate-800 uppercase text-sm tracking-tight">{item.label}</span>
+          <span className="font-extrabold text-slate-800 text-[15px] tracking-tight">{item.label}</span>
         </span>
         <span className="block w-full">{item.widget(size)}</span>
       </button>
@@ -116,7 +118,7 @@ const Tile = ({ item, size, color, compact, editing, dragging, onClick, onHide, 
         {badge}
         <span className={`p-4 rounded-2xl shrink-0 ${iconBox} ${editing ? "ml-8" : ""}`}><Icon className="w-8 h-8" /></span>
         <span className="min-w-0">
-          <span className="block text-lg font-black text-slate-800 uppercase tracking-tight">{item.label}</span>
+          <span className="block text-lg font-extrabold text-slate-800 tracking-tight">{item.label}</span>
           <span className="block text-sm text-slate-500 mt-0.5">{item.desc}</span>
         </span>
       </button>
@@ -129,7 +131,7 @@ const Tile = ({ item, size, color, compact, editing, dragging, onClick, onHide, 
       {badge}
       <span className={`p-4 rounded-2xl ${iconBox}`}><Icon className="w-8 h-8" /></span>
       <span>
-        <span className="block text-base font-black text-slate-800 uppercase tracking-tight">{item.label}</span>
+        <span className="block text-base font-extrabold text-slate-800 tracking-tight">{item.label}</span>
         <span className="block text-xs text-slate-500 mt-1">{item.desc}</span>
       </span>
     </button>
@@ -326,6 +328,27 @@ export const HomeGrid = ({ items, home, me, color = "blue", searchBox, onEditing
   const it = sel && items[sel];
   const gap = h.compact ? "gap-2.5" : "gap-4";
 
+  // niente buchi in fondo: l'ultimo riquadro si allarga fino a riempire la riga (telefono 2 colonne, tablet/PC 4)
+  const fillOf = (() => {
+    const ids = h.order.filter((id) => items[id]);
+    if (!ids.length) return {};
+    const packed = (cols) => {
+      let p = 0;
+      ids.forEach((id) => {
+        const sp = Math.min(cols, (h.sizes[id] || defaultSize(id)) === "l" ? 2 : 1);
+        if (p % cols + sp > cols) p += cols - (p % cols);
+        p += sp;
+      });
+      return p % cols ? cols - (p % cols) : 0;
+    };
+    const last = ids[ids.length - 1];
+    const own = (h.sizes[last] || defaultSize(last)) === "l" ? 2 : 1;
+    const m = packed(2);
+    const d = packed(4);
+    if (!m && !d) return {};
+    return { [last]: `col-span-${Math.min(2, own + m)} md:col-span-${Math.min(4, own + d)}` };
+  })();
+
   return (
     <div className="space-y-4" data-section="home-grid">
       {/* la ricerca resta al suo posto: entrando in modifica i riquadri non si spostano sotto il dito */}
@@ -357,6 +380,7 @@ export const HomeGrid = ({ items, home, me, color = "blue", searchBox, onEditing
         {h.order.map((id) => {
           const item = items[id];
           if (!item) return null;
+          const fill = !editing && fillOf[id];
           return (
             <Tile
               key={id}
@@ -370,6 +394,7 @@ export const HomeGrid = ({ items, home, me, color = "blue", searchBox, onEditing
               onHide={() => hide(id)}
               handleProps={handleProps(id)}
               pressProps={pressProps(id)}
+              spanCls={fill || undefined}
             />
           );
         })}
@@ -385,7 +410,7 @@ export const HomeGrid = ({ items, home, me, color = "blue", searchBox, onEditing
 
       {editing ? (
         <div className="bg-white rounded-3xl border border-slate-200 p-4 space-y-1" data-section="home-options">
-          <h4 className="font-black text-slate-800 uppercase text-sm tracking-wide pb-1">Opzioni</h4>
+          <h4 className="font-black text-slate-800 text-sm pb-1">Opzioni</h4>
           <Toggle id="search" label="Barra di ricerca" sub="In alto nella Home" on={draft.search} onChange={(v) => set({ search: v })} />
           <Toggle id="compact" label="Riquadri compatti" sub="Più riquadri nello schermo" on={draft.compact} onChange={(v) => set({ compact: v })} />
           <button type="button" data-action="home-reset" onClick={reset} disabled={busy} className="w-full flex items-center gap-2 py-3 text-slate-600 font-bold">
@@ -418,7 +443,7 @@ export const HomeGrid = ({ items, home, me, color = "blue", searchBox, onEditing
             </>
           }>
           <div className="space-y-2">
-            <span className="text-xs font-black text-slate-500 uppercase tracking-wide">Grandezza</span>
+            <span className="text-xs font-black text-slate-500">Grandezza</span>
             <div className="grid grid-cols-3 gap-2" role="group" aria-label="Grandezza">
               {SIZES.map((s) => {
                 const allowed = sizesFor(sel).includes(s.v);
@@ -435,7 +460,7 @@ export const HomeGrid = ({ items, home, me, color = "blue", searchBox, onEditing
             </div>
           </div>
           <div className="space-y-2">
-            <span className="text-xs font-black text-slate-500 uppercase tracking-wide">Colore</span>
+            <span className="text-xs font-black text-slate-500">Colore</span>
             <div className="flex flex-wrap gap-2" role="group" aria-label="Colore">
               {COLORS.map((c) => {
                 const on = (draft.colors[sel] || "auto") === c;
@@ -452,7 +477,7 @@ export const HomeGrid = ({ items, home, me, color = "blue", searchBox, onEditing
             </div>
           </div>
           <div className="space-y-2">
-            <span className="text-xs font-black text-slate-500 uppercase tracking-wide">Posizione</span>
+            <span className="text-xs font-black text-slate-500">Posizione</span>
             <div className="grid grid-cols-2 gap-2">
               <GhostBtn onClick={() => set({ order: moveBy(draft.order, sel, -1) })} disabled={draft.order.indexOf(sel) <= 0}>
                 <span className="flex items-center justify-center gap-1"><ChevronLeft className="w-4 h-4" /> Prima</span>

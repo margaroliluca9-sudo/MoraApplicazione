@@ -37,6 +37,26 @@ export const dayGroup = (dateString, now = new Date()) => {
 };
 const isRecent = (log) => !!(log && log.createdAt && Date.now() - log.createdAt.seconds * 1000 < 3 * 60 * 1000);
 
+// chi ha fatto l'intervento: cerchietti con l'iniziale e i nomi accanto
+const FACE_TONES = ["blue", "emerald", "amber", "purple", "rose", "teal"];
+const faceTone = (n) => FACE_TONES[[...String(n)].reduce((a, c) => a + c.charCodeAt(0), 0) % FACE_TONES.length];
+const TechFaces = ({ log }) => {
+  const names = [log.technician, ...(log.additionalTechnicians || [])].filter(Boolean);
+  return (
+    <div className="flex items-center gap-2 min-w-0" data-tech-faces>
+      <div className="flex -space-x-2 shrink-0">
+        {names.slice(0, 3).map((n) => (
+          <span key={n} className={`w-7 h-7 rounded-full ring-2 ring-white bg-${faceTone(n)}-100 text-${faceTone(n)}-700 text-xs font-black flex items-center justify-center`}>
+            {String(n).trim().charAt(0).toUpperCase()}
+          </span>
+        ))}
+        {!names.length && <User className="w-4 h-4 text-slate-400" />}
+      </div>
+      <span className="text-sm font-semibold text-slate-600 truncate">{getTechsString(log)}</span>
+    </div>
+  );
+};
+
 export const HistoryView = ({
   logs,
   machines,
@@ -68,9 +88,9 @@ export const HistoryView = ({
   const [colWidths, setColWidths] = useState({
     date: 140,
     customer: 240,
-    description: 350,
+    description: 310,
     techs: 160,
-    actions: 100,
+    actions: 120,
   });
   const resizingRef = useRef(null);
 
@@ -222,12 +242,10 @@ export const HistoryView = ({
         )}
       </div>
       <div
-        className={`rounded-3xl overflow-hidden shadow-xl ${getProPanelClass(
-          color
-        )}`}
+        className={isMobile ? "" : `rounded-3xl overflow-hidden shadow-xl ${getProPanelClass(color)}`}
       >
         {isMobile ? (
-          <div className="divide-y divide-slate-100">
+          <div className="space-y-3" data-section="history-cards">
             {paginated.map((log, i) => {
               const group = dayGroup(log.dateString);
               const showGroup = i === 0 || dayGroup(paginated[i - 1].dateString) !== group;
@@ -235,19 +253,19 @@ export const HistoryView = ({
               return (
                 <React.Fragment key={log.id}>
                   {showGroup && (
-                    <div data-day-group={group} className="px-4 pt-4 pb-2 bg-slate-50 text-xs font-black uppercase tracking-wide text-slate-500">
+                    <div data-day-group={group} className="px-1 pt-3 pb-0.5 text-sm font-bold text-slate-500">
                       {group}
                     </div>
                   )}
-                  <div className="p-4 space-y-2" data-log-card>
-                    <div className="flex justify-between items-start gap-2">
+                  <div className="p-4 space-y-2.5 bg-white rounded-3xl border border-slate-200 shadow-sm" data-log-card>
+                    <div className="flex justify-between items-start gap-3">
                       <h4
-                        className="font-black text-slate-800 uppercase text-base leading-tight break-words cursor-pointer"
+                        className="font-extrabold text-slate-800 text-[17px] leading-tight break-words cursor-pointer"
                         onClick={() => onOpenCustomer(log.customer)}
                       >
                         {log.customer}
                       </h4>
-                      <span className="text-xs font-bold text-slate-500 whitespace-nowrap pt-0.5">{log.dateString}</span>
+                      <span className="text-xs font-bold text-slate-500 whitespace-nowrap bg-slate-100 rounded-full px-2.5 py-1 tabular-nums">{log.dateString}</span>
                     </div>
                     <button
                       type="button"
@@ -283,15 +301,12 @@ export const HistoryView = ({
                     )}
                     <p className="text-slate-700 text-sm leading-snug whitespace-pre-wrap break-words">{log.description}</p>
                     <RopeInfo log={log} />
-                    <div className="flex justify-between items-center pt-1">
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <User className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                        <span className="text-xs font-bold text-slate-600 truncate">{getTechsString(log)}</span>
-                      </div>
-                      <div className="flex gap-2 shrink-0">
+                    <div className="flex justify-between items-center pt-2 border-t border-slate-100">
+                      <TechFaces log={log} color={color} />
+                      <div className="flex gap-1 shrink-0">
                         <button
                           onClick={() => printLog(log)}
-                          className="p-2.5 bg-slate-100 text-slate-600 rounded-lg"
+                          className="w-10 h-10 flex items-center justify-center text-slate-500 rounded-full hover:bg-slate-100"
                           title="Stampa"
                           aria-label="Stampa intervento"
                         >
@@ -302,14 +317,14 @@ export const HistoryView = ({
                             <>
                               <button
                                 onClick={() => handleEdit(log)}
-                                className="p-2.5 bg-slate-100 text-slate-600 rounded-lg"
+                                className="w-10 h-10 flex items-center justify-center text-slate-500 rounded-full hover:bg-slate-100"
                                 title="Modifica"
                               >
                                 <Edit className="w-4 h-4" />
                               </button>
                               <button
                                 onClick={() => handleDelete(log)}
-                                className="p-2.5 bg-slate-100 text-red-500 rounded-lg"
+                                className="w-10 h-10 flex items-center justify-center text-red-500 rounded-full hover:bg-red-50"
                                 title="Elimina"
                               >
                                 <Trash2 className="w-4 h-4" />
@@ -318,7 +333,7 @@ export const HistoryView = ({
                           ) : (
                             <button
                               onClick={onAuthAdmin}
-                              className="p-2.5 text-slate-300 rounded-lg"
+                              className="w-10 h-10 flex items-center justify-center text-slate-300 rounded-full"
                               title="Modifica o elimina (serve la password admin)"
                               aria-label="Modifica o elimina con la password admin"
                             >
@@ -438,7 +453,7 @@ export const HistoryView = ({
                     <td className="px-4 py-4 align-top border-r border-slate-100 overflow-hidden">
                       <div className="flex flex-col">
                         <span
-                          className="font-bold text-slate-800 uppercase text-xs cursor-pointer hover:text-blue-600 hover:underline break-words whitespace-normal leading-tight"
+                          className="font-bold text-slate-800 text-xs cursor-pointer hover:text-blue-600 hover:underline break-words whitespace-normal leading-tight"
                           onClick={() => onOpenCustomer(log.customer)}
                         >
                           {log.customer}

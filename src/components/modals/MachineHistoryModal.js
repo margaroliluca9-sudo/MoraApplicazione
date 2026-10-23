@@ -1,9 +1,7 @@
 import React, { useMemo } from "react";
 import {
-  Factory,
   User,
   X,
-  ClipboardList,
   Camera,
   PlusCircle,
 } from "lucide-react";
@@ -11,6 +9,8 @@ import { getTechsString, formatCapacity, getSafeMatricola } from "../../utils";
 import { ROPE_ITEMS, formatRopeLong, lastRopeOf } from "../../ropes";
 import { AssistantPanel } from "../AssistantPanel";
 import { PrintLogButton } from "../PrintLogButton";
+import { CraneTypeIcon } from "../CraneTypeIcon";
+import { EmptyState } from "../EmptyState";
 
 // "oggi", "ieri", "5 giorni fa", "3 settimane fa", "2 mesi fa", "1 anno fa"
 const agoLabel = (dateString) => {
@@ -52,21 +52,18 @@ export const MachineHistoryModal = ({
       <div className="w-full max-w-4xl h-full md:h-[90vh] md:rounded-3xl overflow-hidden flex flex-col shadow-2xl bg-white" data-section="machine-card">
         <div className="bg-white px-4 pt-4 pb-4 flex flex-col gap-3 border-b border-slate-200">
           <div className="flex items-start gap-3">
-            <div className={`w-12 h-12 rounded-2xl bg-${color}-50 text-${color}-700 flex items-center justify-center shrink-0`}>
-              <Factory className="w-6 h-6" />
+            <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br from-${color}-50 to-${color}-100 text-${color}-700 flex items-center justify-center shrink-0 border border-${color}-100`}>
+              <CraneTypeIcon type={machine.type} className="w-8 h-8" />
             </div>
             <div className="flex-1 min-w-0">
               <button type="button" onClick={() => onOpenCustomer(machine.customerName)} className="text-left block max-w-full">
-                <h2 className="text-xl font-black uppercase tracking-tight leading-tight text-slate-800 break-words">
+                <h2 className="text-xl font-extrabold tracking-tight leading-tight text-slate-800 break-words">
                   {machine.customerName}
                 </h2>
               </button>
-              <p className="text-sm font-bold mt-1">
-                <span className={`text-${color}-700`}>Gru {getSafeMatricola(machine)}</span>
-                <span className="text-slate-500 font-semibold">
-                  {machine.type ? ` · ${machine.type}` : ""}
-                  {machine.capacity ? ` · ${formatCapacity(machine.capacity)}` : ""}
-                </span>
+              <p className="text-sm font-bold mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1">
+                <span className={`px-2 py-0.5 rounded-full bg-${color}-50 text-${color}-700`}>Gru {getSafeMatricola(machine)}</span>
+                {machine.type && <span className="text-slate-500 font-semibold">{machine.type}</span>}
               </p>
             </div>
             <button type="button" onClick={onClose} aria-label="Chiudi" className="w-11 h-11 rounded-full border border-slate-200 flex items-center justify-center text-slate-500 shrink-0">
@@ -82,10 +79,23 @@ export const MachineHistoryModal = ({
             ) : null;
           })}
           <div className="relative z-10 space-y-3" data-section="machine-summary">
-            <p className="text-sm font-semibold text-slate-600">
-              <b className="text-slate-800">{machineLogs.length} {machineLogs.length === 1 ? "intervento" : "interventi"}</b>
-              {machineLogs[0] ? ` · ultimo ${agoLabel(machineLogs[0].dateString)} (${getTechsString(machineLogs[0])})` : ""}
-            </p>
+            <div className="grid grid-cols-3 gap-2" data-section="machine-stats">
+              {[
+                ["Portata", machine.capacity && machine.capacity !== "N.D." ? formatCapacity(machine.capacity) : "-"],
+                ["Interventi", String(machineLogs.length)],
+                ["Ultimo", machineLogs[0] ? agoLabel(machineLogs[0].dateString) : "mai"],
+              ].map(([l, v]) => (
+                <div key={l} className="rounded-2xl bg-slate-50 border border-slate-100 px-3 py-2 min-w-0">
+                  <p className="text-[11px] font-bold text-slate-500">{l}</p>
+                  <p className="text-[15px] font-extrabold text-slate-800 truncate">{v}</p>
+                </div>
+              ))}
+            </div>
+            {machineLogs[0] && (
+              <p className="text-xs font-semibold text-slate-500">
+                Ultimo intervento di <span className="text-slate-700">{getTechsString(machineLogs[0])}</span>
+              </p>
+            )}
             {onNewReport && (
               <button
                 type="button"
@@ -145,12 +155,11 @@ export const MachineHistoryModal = ({
               </div>
             ))}
             {machineLogs.length === 0 && (
-              <div className="text-center py-20 opacity-30">
-                <ClipboardList className="w-16 h-16 mx-auto mb-2 text-slate-400" />
-                <p className="font-bold uppercase text-xs tracking-widest text-slate-500">
-                  Nessun dato
-                </p>
-              </div>
+              <EmptyState
+                color={color}
+                title="Nessun intervento su questa gru"
+                text={onNewReport ? "Quando farai il primo rapporto lo troverai qui, con foto e stampa." : "Qui compariranno gli interventi fatti su questa gru."}
+              />
             )}
           </div>
         </div>

@@ -18,7 +18,7 @@ const RADIUS_PX = { square: 4, normal: 12, round: 20 };
 
 const Seg = ({ label, value, options, onChange, id }) => (
   <div className="space-y-1.5">
-    <span className="text-xs font-black text-slate-500 uppercase tracking-wide">{label}</span>
+    <span className="text-xs font-black text-slate-500">{label}</span>
     <div className="flex flex-wrap gap-1.5" role="group" aria-label={label} data-look={id}>
       {options.map((o) => (
         <button key={o.id} type="button" aria-pressed={value === o.id} data-value={o.id} onClick={() => onChange(o.id)}
@@ -47,7 +47,7 @@ export const LookEditor = ({ look, base = {}, mode = "auto", onChange }) => {
   return (
     <div className="bg-white rounded-3xl border border-slate-200 p-4 space-y-4" data-section="look-editor">
       <div className="flex items-center justify-between gap-2">
-        <h4 className="font-black text-slate-800 uppercase text-sm tracking-wide">Aspetto dell'app</h4>
+        <h4 className="font-black text-slate-800 text-sm">Aspetto dell'app</h4>
         {look && (
           <button type="button" data-action="look-reset" onClick={() => onChange(null)} className="text-xs font-bold text-slate-500 flex items-center gap-1 min-h-[36px]">
             <RotateCcw className="w-3.5 h-3.5" /> Come l'app
@@ -98,7 +98,7 @@ export const LookEditor = ({ look, base = {}, mode = "auto", onChange }) => {
       {more && (
         <div className="space-y-4" data-section="look-details">
           <div className="space-y-1.5">
-            <span className="text-xs font-black text-slate-500 uppercase tracking-wide">Colore principale</span>
+            <span className="text-xs font-black text-slate-500">Colore principale</span>
             <div className="flex flex-wrap gap-2" role="group" aria-label="Colore principale" data-look="themeColor">
               {THEME_COLORS.map((c) => (
                 <button key={c} type="button" aria-pressed={cur.themeColor === c} data-value={c} aria-label={COLOR_LABEL[c]} onClick={() => setOne("themeColor", c)}
@@ -111,7 +111,7 @@ export const LookEditor = ({ look, base = {}, mode = "auto", onChange }) => {
           </div>
           <Seg id="mode" label="Tema" value={cur.mode} options={MODES} onChange={(v) => setOne("mode", v)} />
           <div className="space-y-1.5">
-            <span className="text-xs font-black text-slate-500 uppercase tracking-wide">Carattere</span>
+            <span className="text-xs font-black text-slate-500">Carattere</span>
             <select value={cur.fontFamily} aria-label="Carattere" data-look="fontFamily" onChange={(e) => setOne("fontFamily", e.target.value)}
               className="w-full h-11 px-3 rounded-xl border border-slate-300 bg-slate-50 font-bold text-slate-800">
               {FONT_OPTIONS.map((f) => (<option key={f.id} value={f.id}>{f.label}</option>))}

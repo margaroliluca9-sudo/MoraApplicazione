@@ -129,7 +129,7 @@ const appStepsFor = ({ hasVan, chatEnabled, isAdmin }) =>
     {
       icon: Users,
       title: "Tecnici online",
-      text: "In alto accanto al nome dell'app c'è «… tecnici online»: toccalo e vedi chi è collegato adesso. Con «Scrivi» mandi un messaggio privato a un collega (anche a chi hai scritto di recente e ora non è collegato). Il pallino rosso dice quanti messaggi devi leggere.",
+      text: "In alto a destra c'è la pillola verde con il pallino e il numero dei colleghi online: toccala e vedi chi è collegato adesso. Con «Scrivi» mandi un messaggio privato a un collega (anche a chi hai scritto di recente e ora non è collegato). Il pallino rosso dice quanti messaggi devi leggere.",
     },
     {
       icon: Search,
@@ -299,7 +299,7 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
       icon: Users,
       title: "Tecnici online e messaggi",
       points: [
-        "In alto accanto al nome dell'app: «… tecnici online». Toccalo per vedere chi è collegato adesso e da quanto.",
+        "In alto a destra la pillola verde con il pallino e il numero dei colleghi online. Toccala per vedere chi è collegato adesso e da quanto.",
         "«Scrivi» apre una conversazione privata con quel collega; sotto, in «Messaggi recenti», ritrovi chi ti ha scritto anche se ora non è collegato.",
         "Il pallino rosso sulla scritta dice quanti messaggi devi leggere. Con le notifiche attive (La mia area → ⚙ Impostazioni) arriva anche sul telefono.",
         "Sono gli stessi messaggi privati della Chat: se l'admin accende la Chat in «La mia area» li ritrovi anche lì. L'admin può spegnere i messaggi da Impostazioni → Design.",
@@ -609,7 +609,7 @@ const Tour = ({ steps, onGo, onEnd, endLabel, color, id, videos = [], onVideo = 
         <span className={`w-20 h-20 rounded-3xl bg-${color}-50 text-${color}-600 flex items-center justify-center shrink-0`}>
           <Icon className="w-10 h-10" />
         </span>
-        <p className="text-xs font-black text-slate-400 uppercase tracking-wider" data-step>
+        <p className="text-xs font-black text-slate-400" data-step>
           Passo {step + 1} di {steps.length}
         </p>
         <h4 className="text-2xl font-black text-slate-800 leading-tight">{s.title}</h4>

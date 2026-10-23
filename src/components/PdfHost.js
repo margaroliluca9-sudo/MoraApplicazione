@@ -63,7 +63,7 @@ export const PdfHost = () => {
   };
 
   const btn =
-    "w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-black text-xs uppercase tracking-wider active:scale-95 transition-transform";
+    "w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-black text-sm active:scale-95 transition-transform";
 
   return (
     <div
@@ -83,7 +83,7 @@ export const PdfHost = () => {
               )}
             </div>
             <div className="min-w-0">
-              <h3 className="font-black text-slate-800 text-sm uppercase tracking-wide">
+              <h3 className="font-black text-slate-800 text-sm">
                 {state.status === "loading"
                   ? "Preparo il PDF…"
                   : state.status === "error"

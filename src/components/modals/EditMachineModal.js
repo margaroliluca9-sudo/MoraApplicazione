@@ -111,7 +111,7 @@ export const EditMachineModal = ({
           color
         )}`}
       >
-        <h3 className="font-bold text-slate-800 uppercase text-xs tracking-wider text-center">
+        <h3 className="font-bold text-slate-800 text-xs text-center">
           Modifica Gru
         </h3>
         <div className="space-y-3">
@@ -182,7 +182,7 @@ export const EditMachineModal = ({
           <button
             onClick={handleSave}
             disabled={loading}
-            className={`w-full py-3 rounded-lg font-bold text-xs uppercase shadow-md transition-all ${getButtonPrimaryClass(
+            className={`w-full py-3 rounded-lg font-bold text-xs shadow-md transition-all ${getButtonPrimaryClass(
               color
             )}`}
           >
@@ -190,7 +190,7 @@ export const EditMachineModal = ({
           </button>
           <button
             onClick={onClose}
-            className={`w-full py-3 rounded-lg font-bold text-xs uppercase ${PRO_BUTTON_SECONDARY}`}
+            className={`w-full py-3 rounded-lg font-bold text-xs ${PRO_BUTTON_SECONDARY}`}
           >
             Annulla
           </button>
