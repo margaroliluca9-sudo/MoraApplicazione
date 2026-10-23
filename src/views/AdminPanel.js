@@ -30,6 +30,7 @@ import {
   collection,
   onSnapshot,
   serverTimestamp,
+  Timestamp,
   doc,
   setDoc,
   deleteDoc,
@@ -125,7 +126,10 @@ export const AdminPanel = ({
         (s) => setLogs(s.docs.map((d) => ({ id: d.id, ...d.data() })))
       );
       const unsubActive = onSnapshot(
-        collection(db, "artifacts", appId, "public", "data", "active_users"),
+        query(
+          collection(db, "artifacts", appId, "public", "data", "active_users"),
+          where("lastActive", ">=", Timestamp.fromMillis(Date.now() - 10 * 60 * 1000))
+        ),
         (s) => {
           const now = Date.now();
           const rawUsers = s.docs

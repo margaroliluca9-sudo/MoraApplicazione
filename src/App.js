@@ -20,6 +20,7 @@ import {
   addDoc,
   onSnapshot,
   serverTimestamp,
+  Timestamp,
   doc,
   setDoc,
   deleteDoc,
@@ -336,7 +337,9 @@ export default function App() {
     };
 
     updatePresence();
-    const interval = setInterval(updatePresence, 60000);
+    // ogni 2 minuti basta: si resta "online" per 5 minuti dall'ultimo segnale
+    // (ogni segnale costa una lettura a tutti i telefoni aperti)
+    const interval = setInterval(updatePresence, 120000);
 
     const loggedTech = sessionStorage.getItem("mora_access_tech");
     if (loggedTech !== techName && techName !== "Anonimo") {
@@ -422,8 +425,12 @@ export default function App() {
   useEffect(() => {
     if (!user) return;
 
+    // solo chi si è fatto vivo di recente (i vecchi accessi restano nel database e non servono)
     const unsubActiveUsers = onSnapshot(
-      collection(db, "artifacts", appId, "public", "data", "active_users"),
+      query(
+        collection(db, "artifacts", appId, "public", "data", "active_users"),
+        where("lastActive", ">=", Timestamp.fromMillis(Date.now() - 10 * 60 * 1000))
+      ),
       (s) => {
         const now = Date.now();
         const activeDocs = s.docs
