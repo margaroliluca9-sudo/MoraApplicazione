@@ -3,8 +3,8 @@
 // Comandi: trascina il dito sul capannone = sposti il carrello; tieni premuto GIÙ = scende il gancio.
 // Sul computer: frecce ← → e barra spaziatrice.
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { X, Trophy, RotateCcw, Heart, Volume2, VolumeX, ArrowDown, Medal } from "lucide-react";
-import { CraneEngine } from "../game/engine";
+import { X, Trophy, RotateCcw, Heart, Volume2, VolumeX, ArrowDown, Medal, Pause, Play } from "lucide-react";
+import { CraneEngine, stageNews, TRUCKS_PER_STAGE } from "../game/engine";
 import { play, soundOn, setSoundOn } from "../game/sound";
 import { topScores, saveScore } from "../game/scores";
 
@@ -19,6 +19,22 @@ const readRec = () => {
 const saveRec = (n) => {
   try {
     localStorage.setItem(REC, String(n));
+  } catch (e) {
+    // niente
+  }
+};
+
+const STAGE_REC = "mora_crane_game_stage";
+const readStage = () => {
+  try {
+    return Number(localStorage.getItem(STAGE_REC) || 0);
+  } catch (e) {
+    return 0;
+  }
+};
+const saveStage = (n) => {
+  try {
+    localStorage.setItem(STAGE_REC, String(n));
   } catch (e) {
     // niente
   }
@@ -45,10 +61,13 @@ export const CraneGame = ({ onClose, me = "" }) => {
   const box = useRef(null);
   const canvas = useRef(null);
   const eng = useRef(null);
-  const [phase, setPhase] = useState("intro"); // intro | play | end
+  const [phase, setPhase] = useState("intro"); // intro | play | pause | end
   const [score, setScore] = useState(0);
   const [lives, setLives] = useState(3);
   const [level, setLevel] = useState(0);
+  const [stage, setStage] = useState(1);
+  const [banner, setBanner] = useState(null); // { stage, news, life }
+  const [bestStage, setBestStage] = useState(readStage);
   const [hold, setHold] = useState(false);
   const [sound, setSound] = useState(soundOn);
   const [record, setRecord] = useState(readRec);
@@ -96,8 +115,13 @@ export const CraneGame = ({ onClose, me = "" }) => {
         if (ev.type === "score") setScore(ev.score);
         if (ev.type === "miss") setLives(ev.lives);
         if (ev.type === "done") setLevel(ev.level);
+        if (ev.type === "stage") {
+          setStage(ev.stage);
+          setLives(ev.lives);
+          setBanner({ stage: ev.stage, news: ev.news, life: ev.life, id: Date.now() });
+        }
         if (ev.type === "over") {
-          setResult({ score: ev.score, stats: ev.stats, level: ev.level });
+          setResult({ score: ev.score, stats: ev.stats, level: ev.level, stage: ev.stage });
           setPhase("end");
         }
       },
@@ -110,6 +134,7 @@ export const CraneGame = ({ onClose, me = "" }) => {
       const dt = last ? Math.min(0.05, (ts - last) / 1000) : 0.016;
       last = ts;
       if (phaseRef.current === "play" || phaseRef.current === "end") e.update(dt);
+      else last = 0;
       e.draw(ctx, W, H, dpr);
       raf = requestAnimationFrame(frame);
     };
@@ -138,7 +163,10 @@ export const CraneGame = ({ onClose, me = "" }) => {
     window.addEventListener("keyup", onKey);
     // fuori dall'app: pausa (niente camion che ripartono mentre rispondi al telefono)
     const onVis = () => {
-      if (document.hidden) last = 0;
+      if (document.hidden) {
+        last = 0;
+        if (phaseRef.current === "play") setPhase("pause");
+      }
     };
     document.addEventListener("visibilitychange", onVis);
     return () => {
@@ -150,11 +178,22 @@ export const CraneGame = ({ onClose, me = "" }) => {
     };
   }, [round]);
 
+  // cartello «Livello N» per qualche secondo
+  useEffect(() => {
+    if (!banner) return undefined;
+    const t = setTimeout(() => setBanner(null), 2800);
+    return () => clearTimeout(t);
+  }, [banner]);
+
   // fine partita: record e classifica
   const saved = useRef(null);
   useEffect(() => {
     if (phase !== "end" || !result || saved.current === result) return;
     saved.current = result; // una volta sola per partita
+    if ((result.stage || 1) > readStage()) {
+      saveStage(result.stage || 1);
+      setBestStage(result.stage || 1);
+    }
     if (result.score > readRec()) {
       saveRec(result.score);
       setRecord(result.score);
@@ -214,12 +253,19 @@ export const CraneGame = ({ onClose, me = "" }) => {
     setScore(0);
     setLives(3);
     setLevel(0);
+    setStage(1);
     setResult(null);
     setHold(false);
     setTip(true);
     setRound((r) => r + 1);
     setPhase("play");
+    setBanner({ stage: 1, news: stageNews(1), life: false, id: Date.now() });
     play("start");
+  };
+  const pause = () => {
+    if (eng.current) eng.current.press(false);
+    setHold(false);
+    setPhase("pause");
   };
   const stop = (ev) => ev.stopPropagation();
   const toggleSound = () => {
@@ -243,25 +289,32 @@ export const CraneGame = ({ onClose, me = "" }) => {
 
       {/* in alto: punti, vite, livello, suono, chiudi */}
       <div className="absolute top-0 inset-x-0 p-3 flex items-start justify-between gap-2 pointer-events-none" style={{ paddingTop: "max(10px, env(safe-area-inset-top))" }}>
-        <div className="flex gap-2 pointer-events-auto">
-          <div className="px-3.5 h-12 rounded-2xl bg-slate-900/80 text-white shadow flex flex-col justify-center" data-game-score>
+        <div className="flex gap-1.5 pointer-events-auto min-w-0">
+          <div className="px-3 h-12 rounded-2xl bg-slate-900/80 text-white shadow flex flex-col justify-center" data-game-score>
             <span className="text-[10px] font-bold text-white/60 leading-none">PUNTI</span>
             <span className="text-xl font-black leading-tight tabular-nums">{score}</span>
           </div>
-          <div className="px-3 h-12 rounded-2xl bg-slate-900/80 shadow flex items-center gap-1" data-game-lives aria-label={`${lives} vite`}>
-            {[0, 1, 2].map((i) => (
-              <Heart key={i} className={`w-5 h-5 ${i < lives ? "text-red-500 fill-red-500" : "text-white/30"}`} />
+          <div className="px-2.5 h-12 rounded-2xl bg-slate-900/80 shadow flex items-center gap-0.5" data-game-lives aria-label={`${lives} vite`}>
+            {Array.from({ length: Math.max(3, lives) }, (_, i) => (
+              <Heart key={i} className={`${lives > 3 ? "w-4 h-4" : "w-5 h-5"} ${i < lives ? "text-red-500 fill-red-500" : "text-white/30"}`} />
             ))}
           </div>
-          <div className="px-3 h-12 rounded-2xl bg-slate-900/80 text-white shadow flex flex-col justify-center">
-            <span className="text-[10px] font-bold text-white/60 leading-none">CAMION</span>
-            <span className="text-xl font-black leading-tight tabular-nums">{level}</span>
+          <div className="px-3 h-12 rounded-2xl bg-slate-900/80 text-white shadow flex flex-col justify-center" data-game-stage>
+            <span className="text-[10px] font-bold text-white/60 leading-none">LIVELLO</span>
+            <span className="text-xl font-black leading-tight tabular-nums">{stage}</span>
           </div>
         </div>
-        <div className="flex gap-2 pointer-events-auto">
-          <button type="button" aria-label={sound ? "Spegni i suoni" : "Accendi i suoni"} onClick={toggleSound} className="w-12 h-12 rounded-full bg-slate-900/80 text-white shadow flex items-center justify-center">
-            {sound ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
-          </button>
+        <div className="flex gap-1.5 pointer-events-auto shrink-0">
+          {phase === "play" && (
+            <button type="button" aria-label="Pausa" data-game-btn="pause" onClick={pause} className="w-12 h-12 rounded-full bg-slate-900/80 text-white shadow flex items-center justify-center">
+              <Pause className="w-5 h-5" />
+            </button>
+          )}
+          {phase !== "play" && (
+            <button type="button" aria-label={sound ? "Spegni i suoni" : "Accendi i suoni"} onClick={toggleSound} className="w-12 h-12 rounded-full bg-slate-900/80 text-white shadow flex items-center justify-center">
+              {sound ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+            </button>
+          )}
           <button type="button" aria-label="Chiudi" onClick={onClose} className="w-12 h-12 rounded-full bg-slate-900/80 text-white shadow flex items-center justify-center">
             <X className="w-6 h-6" />
           </button>
@@ -276,6 +329,43 @@ export const CraneGame = ({ onClose, me = "" }) => {
             <br />
             Tieni premuto GIÙ per calare il gancio
           </span>
+        </div>
+      )}
+
+      {/* cartello del livello */}
+      {phase === "play" && banner && (
+        <div key={banner.id} className="absolute inset-x-0 flex justify-center pointer-events-none animate-in zoom-in-95" style={{ top: "18%" }} data-game-banner>
+          <div className="px-6 py-3 rounded-3xl bg-amber-400 text-slate-900 shadow-2xl text-center border-4 border-white">
+            <p className="text-3xl font-black leading-none">Livello {banner.stage}</p>
+            <p className="text-sm font-black mt-1">{banner.news}</p>
+            {banner.life && <p className="text-sm font-black text-red-700 mt-0.5">+1 vita ❤️</p>}
+          </div>
+        </div>
+      )}
+      {phase === "play" && !banner && level > 0 && (
+        <div className="absolute inset-x-0 flex justify-center pointer-events-none" style={{ top: "calc(max(10px, env(safe-area-inset-top)) + 58px)" }}>
+          <span className="px-3 py-1 rounded-full bg-slate-900/60 text-white text-xs font-bold tabular-nums" data-game-progress>
+            Camion {level} · prossimo livello tra {TRUCKS_PER_STAGE - (level % TRUCKS_PER_STAGE)}
+          </span>
+        </div>
+      )}
+
+      {/* pausa */}
+      {phase === "pause" && (
+        <div className="absolute inset-0 flex items-center justify-center p-5 bg-slate-900/60" data-game-pause>
+          <div className="bg-white rounded-3xl shadow-2xl p-5 max-w-xs w-full space-y-3 text-center">
+            <h2 className="text-2xl font-black text-slate-800">In pausa</h2>
+            <p className="text-sm text-slate-500">Livello {stage} · {score} punti</p>
+            <button type="button" onClick={toggleSound} className="w-full h-11 rounded-full border border-slate-200 text-slate-700 font-bold flex items-center justify-center gap-2">
+              {sound ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />} {sound ? "Suoni accesi" : "Suoni spenti"}
+            </button>
+            <button type="button" onClick={() => setPhase("play")} data-action="game-resume" className="w-full h-12 rounded-full bg-amber-500 text-white font-black text-lg flex items-center justify-center gap-2">
+              <Play className="w-5 h-5" /> Riprendi
+            </button>
+            <button type="button" onClick={onClose} className="w-full h-12 rounded-full bg-slate-100 text-slate-700 font-bold">
+              Esci dal gioco
+            </button>
+          </div>
         </div>
       )}
 
@@ -310,11 +400,12 @@ export const CraneGame = ({ onClose, me = "" }) => {
               <li>✨ Appoggia <b>piano e senza dondolare</b>: «Perfetto!» vale di più (e di fila moltiplica)</li>
               <li>💥 Se sbatti è una «Botta!», se sbagli pezzo perdi punti</li>
               <li>❤️ 3 vite: ne perdi una se un camion riparte senza tutto</li>
+              <li>📈 Si parte facile, con la freccia verde che ti guida. Ogni {TRUCKS_PER_STAGE} camion si passa di livello: più pezzi, meno tempo, vento e il vetro fragile. Ogni 3 livelli una vita in più</li>
             </ul>
             <div className="space-y-1.5">
               <p className="text-xs font-black text-slate-500 flex items-center justify-center gap-1"><Medal className="w-4 h-4" /> CLASSIFICA</p>
               <Board rows={board} me={me} loading={boardLoading} />
-              {record > 0 && <p className="text-xs font-bold text-amber-700">Il tuo record su questo telefono: {record}</p>}
+              {record > 0 && <p className="text-xs font-bold text-amber-700">Il tuo record su questo telefono: {record} punti{bestStage > 1 ? ` · livello ${bestStage}` : ""}</p>}
             </div>
             <button type="button" onClick={start} data-action="game-start" className="w-full h-12 rounded-full bg-amber-500 text-white font-black text-lg">
               Gioca
@@ -329,9 +420,11 @@ export const CraneGame = ({ onClose, me = "" }) => {
           <div className="bg-white rounded-3xl shadow-2xl p-5 max-w-sm w-full space-y-3 text-center my-auto">
             <Trophy className={`w-12 h-12 mx-auto ${result.score > 0 && result.score >= record ? "text-amber-500" : "text-slate-300"}`} />
             <h2 className="text-3xl font-black text-slate-800 tabular-nums">{result.score} punti</h2>
+            <p className="font-black text-slate-600" data-game-end-stage>Sei arrivato al livello {result.stage || 1}</p>
             {result.score > 0 && result.score >= record && <p className="font-bold text-amber-600">Nuovo record!</p>}
-            <div className="grid grid-cols-3 gap-2 text-center">
+            <div className="grid grid-cols-4 gap-2 text-center">
               {[
+                ["Livello", result.stage || 1],
                 ["Camion", result.stats.trucks],
                 ["Pezzi", result.stats.pieces],
                 ["Perfetti", result.stats.perfect],

@@ -4,6 +4,8 @@
 //  - tieni premuto GIÙ: il gancio scende; lascia: risale
 //  - il gancio vuoto aggancia da solo il pezzo che tocca; il pezzo appeso si sgancia da solo quando appoggia
 //  - i camion chiedono pezzi precisi (icone sul cassone); appoggiare piano = «Perfetto!», sbattere = «Botta!»
+//  - LIVELLI: si parte facilissimo (1 pezzo, niente vento, gancio che dondola poco, freccia che indica cosa fare)
+//    e ogni livello aggiunge qualcosa: più pezzi, meno tempo, vento, gancio più ballerino, vetro fragile.
 
 const VW = 360;
 const G = 1500; // gravità (unità virtuali/s²)
@@ -22,8 +24,42 @@ export const KINDS = {
   motore: { w: 44, h: 32, label: "Motore", kg: "450 kg" },
   fusto: { w: 30, h: 42, label: "Fusto", kg: "200 kg" },
   trave: { w: 58, h: 16, label: "Trave", kg: "800 kg" },
+  vetro: { w: 46, h: 30, label: "Vetro", kg: "120 kg", fragile: true },
 };
-const KIND_LIST = Object.keys(KINDS);
+const KIND_LIST = Object.keys(KINDS).filter((k) => k !== "vetro");
+// camion da caricare per passare al livello dopo
+export const TRUCKS_PER_STAGE = 2;
+
+// DIFFICOLTÀ di ogni livello (1 = facilissimo). Tutto cresce piano piano.
+export const stageRules = (st) => {
+  const k = Math.min(1, (st - 1) / 9); // 0 al livello 1 → 1 dal livello 10
+  const x = Math.min(1, Math.max(0, (st - 10) / 6)); // dal livello 10 al 16: modalità esperto che stringe ancora
+  return {
+    pieces: st <= 1 ? [1, 1] : st <= 2 ? [1, 2] : st <= 3 ? [2, 2] : st <= 6 ? [2, 3] : [3, 3],
+    trave: st >= 4, // la trave lunga solo dal livello 4
+    vetro: st >= 6 ? Math.min(0.35, 0.15 + (st - 6) * 0.05) : 0, // vetro fragile dal livello 6
+    patience: Math.round(70 - k * 46 - x * 6), // 70 s → 24 s → 18 s
+    wind: st < 3 ? 0 : Math.min(1, 0.25 + (st - 3) * 0.12) + x * 0.3,
+    damp: 2.6 - k * 1.55 - x * 0.2, // gancio calmo all'inizio, ballerino dopo
+    bumpV: 120 - k * 40, // velocità oltre la quale è «Botta!»
+    bumpSwing: 0.32 - k * 0.12,
+    softV: 42 - k * 14, // sotto questa: «Perfetto!»
+    softSwing: 0.11 - k * 0.045,
+    help: st <= 2, // freccia che indica il pezzo da prendere e dove metterlo
+  };
+};
+const NEWS = {
+  1: "Carica il pezzo sul camion",
+  2: "Ora i camion chiedono anche 2 pezzi",
+  3: "Si alza un po' di vento",
+  4: "Arriva la trave lunga",
+  5: "Meno tempo per ogni camion",
+  6: "Vetro fragile: se lo sbatti si rompe!",
+  7: "3 pezzi per camion",
+  8: "Il gancio dondola di più",
+  10: "Livello esperto",
+};
+export const stageNews = (st) => NEWS[st] || (st > 16 ? "Sei un campione: tieni duro!" : "Più vento e meno tempo");
 const TRUCK_COLORS = ["#dc2626", "#2563eb", "#16a34a", "#f59e0b", "#7c3aed", "#0f766e", "#e11d48"];
 
 const rnd = (a, b) => a + Math.random() * (b - a);
@@ -48,11 +84,14 @@ export class CraneEngine {
     this.spots = [26, 72, 116]; // piazzole del magazzino
     this.truck = null;
     this.nextTruck = 1.2;
-    this.level = 0;
+    this.level = 0; // camion caricati
+    this.stage = 1; // livello
+    this.stageTrucks = 0;
+    this.rules = stageRules(1);
     this.score = 0;
     this.lives = 3;
     this.combo = 0;
-    this.stats = { pieces: 0, perfect: 0, trucks: 0, bumps: 0, wrong: 0 };
+    this.stats = { pieces: 0, perfect: 0, trucks: 0, bumps: 0, wrong: 0, broken: 0 };
     this.over = false;
     this.parts = [];
     this.texts = [];
@@ -61,7 +100,7 @@ export class CraneEngine {
     this.windT = 0;
     this.lockL = null; // dopo un appoggio il gancio resta lì finché non si lascia il tasto
     // magazzino iniziale
-    [["cassa", 0], ["bobina", 1], ["motore", 2], ["fusto", 0]].forEach(([k, s]) => this.putOnSpot(item(k), s));
+    [["cassa", 0], ["bobina", 1], ["motore", 2]].forEach(([k, s]) => this.putOnSpot(item(k), s));
   }
 
   layout(vh) {
@@ -138,15 +177,15 @@ export class CraneEngine {
 
   // ---------- camion ----------
   newTruck() {
-    const lvl = this.level;
-    const n = clamp(2 + Math.floor(lvl / 3) + (Math.random() < 0.25 ? 1 : 0), 2, 3);
-    const pool = n >= 3 ? KIND_LIST.filter((k) => k !== "trave") : KIND_LIST;
-    const want = Array.from({ length: n }, () => pick(pool));
+    const R = this.rules;
+    const n = R.pieces[0] + (R.pieces[1] > R.pieces[0] && Math.random() < 0.5 ? 1 : 0);
+    const pool = KIND_LIST.filter((k) => k !== "trave" || (R.trave && n < 3));
+    const want = Array.from({ length: n }, () => (R.vetro && Math.random() < R.vetro ? "vetro" : pick(pool)));
     const bedL = 144;
     const bedR = 304;
     const slotW = (bedR - bedL) / n;
     const slots = want.map((k, i) => ({ kind: k, x: bedL + slotW * (i + 0.5), w: slotW, item: null }));
-    this.truck = { off: 260, state: "arrive", t: 0, bedL, bedR, slots, color: pick(TRUCK_COLORS), patience: Math.max(20, 46 - lvl * 2.2), honk: 0 };
+    this.truck = { off: 260, state: "arrive", t: 0, bedL, bedR, slots, color: pick(TRUCK_COLORS), patience: R.patience + (n - 1) * 6, honk: 0 };
     // il magazzino deve avere i pezzi chiesti (li porta il muletto)
     const have = this.items.filter((o) => !o.onTruck).map((o) => o.kind).concat(this.load ? [this.load.kind] : []);
     want.forEach((k) => {
@@ -166,6 +205,34 @@ export class CraneEngine {
     this.sound("horn");
     this.onEvent({ type: "arrive", want });
   }
+  // un pezzo che il camion aspetta ma che non c'è né in magazzino né sul gancio
+  missingKind() {
+    const t = this.truck;
+    if (!t || t.state !== "wait") return null;
+    const have = this.items.filter((o) => !o.onTruck).map((o) => o.kind).concat(this.load ? [this.load.kind] : []);
+    for (const sl of t.slots) {
+      if (sl.item) continue;
+      const i = have.indexOf(sl.kind);
+      if (i >= 0) have.splice(i, 1);
+      else return sl.kind;
+    }
+    return null;
+  }
+  // magazzino pieno ma manca un pezzo: il muletto porta via un pezzo che non serve (quello in cima)
+  makeRoom() {
+    const t = this.truck;
+    const need = t ? t.slots.filter((sl) => !sl.item).map((sl) => sl.kind) : [];
+    for (const x of this.spots) {
+      const st = this.stackAt(x).sort((a, b) => a.y - b.y);
+      const top = st[0];
+      if (top && !need.includes(top.kind)) {
+        this.items = this.items.filter((o) => o !== top);
+        this.dust(x, top.y, 8);
+        return true;
+      }
+    }
+    return false;
+  }
   truckDone() {
     const t = this.truck;
     return t && t.slots.every((s) => s.item && s.item.kind === s.kind);
@@ -183,8 +250,7 @@ export class CraneEngine {
     this.windT -= dt;
     if (this.windT <= 0) {
       this.windT = rnd(2.5, 5);
-      const k = Math.min(1, this.level * 0.12);
-      this.windTarget = k * rnd(-1, 1) * 420;
+      this.windTarget = this.rules.wind * rnd(-1, 1) * 380;
     }
     this.wind += ((this.windTarget || 0) - this.wind) * Math.min(1, dt * 0.8);
 
@@ -220,18 +286,23 @@ export class CraneEngine {
     const steps = 3;
     const h = dt / steps;
     for (let i = 0; i < steps; i++) {
-      const acc = -(G / l) * Math.sin(this.th) - ((tr.a * 0.7) / l) * Math.cos(this.th) + (this.wind / l) * (this.load ? 0.8 : 0.5) - 1.15 * this.om;
+      const acc = -(G / l) * Math.sin(this.th) - ((tr.a * 0.7) / l) * Math.cos(this.th) + (this.wind / l) * (this.load ? 0.8 : 0.5) - this.rules.damp * this.om;
       this.om += acc * h;
       this.th = clamp(this.th + this.om * h, -1.1, 1.1);
     }
 
     // camion
     this.updateTruck(dt);
-    // nuovi pezzi se il magazzino è quasi vuoto
-    if (this.items.filter((o) => !o.onTruck).length + (this.load ? 1 : 0) < 3 && Math.random() < dt * 0.5) {
+    // il muletto porta i pezzi: prima quelli che il camion aspetta e mancano (es. dopo un vetro rotto),
+    // poi qualcuno a caso se il magazzino è quasi vuoto
+    this.restockT = (this.restockT || 0) - dt;
+    const missing = this.missingKind();
+    if (this.restockT <= 0 && (missing || (this.items.filter((o) => !o.onTruck).length + (this.load ? 1 : 0) < 3 && Math.random() < dt * 0.5))) {
+      this.restockT = 1.2;
+      if (missing && this.freeSpot() < 0) this.makeRoom();
       const s = this.freeSpot();
       if (s >= 0) {
-        const o = item(pick(KIND_LIST));
+        const o = item(missing || pick(KIND_LIST));
         if (this.putOnSpot(o, s)) {
           o.drop = 0.5;
           this.dust(o.x, this.floorY, 6);
@@ -258,6 +329,7 @@ export class CraneEngine {
 
   place(sf) {
     const o = this.load;
+    const piecesBefore = this.stats.pieces;
     const { hx } = this.hookPos();
     const vx = Math.abs(this.hookVx());
     const swing = Math.abs(this.th);
@@ -265,8 +337,9 @@ export class CraneEngine {
     o.y = sf.y; // base del pezzo
     this.load = null;
     this.lockL = this.L;
-    const bump = vx > 85 || swing > 0.22;
-    const soft = vx < 30 && swing < 0.07;
+    const R = this.rules;
+    const bump = vx > R.bumpV || swing > R.bumpSwing;
+    const soft = vx < R.softV && swing < R.softSwing;
     let pts = 0;
     let txt = "";
     let col = "#ffffff";
@@ -311,6 +384,20 @@ export class CraneEngine {
       }
     } else {
       o.onTruck = false;
+    }
+    if (bump && o.fragile) {
+      // il vetro sbattuto si rompe: sparisce (e libera il posto sul camion)
+      if (this.truck) this.truck.slots.forEach((sl) => sl.item === o && (sl.item = null));
+      this.combo = 0;
+      this.stats.pieces = piecesBefore;
+      this.stats.broken += 1;
+      this.stats.bumps += 1;
+      this.shake = 0.45;
+      this.sound("bump");
+      this.buzz([60, 40, 60]);
+      this.glass(o.x, o.y - o.h / 2, 26);
+      this.addScore(-15, o.x, o.y - o.h - 6, "Vetro rotto!", "#fca5a5");
+      return;
     }
     if (bump) {
       pts -= 5;
@@ -380,11 +467,13 @@ export class CraneEngine {
         t.ok = true;
         this.level += 1;
         this.stats.trucks += 1;
+        this.stageTrucks += 1;
         this.sound("horn");
         this.confetti(224, this.bedY - 40, 30);
-        // 20 punti + metà dei secondi di pazienza rimasti
-        this.addScore(20 + Math.ceil(Math.max(0, (t.patience - (t.waitT || 0)) / 2)), 224, this.bedY - 60, "Camion pieno!", "#86efac");
+        // 20 punti (+5 per livello) + metà dei secondi di pazienza rimasti
+        this.addScore(15 + this.stage * 5 + Math.ceil(Math.max(0, (t.patience - (t.waitT || 0)) / 2)), 224, this.bedY - 60, "Camion pieno!", "#86efac");
         this.onEvent({ type: "done", level: this.level });
+        if (this.stageTrucks >= TRUCKS_PER_STAGE) this.nextStage();
       }
     } else if (t.state === "leave") {
       t.off -= Math.max(30, -t.off * 2 + 30) * dt;
@@ -392,16 +481,32 @@ export class CraneEngine {
       if (t.off < -260) {
         this.items = this.items.filter((o) => !o.onTruck);
         this.truck = null;
-        this.nextTruck = this.over ? 1e9 : 1.4;
+        this.nextTruck = this.over ? 1e9 : Math.max(this.nextTruck, 1.4);
       }
     }
     if (t.state === "wait") t.waitT = t.t;
   }
 
+  nextStage() {
+    this.stage += 1;
+    this.stageTrucks = 0;
+    this.rules = stageRules(this.stage);
+    this.nextTruck = 3.2; // un attimo di respiro per leggere la novità
+    let life = false;
+    // ogni 3 livelli una vita in più (massimo 5)
+    if (this.stage % 3 === 1 && this.lives < 5) {
+      this.lives += 1;
+      life = true;
+    }
+    this.sound("start");
+    this.confetti(180, 200, 40);
+    this.onEvent({ type: "stage", stage: this.stage, news: stageNews(this.stage), life, lives: this.lives });
+  }
+
   end() {
     this.over = true;
     this.hold = false;
-    this.onEvent({ type: "over", score: this.score, stats: this.stats, level: this.level });
+    this.onEvent({ type: "over", score: this.score, stats: this.stats, level: this.level, stage: this.stage });
   }
 
   // ---------- effetti ----------
@@ -420,6 +525,9 @@ export class CraneEngine {
   }
   sparks(x, y, n) {
     for (let i = 0; i < n; i++) this.parts.push({ x, y, vx: rnd(-120, 120), vy: rnd(-160, -40), g: 400, life: 0.5, max: 0.5, c: "rgba(253,224,71,", r: rnd(1, 2.2) });
+  }
+  glass(x, y, n) {
+    for (let i = 0; i < n; i++) this.parts.push({ x: x + rnd(-14, 14), y, vx: rnd(-140, 140), vy: rnd(-220, -40), g: 520, life: 0.9, max: 0.9, rect: pick(["#e0f2fe", "#bae6fd", "#7dd3fc", "#f8fafc"]), r: rnd(1.5, 3.5), spin: rnd(0, 6) });
   }
   confetti(x, y, n) {
     const cols = ["#ef4444", "#f59e0b", "#22c55e", "#3b82f6", "#a855f7", "#ec4899"];
@@ -598,6 +706,8 @@ export class CraneEngine {
     for (const o of this.items) if (!o.onTruck) this.drawItem(c, o, o.x, o.y - (o.drop || 0) * 60);
     for (const o of this.items) if (o.onTruck && this.truck) this.drawItem(c, o, o.x + this.truck.off, o.y);
 
+    // primi livelli: freccia che dice cosa fare
+    if (this.rules.help && !this.over) this.drawHelp(c);
     // carroponte: vie di corsa, trave, carrello
     this.drawCrane(c);
 
@@ -755,6 +865,52 @@ export class CraneEngine {
     }
   }
 
+  // indica il pezzo giusto da prendere oppure il posto sul camion dove appoggiarlo
+  helpTarget() {
+    const t = this.truck;
+    if (!t || t.state !== "wait") return null;
+    const need = t.slots.filter((s) => !s.item);
+    if (!need.length) return null;
+    if (this.load) {
+      const s = need.find((x) => x.kind === this.load.kind);
+      return s ? { x: s.x + t.off, y: this.bedY - KINDS[s.kind].h - 14, txt: "Qui" } : null;
+    }
+    const kinds = need.map((s) => s.kind);
+    const tops = this.items.filter((o) => !o.onTruck && kinds.includes(o.kind) && !this.items.some((p) => p !== o && !p.onTruck && Math.abs(p.x - o.x) < 6 && p.y <= o.y - o.h + 1));
+    const o = tops[0];
+    return o ? { x: o.x, y: o.y - o.h - 14, txt: "Prendi" } : null;
+  }
+  drawHelp(c) {
+    const h = this.helpTarget();
+    if (!h) return;
+    const b = Math.sin(this.t * 6) * 4;
+    c.save();
+    c.translate(h.x, h.y + b);
+    const lx = clamp(h.x, 26, VW - 26) - h.x; // scritta sempre dentro lo schermo
+    c.fillStyle = "#22c55e";
+    c.strokeStyle = "#ffffff";
+    c.lineWidth = 2;
+    c.beginPath();
+    c.moveTo(0, 0);
+    c.lineTo(-9, -11);
+    c.lineTo(-4, -11);
+    c.lineTo(-4, -22);
+    c.lineTo(4, -22);
+    c.lineTo(4, -11);
+    c.lineTo(9, -11);
+    c.closePath();
+    c.fill();
+    c.stroke();
+    c.font = "900 11px system-ui, sans-serif";
+    c.textAlign = "center";
+    c.lineWidth = 3;
+    c.strokeStyle = "rgba(15,23,42,.75)";
+    c.strokeText(h.txt, lx, -27);
+    c.fillStyle = "#ffffff";
+    c.fillText(h.txt, lx, -27);
+    c.restore();
+  }
+
   drawTruck(c) {
     const t = this.truck;
     if (!t) return;
@@ -895,6 +1051,26 @@ export class CraneEngine {
       c.fillRect(l, t + h * 0.65, w, 2);
       c.fillStyle = "rgba(255,255,255,.25)";
       c.fillRect(l + 3, t + 2, 3, h - 4);
+    } else if (o.kind === "vetro") {
+      // cassa a giorno con lastra di vetro e scritta FRAGILE
+      c.fillStyle = "#a16207";
+      c.fillRect(l, t, 3, h);
+      c.fillRect(l + w - 3, t, 3, h);
+      c.fillRect(l, base - 3, w, 3);
+      c.fillStyle = "rgba(186,230,253,.85)";
+      c.fillRect(l + 3, t + 2, w - 6, h - 5);
+      c.strokeStyle = "rgba(255,255,255,.9)";
+      c.lineWidth = 1.5;
+      c.beginPath();
+      c.moveTo(l + 8, t + 6);
+      c.lineTo(l + 16, t + h - 8);
+      c.moveTo(l + 14, t + 5);
+      c.lineTo(l + 19, t + 12);
+      c.stroke();
+      c.fillStyle = "#dc2626";
+      c.font = "900 7px system-ui, sans-serif";
+      c.textAlign = "center";
+      c.fillText("FRAGILE", x, t + h - 6);
     } else {
       c.fillStyle = "#475569";
       c.fillRect(l, t, w, 3);
