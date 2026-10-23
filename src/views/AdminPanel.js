@@ -50,6 +50,7 @@ import { describeError, getSafeMatricola, getLevenshteinDistance } from "../util
 import { PRO_INPUT, getButtonPrimaryClass, getProPanelClass } from "../ui";
 import { AdminTab } from "../components/AdminTab";
 import { CompanyAdmin } from "../components/CompanyAdmin";
+import { BackupCard } from "../components/BackupCard";
 import { buildBackupPdf, pdfFileName } from "../pdf";
 import { openPdf } from "../components/PdfHost";
 import {
@@ -1336,6 +1337,7 @@ export const AdminPanel = ({
           <h4 className="font-black text-slate-800 mb-4 flex items-center gap-2">
             <Activity className="w-5 h-5 text-blue-500" /> Stato Sistema
           </h4>
+          <BackupCard color={layoutConfig.themeColor} />
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
             <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between">
               <div className="flex items-center gap-3">

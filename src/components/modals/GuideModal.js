@@ -487,7 +487,7 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
         "«Doppioni» (in Clienti e in Gru): ti mostra una coppia alla volta di nomi che sembrano uguali, con quanti interventi e gru ha ognuno. L'app consiglia quale tenere (quello con più storia): «Tieni questo» sposta tutto sull'altro dopo averti chiesto conferma; «Sono diversi» non te li ripropone più; «Salta» li lascia per la prossima volta.",
         "Furgoni: crei i furgoni, scegli chi li usa («Nessuno» = tutto come prima), vedi tutti i magazzini e stampi la lista d'ordine.",
         "Azienda: avvisi in Home (con data di inizio e fine, poi spariscono da soli), chiusure aziendali (ferie collettive, ponti, patrono, anche «ogni anno»: Le mie ore le segna da sole e il promemoria delle ore non arriva), intestazione dei fogli stampati e password di tecnici e admin.",
-        "System: tecnici collegati, archivio e backup in PDF.",
+        "System: copia di sicurezza (si fa da sola ogni domenica; «Fai una copia adesso» con la password admin, e la data dell'ultima riuscita), tecnici collegati, archivio e backup in PDF.",
       ],
     },
   ].filter(Boolean);
