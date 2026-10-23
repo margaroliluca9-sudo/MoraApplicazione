@@ -139,7 +139,7 @@ export const MergeModal = ({
           <div className="w-12 h-12 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center mx-auto mb-2">
             <GitMerge className="w-6 h-6" />
           </div>
-          <h3 className="font-bold text-slate-800 uppercase text-sm tracking-wider">
+          <h3 className="font-bold text-slate-800 text-sm">
             Unisci {type === "customer" ? "Cliente" : "Gru"}
           </h3>
           <p className="text-xs text-slate-500 mt-1">
@@ -204,7 +204,7 @@ export const MergeModal = ({
           <button
             onClick={handleConfirm}
             disabled={loading || !targetId}
-            className={`w-full py-3 rounded-lg font-bold text-xs uppercase shadow-md transition-all ${getButtonPrimaryClass(
+            className={`w-full py-3 rounded-lg font-bold text-xs shadow-md transition-all ${getButtonPrimaryClass(
               "purple"
             )}`}
           >
@@ -212,7 +212,7 @@ export const MergeModal = ({
           </button>
           <button
             onClick={onClose}
-            className={`w-full py-3 rounded-lg font-bold text-xs uppercase ${PRO_BUTTON_SECONDARY}`}
+            className={`w-full py-3 rounded-lg font-bold text-xs ${PRO_BUTTON_SECONDARY}`}
           >
             Annulla
           </button>

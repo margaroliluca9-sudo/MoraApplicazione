@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from "react";
+import { EmptyState } from "../components/EmptyState";
 import { Search, ChevronRight, Users } from "lucide-react";
 import { getTechsString, getSafeMatricola } from "../utils";
 import { PRO_INPUT, getProPanelClass } from "../ui";
@@ -48,7 +49,7 @@ export const DatabaseView = ({
         <div className="flex gap-2 mb-3">
           <button
             onClick={() => setTab("customers")}
-            className={`flex-1 py-2 rounded-lg text-xs font-bold uppercase transition-all ${
+            className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${
               tab === "customers"
                 ? `bg-${color}-600 text-white shadow-md`
                 : "bg-white text-slate-500 border border-slate-200 hover:bg-slate-100"
@@ -58,7 +59,7 @@ export const DatabaseView = ({
           </button>
           <button
             onClick={() => setTab("machines")}
-            className={`flex-1 py-2 rounded-lg text-xs font-bold uppercase transition-all ${
+            className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${
               tab === "machines"
                 ? `bg-${color}-600 text-white shadow-md`
                 : "bg-white text-slate-500 border border-slate-200 hover:bg-slate-100"
@@ -68,7 +69,7 @@ export const DatabaseView = ({
           </button>
           <button
             onClick={() => setTab("logs")}
-            className={`flex-1 py-2 rounded-lg text-xs font-bold uppercase transition-all ${
+            className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${
               tab === "logs"
                 ? `bg-${color}-600 text-white shadow-md`
                 : "bg-white text-slate-500 border border-slate-200 hover:bg-slate-100"
@@ -90,9 +91,7 @@ export const DatabaseView = ({
       </div>
       <div className="flex-1 overflow-y-auto p-2 bg-slate-100 custom-scrollbar">
         {filteredData.length === 0 && (
-          <div className="text-center py-10 opacity-40 font-bold text-slate-500 uppercase text-xs">
-            Nessun dato trovato
-          </div>
+          <EmptyState title="Niente da mostrare" text="Prova a cambiare quello che hai scritto nella ricerca." />
         )}
         {tab === "customers" &&
           filteredData.map((c) => (
@@ -120,7 +119,7 @@ export const DatabaseView = ({
               className="p-4 mb-2 bg-white rounded-xl shadow-sm border border-slate-200 flex justify-between items-center cursor-pointer hover:border-blue-300 hover:shadow-md transition-all"
             >
               <div>
-                <span className="font-black text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded uppercase">
+                <span className="font-black text-xs text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
                   {getSafeMatricola(m)}
                 </span>
                 <p className="text-[10px] font-bold text-slate-500 mt-1">

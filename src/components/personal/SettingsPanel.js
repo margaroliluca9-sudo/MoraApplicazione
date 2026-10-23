@@ -128,7 +128,7 @@ export const SettingsPanel = ({ me, color = "blue", onBack, onClose, hoursAllowe
 
         {hoursAllowed && (
         <section className="space-y-2" data-section="settings-extra">
-          <h4 className="px-2 text-xs font-black text-slate-500 uppercase tracking-wide">Funzioni in più</h4>
+          <h4 className="px-2 text-xs font-black text-slate-500">Funzioni in più</h4>
           <div className="bg-white rounded-3xl border border-slate-200 px-4 py-1 divide-y divide-slate-100">
             <Row icon={Timer} title="Le mie ore" sub="Calendario degli orari in La mia area: ore fatte, straordinari, ore in meno, ferie, permessi, malattia">
               <Switch id="hours" label="Le mie ore" on={st.hours === true} onChange={(v) => change("hours", v)} />

@@ -1,6 +1,6 @@
 import React from "react";
+import { EmptyState } from "../EmptyState";
 import {
-  Factory,
   X,
   ChevronRight,
   Users,
@@ -36,10 +36,10 @@ export const CustomerDetailModal = ({
               <Users className="w-6 h-6" />
             </div>
             <div>
-              <h2 className="text-xl font-black uppercase tracking-tight text-slate-800 break-words">
+              <h2 className="text-xl font-black tracking-tight text-slate-800 break-words">
                 {customerName}
               </h2>
-              <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">
+              <p className="text-xs text-slate-500 font-bold">
                 {customerMachines.length} Gru Registrate
               </p>
             </div>
@@ -77,11 +77,8 @@ export const CustomerDetailModal = ({
         <div className="flex-1 overflow-y-auto p-5 custom-scrollbar bg-slate-100">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {customerMachines.length === 0 && (
-              <div className="col-span-full text-center py-10 opacity-50">
-                <Factory className="w-12 h-12 mx-auto mb-2 text-slate-400" />
-                <p className="font-bold text-slate-500 uppercase text-xs">
-                  Nessuna gru trovata
-                </p>
+              <div className="col-span-full">
+                <EmptyState color={color} title="Nessuna gru per questo cliente" text="Le gru compaiono qui appena c'è il primo rapporto." />
               </div>
             )}
             {customerMachines.map((m) => (
@@ -91,7 +88,7 @@ export const CustomerDetailModal = ({
                 className="bg-white p-4 rounded-xl shadow-sm border border-slate-200 cursor-pointer hover:border-blue-400 hover:shadow-md transition-all group"
               >
                 <div className="flex justify-between items-center mb-2">
-                  <span className="font-black text-sm text-blue-700 bg-blue-50 px-2 py-0.5 rounded uppercase">
+                  <span className="font-black text-sm text-blue-700 bg-blue-50 px-2 py-0.5 rounded">
                     MAT: {getSafeMatricola(m)}
                   </span>
                   <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-blue-500 group-hover:translate-x-1 transition-all" />

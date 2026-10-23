@@ -259,10 +259,10 @@ export const OfficeView = ({
               <Activity className="w-6 h-6" />
             </div>
             <div>
-              <h2 className="text-xl font-black text-slate-800 uppercase tracking-tight">
+              <h2 className="text-xl font-black text-slate-800 tracking-tight">
                 Panoramica
               </h2>
-              <p className="text-xs text-slate-500 font-bold uppercase tracking-wider">
+              <p className="text-xs text-slate-500 font-bold">
                 Statistiche
               </p>
             </div>
@@ -336,7 +336,7 @@ export const OfficeView = ({
         <div className={`p-5 ${getProPanelClass(color)}`}>
           <div className="flex items-center gap-2 mb-4">
             <Trophy className="w-5 h-5 text-yellow-500" />
-            <h4 className="text-xs font-black uppercase text-slate-600">
+            <h4 className="text-xs font-black text-slate-600">
               Tecnici{" "}
               <span className="text-slate-400">{dynamicMonthLabel}</span>
             </h4>
@@ -386,7 +386,7 @@ export const OfficeView = ({
         <div className={`p-5 ${getProPanelClass(color)}`}>
           <div className="flex items-center gap-2 mb-4">
             <PieChart className="w-5 h-5 text-purple-500" />
-            <h4 className="text-xs font-black uppercase text-slate-600">
+            <h4 className="text-xs font-black text-slate-600">
               Tipi <span className="text-slate-400">{dynamicMonthLabel}</span>
             </h4>
           </div>
@@ -413,7 +413,7 @@ export const OfficeView = ({
         <div className={`p-5 ${getProPanelClass(color)}`}>
           <div className="flex items-center gap-2 mb-4">
             <BarChart className="w-5 h-5 text-orange-500" />
-            <h4 className="text-xs font-black uppercase text-slate-600">
+            <h4 className="text-xs font-black text-slate-600">
               Clienti{" "}
               <span className="text-slate-400">{dynamicMonthLabel}</span>
             </h4>
@@ -462,7 +462,7 @@ export const OfficeView = ({
       <div className="space-y-2 mt-4">
         <div className="flex items-center gap-2 ml-1">
           <CalendarIcon className="w-4 h-4 text-slate-400" />
-          <h4 className="text-xs font-black text-slate-500 uppercase tracking-wider">
+          <h4 className="text-xs font-black text-slate-500">
             Calendario Interventi
           </h4>
         </div>
@@ -485,7 +485,7 @@ export const OfficeView = ({
       >
         <div className="flex items-center gap-3 mb-4">
           <Search className={`w-5 h-5 text-${color}-600`} />
-          <h2 className="text-lg font-black text-slate-800 uppercase">
+          <h2 className="text-lg font-black text-slate-800">
             Cerca N. Assistenza
           </h2>
         </div>
@@ -555,7 +555,7 @@ export const OfficeView = ({
                       {getTechsString(log)}
                     </span>
                   </div>
-                  <h4 className="font-black text-slate-800 text-sm uppercase mt-1">
+                  <h4 className="font-black text-slate-800 text-sm mt-1">
                     {log.customer}
                   </h4>
                   <div className="flex flex-wrap gap-1 mt-1 mb-2">
@@ -591,7 +591,7 @@ export const OfficeView = ({
       >
         <div className="flex items-center gap-3 mb-4">
           <Printer className="w-5 h-5 text-indigo-600" />
-          <h2 className="text-lg font-black text-slate-800 uppercase">
+          <h2 className="text-lg font-black text-slate-800">
             Esporta Report
           </h2>
         </div>
@@ -620,7 +620,7 @@ export const OfficeView = ({
                         setSelectedCustomer(c.name);
                         setShowCustomerSuggestions(false);
                       }}
-                      className="p-3 hover:bg-slate-50 cursor-pointer font-bold text-xs uppercase text-slate-700 border-b border-slate-50"
+                      className="p-3 hover:bg-slate-50 cursor-pointer font-bold text-xs text-slate-700 border-b border-slate-50"
                     >
                       {c.name}
                     </li>
@@ -654,7 +654,7 @@ export const OfficeView = ({
                         setSelectedMachine(m.matricola || m.id);
                         setShowMachineSuggestions(false);
                       }}
-                      className="p-3 hover:bg-slate-50 cursor-pointer font-bold text-xs uppercase text-slate-700 border-b border-slate-50"
+                      className="p-3 hover:bg-slate-50 cursor-pointer font-bold text-xs text-slate-700 border-b border-slate-50"
                     >
                       {m.matricola || m.id} -{" "}
                       <span className="text-[9px] text-slate-400 normal-case">
@@ -695,13 +695,13 @@ export const OfficeView = ({
         <div className="mt-4 flex gap-4">
           <button
             onClick={generatePDF}
-            className={`flex-1 py-3 rounded-xl font-bold uppercase text-xs text-white bg-slate-800 hover:bg-slate-900 shadow-md`}
+            className={`flex-1 py-3 rounded-xl font-bold text-xs text-white bg-slate-800 hover:bg-slate-900 shadow-md`}
           >
             PDF
           </button>
           <button
             onClick={handleDownloadExcel}
-            className={`flex-1 py-3 rounded-xl font-bold uppercase text-xs text-white bg-emerald-600 hover:bg-emerald-700 shadow-md`}
+            className={`flex-1 py-3 rounded-xl font-bold text-xs text-white bg-emerald-600 hover:bg-emerald-700 shadow-md`}
           >
             Excel
           </button>
@@ -720,7 +720,7 @@ export const OfficeView = ({
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex justify-between items-center mb-4 border-b border-slate-100 pb-3">
-              <h3 className="font-black text-slate-800 uppercase tracking-tight">
+              <h3 className="font-black text-slate-800 tracking-tight">
                 {popoverData.date}
               </h3>
               <button onClick={() => setPopoverData(null)}>

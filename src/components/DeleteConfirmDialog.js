@@ -22,7 +22,7 @@ export const DeleteConfirmDialog = ({
       >
         <Lock className="w-8 h-8" />
       </div>
-      <h4 className="font-bold text-slate-800 uppercase text-sm tracking-widest">
+      <h4 className="font-bold text-slate-800 text-sm">
         {title}
       </h4>
       {isFree ? (
@@ -43,13 +43,13 @@ export const DeleteConfirmDialog = ({
       <div className="grid grid-cols-2 gap-3">
         <button
           onClick={onConfirm}
-          className="py-3 bg-red-600 text-white rounded-lg font-bold text-xs uppercase shadow-md hover:bg-red-700 active:scale-95 transition-all"
+          className="py-3 bg-red-600 text-white rounded-lg font-bold text-xs shadow-md hover:bg-red-700 active:scale-95 transition-all"
         >
           Elimina
         </button>
         <button
           onClick={onCancel}
-          className={`py-3 rounded-lg font-bold text-xs uppercase active:scale-95 transition-all ${PRO_BUTTON_SECONDARY}`}
+          className={`py-3 rounded-lg font-bold text-xs active:scale-95 transition-all ${PRO_BUTTON_SECONDARY}`}
         >
           Annulla
         </button>

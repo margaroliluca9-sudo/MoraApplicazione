@@ -70,7 +70,7 @@ html.dark .shadow-2xl {
   justify-content: center;
   width: 40px;
   height: 40px;
-  border-radius: 12px;
+  border-radius: 999px;
   border: 1px solid #e2e8f0;
   background: #ffffff;
   color: #475569;
@@ -114,3 +114,45 @@ input[type="date"].mora-date::-webkit-date-and-time-value { text-align: left; }
 body { padding-top: var(--mora-safe-top); }
 .sticky.top-0 { top: var(--mora-safe-top); }
 .fixed.inset-0, .fixed.top-0 { top: var(--mora-safe-top); }
+
+/* ===== MOVIMENTI: comparsa morbida di pagine e finestre (classi animate-in usate in tutta l'app) ===== */
+@keyframes mora-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes mora-zoom { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: none; } }
+@keyframes mora-up { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@keyframes mora-down { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+.animate-in { animation: mora-fade 0.28s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.animate-in.zoom-in-95 { animation-name: mora-zoom; }
+.animate-in.slide-in-from-bottom-4 { animation-name: mora-up; animation-duration: 0.4s; }
+.animate-in.slide-in-from-top-2 { animation-name: mora-down; }
+/* le finestre dal basso sul telefono salgono */
+@media (max-width: 767px) {
+  .fixed.inset-0 > .animate-in.zoom-in-95 { animation-name: mora-up; }
+}
+/* tocco: niente riquadro blu di Android, pulsanti che "cedono" un poco */
+.mora-app button, .mora-app a { -webkit-tap-highlight-color: transparent; }
+@media (prefers-reduced-motion: reduce) {
+  .animate-in { animation: none !important; }
+}
+
+/* ===== TEMA SCURO: colori usati dalla grafica nuova ===== */
+html.dark .ring-white { --tw-ring-color: #121b2c; }
+html.dark .fill-white { fill: #121b2c; }
+html.dark .fill-slate-200 { fill: #1a2436; }
+html.dark .stroke-slate-200 { stroke: #2c3a55; }
+html.dark .stroke-slate-300 { stroke: #3a4a68; }
+html.dark .text-emerald-800 { color: #6ee7b7; }
+html.dark .bg-emerald-100 { background-color: rgba(16, 185, 129, 0.2); }
+html.dark .bg-rose-100 { background-color: rgba(244, 63, 94, 0.2); }
+html.dark .text-rose-700 { color: #fda4af; }
+html.dark .bg-teal-100 { background-color: rgba(20, 184, 166, 0.2); }
+html.dark .bg-teal-50 { background-color: rgba(20, 184, 166, 0.14); }
+html.dark .text-teal-700 { color: #5eead4; }
+html.dark .bg-amber-100 { background-color: rgba(245, 158, 11, 0.2); }
+html.dark .bg-sky-50 { background-color: rgba(14, 165, 233, 0.14); }
+html.dark .bg-violet-50 { background-color: rgba(139, 92, 246, 0.14); }
+html.dark .bg-indigo-50 { background-color: rgba(99, 102, 241, 0.14); }
+html.dark .from-blue-50, html.dark .from-red-50, html.dark .from-green-50, html.dark .from-purple-50, html.dark .from-orange-50, html.dark .from-slate-50 { --tw-gradient-from: rgba(59, 130, 246, 0.16) var(--tw-gradient-from-position); --tw-gradient-to: rgba(59, 130, 246, 0) var(--tw-gradient-to-position); --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to); }
+html.dark .to-blue-100, html.dark .to-red-100, html.dark .to-green-100, html.dark .to-purple-100, html.dark .to-orange-100, html.dark .to-slate-100 { --tw-gradient-to: rgba(59, 130, 246, 0.08) var(--tw-gradient-to-position); }
+html.dark .border-blue-100, html.dark .border-red-100, html.dark .border-green-100 { border-color: #223049; }
+html.dark .bg-slate-200 { background-color: #1f2a3d; }
+html.dark .mora-theme-btn { background: #121b2c; }

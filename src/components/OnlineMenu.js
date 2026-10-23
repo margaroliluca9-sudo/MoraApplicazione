@@ -136,7 +136,7 @@ export const OnlineMenu = ({
       {!conv ? (
         <>
           <div className="px-3 py-2.5 border-b border-slate-100 flex justify-between items-center bg-slate-50">
-            <span className="text-xs font-black uppercase text-slate-700 flex items-center gap-2">
+            <span className="text-xs font-black text-slate-700 flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-green-500" /> Online adesso ({users.length})
             </span>
             <button type="button" onClick={onClose} aria-label="Chiudi" className="p-1.5 hover:bg-slate-200 rounded-full">

@@ -250,21 +250,21 @@ export const HomeHero = ({ me = "", logs = [], todayCount = 0, now = new Date(),
       <canvas ref={canvas} className="absolute inset-0 w-full h-full" aria-hidden="true" data-hero-canvas />
       <div className="relative px-5 pt-4 pb-5 min-h-[184px] md:min-h-[220px] lg:min-h-[240px] flex flex-col justify-between pointer-events-none" style={{ paddingRight: "36%" }}>
         <div>
-          <p className={`text-[22px] font-black leading-tight transition-colors duration-700 ${dark ? "text-white" : "text-slate-900"}`} style={{ textShadow: dark ? "0 1px 8px rgba(0,0,0,.35)" : "0 1px 8px rgba(255,255,255,.35)" }}>
+          <p className="text-[22px] font-black leading-tight transition-colors duration-700" style={{ color: dark ? "#ffffff" : "#0f172a", textShadow: dark ? "0 1px 8px rgba(0,0,0,.35)" : "0 1px 8px rgba(255,255,255,.35)" }}>
             {hello}
             {me ? "," : ""}
             <br />
             {me}
           </p>
-          <p className={`text-sm font-bold mt-1 transition-colors duration-700 ${dark ? "text-white/85" : "text-slate-700"}`}>
+          <p className="text-sm font-bold mt-1 transition-colors duration-700" style={{ color: dark ? "rgba(255,255,255,.85)" : "#334155" }}>
             {["Domenica", "Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato"][now.getDay()]} {now.getDate()} {MONTHS[month].toLowerCase()}
             {todayCount > 0 ? ` · ${todayCount === 1 ? "1 cosa" : todayCount + " cose"} da fare` : ""}
           </p>
         </div>
         <p
           key={chip}
-          className={`mt-3 text-xs font-bold rounded-xl px-2.5 py-1.5 w-fit max-w-full backdrop-blur-sm ${dark ? "bg-black/25 text-white" : "bg-white/75 text-slate-700"}`}
-          style={{ animation: "moraChip .5s ease-out" }}
+          className="mt-3 text-xs font-bold rounded-xl px-2.5 py-1.5 w-fit max-w-full backdrop-blur-sm"
+          style={{ animation: "moraChip .5s ease-out", background: dark ? "rgba(0,0,0,.25)" : "rgba(255,255,255,.75)", color: dark ? "#ffffff" : "#334155" }}
           data-hero-fact
         >
           {chip}

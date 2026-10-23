@@ -117,7 +117,7 @@ export const PracticeModal = ({ onClose, technicians = [], machineTypes = [], la
               <li>Poi lo troveresti nello <b>Storico</b>, nella scheda della gru e in <b>La mia area</b>, pronto da <b>stampare</b>.</li>
             </ul>
             <div className="bg-white border border-slate-200 rounded-2xl p-4">
-              <p className="text-xs font-black text-slate-500 uppercase tracking-wide mb-1">Descrizione scritta</p>
+              <p className="text-xs font-black text-slate-500 mb-1">Descrizione scritta</p>
               <p className="text-sm text-slate-700 whitespace-pre-wrap break-words">{result.description}</p>
             </div>
             <div className="flex gap-3">

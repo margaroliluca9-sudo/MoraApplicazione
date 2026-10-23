@@ -223,7 +223,7 @@ export const HoursPanel = ({ me, hours = [], reminder = null, onBack, onClose, c
         <section className="bg-white rounded-3xl border border-slate-200 overflow-hidden" data-section="hours-summary">
           <div className={`px-4 py-4 bg-${color}-600 text-white flex items-end justify-between gap-2`}>
             <div>
-              <div className="text-xs font-bold uppercase tracking-wide opacity-80">{monthLabel(cur.y, cur.m)}</div>
+              <div className="text-xs font-bold opacity-80">{monthLabel(cur.y, cur.m)}</div>
               <div className="text-3xl font-black leading-none mt-1" data-hours-worked>{fmtMin(sum.worked)}</div>
               <div className="text-sm font-semibold opacity-90 mt-1">lavorate in {sum.workDays} {sum.workDays === 1 ? "giorno" : "giorni"}</div>
             </div>
@@ -334,7 +334,7 @@ export const HoursPanel = ({ me, hours = [], reminder = null, onBack, onClose, c
             </div>
           )}
           <div className={`rounded-2xl bg-${color}-50 p-4 space-y-1`} data-section="hours-send-sum">
-            <p className="text-xs font-black text-slate-500 uppercase tracking-wide">{periodLabel(send.from, send.to)}</p>
+            <p className="text-xs font-black text-slate-500">{periodLabel(send.from, send.to)}</p>
             <p className="text-2xl font-black text-slate-800">{fmtMin(sendSum.worked)} <span className="text-sm font-bold text-slate-500">in {sendSum.workDays} giorni</span></p>
             <p className="text-sm font-bold text-slate-600">
               {[sendSum.extra && `+${fmtMin(sendSum.extra)} straordinari`, sendSum.less && `-${fmtMin(sendSum.less)} in meno`, sendSum.ferie && `${sendSum.ferie} g ferie`, sendSum.permesso && `${fmtMin(sendSum.permesso)} permessi`, sendSum.malattia && `${sendSum.malattia} g malattia`].filter(Boolean).join(" · ") || "Nessuna differenza dall'orario normale"}

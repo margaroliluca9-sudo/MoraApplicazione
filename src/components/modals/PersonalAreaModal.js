@@ -160,7 +160,7 @@ export const PersonalAreaModal = ({
           {on("today") && (
           <section className="bg-white rounded-3xl border border-slate-200 p-4 space-y-3" data-section="area-today">
             <div className="flex justify-between items-baseline">
-              <h4 className="font-black text-slate-800 uppercase text-sm tracking-wide">Oggi</h4>
+              <h4 className="font-black text-slate-800 text-sm">Oggi</h4>
               {on("calendar") && (
                 <button type="button" onClick={() => setPanel("calendar")} className={`text-sm font-bold text-${color}-700`}>
                   Calendario

@@ -129,7 +129,7 @@ export const PushBox = ({ techName, color }) => {
         onClick={on}
         disabled={busy}
         data-action="enable-push"
-        className={`w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-${color}-600 text-white text-xs font-black uppercase tracking-wide active:scale-95 transition-transform disabled:opacity-60`}
+        className={`w-full flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-${color}-600 text-white text-xs font-black active:scale-95 transition-transform disabled:opacity-60`}
       >
         {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bell className="w-4 h-4" />}
         Attiva notifiche

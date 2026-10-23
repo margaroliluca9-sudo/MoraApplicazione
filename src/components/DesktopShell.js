@@ -44,7 +44,7 @@ export const Sidebar = ({ active, onGo, onArea, onAdmin, isOffice, title, color 
         <span className={`p-2 rounded-xl bg-${color}-600 text-white shadow-lg`}>
           <CraneMark className="w-5 h-5" />
         </span>
-        {!compact && <span className="font-black uppercase tracking-tighter text-slate-800 leading-none text-left">{title}</span>}
+        {!compact && <span className="font-black tracking-tighter text-slate-800 leading-none text-left">{title}</span>}
       </button>
       {items.map(([id, label]) => (
         <Item key={id} id={id} label={label || TAB_INFO[id].label} icon={TAB_INFO[id].icon} on={active === id || (id === "explore" && active === "database")} onClick={() => onGo(id)} />

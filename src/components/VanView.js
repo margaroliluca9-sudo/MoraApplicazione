@@ -111,7 +111,7 @@ const ItemDetail = ({ item, me, onBack, onClose, onEdit, color }) => {
             <Pencil className="w-4 h-4" /> Modifica articolo
           </button>
         </section>
-        <h4 className="font-black text-slate-800 uppercase text-sm tracking-wide px-1">Movimenti</h4>
+        <h4 className="font-black text-slate-800 text-sm px-1">Movimenti</h4>
         <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden" data-section="moves">
           {!moves.length && <p className="text-sm text-slate-500 p-4">Ancora nessun movimento.</p>}
           {moves.map((m) => (

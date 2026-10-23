@@ -78,7 +78,7 @@ export const Sheet = ({ title, onClose, children, footer, section }) => {
 
 export const Field = ({ label, children, hint }) => (
   <label className="block space-y-1.5">
-    <span className="text-xs font-black text-slate-500 uppercase tracking-wide">{label}</span>
+    <span className="text-xs font-black text-slate-500">{label}</span>
     {children}
     {hint && <span className="block text-xs text-slate-500">{hint}</span>}
   </label>
@@ -88,7 +88,7 @@ export const PrimaryBtn = ({ children, color = "blue", ...p }) => (
   <button
     type="button"
     {...p}
-    className={`flex-1 h-12 rounded-xl bg-${color}-600 hover:bg-${color}-700 text-white font-black text-sm uppercase tracking-wide disabled:opacity-50 ${p.className || ""}`}
+    className={`flex-1 h-12 rounded-xl bg-${color}-600 hover:bg-${color}-700 text-white font-black text-sm disabled:opacity-50 ${p.className || ""}`}
   >
     {children}
   </button>
