@@ -471,7 +471,7 @@ export const HistoryView = ({
                       {getTechsString(log)}
                     </td>
                     <td className="px-4 py-4 text-center align-top">
-                      <div className="flex justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex justify-center gap-2 opacity-70 group-hover:opacity-100 transition-opacity">
                         <button
                           onClick={() => printLog(log)}
                           className="text-slate-500 hover:scale-110"

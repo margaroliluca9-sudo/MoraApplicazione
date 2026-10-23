@@ -53,6 +53,7 @@ import { PhotoViewerModal } from "./components/PhotoViewerModal";
 import { PdfHost } from "./components/PdfHost";
 import { UserMenu } from "./components/UserMenu";
 import { installGestures } from "./gestures";
+import { Sidebar, TabStrip, TAB_INFO } from "./components/DesktopShell";
 import { refreshPush, getPushState, key as techKey, chatDoc } from "./chat";
 import { HOME_PREFS, cachedPrefs, cachePrefs, cleanLook } from "./home";
 import { PERSONAL } from "./personal";
@@ -137,6 +138,9 @@ export default function App() {
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
   const [showAdminLogin, setShowAdminLogin] = useState(false);
   const [isMobileView, setIsMobileView] = useState(window.innerWidth < 768);
+  const [winW, setWinW] = useState(window.innerWidth);
+  // TABLET E PC: schede aperte in alto (come un programma)
+  const [openTabs, setOpenTabs] = useState(["dashboard"]);
   const [currentTechName, setCurrentTechName] = useState(
     localStorage.getItem("mora_tech_last_name") || ""
   );
@@ -210,8 +214,9 @@ export default function App() {
     const updateLayout = () => {
       // Usiamo solo la larghezza dello schermo per determinare la vista mobile,
       // permettendo all'app di ruotare correttamente senza passare al layout desktop.
-      const isSmallScreen = window.innerWidth < 1024;
-      setIsMobileView(isSmallScreen);
+      // sotto i 768 px: telefono (barra in basso); da 768 in su: menu a sinistra e schede (tablet e PC)
+      setIsMobileView(window.innerWidth < 768);
+      setWinW(window.innerWidth);
     };
 
     const handleResize = () => {
@@ -598,6 +603,18 @@ export default function App() {
     [onlineMessages, chatMessages, chatReads, currentTechName]
   );
 
+  useEffect(() => {
+    if (TAB_INFO[activeTab]) setOpenTabs((t) => (t.includes(activeTab) ? t : [...t, activeTab]));
+  }, [activeTab]);
+  const closeTab = (id) => {
+    setOpenTabs((t) => {
+      const next = t.filter((x) => x !== id);
+      if (id === activeTab) setActiveTab(next[next.length - 1] || "dashboard");
+      return next.length ? next : ["dashboard"];
+    });
+  };
+  const sideW = isMobileView ? 0 : winW < 1100 ? 80 : 240;
+
   // GESTI (indietro dal bordo, tasto indietro di Android, tieni premuto, tira giù per ricaricare)
   useEffect(() => installGestures(), []);
   useEffect(() => {
@@ -798,8 +815,23 @@ export default function App() {
       className={`mora-app min-h-screen font-sans ${
         isMobileView ? "pb-24" : ""
       } relative bg-slate-100 text-slate-900 animate-in fade-in duration-700`}
-      style={isMobileView ? { paddingBottom: "calc(96px + var(--mora-safe-bottom))" } : undefined}
+      style={isMobileView ? { paddingBottom: "calc(96px + var(--mora-safe-bottom))" } : { paddingLeft: sideW }}
     >
+      {!isMobileView && (
+        <Sidebar
+          active={activeTab}
+          onGo={setActiveTab}
+          onArea={() => {
+            setActiveTab("dashboard");
+            setTimeout(() => window.dispatchEvent(new CustomEvent("mora-open-area", { detail: { panel: "home" } })), 50);
+          }}
+          onAdmin={handleAdminAccess}
+          isOffice={isOffice}
+          title={layoutConfig.appTitle}
+          color={color}
+          compact={sideW < 200}
+        />
+      )}
       <PdfHost />
       <VanHost vanItems={vanItems} color={color} />
       <header
@@ -811,7 +843,7 @@ export default function App() {
             onClick={() => setActiveTab("dashboard")}
           >
             <div
-              className={`p-2 rounded-xl bg-${color}-600 text-white shadow-lg`}
+              className={`p-2 rounded-xl bg-${color}-600 text-white shadow-lg ${isMobileView ? "" : "hidden"}`}
             >
               <CraneMark className="w-5 h-5" />
             </div>
@@ -890,6 +922,7 @@ export default function App() {
           </div>
         </div>
       </header>
+      {!isMobileView && <TabStrip tabs={openTabs} active={activeTab} onGo={setActiveTab} onClose={closeTab} color={color} />}
       {(!isOnline || pendingCount > 0) && (
         <div
           role="status"
@@ -944,7 +977,7 @@ export default function App() {
         </div>
       )}
 
-      <main className="max-w-6xl mx-auto p-4 md:p-8 animate-in slide-in-from-bottom-4 duration-500">
+      <main className={`${isMobileView ? "max-w-6xl" : "max-w-7xl"} mx-auto p-4 md:p-8 animate-in slide-in-from-bottom-4 duration-500`}>
         {!user ? (
           <div className="py-40 text-center">
             <RefreshCw
@@ -1047,6 +1080,7 @@ export default function App() {
               />
             )}
             {activeTab === "new" && (
+              <div className={isMobileView ? "" : "max-w-3xl mx-auto"}>
               <NewEntryForm
                 user={user}
                 customers={customers}
@@ -1063,6 +1097,7 @@ export default function App() {
                 vans={vans}
                 vanItems={vanItems}
               />
+              </div>
             )}
             {activeTab === "admin" && isAdminAuthenticated && (
               <AdminPanel

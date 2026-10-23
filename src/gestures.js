@@ -159,6 +159,13 @@ export const installGestures = () => {
         lp = null;
         if (!btns.length) return;
         buzz(15);
+        // il dito che si alza non deve "cliccare" quello che c'è sotto
+        const eat = (ev) => {
+          ev.preventDefault();
+          ev.stopPropagation();
+        };
+        document.addEventListener("click", eat, { capture: true, once: true });
+        setTimeout(() => document.removeEventListener("click", eat, { capture: true }), 700);
         showMenu(card, btns, p.clientY);
       }, 550),
     };

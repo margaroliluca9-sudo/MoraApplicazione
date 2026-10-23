@@ -7,6 +7,7 @@ import { MONTHS } from "../personal";
 import { seasonOf } from "../season";
 import { getSettings } from "../settings";
 import { HeroWorld } from "./hero/world";
+import { heroLines } from "./hero/facts";
 
 export const skyOf = (hour) =>
   hour >= 5 && hour < 9 ? "alba" : hour >= 9 && hour < 17 ? "giorno" : hour >= 17 && hour < 20 ? "tramonto" : "notte";
@@ -90,7 +91,7 @@ export const HomeHero = ({ me = "", logs = [], todayCount = 0, now = new Date(),
     return h < 7 || h >= 18;
   });
   const [msg, setMsg] = useState(null);
-  const [factIdx, setFactIdx] = useState(() => Math.floor(Math.random() * 100));
+  const [factIdx, setFactIdx] = useState(0);
   const [anim, setAnim] = useState(() => getSettings().heroAnim !== false);
   const [extra, setExtra] = useState("");
   const forced = force.join(",");
@@ -240,7 +241,9 @@ export const HomeHero = ({ me = "", logs = [], todayCount = 0, now = new Date(),
   };
   const up = () => world.current && world.current.pointerUp();
 
-  const pool = facts.length ? facts : ["Buon lavoro!"];
+  // scaletta mischiata a ogni apertura: i tuoi numeri, il periodo dell'anno, curiosità varie
+  const factsKey = facts.join("|");
+  const pool = useMemo(() => (seed >= 0 ? heroLines(factsKey ? factsKey.split("|") : [], new Date()) : []), [factsKey, seed]);
   const fact = party ? `🎉 Traguardo: ${yearCount} interventi nel ${now.getFullYear()}!` : pool[factIdx % pool.length];
   const chip = msg ? msg.text : fact;
 

@@ -19,9 +19,6 @@
 export const VW = 400;
 export const VH = 150;
 const GROUND = 146;
-const PIVOT_Y = 80; // da dove scendono le funi (sotto il carrello)
-const XMIN = 276;
-const XMAX = 372;
 const LMIN = 12;
 const LMAX = 62;
 const BLOCK = 18; // bozzello + gancio
@@ -192,7 +189,15 @@ const drawObj = (c, o, x, y, night) => {
 };
 
 // PIAZZOLE (sinistra, destra) e baia del camion in mezzo
-const PADS = [282, 364];
+export const CRANES = ["portale", "carroponte", "monotrave", "semiportale", "bandiera"];
+// geometria di ogni tipo: corsa del carrello, da dove scendono le funi, piazzole
+const GEO = {
+  portale: { xmin: 276, xmax: 372, py: 80, pads: [282, 364], top: 78, gx: [252, 392] },
+  carroponte: { xmin: 274, xmax: 372, py: 80, pads: [282, 364], top: 77, gx: [256, 384] },
+  semiportale: { xmin: 276, xmax: 372, py: 80, pads: [282, 364], top: 78, gx: [252, 392] },
+  monotrave: { xmin: 272, xmax: 372, py: 92, pads: [282, 364], top: 78, gx: [256, 384] },
+  bandiera: { xmin: 306, xmax: 372, py: 88, pads: [314, 362], noTruck: true, top: 74, gx: [296, 386] },
+};
 const BAY_STOP = 296; // posizione del camion fermo (inizio del cassone)
 const BED_LEN = 44;
 
@@ -258,15 +263,25 @@ export class HeroWorld {
       x += w + rnd(1, 4);
     }
     this.hills = [rnd(0, 6), rnd(0, 6)];
-    // carroponte
-    const x0 = rnd(XMIN, XMAX);
+    // carroponte: tipo diverso a ogni apertura
+    this.kind = CRANES.find(f) || pickW({ portale: 26, carroponte: 26, monotrave: 18, semiportale: 15, bandiera: 15 });
+    const geo = GEO[this.kind];
+    this.xmin = geo.xmin;
+    this.xmax = geo.xmax;
+    this.py = geo.py;
+    this.pads = geo.pads;
+    this.noTruck = !!geo.noTruck;
+    this.gtop = geo.top;
+    this.gx = geo.gx;
+    this.cap = pick(["1 t", "2 t", "3,2 t", "5 t", "6,3 t", "10 t", "16 t"]);
+    const x0 = rnd(this.xmin, this.xmax);
     this.cr = { x: x0, v: 0, a: 0, tx: x0, L: LMIN + rnd(0, 10), tL: LMIN, th: rnd(-0.2, 0.2), om: 0, load: null, moving: 0, contact: false };
     this.objs = [];
     const n = 1 + Math.floor(rnd(0, 3));
-    for (let i = 0; i < n; i++) this.placeOnPad(newObj(), PADS[i % 2]);
+    for (let i = 0; i < n; i++) this.placeOnPad(newObj(), this.pads[i % 2]);
     if (chance(0.35) || f("carico")) this.cr.load = newObj(pick(["cassa", "bobina", "motore", "sacco"]));
     this.truck = null;
-    this.nextTruck = f("camion") ? 0.5 : rnd(4, 14);
+    this.nextTruck = this.noTruck ? 1e9 : f("camion") ? 0.5 : rnd(4, 14);
     this.jobs = [];
     this.wait = rnd(0.6, 1.6);
     this.userUntil = 0;
@@ -287,7 +302,7 @@ export class HeroWorld {
     return (this.clock0 + this.t / 3600) % 24;
   }
   describe() {
-    return [this.w0, this.back, this.cr.load ? "carico-" + this.cr.load.kind : "carico-niente", ...this.queue, this.season !== "normale" && this.season, this.weekend && "weekend", this.party && "traguardo"].filter(Boolean);
+    return [this.w0, this.back, "gru-" + this.kind, this.cr.load ? "carico-" + this.cr.load.kind : "carico-niente", ...this.queue, this.season !== "normale" && this.season, this.weekend && "weekend", this.party && "traguardo"].filter(Boolean);
   }
   cloudTarget() {
     return Math.round(1 + this.wT.cloud * 8);
@@ -334,7 +349,7 @@ export class HeroWorld {
   }
   lengthTo(bottomY) {
     const extra = this.cr.load ? SLING + this.cr.load.h : 0;
-    return clamp(bottomY - PIVOT_Y - BLOCK - extra, LMIN, LMAX);
+    return clamp(bottomY - this.py - BLOCK - extra, LMIN, LMAX);
   }
   hookX() {
     return this.cr.x + Math.sin(this.cr.th) * (this.cr.L + BLOCK);
@@ -365,7 +380,7 @@ export class HeroWorld {
     for (let i = 0; i < n; i++) this.parts.push({ x: x + rnd(-6, 6), y, vx: rnd(-10, 10), vy: rnd(-8, -2), g: 4, life: 0.9, max: 0.9, c: [203, 213, 225], r: rnd(1, 2), layer: "front" });
   }
   freePad() {
-    const ok = PADS.filter((p) => this.stackOn(p).length < 2);
+    const ok = this.pads.filter((p) => this.stackOn(p).length < 2);
     return ok.length ? pick(ok) : null;
   }
 
@@ -375,7 +390,7 @@ export class HeroWorld {
     const t = this.truck;
     const J = [];
     const carry = (fromX, toX) => J.push({ k: "raise" }, { k: "move", x: fromX }, { k: "settle" }, { k: "lower" }, { k: "attach" }, { k: "raise" }, { k: "move", x: toX }, { k: "settle" }, { k: "lower" }, { k: "detach" }, { k: "raise" });
-    const bedX = () => (t ? t.x + (t.load.length ? 31 : 13) : PADS[0]);
+    const bedX = () => (t ? t.x + (t.load.length ? 31 : 13) : this.pads[0]);
     if (cr.load) {
       const to = t && t.state === "wait" && t.mode === "carico" && t.load.length < 2 ? bedX() : this.freePad();
       if (to != null) J.push({ k: "move", x: to }, { k: "settle" }, { k: "lower" }, { k: "detach" }, { k: "raise" });
@@ -388,10 +403,10 @@ export class HeroWorld {
       carry(t.x + o.ox, this.freePad());
     } else if (this.objs.length && chance(0.55)) {
       const o = this.objs.reduce((a, b) => (b.y - b.h < a.y - a.h && chance(0.5) ? b : a));
-      const others = PADS.filter((p) => Math.abs(p - o.x) > 6 && this.stackOn(p).length < 2);
+      const others = this.pads.filter((p) => Math.abs(p - o.x) > 6 && this.stackOn(p).length < 2);
       if (others.length) carry(o.x, pick(others));
     }
-    if (!J.length) J.push({ k: "move", x: rnd(XMIN, XMAX) }, { k: "settle" }, ...(chance(0.6) ? [{ k: "lowerTo", L: rnd(26, 46) }, { k: "wait", s: rnd(0.4, 1.2) }, { k: "raise" }] : []));
+    if (!J.length) J.push({ k: "move", x: rnd(this.xmin, this.xmax) }, { k: "settle" }, ...(chance(0.6) ? [{ k: "lowerTo", L: rnd(26, 46) }, { k: "wait", s: rnd(0.4, 1.2) }, { k: "raise" }] : []));
     J.push({ k: "wait", s: rnd(1.2, 3.5) });
     this.jobs = J;
   }
@@ -402,7 +417,7 @@ export class HeroWorld {
     j.t = (j.t || 0) + dt;
     let done = false;
     if (j.k === "move") {
-      cr.tx = clamp(j.x, XMIN, XMAX);
+      cr.tx = clamp(j.x, this.xmin, this.xmax);
       done = Math.abs(cr.x - cr.tx) < 0.5 && Math.abs(cr.v) < 1.2;
     } else if (j.k === "settle") done = (Math.abs(cr.th) < 0.035 && Math.abs(cr.om) < 0.12) || j.t > 2.2;
     else if (j.k === "lower") {
@@ -450,7 +465,7 @@ export class HeroWorld {
     if (Math.abs(wx - this.ptr.x0) > 4) this.ptr.moved = true;
     if (this.ptr.moved) {
       this.jobs = this.jobs.filter((j) => j.user && j.k !== "move");
-      this.cr.tx = clamp(wx, XMIN, XMAX);
+      this.cr.tx = clamp(wx, this.xmin, this.xmax);
       this.userUntil = this.t + 9;
     }
   }
@@ -645,7 +660,7 @@ export class HeroWorld {
       const desired = clamp((cr.tx - cr.x) * 1.5, -34, 34);
       const a = clamp((desired - cr.v) / h, -30, 30);
       cr.v += a * h;
-      cr.x = clamp(cr.x + cr.v * h, XMIN - 2, XMAX + 2);
+      cr.x = clamp(cr.x + cr.v * h, this.xmin - 2, this.xmax + 2);
       cr.a = a;
       const hv = clamp((cr.tL - cr.L) * 2.4, -18, 18);
       cr.hv = hv;
@@ -697,7 +712,7 @@ export class HeroWorld {
       t.x += t.v * dt;
       if (t.x > VW + 30) {
         this.truck = null;
-        this.nextTruck = rnd(10, 26);
+        this.nextTruck = this.noTruck ? 1e9 : rnd(10, 26);
       }
     }
   }
@@ -801,13 +816,13 @@ export class HeroWorld {
     if (night > 0.3) {
       c.save();
       c.globalCompositeOperation = "lighter";
-      const lg = c.createLinearGradient(0, PIVOT_Y, 0, GROUND);
+      const lg = c.createLinearGradient(0, this.py, 0, GROUND);
       lg.addColorStop(0, `rgba(254,243,199,${0.32 * night})`);
       lg.addColorStop(1, `rgba(254,243,199,${0.06 * night})`);
       c.fillStyle = lg;
       c.beginPath();
-      c.moveTo(cr.x - 4, PIVOT_Y - 1);
-      c.lineTo(cr.x + 4, PIVOT_Y - 1);
+      c.moveTo(cr.x - 4, this.py - 1);
+      c.lineTo(cr.x + 4, this.py - 1);
       c.lineTo(cr.x + 26, GROUND);
       c.lineTo(cr.x - 26, GROUND);
       c.closePath();
@@ -1138,8 +1153,12 @@ export class HeroWorld {
     const night = this.night;
     const steel = rgba(mix([71, 85, 105], [15, 23, 42], night * 0.8));
     const steel2 = rgba(mix([100, 116, 139], [30, 41, 59], night * 0.8));
-    // gambe a traliccio
-    [258, 382].forEach((lx) => {
+    const gcol = hex(this.girder);
+    const gfill = rgba(mix(gcol, [15, 23, 42], night * 0.45));
+    const concrete = rgba(mix([148, 163, 184], [30, 41, 59], night * 0.75));
+    const concrete2 = rgba(mix([100, 116, 139], [15, 23, 42], night * 0.8));
+    const kind = this.kind;
+    const truss = (lx) => {
       c.fillStyle = steel;
       c.fillRect(lx, 84, 1.8, GROUND - 84);
       c.fillRect(lx + 5, 84, 1.8, GROUND - 84);
@@ -1155,99 +1174,203 @@ export class HeroWorld {
       c.stroke();
       c.fillStyle = steel;
       c.fillRect(lx - 3, GROUND - 3, 13, 3);
-    });
-    // trave
-    const gcol = hex(this.girder);
-    c.fillStyle = rgba(mix(gcol, [15, 23, 42], night * 0.45));
-    c.fillRect(252, 78, 140, 7);
-    c.fillStyle = "rgba(0,0,0,.22)";
-    c.fillRect(252, 83, 140, 2);
-    c.fillStyle = "rgba(255,255,255,.25)";
-    c.fillRect(252, 78, 140, 1);
-    // strisce di pericolo alle estremità
-    c.save();
-    c.beginPath();
-    c.rect(252, 78, 8, 7);
-    c.rect(384, 78, 8, 7);
-    c.clip();
-    c.fillStyle = "#111827";
-    for (let x = 246; x < 396; x += 4) {
+      // ruote sulle rotaie a terra
+      c.fillStyle = "#111827";
       c.beginPath();
-      c.moveTo(x, 85);
-      c.lineTo(x + 2, 85);
-      c.lineTo(x + 9, 78);
-      c.lineTo(x + 7, 78);
+      c.arc(lx - 1, GROUND - 1, 1.6, 0, Math.PI * 2);
+      c.arc(lx + 8, GROUND - 1, 1.6, 0, Math.PI * 2);
       c.fill();
+    };
+    // pilastro di cemento con la mensola che regge la via di corsa
+    const column = (x, top, side) => {
+      c.fillStyle = concrete;
+      c.fillRect(x, top, 8, GROUND - top);
+      c.fillStyle = concrete2;
+      c.fillRect(x + (side > 0 ? 6 : 0), top, 2, GROUND - top);
+      c.fillStyle = concrete;
+      c.beginPath();
+      c.moveTo(x + (side > 0 ? 0 : 8), 86);
+      c.lineTo(x + (side > 0 ? -5 : 13), 86);
+      c.lineTo(x + (side > 0 ? 0 : 8), 94);
+      c.fill();
+      c.fillStyle = steel;
+      c.fillRect(x + (side > 0 ? -6 : 0), 84, 14, 2.4);
+    };
+    // trave a cassone (bitrave) con strisce di pericolo
+    const boxGirder = (x0, x1, y) => {
+      c.fillStyle = gfill;
+      c.fillRect(x0, y, x1 - x0, 7);
+      c.fillStyle = "rgba(0,0,0,.22)";
+      c.fillRect(x0, y + 5, x1 - x0, 2);
+      c.fillStyle = "rgba(255,255,255,.25)";
+      c.fillRect(x0, y, x1 - x0, 1);
+      c.save();
+      c.beginPath();
+      c.rect(x0, y, 8, 7);
+      c.rect(x1 - 8, y, 8, 7);
+      c.clip();
+      c.fillStyle = "#111827";
+      for (let x = x0 - 6; x < x1 + 4; x += 4) {
+        c.beginPath();
+        c.moveTo(x, y + 7);
+        c.lineTo(x + 2, y + 7);
+        c.lineTo(x + 9, y);
+        c.lineTo(x + 7, y);
+        c.fill();
+      }
+      c.restore();
+    };
+    // trave a I (monotrave, bandiera): il paranco corre sotto, sull'ala inferiore
+    const iBeam = (x0, x1, y) => {
+      c.fillStyle = gfill;
+      c.fillRect(x0, y, x1 - x0, 1.6);
+      c.fillRect(x0, y + 5.4, x1 - x0, 1.6);
+      c.fillStyle = rgba(mix(gcol, [15, 23, 42], 0.25 + night * 0.45));
+      c.fillRect(x0, y + 1.6, x1 - x0, 3.8);
+    };
+    let plateY = 79.4;
+    if (kind === "portale") {
+      truss(258);
+      truss(382);
+      boxGirder(252, 392, 78);
+    } else if (kind === "semiportale") {
+      truss(258);
+      column(386, 66, 1);
+      boxGirder(252, 392, 78);
+    } else if (kind === "carroponte") {
+      // capannone: pilastri, vie di corsa e la trave del tetto
+      c.fillStyle = concrete2;
+      c.fillRect(240, 60, 160, 2.5);
+      column(246, 60, -1);
+      column(388, 60, 1);
+      c.fillStyle = steel;
+      c.fillRect(250, 84, 140, 1.4);
+      // testate con le ruote sulle vie di corsa
+      c.fillStyle = "#334155";
+      c.fillRect(252, 80, 10, 5);
+      c.fillRect(378, 80, 10, 5);
+      boxGirder(256, 384, 77);
+      plateY = 78.4;
+    } else if (kind === "monotrave") {
+      c.fillStyle = concrete2;
+      c.fillRect(240, 60, 160, 2.5);
+      column(246, 60, -1);
+      column(388, 60, 1);
+      c.fillStyle = "#334155";
+      c.fillRect(252, 80, 10, 5);
+      c.fillRect(378, 80, 10, 5);
+      iBeam(256, 384, 78);
+      plateY = 79.2;
+    } else {
+      // gru a bandiera: colonna, braccio girevole e tirante
+      c.fillStyle = steel;
+      c.fillRect(386, 60, 6, GROUND - 60);
+      c.fillStyle = steel2;
+      c.fillRect(390, 60, 2, GROUND - 60);
+      c.fillStyle = steel;
+      c.fillRect(380, GROUND - 3, 18, 3);
+      c.fillRect(384, 70, 10, 10);
+      iBeam(296, 392, 74);
+      c.strokeStyle = steel;
+      c.lineWidth = 1.2;
+      c.beginPath();
+      c.moveTo(389, 60);
+      c.lineTo(326, 74);
+      c.stroke();
+      c.fillStyle = "#ef4444";
+      c.fillRect(296, 73, 3, 9);
+      plateY = 75.4;
     }
-    c.restore();
     // targa della portata
+    const px = kind === "bandiera" ? 350 : 318;
     c.fillStyle = "rgba(255,255,255,.85)";
-    c.fillRect(318, 79.4, 10, 4.2);
+    c.fillRect(px, plateY, 12, 4.2);
     c.fillStyle = "#111827";
-    c.font = "bold 3.4px sans-serif";
+    c.font = "bold 3.2px sans-serif";
     c.textAlign = "center";
-    c.fillText("5 t", 323, 82.9);
+    c.fillText(this.cap, px + 6, plateY + 3.4);
     // lucine di Natale
     if (this.season === "natale")
       for (let i = 0; i < 18; i++) {
         const on = Math.sin(this.t * 3 + i * 1.7) > -0.2;
         c.fillStyle = on ? PARTY[i % PARTY.length] : "rgba(0,0,0,.3)";
         c.beginPath();
-        c.arc(255 + i * 7.8, 87 + (i % 2) * 0.8, 1.2, 0, Math.PI * 2);
+        c.arc((kind === "bandiera" ? 300 : 255) + i * (kind === "bandiera" ? 5 : 7.8), 87 + (i % 2) * 0.8, 1.2, 0, Math.PI * 2);
         c.fill();
       }
     // lampeggiante (gira quando la gru si muove; di notte resta acceso piano)
-    const bx = 256;
+    const bx = kind === "bandiera" ? 389 : 256;
+    const by = kind === "bandiera" ? 59 : 75;
     const on = cr.moving > 0.1 ? 0.5 + 0.5 * Math.sin(this.t * 12) : night > 0.5 ? 0.25 : 0;
     c.fillStyle = "#334155";
-    c.fillRect(bx - 1.5, 75.5, 3, 2.5);
+    c.fillRect(bx - 1.5, by + 0.5, 3, 2.5);
     c.fillStyle = `rgba(251,146,60,${0.45 + on * 0.55})`;
     c.beginPath();
-    c.arc(bx, 75, 1.6, Math.PI, 0);
+    c.arc(bx, by, 1.6, Math.PI, 0);
     c.fill();
     if (on > 0.05) {
       c.save();
       c.globalCompositeOperation = "lighter";
-      const g = c.createRadialGradient(bx, 75, 0, bx, 75, 14);
+      const g = c.createRadialGradient(bx, by, 0, bx, by, 14);
       g.addColorStop(0, `rgba(251,146,60,${0.6 * on})`);
       g.addColorStop(1, "rgba(251,146,60,0)");
       c.fillStyle = g;
-      c.fillRect(bx - 14, 61, 28, 28);
+      c.fillRect(bx - 14, by - 14, 28, 28);
       c.restore();
     }
     this.drawLayer(c, "girder");
-    // carrello
     const x = cr.x;
-    c.fillStyle = "#1f2937";
-    rr(c, x - 12, 70, 24, 8, 1.5);
-    c.fill();
-    c.fillStyle = "#475569";
-    c.fillRect(x + 5, 71.5, 6, 5);
-    c.fillStyle = "#94a3b8";
-    rr(c, x - 8, 72, 12, 4.5, 2);
-    c.fill();
-    c.strokeStyle = "rgba(51,65,85,.8)";
-    c.lineWidth = 0.4;
-    const turns = (cr.L * 0.5) % 2;
-    for (let i = 0; i < 6; i++) {
-      c.beginPath();
-      c.moveTo(x - 7 + i * 2 + turns, 72);
-      c.lineTo(x - 7 + i * 2 + turns, 76.5);
-      c.stroke();
-    }
-    c.fillStyle = "#64748b";
-    [x - 9, x + 9].forEach((wx) => {
-      c.beginPath();
-      c.arc(wx, 78, 1.8, 0, Math.PI * 2);
+    if (kind === "monotrave" || kind === "bandiera") {
+      // paranco sotto la trave: carrellino sull'ala, motore e tamburo
+      const ty = kind === "bandiera" ? 81 : 85;
+      c.fillStyle = "#64748b";
+      [x - 5, x + 5].forEach((wx) => {
+        c.beginPath();
+        c.arc(wx, ty - 1, 1.6, 0, Math.PI * 2);
+        c.fill();
+      });
+      c.fillStyle = "#1f2937";
+      rr(c, x - 10, ty, 20, this.py - ty - 1, 2);
       c.fill();
-    });
+      c.fillStyle = "#94a3b8";
+      rr(c, x - 7, ty + 1.5, 10, this.py - ty - 4, 2);
+      c.fill();
+      c.fillStyle = "#475569";
+      c.fillRect(x + 4, ty + 1.5, 5, this.py - ty - 4);
+    } else {
+      // carrello sopra la trave
+      const ty = kind === "carroponte" ? 69 : 70;
+      c.fillStyle = "#1f2937";
+      rr(c, x - 12, ty, 24, 8, 1.5);
+      c.fill();
+      c.fillStyle = "#475569";
+      c.fillRect(x + 5, ty + 1.5, 6, 5);
+      c.fillStyle = "#94a3b8";
+      rr(c, x - 8, ty + 2, 12, 4.5, 2);
+      c.fill();
+      c.strokeStyle = "rgba(51,65,85,.8)";
+      c.lineWidth = 0.4;
+      const turns = (cr.L * 0.5) % 2;
+      for (let i = 0; i < 6; i++) {
+        c.beginPath();
+        c.moveTo(x - 7 + i * 2 + turns, ty + 2);
+        c.lineTo(x - 7 + i * 2 + turns, ty + 6.5);
+        c.stroke();
+      }
+      c.fillStyle = "#64748b";
+      [x - 9, x + 9].forEach((wx) => {
+        c.beginPath();
+        c.arc(wx, ty + 8, 1.8, 0, Math.PI * 2);
+        c.fill();
+      });
+    }
     if (night > 0.3) {
       c.fillStyle = "#fef3c7";
-      c.fillRect(x - 2, 78, 4, 1.2);
+      c.fillRect(x - 2, this.py - 2, 4, 1.2);
     }
     // funi, bozzello, gancio, carico: un pendolo
     c.save();
-    c.translate(x, PIVOT_Y);
+    c.translate(x, this.py);
     c.rotate(-cr.th);
     const L = cr.L;
     c.strokeStyle = night > 0.5 ? "#cbd5e1" : "#334155";
@@ -1490,9 +1613,10 @@ const EVENTS = {
       let y = rnd(20, 40);
       let tx = 0;
       for (let k = 0; k < 6; k++) {
-        tx = rnd(262, 388);
+        tx = rnd(w.gx[0] + 8, w.gx[1] - 4);
         if (Math.abs(tx - w.cr.x) > 30) break;
       }
+      const sitY = w.gtop - 0.5;
       let state = "in";
       let t = 0;
       let hop = 0;
@@ -1502,7 +1626,7 @@ const EVENTS = {
           t += dt;
           if (state === "in") {
             const dx = tx - x;
-            const dy = 77.5 - y;
+            const dy = sitY - y;
             const d = Math.hypot(dx, dy);
             const sp = Math.min(55, d * 2 + 8);
             x += (dx / d) * sp * dt;
@@ -1525,7 +1649,7 @@ const EVENTS = {
         draw(c, wd) {
           const col = wd.night > 0.5 ? "#94a3b8" : "#334155";
           if (state === "sit") {
-            const yy = 77.5 - Math.sin(hop * Math.PI) * 1.5;
+            const yy = sitY - Math.sin(hop * Math.PI) * 1.5;
             c.fillStyle = col;
             c.beginPath();
             c.ellipse(x, yy - 2, 2.2, 1.6, 0, 0, Math.PI * 2);
@@ -1888,7 +2012,9 @@ const EVENTS = {
         draw(c, wd) {
           const walkIn = Math.min(1, t / 2);
           const walkOut = t > 14 ? (t - 14) / 2 : 0;
-          const x = 246 + walkIn * 18 - walkOut * 18;
+          const x = wd.gx[0] - 6 + walkIn * 18 - walkOut * 18;
+          c.save();
+          c.translate(0, wd.gtop - 78);
           const col = wd.night > 0.5 ? "#475569" : "#111827";
           c.fillStyle = col;
           c.beginPath();
@@ -1915,6 +2041,7 @@ const EVENTS = {
           c.fillStyle = wd.night > 0.5 ? "#fde047" : "#a3e635";
           c.fillRect(x + 1.8, 69.6, 0.6, 0.6);
           c.fillRect(x + 3.2, 69.6, 0.6, 0.6);
+          c.restore();
         },
       };
     },
