@@ -189,7 +189,35 @@ const markHoursSent = (doc, iso) =>
     body: JSON.stringify({ fields: { lastSent: { stringValue: iso } } }),
   });
 
+// "Tecnici online": ogni apertura dell'app lascia un documento in active_users che nessuno
+// cancellava; l'app li leggeva tutti a ogni avvio. Una volta all'ora tolgo quelli fermi da 2 giorni.
+const STALE = 2 * 24 * 3600 * 1000;
+const cleanPresence = async (now) => {
+  const rows = await call(`${BASE}/${DATA}:runQuery`, {
+    method: "POST",
+    body: JSON.stringify({
+      structuredQuery: {
+        from: [{ collectionId: "active_users" }],
+        where: {
+          fieldFilter: {
+            field: { fieldPath: "lastActive" },
+            op: "LESS_THAN",
+            value: { timestampValue: new Date(now - STALE).toISOString() },
+          },
+        },
+        limit: 400,
+      },
+    }),
+  });
+  const names = (rows || []).filter((x) => x.document).map((x) => x.document.name);
+  if (!names.length) return 0;
+  await call(`${BASE}:commit`, { method: "POST", body: JSON.stringify({ writes: names.map((n) => ({ delete: n })) }) });
+  return names.length;
+};
+
 const run = async (now = Date.now()) => {
+  // il controllo gira ogni 5 minuti: la pulizia solo nei primi 5 minuti di ogni ora
+  if (new Date(now).getUTCMinutes() < 5) await cleanPresence(now).catch(() => 0);
   const due = [];
   for (const [kind, coll] of [["reminder", "personal_reminders"], ["event", "personal_events"]]) {
     for (const d of await pendingOf(coll)) {

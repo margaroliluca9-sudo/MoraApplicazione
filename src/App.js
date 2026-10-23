@@ -20,6 +20,7 @@ import {
   addDoc,
   onSnapshot,
   serverTimestamp,
+  Timestamp,
   doc,
   setDoc,
   deleteDoc,
@@ -50,6 +51,7 @@ import { NotifyPrompt } from "./components/modals/NotifyPrompt";
 import { getSettings, wasAsked, markAsked, installTipShown, setSettingsOwner, settingsDocId, SETTINGS_COLL, applyRemoteSettings, pushSettings } from "./settings";
 import { AdminLoginModal } from "./components/AdminLoginModal";
 import { PhotoViewerModal } from "./components/PhotoViewerModal";
+import { withPhotoRefs, movePhotosOut, prefetchRecent } from "./logPhotos";
 import { PdfHost } from "./components/PdfHost";
 import { UserMenu } from "./components/UserMenu";
 import { installGestures } from "./gestures";
@@ -124,6 +126,7 @@ export default function App() {
     if (activeTab !== "new") setNewPrefill(null);
   }, [activeTab]);
   const [logs, setLogs] = useState([]);
+  const rawLogsRef = useRef({ list: [], server: false });
   const [customers, setCustomers] = useState([]);
   const [technicians, setTechnicians] = useState([]);
   const [machines, setMachines] = useState([]);
@@ -336,7 +339,9 @@ export default function App() {
     };
 
     updatePresence();
-    const interval = setInterval(updatePresence, 60000);
+    // ogni 2 minuti basta: si resta "online" per 5 minuti dall'ultimo segnale
+    // (ogni segnale costa una lettura a tutti i telefoni aperti)
+    const interval = setInterval(updatePresence, 120000);
 
     const loggedTech = sessionStorage.getItem("mora_access_tech");
     if (loggedTech !== techName && techName !== "Anonimo") {
@@ -422,8 +427,12 @@ export default function App() {
   useEffect(() => {
     if (!user) return;
 
+    // solo chi si è fatto vivo di recente (i vecchi accessi restano nel database e non servono)
     const unsubActiveUsers = onSnapshot(
-      collection(db, "artifacts", appId, "public", "data", "active_users"),
+      query(
+        collection(db, "artifacts", appId, "public", "data", "active_users"),
+        where("lastActive", ">=", Timestamp.fromMillis(Date.now() - 10 * 60 * 1000))
+      ),
       (s) => {
         const now = Date.now();
         const activeDocs = s.docs
@@ -506,9 +515,11 @@ export default function App() {
         setPendingCount(
           s.docs.filter((d) => d.metadata && d.metadata.hasPendingWrites).length
         );
+        const raw = s.docs.map((d) => ({ id: d.id, ...d.data() }));
+        rawLogsRef.current = { list: raw, server: !!(s.metadata && s.metadata.fromCache === false) };
         setLogs(
-          s.docs
-            .map((d) => ({ id: d.id, ...d.data() }))
+          raw
+            .map(withPhotoRefs)
             .sort((a, b) => {
               const parseDate = (ds) => {
                 if (!ds) return 0;
@@ -599,6 +610,30 @@ export default function App() {
       unsubReads();
     };
   }, [user, needChat]);
+  // FOTO DEI RAPPORTI A PARTE (logPhotos.js):
+  // - l'admin, quando entra, sposta piano piano le foto dei rapporti vecchi fuori dal rapporto
+  // - in sottofondo tengo sul telefono le foto dei rapporti recenti (si vedono anche senza rete)
+  const photoJobs = useRef({ moving: false, prefetched: false });
+  useEffect(() => {
+    const { list, server } = rawLogsRef.current;
+    if (!user || !server || !list.length) return undefined;
+    const jobs = photoJobs.current;
+    if (isAdminAuthenticated && !jobs.moving) {
+      jobs.moving = true;
+      movePhotosOut(list, 5)
+        .catch(() => 0)
+        .then(() => {
+          jobs.moving = false;
+        });
+    }
+    if (jobs.prefetched) return undefined;
+    const t = setTimeout(() => {
+      jobs.prefetched = true;
+      prefetchRecent(logs).catch(() => {});
+    }, 4000);
+    return () => clearTimeout(t);
+  }, [user, logs, isAdminAuthenticated]);
+
   // chi si è nascosto non compare tra i "Tecnici online" (l'admin vede tutti)
   const visibleUsers = useMemo(
     () => activeUsersList.filter((u) => !u.hidden || isAdminAuthenticated || techKey(u.technician) === techKey(currentTechName)),
@@ -845,25 +880,26 @@ export default function App() {
         className="sticky top-0 z-50 px-4 py-3 transition-colors duration-300 bg-white/90 backdrop-blur-md border-b border-slate-200"
         data-section="app-header"
       >
-        <div className="max-w-6xl mx-auto flex justify-between items-center gap-3">
+        <div className="max-w-6xl mx-auto flex justify-between items-center gap-2 sm:gap-3">
           <button
             type="button"
-            className="flex items-center gap-3 min-w-0 text-left"
+            className="flex items-center gap-2.5 sm:gap-3 min-w-0 text-left"
             onClick={() => setActiveTab("dashboard")}
           >
             <span
-              className={`w-10 h-10 rounded-2xl bg-${color}-600 text-white flex items-center justify-center shadow-md shadow-${color}-600/25 shrink-0 ${isMobileView ? "" : "hidden"}`}
+              className={`w-9 h-9 rounded-2xl bg-${color}-600 text-white flex items-center justify-center shadow-md shadow-${color}-600/25 shrink-0 ${isMobileView ? "" : "hidden"}`}
             >
               <CraneMark className="w-5 h-5" />
             </span>
             <span className="min-w-0">
-              <h1 className="text-[17px] font-black tracking-tight leading-tight text-slate-800 break-words">{layoutConfig.appTitle}</h1>
+              {/* su una riga sola: se il nome è troppo lungo finisce con «…» (intero tenendo il dito sopra) */}
+              <h1 className="text-[15px] min-[401px]:text-base sm:text-[17px] font-black tracking-tight leading-tight text-slate-800 truncate" title={layoutConfig.appTitle}>{layoutConfig.appTitle}</h1>
               <span className="text-xs font-semibold text-slate-500 block truncate">
                 {currentTechName ? `Ciao, ${currentTechName}` : "Tecnico"}
               </span>
             </span>
           </button>
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             {visibleUsers.length > 0 && (
               <button
                 type="button"
@@ -873,7 +909,7 @@ export default function App() {
                   setOnlineConv(null);
                   setShowOnlineDropdown(!showOnlineDropdown);
                 }}
-                className="relative h-10 flex items-center gap-1.5 pl-2.5 pr-2 bg-emerald-50 border border-emerald-200 rounded-full hover:bg-emerald-100 transition-colors"
+                className="relative h-9 sm:h-10 flex items-center gap-1 sm:gap-1.5 pl-2 sm:pl-2.5 pr-1.5 sm:pr-2 bg-emerald-50 border border-emerald-200 rounded-full hover:bg-emerald-100 transition-colors"
                 title="Tocca per vedere chi è online"
                 aria-label={`${visibleUsers.length} ${visibleUsers.length === 1 ? "tecnico online" : "tecnici online"}`}
               >

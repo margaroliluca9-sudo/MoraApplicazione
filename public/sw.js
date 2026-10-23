@@ -6,7 +6,7 @@
 //  2) Notifiche della chat e dei promemoria.
 const SHELL = "mora-offline-v1";
 const CDN_HOSTS = ["cdn.tailwindcss.com", "fonts.googleapis.com", "fonts.gstatic.com"];
-const WAIT_NETWORK_MS = 4000; // rete lentissima: dopo 4 secondi apro la copia
+const WAIT_NETWORK_MS = 1500; // rete lenta: dopo 1,5 secondi apro la copia (intanto scarico la nuova per la prossima volta)
 
 const putSafe = async (key, res) => {
   try {

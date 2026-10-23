@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import {
   PlusCircle,
   X,
@@ -6,7 +6,8 @@ import {
   MinusCircle,
   Camera,
 } from "lucide-react";
-import { doc, updateDoc } from "firebase/firestore";
+import { doc, updateDoc, writeBatch } from "firebase/firestore";
+import { isPhotoRef, putPhotos, resolvePhotos } from "../../logPhotos";
 import { db, appId } from "../../firebase";
 import { DEFAULT_LAYOUT } from "../../constants";
 import { compressImage, describeError } from "../../utils";
@@ -39,6 +40,23 @@ export const EditLogModal = ({
   });
   const [loading, setLoading] = useState(false);
   const [uploadingPhotos, setUploadingPhotos] = useState(false);
+  // foto tenute a parte: le scarico prima di poterle cambiare
+  const hadRefs = (log.photos || []).some(isPhotoRef);
+  const [photoState, setPhotoState] = useState(hadRefs ? "loading" : "ready");
+  useEffect(() => {
+    if (!hadRefs) return undefined;
+    let alive = true;
+    resolvePhotos(log.photos)
+      .then((r) => {
+        if (!alive) return;
+        setData((p) => ({ ...p, photos: r }));
+        setPhotoState("ready");
+      })
+      .catch(() => alive && setPhotoState("failed"));
+    return () => {
+      alive = false;
+    };
+  }, [hadRefs, log.photos]);
   const customFields = layoutConfig?.customFields || [];
   const formSettings =
     layoutConfig?.formSettings || DEFAULT_LAYOUT.formSettings;
@@ -110,18 +128,18 @@ export const EditLogModal = ({
         .replace(/\//g, "-")
         .trim();
 
-      await updateDoc(
-        doc(
-          db,
-          "artifacts",
-          appId,
-          "public",
-          "data",
-          "maintenance_logs",
-          log.id
-        ),
-        {
-          ...dataToSave,
+      const logRef = doc(
+        db,
+        "artifacts",
+        appId,
+        "public",
+        "data",
+        "maintenance_logs",
+        log.id
+      );
+      const { photos: _photos, id: _id, ...rest } = dataToSave;
+      const upd = {
+          ...rest,
           technician: data.technician,
           additionalTechnicians: cleanAdditionalTechs,
           customer: data.customer.toUpperCase(),
@@ -131,9 +149,20 @@ export const EditLogModal = ({
           description: data.description,
           dateString: data.dateString,
           ticketNumber: data.ticketNumber || "",
-          photos: data.photos,
-        }
-      );
+        };
+      const hasSeparate = hadRefs || Number(log.photoCount) > 0;
+      if (photoState === "ready" && !data.photos.length && !hasSeparate) {
+        // nessuna foto, né prima né ora
+        await updateDoc(logRef, { ...upd, photos: [] });
+      } else if (photoState === "ready") {
+        // foto a parte (logPhotos.js): rapporto e foto cambiano insieme
+        const batch = writeBatch(db);
+        batch.update(logRef, { ...upd, ...putPhotos(batch, log.id, data.photos) });
+        await batch.commit();
+      } else {
+        // foto non scaricate (senza rete): restano come sono
+        await updateDoc(logRef, upd);
+      }
       onClose();
     } catch (e) {
       console.error(e);
@@ -375,7 +404,7 @@ export const EditLogModal = ({
                   multiple
                   className="hidden"
                   onChange={handlePhotoUpload}
-                  disabled={data.photos.length >= 3 || uploadingPhotos}
+                  disabled={data.photos.length >= 3 || uploadingPhotos || photoState !== "ready"}
                 />
               </label>
             </div>
@@ -387,8 +416,18 @@ export const EditLogModal = ({
               </div>
             )}
 
+            {photoState === "loading" && (
+              <div className="text-[10px] text-blue-600 font-bold animate-pulse flex items-center gap-1" data-photo-state="loading">
+                <RefreshCw className="w-3 h-3 animate-spin" /> Carico le foto...
+              </div>
+            )}
+            {photoState === "failed" && (
+              <p className="text-[11px] text-slate-500" data-photo-state="failed">
+                Senza rete non posso mostrare le foto: restano come sono.
+              </p>
+            )}
             <div className="flex gap-3 overflow-x-auto pb-2">
-              {data.photos.map((photoStr, idx) => (
+              {photoState === "ready" && data.photos.map((photoStr, idx) => (
                 <div key={idx} className="relative shrink-0 group">
                   <img
                     src={photoStr}
@@ -404,7 +443,7 @@ export const EditLogModal = ({
                   </button>
                 </div>
               ))}
-              {data.photos.length === 0 && !uploadingPhotos && (
+              {photoState === "ready" && data.photos.length === 0 && !uploadingPhotos && (
                 <p className="text-[10px] text-slate-400 italic">
                   Nessuna foto allegata.
                 </p>
@@ -415,7 +454,7 @@ export const EditLogModal = ({
         <div className="p-6 border-t border-slate-100 bg-white">
           <button
             onClick={handleSave}
-            disabled={loading || uploadingPhotos}
+            disabled={loading || uploadingPhotos || photoState === "loading"}
             className={`w-full py-4 rounded-lg font-bold text-xs transition-all ${getButtonPrimaryClass(
               color
             )}`}
