@@ -1,0 +1,21 @@
+name: Prova azioni
+on:
+  push:
+    branches: [prova-azioni]
+permissions:
+  contents: read
+jobs:
+  prova:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - run: echo ok > f.txt && node -v
+      - uses: actions/upload-artifact@v5
+        with:
+          name: prova
+          path: f.txt
+          retention-days: 1
