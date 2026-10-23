@@ -1,20 +1,20 @@
 // VIDEO DELLA GUIDA (file in public/guida/<id>.mp4 + <id>.jpg come copertina).
 // Rifatti con lo script di prova "rec_guide.js": un filmato per funzione, con il dito e le scritte.
 export const VIDEOS = [
-  { id: "nuovo-rapporto", title: "Nuovo rapporto", about: "Dal cliente al salvataggio, con l'assistente", sec: 37 },
+  { id: "nuovo-rapporto", title: "Nuovo rapporto", about: "Dal cliente al salvataggio, con l'assistente", sec: 34 },
   { id: "rapporto-non-finito", title: "Il rapporto non si perde", about: "Se l'app si chiude a metà, «Riprendi»", sec: 33 },
   { id: "storico", title: "Storico", about: "Diviso per giorno, cerca, stampa", sec: 28, office: true },
   { id: "scheda-gru", title: "La scheda della gru", about: "Tutto su una gru e il rapporto già pronto", sec: 20, office: true },
   { id: "esplora", title: "Esplora", about: "Clienti, gru e interventi", sec: 19, office: true },
-  { id: "la-mia-area", title: "La mia area", about: "Calendario, note, promemoria", sec: 38 },
+  { id: "la-mia-area", title: "La mia area", about: "Calendario, note, promemoria", sec: 39 },
   { id: "stampa-interventi", title: "Stampa interventi", about: "Tanti insieme, anche dei colleghi", sec: 21 },
   { id: "modifica-aspetto", title: "Modifica aspetto", about: "Tieni premuto, modelli di grafica", sec: 23 },
   { id: "tecnici-online", title: "Tecnici online", about: "Chi è collegato e scrivergli", sec: 23 },
   { id: "senza-rete", title: "Senza rete", about: "Nel capannone senza internet", sec: 15, office: true },
   { id: "notifiche", title: "Notifiche e impostazioni", about: "Avvisi sul telefono e le tue scelte", sec: 28 },
-  { id: "cosa-ho-cambiato", title: "Cosa ho cambiato", about: "Quanti pezzi hai sostituito quest'anno", sec: 43 },
+  { id: "cosa-ho-cambiato", title: "Cosa ho cambiato", about: "Quanti pezzi hai sostituito quest'anno", sec: 44 },
   { id: "foglio-nelle-note", title: "Fogli e foto nelle Note", about: "Fotografi il foglio delle misure: diventa testo", sec: 37 },
-  { id: "le-mie-ore", title: "Le mie ore", about: "Orari, straordinari, ferie e permessi", sec: 40 },
+  { id: "le-mie-ore", title: "Le mie ore", about: "Orari, straordinari, ferie e permessi", sec: 44 },
   { id: "furgone", title: "Il tuo furgone", about: "Pezzi a bordo e scarico automatico", sec: 19, van: true },
 ];
 
