@@ -108,6 +108,21 @@ const splashSeason = (cfg) => {
   return cfg.seasonalSplash === false ? "normale" : seasonOf();
 };
 
+// ASCOLTO DEL DATABASE CON RIPRESA DA SOLA: se un collegamento si interrompe per un errore
+// (es. letture del giorno finite, permessi), l'app riprova da sola più tardi (2, 4, 8… fino a 10 minuti,
+// e subito quando torna la rete) senza doverla chiudere e riaprire.
+const SYNC = { fail: 0, tries: 0 };
+const watch = (ref, a, b, c) => {
+  const opts = typeof a === "function" ? null : a;
+  const next = opts ? b : a;
+  const err = opts ? c : b;
+  const onErr = (e) => {
+    if (!SYNC.fail) SYNC.fail = Date.now();
+    if (err) err(e);
+  };
+  return opts ? onSnapshot(ref, opts, next, onErr) : onSnapshot(ref, next, onErr);
+};
+
 // chat: quanti messaggi recenti tengo (più quelli fissati)
 const CHAT_KEEP = 500;
 
@@ -136,6 +151,35 @@ export default function App() {
     if (activeTab !== "new") setNewPrefill(null);
   }, [activeTab]);
   const [logs, setLogs] = useState([]);
+  // ripresa da sola dopo un errore del database (vedi watch qui sopra): cambiando syncEpoch
+  // si riaprono tutti i collegamenti
+  const [syncEpoch, setSyncEpoch] = useState(0);
+  useEffect(() => {
+    const retry = () => {
+      if (!SYNC.fail || (typeof navigator !== "undefined" && navigator.onLine === false)) return;
+      const wait = Math.min(10, 2 ** SYNC.tries) * 60000; // 1, 2, 4, 8, 10 minuti
+      if (Date.now() - SYNC.fail < wait) return;
+      SYNC.fail = 0;
+      SYNC.tries += 1;
+      setSyncEpoch((n) => n + 1);
+    };
+    const t = setInterval(retry, 30000);
+    const onOnline = () => {
+      if (SYNC.fail) SYNC.fail = 1; // torna la rete: riprovo subito
+      retry();
+    };
+    window.addEventListener("online", onOnline);
+    document.addEventListener("visibilitychange", onOnline);
+    return () => {
+      clearInterval(t);
+      window.removeEventListener("online", onOnline);
+      document.removeEventListener("visibilitychange", onOnline);
+    };
+  }, []);
+  // dati arrivati di nuovo: azzero i tentativi
+  useEffect(() => {
+    if (!SYNC.fail) SYNC.tries = 0;
+  }, [logs]);
   const rawLogsRef = useRef({ list: [], server: false });
   const [customers, setCustomers] = useState([]);
   const [technicians, setTechnicians] = useState([]);
@@ -176,7 +220,7 @@ export default function App() {
     const me = techKey(currentTechName);
     setHomePrefs(cachedPrefs(currentTechName));
     if (!user || !me) return undefined;
-    const unsub = onSnapshot(
+    const unsub = watch(
       chatDoc(HOME_PREFS, me),
       (snap) => {
         const d = snap.exists() ? snap.data() : null;
@@ -187,7 +231,7 @@ export default function App() {
       () => {}
     );
     return () => unsub();
-  }, [user, currentTechName]);
+  }, [user, currentTechName, syncEpoch]);
   const look = previewLook !== undefined ? previewLook : cleanLook(homePrefs && homePrefs.look);
   const viewConfig = useMemo(() => {
     if (!look) return layoutConfig;
@@ -419,7 +463,7 @@ export default function App() {
       "active_users",
       sessionId
     );
-    const unsub = onSnapshot(presenceRef, (snap) => {
+    const unsub = watch(presenceRef, (snap) => {
       const data = snap && snap.exists() ? snap.data() : null;
       const kickedAt = data && data.kickedAt && data.kickedAt.seconds;
       if (!kickedAt) return;
@@ -432,13 +476,13 @@ export default function App() {
       alert("Sei stato disconnesso dall'amministratore.");
     });
     return () => unsub();
-  }, [user]);
+  }, [user, syncEpoch]);
 
   useEffect(() => {
     if (!user) return;
 
     // solo chi si è fatto vivo di recente (i vecchi accessi restano nel database e non servono)
-    const unsubActiveUsers = onSnapshot(
+    const unsubActiveUsers = watch(
       query(
         collection(db, "artifacts", appId, "public", "data", "active_users"),
         where("lastActive", ">=", Timestamp.fromMillis(Date.now() - 10 * 60 * 1000))
@@ -478,7 +522,7 @@ export default function App() {
       }
     );
 
-    const unsubLayout = onSnapshot(
+    const unsubLayout = watch(
       doc(db, "artifacts", appId, "public", "data", "settings", "layout"),
       (s) => {
         if (s.exists()) {
@@ -515,7 +559,7 @@ export default function App() {
       }
     );
 
-    const unsubCust = onSnapshot(
+    const unsubCust = watch(
       collection(db, "artifacts", appId, "public", "data", "customers"),
       (s) =>
         setCustomers(
@@ -524,24 +568,24 @@ export default function App() {
             .sort((a, b) => a.name.localeCompare(b.name))
         )
     );
-    const unsubTech = onSnapshot(
+    const unsubTech = watch(
       collection(db, "artifacts", appId, "public", "data", "technicians"),
       (s) => setTechnicians(s.docs.map((d) => ({ id: d.id, ...d.data() })))
     );
-    const unsubMach = onSnapshot(
+    const unsubMach = watch(
       collection(db, "artifacts", appId, "public", "data", "machines"),
       (s) => setMachines(s.docs.map((d) => ({ id: d.id, ...d.data() })))
     );
-    const unsubTypes = onSnapshot(
+    const unsubTypes = watch(
       collection(db, "artifacts", appId, "public", "data", "machine_types"),
       (s) => setMachineTypes(s.docs.map((d) => ({ id: d.id, ...d.data() })))
     );
-    const unsubVans = onSnapshot(
+    const unsubVans = watch(
       collection(db, "artifacts", appId, "public", "data", VAN.vans),
       (s) => setVans(s.docs.map((d) => ({ id: d.id, ...d.data() }))),
       () => setVans([])
     );
-    const unsubVanItems = onSnapshot(
+    const unsubVanItems = watch(
       collection(db, "artifacts", appId, "public", "data", VAN.items),
       (s) => setVanItems(s.docs.map((d) => ({ id: d.id, ...d.data() }))),
       () => setVanItems([])
@@ -557,13 +601,13 @@ export default function App() {
       unsubTypes();
       unsubActiveUsers();
     };
-  }, [user]);
+  }, [user, syncEpoch]);
 
   // DATI DELL'AZIENDA decisi dall'admin (company.js): password, intestazione dei fogli,
   // avvisi in Home, chiusure aziendali. Copia sul telefono per quando non c'è rete.
   useEffect(() => {
     if (!user) return undefined;
-    return onSnapshot(
+    return watch(
       doc(db, "artifacts", appId, "public", "data", "settings", "azienda"),
       (s) => {
         if (!s.exists() && s.metadata && s.metadata.fromCache) return; // non ancora arrivato dal server
@@ -571,7 +615,7 @@ export default function App() {
       },
       () => {}
     );
-  }, [user]);
+  }, [user, syncEpoch]);
 
   // INTERVENTI (logsWindow.js): finché non è acceso il sistema "anni" li scarico tutti in diretta;
   // dopo, in diretta solo dal 1° gennaio dell'anno scorso e i più vecchi dalla copia sul telefono.
@@ -605,7 +649,7 @@ export default function App() {
       );
     };
     olderRef.current = [];
-    const unsub = onSnapshot(
+    const unsub = watch(
       logsWindowed ? recentQuery(start) : collection(db, "artifacts", appId, "public", "data", "maintenance_logs"),
       { includeMetadataChanges: true },
       (s) => {
@@ -639,7 +683,7 @@ export default function App() {
       window.removeEventListener("mora-logs-changed", onChanged);
       document.removeEventListener("visibilitychange", onVisible);
     };
-  }, [user, logsWindowed]);
+  }, [user, logsWindowed, syncEpoch]);
 
   // CHAT: messaggi (le foto sono a parte) e fin dove ha letto ognuno.
   // Solo se l'admin l'ha attivata (Impostazioni > Design > Chat tra tecnici).
@@ -661,7 +705,7 @@ export default function App() {
       const ids = new Set(lastMsgs.map((m) => m.id));
       setChatMessages([...lastMsgs, ...pinnedMsgs.filter((m) => !ids.has(m.id))]);
     };
-    const unsubChat = onSnapshot(
+    const unsubChat = watch(
       query(chatColl, orderBy("at", "desc"), limit(CHAT_KEEP)),
       (s) => {
         lastMsgs = s.docs.map((d) => ({ id: d.id, ...d.data() }));
@@ -669,7 +713,7 @@ export default function App() {
       },
       () => setChatMessages([])
     );
-    const unsubPinned = onSnapshot(
+    const unsubPinned = watch(
       query(chatColl, where("pinned", "==", true)),
       (s) => {
         pinnedMsgs = s.docs.map((d) => ({ id: d.id, ...d.data() }));
@@ -677,7 +721,7 @@ export default function App() {
       },
       () => {}
     );
-    const unsubReads = onSnapshot(
+    const unsubReads = watch(
       collection(db, "artifacts", appId, "public", "data", "chat_reads"),
       (s) => setChatReads(s.docs.map((d) => ({ id: d.id, ...d.data() }))),
       () => setChatReads([])
@@ -687,7 +731,7 @@ export default function App() {
       unsubPinned();
       unsubReads();
     };
-  }, [user, needChat]);
+  }, [user, needChat, syncEpoch]);
   // FOTO DEI RAPPORTI A PARTE (logPhotos.js):
   // - l'admin, quando entra, sposta piano piano le foto dei rapporti vecchi fuori dal rapporto
   // - in sottofondo tengo sul telefono le foto dei rapporti recenti (si vedono anche senza rete)
@@ -765,7 +809,7 @@ export default function App() {
     setSettingsOwner(currentTechName);
     if (!user || !currentTechName) return undefined;
     let first = true;
-    const unsub = onSnapshot(
+    const unsub = watch(
       chatDoc(SETTINGS_COLL, settingsDocId(currentTechName)),
       (snap) => {
         if (snap.exists()) applyRemoteSettings(snap.data());
@@ -775,7 +819,7 @@ export default function App() {
       () => {}
     );
     return () => unsub();
-  }, [user, currentTechName]);
+  }, [user, currentTechName, syncEpoch]);
 
   // LA MIA AREA: carico solo i documenti del tecnico collegato
   useEffect(() => {
@@ -827,7 +871,7 @@ export default function App() {
         }
       }, 50);
     window.addEventListener("mora-hours-changed", onHours);
-    const unsubHours = onSnapshot(
+    const unsubHours = watch(
       query(hoursColl, where(documentId(), ">=", cut), where(documentId(), "<", `${prefix}\uf8ff`)),
       (s) => {
         recentH = hoursRows(s);
@@ -836,7 +880,7 @@ export default function App() {
       () => {}
     );
     const unsubs = Object.entries(PERSONAL).filter(([kind]) => kind !== "hours").map(([kind, name]) =>
-      onSnapshot(
+      watch(
         query(collection(db, "artifacts", appId, "public", "data", name), where("owner", "==", me)),
         (s) =>
           setPersonal((p) => ({ ...p, [kind]: s.docs.map((d) => ({ id: d.id, ...d.data() })) })),
@@ -848,7 +892,7 @@ export default function App() {
       unsubHours();
       unsubs.forEach((u) => u());
     };
-  }, [user, currentTechName]);
+  }, [user, currentTechName, syncEpoch]);
 
   // notifiche: tengo aggiornata l'iscrizione di questo telefono (se già permesse)
   useEffect(() => {

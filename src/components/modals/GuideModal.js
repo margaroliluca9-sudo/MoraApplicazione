@@ -382,7 +382,7 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
         "Mentre la guardi il tempo cambia da solo (sole, nuvole, pioggia, temporale, arcobaleno, nebbia, vento, neve d'inverno) e passa qualcuno: camion da caricare o scaricare, muletto, aerei, elicottero, uccelli, mongolfiere, un gatto sulla trave; di notte stelle cadenti, fuochi d'artificio… e ogni tanto qualcosa di molto strano.",
         "La gru lavora da sola: sposta casse, bobine e travi e carica i camion, con il carico che dondola come uno vero.",
         "Puoi guidarla tu: trascina il dito sul cielo per spostare il carrello; tocca e il gancio scende, aggancia (o sgancia) e risale.",
-        "Un segreto: tocca il cielo 5 volte di fila e si apre il gioco del carroponte. Hai 90 secondi per caricare più pezzi possibile sui camion (◀ ▶ e «Gancio»); il record resta sul telefono.",
+        "Un segreto: tocca il cielo 5 volte di fila e si apre il gioco del carroponte. Trascina il dito per spostare il carrello e tieni premuto GIÙ per calare il gancio: carica sui camion i pezzi che chiedono, appoggiandoli piano («Perfetto!»). Hai 3 vite; c'è la classifica tra i tecnici.",
         "Durante l'anno: lucine a Natale, pipistrelli e zucca ad Halloween, lucciole d'estate. Ogni 50 interventi nell'anno arrivano i coriandoli.",
         "Se preferisci un'immagine ferma: La mia area → ⚙ Impostazioni → «Cielo animato in Home».",
       ],

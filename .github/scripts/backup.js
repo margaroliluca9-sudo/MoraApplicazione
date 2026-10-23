@@ -38,7 +38,7 @@ const COLLECTIONS = [
   "chat_messages", "chat_photos", "chat_reads", "push_subscriptions", "active_users", "access_logs",
   "ignored_conflicts", "home_prefs", "personal_settings", "personal_events", "personal_notes",
   "personal_reminders", "personal_contacts", "personal_hours", "hours_reminders",
-  "vans", "van_items", "van_moves",
+  "vans", "van_items", "van_moves", "game_scores",
 ];
 
 // i documenti restano nel formato di Firestore, così si possono rimettere identici
