@@ -8,6 +8,7 @@ import { seasonOf } from "../season";
 import { getSettings } from "../settings";
 import { HeroWorld } from "./hero/world";
 import { heroLines } from "./hero/facts";
+import { activeNotices } from "../company";
 
 export const skyOf = (hour) =>
   hour >= 5 && hour < 9 ? "alba" : hour >= 9 && hour < 17 ? "giorno" : hour >= 17 && hour < 20 ? "tramonto" : "notte";
@@ -52,6 +53,14 @@ export const factsOf = (logs = [], me = "", now = new Date()) => {
   if (g && g[1] > 2) out.push(`La gru che vedi più spesso: ${g[0]}`);
   const nextGoal = Math.ceil((ofYear.length + 1) / 50) * 50;
   if (ofYear.length && nextGoal - ofYear.length <= 5) out.push(`Ancora ${nextGoal - ofYear.length} e arrivi a ${nextGoal} interventi`);
+  // negli anni: confronti con l'anno scorso (si aggiornano da soli, ogni anno)
+  const ofPrev = mine.filter((l) => String(l.dateString || "").endsWith("/" + (y - 1)));
+  if (ofPrev.length && now.getMonth() <= 1) out.push(`Nel ${y - 1} hai fatto ${ofPrev.length} ${ofPrev.length === 1 ? "intervento" : "interventi"}`);
+  const prevMonth = ofPrev.filter((l) => Number(String(l.dateString).split("/")[1]) === now.getMonth() + 1).length;
+  if (prevMonth && ofMonth.length) out.push(`A ${MONTHS[now.getMonth()].toLowerCase()} dell'anno scorso eri a quota ${prevMonth}, quest'anno ${ofMonth.length}`);
+  const ago = `${now.getDate()}/${now.getMonth() + 1}/${y - 1}`;
+  const yearAgo = mine.find((l) => l.dateString === ago && l.customer);
+  if (yearAgo) out.push(`Un anno fa, proprio oggi, eri da ${yearAgo.customer}`);
   const dow = now.getDay();
   if (dow === 1) out.push("Lunedì: buon inizio settimana");
   if (dow === 5) out.push("Venerdì: ancora uno sforzo e c'è il weekend");
@@ -228,6 +237,9 @@ export const HomeHero = ({ me = "", logs = [], todayCount = 0, now = new Date(),
       bumpHint();
       return "Trascina il dito sul cielo: guidi tu la gru. Tocca: il gancio scende";
     }
+    // avvisi dell'azienda (area admin → Avvisi in Home): nei loro giorni escono più spesso
+    const news = activeNotices(new Date());
+    if (news.length && Math.random() < 0.6) return "📢 " + news[Math.floor(Math.random() * news.length)];
     const all = heroLines(facts, new Date());
     return all[Math.floor(Math.random() * all.length)];
   });

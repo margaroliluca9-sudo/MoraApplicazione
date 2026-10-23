@@ -21,6 +21,11 @@ import {
   onSnapshot,
   serverTimestamp,
   Timestamp,
+  orderBy,
+  limit,
+  documentId,
+  getDocsFromCache,
+  getDocsFromServer,
   doc,
   setDoc,
   deleteDoc,
@@ -52,6 +57,8 @@ import { getSettings, wasAsked, markAsked, installTipShown, setSettingsOwner, se
 import { AdminLoginModal } from "./components/AdminLoginModal";
 import { PhotoViewerModal } from "./components/PhotoViewerModal";
 import { withPhotoRefs, movePhotosOut, prefetchRecent } from "./logPhotos";
+import { applyCompany } from "./company";
+import { windowStart, recentQuery, loadOlder, reloadOlderFromCache, prepareWindow } from "./logsWindow";
 import { PdfHost } from "./components/PdfHost";
 import { UserMenu } from "./components/UserMenu";
 import { installGestures } from "./gestures";
@@ -100,6 +107,9 @@ const splashSeason = (cfg) => {
   }
   return cfg.seasonalSplash === false ? "normale" : seasonOf();
 };
+
+// chat: quanti messaggi recenti tengo (più quelli fissati)
+const CHAT_KEEP = 500;
 
 export default function App() {
   // TEMA chiaro / scuro (scelto su ogni dispositivo)
@@ -505,39 +515,6 @@ export default function App() {
       }
     );
 
-    const unsubLogs = onSnapshot(
-      collection(db, "artifacts", appId, "public", "data", "maintenance_logs"),
-      { includeMetadataChanges: true },
-      (s) => {
-        // dati arrivati dal server (non dalla copia sul telefono): segno l'ora
-        if (s.metadata && s.metadata.fromCache === false) markSynced();
-        // interventi salvati sul telefono ma non ancora arrivati al server
-        setPendingCount(
-          s.docs.filter((d) => d.metadata && d.metadata.hasPendingWrites).length
-        );
-        const raw = s.docs.map((d) => ({ id: d.id, ...d.data() }));
-        rawLogsRef.current = { list: raw, server: !!(s.metadata && s.metadata.fromCache === false) };
-        setLogs(
-          raw
-            .map(withPhotoRefs)
-            .sort((a, b) => {
-              const parseDate = (ds) => {
-                if (!ds) return 0;
-                const parts = ds.split("/");
-                if (parts.length !== 3) return 0;
-                const [d, m, y] = parts.map(Number);
-                return new Date(y, m - 1, d).getTime() || 0;
-              };
-              const dateA = parseDate(a.dateString);
-              const dateB = parseDate(b.dateString);
-              if (dateA !== dateB) return dateB - dateA;
-              return (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0);
-            })
-        );
-        setLoading(false);
-      }
-    );
-
     const unsubCust = onSnapshot(
       collection(db, "artifacts", appId, "public", "data", "customers"),
       (s) =>
@@ -574,7 +551,6 @@ export default function App() {
       unsubVans();
       unsubVanItems();
       unsubLayout();
-      unsubLogs();
       unsubCust();
       unsubTech();
       unsubMach();
@@ -582,6 +558,88 @@ export default function App() {
       unsubActiveUsers();
     };
   }, [user]);
+
+  // DATI DELL'AZIENDA decisi dall'admin (company.js): password, intestazione dei fogli,
+  // avvisi in Home, chiusure aziendali. Copia sul telefono per quando non c'è rete.
+  useEffect(() => {
+    if (!user) return undefined;
+    return onSnapshot(
+      doc(db, "artifacts", appId, "public", "data", "settings", "azienda"),
+      (s) => {
+        if (!s.exists() && s.metadata && s.metadata.fromCache) return; // non ancora arrivato dal server
+        applyCompany(s.exists() ? s.data() : {});
+      },
+      () => {}
+    );
+  }, [user]);
+
+  // INTERVENTI (logsWindow.js): finché non è acceso il sistema "anni" li scarico tutti in diretta;
+  // dopo, in diretta solo dal 1° gennaio dell'anno scorso e i più vecchi dalla copia sul telefono.
+  const logsWindowed = layoutConfig.logsWindowed === true;
+  const recentRef = useRef([]);
+  const olderRef = useRef([]);
+  useEffect(() => {
+    if (!user) return undefined;
+    const start = logsWindowed ? windowStart() : 0;
+    const parseDate = (ds) => {
+      if (!ds) return 0;
+      const parts = ds.split("/");
+      if (parts.length !== 3) return 0;
+      const [d, m, y] = parts.map(Number);
+      return new Date(y, m - 1, d).getTime() || 0;
+    };
+    const publish = () => {
+      const recent = recentRef.current;
+      const ids = new Set(recent.map((l) => l.id));
+      const raw = [...recent, ...olderRef.current.filter((l) => !ids.has(l.id))];
+      rawLogsRef.current = { ...rawLogsRef.current, list: raw };
+      setLogs(
+        raw
+          .map(withPhotoRefs)
+          .sort((a, b) => {
+            const dateA = parseDate(a.dateString);
+            const dateB = parseDate(b.dateString);
+            if (dateA !== dateB) return dateB - dateA;
+            return (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0);
+          })
+      );
+    };
+    olderRef.current = [];
+    const unsub = onSnapshot(
+      logsWindowed ? recentQuery(start) : collection(db, "artifacts", appId, "public", "data", "maintenance_logs"),
+      { includeMetadataChanges: true },
+      (s) => {
+        const server = !!(s.metadata && s.metadata.fromCache === false);
+        // dati arrivati dal server (non dalla copia sul telefono): segno l'ora
+        if (server) markSynced();
+        // interventi salvati sul telefono ma non ancora arrivati al server
+        const pending = s.docs.filter((d) => d.metadata && d.metadata.hasPendingWrites).length;
+        setPendingCount(pending);
+        recentRef.current = s.docs.map((d) => ({ id: d.id, ...d.data() }));
+        rawLogsRef.current = { list: rawLogsRef.current.list, server, pending, windowed: logsWindowed };
+        publish();
+        setLoading(false);
+      }
+    );
+    if (!logsWindowed) return () => unsub();
+    const setOlder = (list) => {
+      olderRef.current = list;
+      publish();
+    };
+    loadOlder(start, setOlder);
+    // modifiche fatte da questo telefono a interventi vecchi: le rileggo dalla copia
+    const onChanged = () => reloadOlderFromCache(start, setOlder);
+    const onVisible = () => {
+      if (!document.hidden) loadOlder(start, setOlder);
+    };
+    window.addEventListener("mora-logs-changed", onChanged);
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      unsub();
+      window.removeEventListener("mora-logs-changed", onChanged);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [user, logsWindowed]);
 
   // CHAT: messaggi (le foto sono a parte) e fin dove ha letto ognuno.
   // Solo se l'admin l'ha attivata (Impostazioni > Design > Chat tra tecnici).
@@ -595,10 +653,29 @@ export default function App() {
       setChatReads([]);
       return undefined;
     }
+    // negli anni i messaggi diventano tanti: tengo gli ultimi 500 più quelli fissati in alto
+    const chatColl = collection(db, "artifacts", appId, "public", "data", "chat_messages");
+    let lastMsgs = [];
+    let pinnedMsgs = [];
+    const pubChat = () => {
+      const ids = new Set(lastMsgs.map((m) => m.id));
+      setChatMessages([...lastMsgs, ...pinnedMsgs.filter((m) => !ids.has(m.id))]);
+    };
     const unsubChat = onSnapshot(
-      collection(db, "artifacts", appId, "public", "data", "chat_messages"),
-      (s) => setChatMessages(s.docs.map((d) => ({ id: d.id, ...d.data() }))),
+      query(chatColl, orderBy("at", "desc"), limit(CHAT_KEEP)),
+      (s) => {
+        lastMsgs = s.docs.map((d) => ({ id: d.id, ...d.data() }));
+        pubChat();
+      },
       () => setChatMessages([])
+    );
+    const unsubPinned = onSnapshot(
+      query(chatColl, where("pinned", "==", true)),
+      (s) => {
+        pinnedMsgs = s.docs.map((d) => ({ id: d.id, ...d.data() }));
+        pubChat();
+      },
+      () => {}
     );
     const unsubReads = onSnapshot(
       collection(db, "artifacts", appId, "public", "data", "chat_reads"),
@@ -607,17 +684,31 @@ export default function App() {
     );
     return () => {
       unsubChat();
+      unsubPinned();
       unsubReads();
     };
   }, [user, needChat]);
   // FOTO DEI RAPPORTI A PARTE (logPhotos.js):
   // - l'admin, quando entra, sposta piano piano le foto dei rapporti vecchi fuori dal rapporto
   // - in sottofondo tengo sul telefono le foto dei rapporti recenti (si vedono anche senza rete)
-  const photoJobs = useRef({ moving: false, prefetched: false });
+  const photoJobs = useRef({ moving: false, prefetched: false, preparing: false, prepared: false });
   useEffect(() => {
     const { list, server } = rawLogsRef.current;
     if (!user || !server || !list.length) return undefined;
     const jobs = photoJobs.current;
+    // sistema "anni" degli interventi: lo prepara l'admin (una volta sola, poi vale per tutti)
+    const meta = rawLogsRef.current;
+    if (isAdminAuthenticated && !meta.windowed && !meta.pending && !jobs.preparing && !jobs.prepared) {
+      jobs.preparing = true;
+      prepareWindow(list)
+        .then((r) => {
+          if (r === "on") jobs.prepared = true;
+        })
+        .catch(() => {})
+        .then(() => {
+          jobs.preparing = false;
+        });
+    }
     if (isAdminAuthenticated && !jobs.moving) {
       jobs.moving = true;
       movePhotosOut(list, 5)
@@ -691,7 +782,60 @@ export default function App() {
     const me = techKey(currentTechName);
     setPersonal({ events: [], notes: [], reminders: [], contacts: [], hours: [] });
     if (!user || !me) return undefined;
-    const unsubs = Object.entries(PERSONAL).map(([kind, name]) =>
+    // Le mie ore: un giorno = un documento, negli anni diventano tanti. In diretta solo
+    // dal 1° gennaio dell'anno scorso; i giorni più vecchi dalla copia sul telefono
+    // (dal server al massimo una volta al giorno). Il nome del documento è "tecnico_data".
+    const hoursColl = collection(db, "artifacts", appId, "public", "data", PERSONAL.hours);
+    const prefix = `${me}_`.replace(/[^a-z0-9_-]/gi, "_");
+    const cut = `${prefix}${new Date().getFullYear() - 1}-01-01`;
+    let recentH = [];
+    let olderH = [];
+    const pubHours = () =>
+      setPersonal((p) => ({ ...p, hours: [...recentH, ...olderH].filter((h) => h.owner === me) }));
+    const hoursRows = (s) => s.docs.map((d) => ({ id: d.id, ...d.data() }));
+    const olderQ = query(hoursColl, where(documentId(), ">=", prefix), where(documentId(), "<", cut));
+    const HKEY = "mora_old_hours_sync";
+    (async () => {
+      try {
+        olderH = hoursRows(await getDocsFromCache(olderQ));
+        pubHours();
+      } catch (e) {
+        // nessuna copia
+      }
+      let last = 0;
+      try {
+        last = Number(localStorage.getItem(HKEY) || 0);
+      } catch (e) {
+        last = 0;
+      }
+      if (Date.now() - last < 864e5 && olderH.length) return;
+      try {
+        olderH = hoursRows(await getDocsFromServer(olderQ));
+        pubHours();
+        localStorage.setItem(HKEY, String(Date.now()));
+      } catch (e) {
+        // senza rete
+      }
+    })();
+    const onHours = () =>
+      setTimeout(async () => {
+        try {
+          olderH = hoursRows(await getDocsFromCache(olderQ));
+          pubHours();
+        } catch (e) {
+          // niente
+        }
+      }, 50);
+    window.addEventListener("mora-hours-changed", onHours);
+    const unsubHours = onSnapshot(
+      query(hoursColl, where(documentId(), ">=", cut), where(documentId(), "<", `${prefix}\uf8ff`)),
+      (s) => {
+        recentH = hoursRows(s);
+        pubHours();
+      },
+      () => {}
+    );
+    const unsubs = Object.entries(PERSONAL).filter(([kind]) => kind !== "hours").map(([kind, name]) =>
       onSnapshot(
         query(collection(db, "artifacts", appId, "public", "data", name), where("owner", "==", me)),
         (s) =>
@@ -699,7 +843,11 @@ export default function App() {
         () => setPersonal((p) => ({ ...p, [kind]: [] }))
       )
     );
-    return () => unsubs.forEach((u) => u());
+    return () => {
+      window.removeEventListener("mora-hours-changed", onHours);
+      unsubHours();
+      unsubs.forEach((u) => u());
+    };
   }, [user, currentTechName]);
 
   // notifiche: tengo aggiornata l'iscrizione di questo telefono (se già permesse)

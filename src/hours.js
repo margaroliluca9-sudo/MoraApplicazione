@@ -8,6 +8,7 @@ import { setDoc, deleteDoc } from "firebase/firestore";
 import { chatDoc, key } from "./chat";
 import { MONTHS, parseIso, isoOf } from "./personal";
 import { easterOf } from "./season";
+import { closureOf } from "./company";
 import { syncExtra } from "./settings";
 
 export const HOURS = "personal_hours";
@@ -56,10 +57,14 @@ export const isHoliday = (iso) => {
   const pasquetta = new Date(e.getFullYear(), e.getMonth(), e.getDate() + 1);
   return isoOf(pasquetta) === iso;
 };
-// sabato, domenica e feste: niente orario normale, tutte le ore fatte sono straordinario
+// sabato, domenica e feste (anche le chiusure aziendali segnate come «festa»):
+// niente orario normale, tutte le ore fatte sono straordinario
 export const isFreeDay = (iso) => {
   const d = parseIso(iso);
-  return !!d && (d.getDay() === 0 || d.getDay() === 6 || isHoliday(iso));
+  if (!d) return false;
+  if (d.getDay() === 0 || d.getDay() === 6 || isHoliday(iso)) return true;
+  const c = closureOf(iso);
+  return !!c && c.kind === "festa";
 };
 export const stdOf = (iso, std = STD_DEFAULT) => (iso && isFreeDay(iso) ? 0 : std);
 export const deltaOf = (h, std = STD_DEFAULT) => (h && h.kind === "lavoro" ? (Number(h.minutes) || 0) - stdOf(h.date, std) : 0);
@@ -75,7 +80,10 @@ export const withDefaults = (list, y, m, std = STD_DEFAULT, since = "", today = 
     if (iso > today || (since && iso < since) || map[iso]) continue;
     const dow = new Date(y, m, d).getDay();
     if (dow === 0 || dow === 6) continue;
-    out.push(isHoliday(iso) ? { date: iso, kind: "festa", minutes: 0, auto: true } : { date: iso, kind: "lavoro", minutes: std, auto: true });
+    // chiusura aziendale (decisa dall'admin): ferie o festa, con il suo nome
+    const c = isHoliday(iso) ? null : closureOf(iso);
+    if (c) out.push({ date: iso, kind: c.kind === "festa" ? "festa" : "ferie", minutes: 0, auto: true, note: String(c.label || "Chiusura aziendale") });
+    else out.push(isHoliday(iso) ? { date: iso, kind: "festa", minutes: 0, auto: true } : { date: iso, kind: "lavoro", minutes: std, auto: true });
   }
   return out;
 };
@@ -157,16 +165,27 @@ export const summaryText = (me, list, y, m, std = STD_DEFAULT) => {
   return `Ore di ${monthLabel(y, m).toLowerCase()} – ${me}\n${lines.join("\n")}${lines.length ? "\n" : ""}${intro}\n\n${tot.join("\n")}`;
 };
 
+// avviso l'app: i giorni vecchi (anni passati) li rilegge dalla copia sul telefono
+const changed = (p) => {
+  try {
+    window.dispatchEvent(new CustomEvent("mora-hours-changed"));
+  } catch (e) {
+    // niente
+  }
+  return p;
+};
 export const saveDay = (me, h) =>
-  setDoc(chatDoc(HOURS, docId(me, h.date)), {
-    owner: key(me),
-    date: h.date,
-    kind: h.kind,
-    minutes: Math.max(0, Math.round(Number(h.minutes) || 0)),
-    note: String(h.note || "").trim().slice(0, 120),
-    updatedAt: Date.now(),
-  });
-export const removeDay = (me, date) => deleteDoc(chatDoc(HOURS, docId(me, date)));
+  changed(
+    setDoc(chatDoc(HOURS, docId(me, h.date)), {
+      owner: key(me),
+      date: h.date,
+      kind: h.kind,
+      minutes: Math.max(0, Math.round(Number(h.minutes) || 0)),
+      note: String(h.note || "").trim().slice(0, 120),
+      updatedAt: Date.now(),
+    })
+  );
+export const removeDay = (me, date) => changed(deleteDoc(chatDoc(HOURS, docId(me, date))));
 
 // orario normale del tecnico (vale per questo telefono)
 const STD_KEY = "mora_hours_std";

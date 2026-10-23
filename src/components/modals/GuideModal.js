@@ -230,7 +230,7 @@ const appStepsFor = ({ hasVan, chatEnabled, isAdmin }) =>
     isAdmin && {
       icon: Settings,
       title: "Impostazioni (admin)",
-      text: "Design (colori, lettere, chat sì/no, messaggi da «Tecnici online» sì/no), Staff, Tipi, Clienti, Gru («Doppioni»: una coppia alla volta, scegli quale tenere), Furgoni (chi usa quale furgone, lista d'ordine) e System (collegati e backup).",
+      text: "Design (colori, lettere, chat sì/no, messaggi da «Tecnici online» sì/no), Staff, Tipi, Clienti, Gru («Doppioni»: una coppia alla volta, scegli quale tenere), Furgoni (chi usa quale furgone, lista d'ordine), Azienda (avvisi in Home, chiusure, intestazione dei fogli, password) e System (collegati e backup).",
     },
     {
       icon: BookOpen,
@@ -349,7 +349,7 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
         "In fondo: interventi fatti e clienti visitati nel mese; toccandoli si apre l'elenco dei tuoi interventi.",
         "Cosa ho cambiato (in fondo): quanti pezzi hai sostituito quest'anno, dal più cambiato (es. «11 funi, 15 guidafuni, 7 contattori»). Conta quello che scrivi nei rapporti come «sostituito», «cambiato», «montato» e la fune o catena sostituita; «da sostituire» o «consigliato» non contano. Sotto ogni pezzo i dettagli letti dai rapporti (diametro e metri delle funi, ampere dei fusibili, modelli dei contattori, kW dei motori, finecorsa salita/discesa…) e il cliente dove l'hai cambiato di più; toccandolo vedi dettagli, clienti e interventi. In alto i metri di fune montati; in fondo «Altri pezzi cambiati» con quello che non è nella lista. «Anno» o il mese corrente, frecce per gli anni passati.",
         "⚙ Impostazioni (in alto a destra o in fondo): notifiche sì/no e quali, animazione all'avvio, farti vedere o no tra i «Tecnici online». Valgono per il tuo telefono.",
-        "Le mie ore (da accendere in ⚙ Impostazioni → Funzioni in più): un calendario solo per gli orari. Dal lunedì al venerdì ogni giorno conta da solo come giornata normale (8 h, in grigio), festivi esclusi: segni solo quando cambia qualcosa. Per oggi «+30 min» o «+1 h»; toccando un giorno scegli Lavoro (ore fatte a passi di 15 minuti), Ferie, Permesso (quante ore), Malattia o Riposo, con una nota.",
+        "Le mie ore (da accendere in ⚙ Impostazioni → Funzioni in più): un calendario solo per gli orari. Dal lunedì al venerdì ogni giorno conta da solo come giornata normale (8 h, in grigio), festivi esclusi; le chiusure aziendali decise dall'admin si segnano da sole come ferie o festa. Segni solo quando cambia qualcosa. Per oggi «+30 min» o «+1 h»; toccando un giorno scegli Lavoro (ore fatte a passi di 15 minuti), Ferie, Permesso (quante ore), Malattia o Riposo, con una nota.",
         "«Manda» (nel riquadro blu di Le mie ore): scegli il periodo (questo mese, mese scorso, questa settimana, settimana scorsa, quest'anno o le date che vuoi) e poi «PDF» (foglio ore con riepilogo e un giorno per riga con le note) o «Testo» per WhatsApp o mail.",
         "Nel calendario: il numero sono le ore fatte, in verde «+» lo straordinario, in arancio «−» le ore in meno (sabato, domenica e feste: tutte le ore segnate sono straordinario), F ferie, P permesso, M malattia, R riposo. Sotto il riepilogo del mese (ore lavorate, straordinari, ore in meno, permessi, ferie, malattia) e «Manda» per mandarlo su WhatsApp o per mail. «Orario normale» (8 h) si cambia in fondo. Le vedi solo tu.",
         "«Ricordamelo» (in fondo a Le mie ore): dal lunedì al venerdì all'ora che scegli (17:30 di base) arriva la notifica «Hai fatto ore in più o in meno?». Toccala e segni il giorno. Se l'hai già segnato non arriva. Servono le notifiche accese.",
@@ -375,7 +375,7 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
       icon: Sun,
       title: "Il cielo in cima alla Home",
       points: [
-        "In cima alla Home c'è il saluto con il giorno, quante cose hai da fare e una scritta, diversa ogni volta che apri la Home: i tuoi numeri, cose del periodo dell'anno (feste, ora legale o solare, quanti giorni mancano a Natale o al weekend) e curiosità varie («Lo sapevi?»).",
+        "In cima alla Home c'è il saluto con il giorno, quante cose hai da fare e una scritta, diversa ogni volta che apri la Home: i tuoi numeri (anche il confronto con l'anno scorso e dove eri un anno fa), cose del periodo dell'anno (feste, ora legale o solare, quanti giorni mancano a Natale o al weekend) e curiosità varie («Lo sapevi?»). Gli avvisi dell'azienda (📢) escono nei giorni decisi dall'admin.",
         "Il cielo segue l'ora vera: alba, giorno, tramonto e notte con il sole, la luna (con la sua fase vera) e le stelle.",
         "A ogni apertura cambia tutto: il tipo di gru (carroponte, gru a portale, semiportale, monotrave con paranco, gru a bandiera), il colore e la portata della trave, il carico, lo sfondo (capannone, città, colline, montagne).",
         "Mentre la guardi il tempo cambia da solo (sole, nuvole, pioggia, temporale, arcobaleno, nebbia, vento, neve d'inverno) e passa qualcuno: camion da caricare o scaricare, muletto, aerei, elicottero, uccelli, mongolfiere, un gatto sulla trave; di notte stelle cadenti, fuochi d'artificio… e ogni tanto qualcosa di molto strano.",
@@ -483,6 +483,7 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
         "Staff: tecnici e password. Tipi, Clienti, Gru: anagrafiche e unione.",
         "«Doppioni» (in Clienti e in Gru): ti mostra una coppia alla volta di nomi che sembrano uguali, con quanti interventi e gru ha ognuno. L'app consiglia quale tenere (quello con più storia): «Tieni questo» sposta tutto sull'altro dopo averti chiesto conferma; «Sono diversi» non te li ripropone più; «Salta» li lascia per la prossima volta.",
         "Furgoni: crei i furgoni, scegli chi li usa («Nessuno» = tutto come prima), vedi tutti i magazzini e stampi la lista d'ordine.",
+        "Azienda: avvisi in Home (con data di inizio e fine, poi spariscono da soli), chiusure aziendali (ferie collettive, ponti, patrono, anche «ogni anno»: Le mie ore le segna da sole e il promemoria delle ore non arriva), intestazione dei fogli stampati e password di tecnici e admin.",
         "System: tecnici collegati, archivio e backup in PDF.",
       ],
     },

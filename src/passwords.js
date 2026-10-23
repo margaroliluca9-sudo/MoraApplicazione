@@ -92,5 +92,16 @@ export const sha256Hex = (text) => {
 const matches = (input, hash) =>
   typeof input === "string" && input.length > 0 && sha256Hex(SALT + input) === hash;
 
-export const isAdminPassword = (input) => matches(input, ADMIN_HASH);
-export const isStaffPassword = (input) => matches(input, STAFF_HASH);
+// password cambiate dall'admin (area admin → System): le impronte arrivano da company.js
+let adminHash = ADMIN_HASH;
+let staffHash = STAFF_HASH;
+const okHash = (h) => typeof h === "string" && /^[0-9a-f]{64}$/.test(h);
+export const setPasswordHashes = (s = {}) => {
+  adminHash = okHash(s.adminHash) ? s.adminHash : ADMIN_HASH;
+  staffHash = okHash(s.staffHash) ? s.staffHash : STAFF_HASH;
+};
+// impronta da salvare per una nuova password
+export const passwordHash = (input) => sha256Hex(SALT + String(input));
+
+export const isAdminPassword = (input) => matches(input, adminHash);
+export const isStaffPassword = (input) => matches(input, staffHash);

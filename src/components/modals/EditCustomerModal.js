@@ -8,6 +8,7 @@ import {
   getDocs,
 } from "firebase/firestore";
 import { db, appId } from "../../firebase";
+import { logsChanged } from "../../logsWindow";
 import { describeError } from "../../utils";
 import {
   PRO_INPUT,
@@ -68,6 +69,7 @@ export const EditCustomerModal = ({
       );
 
       await batch.commit();
+      logsChanged();
       onClose();
     } catch (e) {
       console.error(e);
