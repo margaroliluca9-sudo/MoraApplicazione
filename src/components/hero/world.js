@@ -591,11 +591,11 @@ export class HeroWorld {
       c.fade = Math.min(1, c.fade + dt * 0.3);
       if (c.x > VW + 60) {
         if (this.clouds.length > target) c.dead = true;
-        else Object.assign(c, this.newCloud(-90 - rnd(0, 40)), { fade: 1 });
+        else Object.assign(c, this.newCloud(Math.min(0, this.left || 0) - 90 - rnd(0, 40)), { fade: 1 });
       }
     }
     this.clouds = this.clouds.filter((c) => !c.dead);
-    if (this.clouds.length < target && chance(dt * 0.6)) this.clouds.push(this.newCloud(-90));
+    if (this.clouds.length < target && chance(dt * 0.6)) this.clouds.push(this.newCloud(Math.min(0, this.left || 0) - 90));
     this.clouds.sort((a, b) => a.depth - b.depth);
     // pioggia
     const rain = this.wx.rain;
@@ -739,10 +739,20 @@ export class HeroWorld {
 
   // ---- DISEGNA ----
   draw(c, W, H, dpr) {
-    const s = Math.max(W / VW, H / VH) * 1.1;
+    // telefono: la scena riempie il riquadro; tablet e computer (riquadro molto largo): la scena resta
+    // intera in altezza, appoggiata a destra, e a sinistra continuano cielo, colline e prato
+    const s = Math.min(Math.max(W / VW, H / VH) * 1.1, (H / VH) * 1.25);
     const ox = W - VW * s;
     const oy = H - VH * s;
     this.view = { s, ox, oy };
+    this.left = Math.min(0, -ox / s);
+    if (!this.wideSeeded && this.left < -40) {
+      // riquadro largo: un po' di nuvole e stelle anche nella parte in più
+      this.wideSeeded = true;
+      const extra = Math.round((this.cloudTarget() * -this.left) / VW);
+      for (let i = 0; i < extra; i++) this.clouds.push(this.newCloud(rnd(this.left - 40, 0)));
+      for (let i = 0; i < Math.round((80 * -this.left) / VW); i++) this.stars.push({ x: rnd(this.left, 0), y: rnd(0, 105), r: chance(0.15) ? 1.3 : 0.7, p: rnd(0, 6) });
+    }
     const [sa, sb, sc] = this.skyColors();
     this.sky = [sa, sb, sc];
     c.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -799,7 +809,7 @@ export class HeroWorld {
     this.drawClouds(c, (cl) => cl.depth >= 0.5);
     // terra
     c.fillStyle = rgba(mix(sc, [15, 23, 42], 0.55 + night * 0.3));
-    c.fillRect(-10, GROUND, VW + 20, 10);
+    c.fillRect((this.left || 0) - 10, GROUND, VW + 20 - (this.left || 0), 10);
     c.strokeStyle = `rgba(250,204,21,${0.55 - night * 0.25})`;
     c.lineWidth = 0.8;
     c.setLineDash([4, 3]);
@@ -1010,17 +1020,37 @@ export class HeroWorld {
     const far = rgba(mix(sc, [15, 23, 42], 0.3 + night * 0.45));
     const near = rgba(mix(sb, [15, 23, 42], 0.5 + night * 0.4));
     const win = (on, i) => (night > 0.4 && on ? `rgba(253,224,71,${0.55 + 0.4 * Math.sin(this.t * 0.3 + i) ** 2})` : rgba(mix(sc, [255, 255, 255], 0.2), 0.35));
+    // riquadro largo (tablet/computer): colline basse lontane anche nella parte a sinistra
+    const L = this.left || 0;
+    if (L < -20 && this.back !== "colline") {
+      c.fillStyle = rgba(mix(sc, [15, 23, 42], 0.22 + night * 0.45), 0.8);
+      c.beginPath();
+      c.moveTo(L - 10, GROUND);
+      for (let x = Math.floor((L - 10) / 10) * 10; x <= VW + 10; x += 10) c.lineTo(x, 124 - Math.sin(x * 0.012 + this.hills[0]) * 8 - Math.sin(x * 0.041) * 2.5);
+      c.lineTo(VW + 10, GROUND);
+      c.fill();
+      if (this.back === "montagne") {
+        for (let x = 120; x > L - 120; x -= 130) {
+          c.fillStyle = far;
+          c.beginPath();
+          c.moveTo(x - 80, GROUND);
+          c.lineTo(x, GROUND - 70 - (Math.abs(x) % 3) * 8);
+          c.lineTo(x + 80, GROUND);
+          c.fill();
+        }
+      }
+    }
     if (this.back === "colline") {
       c.fillStyle = far;
       c.beginPath();
-      c.moveTo(-10, GROUND);
-      for (let x = -10; x <= VW + 10; x += 10) c.lineTo(x, 112 - Math.sin(x * 0.018 + this.hills[0]) * 12 - Math.sin(x * 0.05) * 3);
+      c.moveTo((this.left || 0) - 10, GROUND);
+      for (let x = Math.floor(((this.left || 0) - 10) / 10) * 10; x <= VW + 10; x += 10) c.lineTo(x, 112 - Math.sin(x * 0.018 + this.hills[0]) * 12 - Math.sin(x * 0.05) * 3);
       c.lineTo(VW + 10, GROUND);
       c.fill();
       c.fillStyle = near;
       c.beginPath();
-      c.moveTo(-10, GROUND);
-      for (let x = -10; x <= VW + 10; x += 10) c.lineTo(x, 128 - Math.sin(x * 0.025 + this.hills[1]) * 9);
+      c.moveTo((this.left || 0) - 10, GROUND);
+      for (let x = Math.floor(((this.left || 0) - 10) / 10) * 10; x <= VW + 10; x += 10) c.lineTo(x, 128 - Math.sin(x * 0.025 + this.hills[1]) * 9);
       c.lineTo(VW + 10, GROUND);
       c.fill();
       // alberelli
