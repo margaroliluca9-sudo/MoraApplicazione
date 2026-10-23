@@ -1,6 +1,6 @@
 // La mia area → ⚙ Impostazioni: le scelte personali (valgono per questo telefono)
 import React, { useEffect, useState } from "react";
-import { Bell, BellOff, Loader2, MessageCircle, CalendarClock, Sparkles, Users, Send, Timer, Sun } from "lucide-react";
+import { Bell, BellOff, Loader2, MessageCircle, CalendarClock, Sparkles, Users, Send, Timer, Sun, Vibrate } from "lucide-react";
 import { PanelHeader } from "./PersonalUi";
 import { getPushState, enablePush, disablePush } from "../../chat";
 import { getSettings, setSetting, syncNotifyKinds, testNotification, markAsked } from "../../settings";
@@ -120,6 +120,9 @@ export const SettingsPanel = ({ me, color = "blue", onBack, onClose, hoursAllowe
           </Row>
           <Row icon={Sun} title="Cielo animato in Home" sub="Il cielo con la gru che lavora in cima alla Home. Spento resta un'immagine ferma">
             <Switch id="heroAnim" label="Cielo animato in Home" on={st.heroAnim !== false} onChange={(v) => change("heroAnim", v)} />
+          </Row>
+          <Row icon={Vibrate} title="Vibrazione al salvataggio" sub="Il telefono vibra quando il rapporto è salvato (due colpetti) o se c'è un errore (uno lungo). Su iPhone non vibra">
+            <Switch id="vibrate" label="Vibrazione al salvataggio" on={st.vibrate !== false} onChange={(v) => change("vibrate", v)} />
           </Row>
           <Row icon={Users} title="Farmi vedere tra i «Tecnici online»" sub="Se lo spegni i colleghi non ti vedono collegato (l'admin sì)">
             <Switch id="showOnline" label="Farmi vedere online" on={st.showOnline !== false} onChange={(v) => change("showOnline", v)} />

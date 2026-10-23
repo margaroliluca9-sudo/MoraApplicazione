@@ -9,7 +9,7 @@ import { chatDoc, subId, myEndpoint, key as techKey } from "./chat";
 const KEY = "mora_personal_settings";
 const ASKED = "mora_notify_asked_v1"; // domanda "attivi le notifiche?" già fatta su questo telefono
 
-export const DEFAULT_SETTINGS = { chat: true, reminders: true, splash: true, showOnline: true, hours: false, heroAnim: true };
+export const DEFAULT_SETTINGS = { chat: true, reminders: true, splash: true, showOnline: true, hours: false, heroAnim: true, vibrate: true };
 
 export const getSettings = () => {
   try {
@@ -31,6 +31,17 @@ export const saveSettings = (next) => {
   }
   return next;
 };
+// VIBRAZIONE quando salvi un rapporto: due colpetti = salvato, uno lungo = errore.
+// Si spegne da La mia area → ⚙ Impostazioni. iPhone non vibra dal browser: lì non succede niente.
+const buzz = (pattern) => {
+  try {
+    if (getSettings().vibrate !== false && navigator.vibrate) navigator.vibrate(pattern);
+  } catch (e) {
+    // niente
+  }
+};
+export const buzzSaved = () => buzz([40, 70, 40]);
+export const buzzError = () => buzz(300);
 export const setSetting = (k, v) => {
   const next = saveSettings({ ...getSettings(), [k]: v });
   pushSettings(next);
@@ -42,7 +53,7 @@ export const setSetting = (k, v) => {
 // Le notifiche accese/spente restano del singolo telefono (il permesso è del telefono);
 // tutto il resto (quali notifiche, animazione, farsi vedere online, Le mie ore e il suo orario) segue il tecnico.
 export const SETTINGS_COLL = "personal_settings";
-const SYNC_KEYS = ["chat", "reminders", "splash", "showOnline", "hours", "heroAnim"];
+const SYNC_KEYS = ["chat", "reminders", "splash", "showOnline", "hours", "heroAnim", "vibrate"];
 const EXTRA = { hoursStd: "mora_hours_std", hoursSince: "mora_hours_since" };
 let OWNER = "";
 export const settingsDocId = (me) => techKey(me).replace(/[^a-z0-9_-]/gi, "_");

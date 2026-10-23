@@ -93,7 +93,7 @@ const reportStepsFor = ({ hasVan }) =>
     {
       icon: Save,
       title: "10. Salva",
-      text: "Tocca «Salva» (resta sempre in fondo allo schermo). Se manca qualcosa l'app te lo dice in rosso. Senza rete il rapporto resta sul telefono e parte da solo quando torna la connessione. Dopo il salvataggio vedi «Rapporto salvato»: «Altra gru, stesso cliente» per la gru successiva (tecnici, data e cliente restano), «Stampa» o «Vai allo Storico».",
+      text: "Tocca «Salva» (resta sempre in fondo allo schermo). Se manca qualcosa l'app te lo dice in rosso. Senza rete il rapporto resta sul telefono e parte da solo quando torna la connessione. Dopo il salvataggio il telefono fa due piccole vibrazioni (si spengono da La mia area → ⚙ Impostazioni) e vedi «Rapporto salvato»: «Altra gru, stesso cliente» per la gru successiva (tecnici, data e cliente restano), «Stampa» o «Vai allo Storico».",
     },
     hasVan && {
       icon: Truck,
@@ -256,6 +256,7 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
         "Foto: «Scatta» apre la fotocamera, «Galleria» prende le foto già fatte (fino a 3).",
         "Il pulsante «Salva» resta sempre in fondo allo schermo, anche mentre scorri il modulo.",
         "Il rapporto si salva da solo sul telefono mentre scrivi: se l'app si chiude, riaprendo trovi «Hai un rapporto non finito» con «Riprendi» o «Scarta».",
+        "Quando il rapporto è salvato il telefono vibra con due colpetti; se c'è un errore vibra una volta, più a lungo (Android: su iPhone il browser non può vibrare). Si spegne da La mia area → ⚙ Impostazioni → «Vibrazione al salvataggio».",
         "Dopo «Salva» compare «Rapporto salvato» per 3 secondi, poi si va da soli allo Storico. Se in quei 3 secondi tocchi «Altra gru, stesso cliente» (tiene tecnici, data e cliente) o «Stampa», resti lì.",
         "Senza rete il rapporto resta salvato sul telefono e parte da solo quando torna la connessione.",
       ],

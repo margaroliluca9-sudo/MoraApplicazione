@@ -74,6 +74,7 @@ import { vanOf, applyReport, findUsedParts, itemsOf } from "../van";
 import { showVanUsage } from "../components/VanHost";
 import { loadDraft, saveDraft, clearDraft, draftWhen } from "../reportHelpers";
 import { printIntervention } from "../components/PrintLogButton";
+import { buzzSaved, buzzError } from "../settings";
 
 export const NewEntryForm = ({
   user,
@@ -512,10 +513,12 @@ export const NewEntryForm = ({
 
       // riepilogo invece di andare subito allo Storico
       setSavedLog({ ...logData, id: logRef && logRef.id });
+      buzzSaved();
       setIsLocked(true);
       window.scrollTo({ top: 0, behavior: "smooth" });
     } catch (e) {
       console.error(e);
+      buzzError();
       alert("Errore salvataggio: " + describeError(e));
     } finally {
       setIsSubmitting(false);
