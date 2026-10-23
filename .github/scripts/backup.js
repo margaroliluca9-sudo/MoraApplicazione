@@ -28,7 +28,7 @@ const call = async (url, opts = {}, retry = true) => {
     await signIn();
     return call(url, opts, false);
   }
-  if (!r.ok) throw new Error(`Firestore ${r.status}: ${(await r.text()).slice(0, 200)}`);
+  if (!r.ok) throw new Error(`Firestore ${r.status}: ${(await r.text()).replace(/\s+/g, " ").slice(0, 300)}`);
   return r.json();
 };
 
