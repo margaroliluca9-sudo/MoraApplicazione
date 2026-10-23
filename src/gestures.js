@@ -16,7 +16,24 @@ const CLOSE_SEL = '[aria-label="Chiudi"], [title="Chiudi"], [aria-label="Chiudi 
 
 // indietro: la finestra più in alto (l'ultima aperta) → «Indietro» se c'è, altrimenti «Chiudi»;
 // nessuna finestra → torna alla Home. Restituisce false se non c'è niente da fare (si è già in Home).
+// iPhone/iPad: il sistema ha già il suo «scorri per tornare indietro» sulla cronologia del browser,
+// che mostra una pagina vuota: lì niente pagine finte nella cronologia, solo il nostro gesto.
+export const isIOS = () =>
+  typeof navigator !== "undefined" &&
+  (/iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1));
+const standalone = () => {
+  try {
+    return !!(navigator.standalone || window.matchMedia("(display-mode: standalone)").matches);
+  } catch (e) {
+    return false;
+  }
+};
+let lastBack = 0;
 export const goBack = () => {
+  // un solo passo indietro per gesto (il gesto e il tasto indietro possono arrivare insieme)
+  const now = Date.now();
+  if (now - lastBack < 450) return true;
+  lastBack = now;
   const cands = [...document.querySelectorAll(`${BACK_SEL}, ${CLOSE_SEL}`)].filter(visible);
   if (cands.length) {
     // raggruppo per finestra (il contenitore "fixed" più vicino); vince l'ultima nella pagina
@@ -28,7 +45,13 @@ export const goBack = () => {
       if (!groups.has(g)) groups.set(g, []);
       groups.get(g).push(b);
     });
-    const tops = [...groups.keys()].filter((g) => g !== document.body);
+    let tops = [...groups.keys()].filter((g) => g !== document.body);
+    // prima le finestre vere (grandi), poi le cose piccole (menu, avvisi)
+    const big = tops.filter((g) => {
+      const r = g.getBoundingClientRect();
+      return r.width >= window.innerWidth * 0.6 && r.height >= window.innerHeight * 0.4;
+    });
+    if (big.length) tops = big;
     if (tops.length) {
       tops.sort((a, b) => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING ? -1 : 1));
       const list = groups.get(tops[tops.length - 1]);
@@ -72,7 +95,8 @@ export const installGestures = () => {
       return;
     }
     const p = e.touches[0];
-    const edge = p.clientX <= 26;
+    // iPhone in Safari (non installata): il bordo è del sistema, non lo tocco
+    const edge = p.clientX <= 26 && !(isIOS() && !standalone());
     const atTop = window.scrollY <= 0 && !!document.querySelector('[data-section="home-grid"]') && ![...document.querySelectorAll(".fixed.inset-0")].some(visible);
     t = { x0: p.clientX, y0: p.clientY, edge, pull: atTop && !edge, dx: 0, dy: 0, mode: null };
   };
@@ -135,11 +159,12 @@ export const installGestures = () => {
       // niente
     }
   };
-  arm();
+  const useHistory = !isIOS();
+  if (useHistory) arm();
   const onPop = () => {
     if (goBack()) arm();
   };
-  window.addEventListener("popstate", onPop);
+  if (useHistory) window.addEventListener("popstate", onPop);
 
   // TIENI PREMUTO un intervento: menu con i suoi pulsanti
   let lp = null;
