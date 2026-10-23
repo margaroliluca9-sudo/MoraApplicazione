@@ -1,0 +1,43 @@
+# Ogni domenica notte salva una copia cifrata di tutto il database (rapporti, clienti, gru, ...).
+# La copia si trova in Actions → "Copia di sicurezza" → esecuzione → Artifacts, e resta 90 giorni.
+# Serve il segreto BACKUP_PASSWORD (Settings → Secrets and variables → Actions): senza, non salva nulla.
+# Per rimetterla: istruzioni in .github/scripts/restore.js
+name: Copia di sicurezza
+on:
+  schedule:
+    - cron: "30 1 * * 0"
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  copia:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Controlla la password
+        env:
+          BACKUP_PASSWORD: ${{ secrets.BACKUP_PASSWORD }}
+        run: |
+          if [ -z "$BACKUP_PASSWORD" ]; then
+            echo "::error::Manca il segreto BACKUP_PASSWORD: la copia non viene salvata."
+            exit 1
+          fi
+      - name: Scarica il database
+        run: node .github/scripts/backup.js backup.json
+      - name: Comprimi e cifra
+        env:
+          BACKUP_PASSWORD: ${{ secrets.BACKUP_PASSWORD }}
+        run: |
+          gzip -9 backup.json
+          openssl enc -aes-256-cbc -salt -pbkdf2 -iter 200000 -in backup.json.gz -out backup.json.gz.enc -pass env:BACKUP_PASSWORD
+          rm backup.json.gz
+          echo "NOME=copia-$(date -u +%Y-%m-%d)" >> "$GITHUB_ENV"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.NOME }}
+          path: backup.json.gz.enc
+          retention-days: 90
