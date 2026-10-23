@@ -482,6 +482,7 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
         "Staff: tecnici e password. Tipi, Clienti, Gru: anagrafiche, doppioni e unione.",
         "Furgoni: crei i furgoni, scegli chi li usa («Nessuno» = tutto come prima), vedi tutti i magazzini e stampi la lista d'ordine.",
         "System: tecnici collegati, archivio e backup in PDF.",
+        "Sicurezza: la password si controlla sul server e il database risponde solo a chi è entrato con nome e password. Chi era già dentro la rimette una volta sola.",
       ],
     },
   ].filter(Boolean);

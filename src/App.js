@@ -31,6 +31,7 @@ import { DEFAULT_LAYOUT } from "./constants";
 import { getSafeMatricola } from "./utils";
 import { PRO_BUTTON_SECONDARY } from "./ui";
 import { GlobalLoginScreen } from "./components/GlobalLoginScreen";
+import { serverEnabled, logoutServer } from "./access";
 import { SplashScreen } from "./components/SplashScreen";
 import { SEASONS, seasonOf } from "./season";
 import { CraneMark } from "./components/CraneMark";
@@ -274,15 +275,13 @@ export default function App() {
   const [viewingMachineHistory, setViewingMachineHistory] = useState(null);
   const [viewingCustomerDetail, setViewingCustomerDetail] = useState(null);
 
+  // chi era già dentro prima dell'entrata sicura: conferma la password una volta sola
+  const [needsPassword, setNeedsPassword] = useState(false);
   useEffect(() => {
-    const initAuth = async () => {
-      try {
-        await signInAnonymously(auth);
-      } catch (e) {
-        console.error(e);
-      }
-    };
-    initAuth();
+    // senza sessione: entro come prima (anonimo). Con il pass del server la sessione resta salvata.
+    const unsubFirst = onAuthStateChanged(auth, (u) => {
+      if (!u) signInAnonymously(auth).catch((e) => console.error(e));
+    });
 
     const savedTechName = localStorage.getItem("mora_tech_last_name");
     const hasUnlockToken = localStorage.getItem("mora_app_unlocked") === "true";
@@ -293,10 +292,13 @@ export default function App() {
 
     onAuthStateChanged(auth, (u) => {
       setUser(u);
+      if (u && u.isAnonymous && localStorage.getItem("mora_tech_last_name"))
+        serverEnabled().then((on) => on && setNeedsPassword(true));
       // con l'animazione di avvio attiva si aspetta che finisca (~2,4 s)
       const splashOn = getCachedLayout().showSplash !== false && getSettings().splash !== false;
       setTimeout(() => setIsAppLoading(false), splashOn ? 2500 : 300);
     });
+    return () => unsubFirst();
   }, []);
 
   useEffect(() => {
@@ -771,6 +773,7 @@ export default function App() {
   };
 
   const handleGlobalUnlock = (techName) => {
+    setNeedsPassword(false);
     localStorage.setItem("mora_tech_last_name", techName);
     localStorage.setItem("mora_app_unlocked", "true");
     setCurrentTechName(techName);
@@ -778,6 +781,7 @@ export default function App() {
   };
 
   const handleLogout = () => {
+    logoutServer();
     localStorage.removeItem("mora_tech_last_name");
     localStorage.removeItem("mora_app_unlocked");
     sessionStorage.removeItem("mora_access_tech");
@@ -801,6 +805,18 @@ export default function App() {
         season={splashSeason(layoutConfig)}
       />
     );
+
+  if (isAppUnlocked && needsPassword && !isAppLoading) {
+    return (
+      <GlobalLoginScreen
+        technicians={technicians}
+        onUnlock={handleGlobalUnlock}
+        color={layoutConfig.themeColor || "blue"}
+        presetName={currentTechName}
+        notice="Per sicurezza inserisci ancora una volta la password aziendale. Te la chiediamo solo questa volta."
+      />
+    );
+  }
 
   if (!isAppUnlocked && !loading) {
     return (

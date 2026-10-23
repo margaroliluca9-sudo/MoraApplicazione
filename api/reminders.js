@@ -32,9 +32,16 @@ const fromFields = (fields) => {
 const docOf = (d) => ({ name: d.name, id: d.name.split("/").pop(), ...fromFields(d.fields) });
 const key = (s) => String(s || "").trim().toLowerCase();
 
-// accesso al database: prima senza credenziali, se serve come utente anonimo (come l'app)
+// accesso al database: con la chiave di servizio (vedi _auth.js) entra con il pass del server;
+// senza, prima senza credenziali e se serve come utente anonimo (come faceva l'app)
+const { serviceAccount, serverIdToken } = require("./_auth");
 let token = null;
 const signIn = async () => {
+  const sa = serviceAccount();
+  if (sa) {
+    token = await serverIdToken(sa);
+    return token;
+  }
   const r = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${API_KEY}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

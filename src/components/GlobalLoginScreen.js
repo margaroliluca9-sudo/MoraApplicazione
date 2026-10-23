@@ -7,15 +7,19 @@ import {
 
 import { CraneMark } from "./CraneMark";
 import { isAdminPassword, isStaffPassword } from "../passwords";
+import { serverLogin } from "../access";
 
 // --- SCHERMATA LOGIN GLOBALE ---
-export const GlobalLoginScreen = ({ technicians, onUnlock, color = "blue" }) => {
-  const [name, setName] = useState("");
+// presetName/notice: chi era già dentro e deve solo confermare la password (una volta sola)
+export const GlobalLoginScreen = ({ technicians, onUnlock, color = "blue", presetName = "", notice = "" }) => {
+  const [name, setName] = useState(presetName);
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
+    if (busy) return;
     setError("");
     const cleanName = name.trim();
 
@@ -23,6 +27,21 @@ export const GlobalLoginScreen = ({ technicians, onUnlock, color = "blue" }) => 
       setError("Inserisci il tuo Nome e la Password aziendale.");
       return;
     }
+
+    // prima il server (password controllata lì, pass per il database)
+    setBusy(true);
+    const r = await serverLogin(cleanName, password);
+    setBusy(false);
+    if (r && r.ok) {
+      onUnlock(r.name);
+      return;
+    }
+    if (r && !r.ok) {
+      setError(r.error);
+      return;
+    }
+
+    // server non attivo o senza rete: come prima
 
     if (isAdminPassword(password)) {
       onUnlock(cleanName);
@@ -62,7 +81,7 @@ export const GlobalLoginScreen = ({ technicians, onUnlock, color = "blue" }) => 
             Accesso Privato
           </h1>
           <p className="text-sm text-slate-500 font-medium mt-2">
-            Area riservata al personale autorizzato.
+            {notice || "Area riservata al personale autorizzato."}
           </p>
         </div>
 
@@ -114,9 +133,11 @@ export const GlobalLoginScreen = ({ technicians, onUnlock, color = "blue" }) => 
 
           <button
             type="submit"
-            className={`w-full py-4 bg-${color}-700 text-white rounded-xl font-black uppercase tracking-widest shadow-lg hover:bg-${color}-800 active:scale-95 transition-all mt-4`}
+            disabled={busy}
+            data-action="login"
+            className={`w-full py-4 bg-${color}-700 text-white rounded-xl font-black uppercase tracking-widest shadow-lg hover:bg-${color}-800 active:scale-95 transition-all mt-4 disabled:opacity-60`}
           >
-            Entra
+            {busy ? "Controllo…" : "Entra"}
           </button>
         </form>
       </div>

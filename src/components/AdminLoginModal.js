@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Lock } from "lucide-react";
-import { isAdminPassword } from "../passwords";
+import { checkAdmin } from "../access";
 import {
   PRO_INPUT,
   PRO_BUTTON_SECONDARY,
@@ -16,8 +16,13 @@ export const AdminLoginModal = ({
 }) => {
   const [pin, setPin] = useState("");
   const [error, setError] = useState(false);
-  const handleLogin = () => {
-    if (isAdminPassword(pin)) onSuccess();
+  const [busy, setBusy] = useState(false);
+  const handleLogin = async () => {
+    if (busy) return;
+    setBusy(true);
+    const ok = await checkAdmin(pin);
+    setBusy(false);
+    if (ok) onSuccess();
     else {
       setError(true);
       setPin("");
