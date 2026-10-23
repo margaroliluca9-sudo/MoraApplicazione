@@ -295,7 +295,7 @@ export const HomeHero = ({ me = "", logs = [], todayCount = 0, now = new Date(),
         </p>
       </div>
       <style>{"@keyframes moraChip { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }"}</style>
-      {game && createPortal(<CraneGame onClose={() => setGame(false)} />, document.body)}
+      {game && createPortal(<CraneGame me={me} onClose={() => setGame(false)} />, document.body)}
     </div>
   );
 };
