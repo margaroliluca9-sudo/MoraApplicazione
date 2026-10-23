@@ -225,12 +225,12 @@ const appStepsFor = ({ hasVan, chatEnabled, isAdmin }) =>
     {
       icon: WifiOff,
       title: "Senza rete",
-      text: "In un capannone senza internet l'app si apre lo stesso e mostra quello che è salvato sul telefono: La mia area (note, calendario, promemoria), interventi e clienti. La striscia gialla in alto dice da quando sono aggiornati. Quello che scrivi parte da solo appena torna la connessione; le novità dei colleghi arrivano dopo.",
+      text: "In un capannone senza internet l'app si apre lo stesso e mostra quello che è salvato sul telefono: La mia area (note, calendario, promemoria), interventi e clienti. La striscia gialla in alto dice da quando sono aggiornati. Quello che scrivi parte da solo appena torna la connessione; le novità dei colleghi arrivano dopo. Le foto dei rapporti degli ultimi mesi restano sul telefono; quelle più vecchie, se non le hai mai aperte, si vedono quando torna la rete.",
     },
     isAdmin && {
       icon: Settings,
       title: "Impostazioni (admin)",
-      text: "Design (colori, lettere, chat sì/no, messaggi da «Tecnici online» sì/no), Staff, Tipi, Clienti, Gru (doppioni e unione), Furgoni (chi usa quale furgone, lista d'ordine) e System (collegati e backup).",
+      text: "Design (colori, lettere, chat sì/no, messaggi da «Tecnici online» sì/no), Staff, Tipi, Clienti, Gru («Doppioni»: una coppia alla volta, scegli quale tenere), Furgoni (chi usa quale furgone, lista d'ordine) e System (collegati e backup).",
     },
     {
       icon: BookOpen,
@@ -420,7 +420,7 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
         "Sui telefoni Android anche il tasto o il gesto «indietro» del telefono fa la stessa cosa, senza uscire dall'app.",
         "Le finestre che salgono dal basso si chiudono tirandole giù dalla barretta in alto.",
         "Tieni premuto un intervento nello Storico: compare il menu con le sue azioni (stampa, modifica, scheda della gru…).",
-        "Foto: scorri a destra o a sinistra per cambiarla, doppio tocco o due dita per ingrandire, tira giù per chiudere.",
+        "Foto: si aprono subito (se è la prima volta su quel telefono compare «Carico le foto…» per un attimo). Scorri a destra o a sinistra per cambiarla, doppio tocco o due dita per ingrandire, tira giù per chiudere.",
         "In Home: tieni premuto un riquadro per spostarlo; tira giù dall'alto per ricaricare l'app.",
       ],
     },
@@ -470,6 +470,7 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
         "L'app si apre anche senza internet (in un capannone, in cantina): usa la copia salvata sul telefono.",
         "Vedi La mia area (note, calendario, promemoria, contatti), gli interventi, i clienti e le gru com'erano l'ultima volta che c'era la rete: la striscia gialla in alto dice «aggiornati oggi alle…».",
         "Puoi scrivere rapporti, note e impegni: partono da soli appena torna la rete. Le novità dei colleghi arrivano quando torni online.",
+        "Le foto dei rapporti degli ultimi mesi restano sul telefono e si vedono anche senza rete; quelle più vecchie, se non le hai mai aperte, compaiono quando torna la rete.",
         "Serve averla aperta almeno una volta con la rete su quel telefono.",
       ],
     },
@@ -479,7 +480,8 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
       title: "Impostazioni (solo admin)",
       points: [
         "Design: colori, carattere, grandezza delle lettere, animazione di avvio, chat tra tecnici sì/no, messaggi da «Tecnici online» sì/no. «La mia area: cosa vedono i tecnici»: accendi o spegni per tutti Oggi, I miei interventi, Stampa, Calendario, Note, Scansiona foglio, Promemoria, Magazzino, Le mie ore, Cosa ho cambiato e i numeri del mese (i dati restano salvati).",
-        "Staff: tecnici e password. Tipi, Clienti, Gru: anagrafiche, doppioni e unione.",
+        "Staff: tecnici e password. Tipi, Clienti, Gru: anagrafiche e unione.",
+        "«Doppioni» (in Clienti e in Gru): ti mostra una coppia alla volta di nomi che sembrano uguali, con quanti interventi e gru ha ognuno. L'app consiglia quale tenere (quello con più storia): «Tieni questo» sposta tutto sull'altro dopo averti chiesto conferma; «Sono diversi» non te li ripropone più; «Salta» li lascia per la prossima volta.",
         "Furgoni: crei i furgoni, scegli chi li usa («Nessuno» = tutto come prima), vedi tutti i magazzini e stampi la lista d'ordine.",
         "System: tecnici collegati, archivio e backup in PDF.",
       ],

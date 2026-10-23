@@ -42,6 +42,7 @@ import {
   where,
   getDocs,
 } from "firebase/firestore";
+import { removeLogPhotos } from "../logPhotos";
 import { db, appId } from "../firebase";
 import { describeError, getSafeMatricola, getLevenshteinDistance } from "../utils";
 import { PRO_INPUT, getButtonPrimaryClass, getProPanelClass } from "../ui";
@@ -278,9 +279,11 @@ export const AdminPanel = ({
           ),
         };
       });
+      return true;
     } catch (e) {
       console.error(e);
       alert("Impossibile ignorare il conflitto: " + describeError(e));
+      return false;
     }
   };
 
@@ -478,6 +481,7 @@ export const AdminPanel = ({
           itemToDelete.id
         )
       );
+      if (itemToDelete.coll === "maintenance_logs") removeLogPhotos(itemToDelete.id);
     } catch (e) {
       console.error(e);
     }
@@ -582,6 +586,7 @@ export const AdminPanel = ({
           ),
         };
       });
+      return true;
     } catch (e) {
       console.error(e);
       alert(
@@ -589,6 +594,7 @@ export const AdminPanel = ({
           describeError(e) +
           " Alcuni interventi potrebbero essere già stati spostati: riprova l'unione."
       );
+      return false;
     }
   };
 
@@ -1141,11 +1147,14 @@ export const AdminPanel = ({
               </button>
               <button
                 onClick={() => analyzeDuplicates("customer", customers)}
+                aria-label="Controlla i doppioni"
+                title="Controlla i doppioni"
+                data-action="duplicates"
                 className="p-2 bg-yellow-50 text-yellow-600 border border-yellow-200 rounded-lg hover:bg-yellow-100 flex items-center gap-1.5"
               >
                 <AlertTriangle className="w-4 h-4" />
-                <span className="text-[10px] font-bold uppercase hidden md:block">
-                  Conflitti
+                <span className="text-[10px] font-bold hidden md:block">
+                  Doppioni
                 </span>
               </button>
             </div>
@@ -1236,11 +1245,14 @@ export const AdminPanel = ({
               </button>
               <button
                 onClick={() => analyzeDuplicates("machine", machines)}
+                aria-label="Controlla i doppioni"
+                title="Controlla i doppioni"
+                data-action="duplicates"
                 className="p-2 bg-yellow-50 text-yellow-600 border border-yellow-200 rounded-lg hover:bg-yellow-100 flex items-center gap-1.5"
               >
                 <AlertTriangle className="w-4 h-4" />
-                <span className="text-[10px] font-bold uppercase hidden md:block">
-                  Conflitti
+                <span className="text-[10px] font-bold hidden md:block">
+                  Doppioni
                 </span>
               </button>
             </div>
@@ -1552,6 +1564,8 @@ export const AdminPanel = ({
           onClose={() => setDuplicateAnalysis(null)}
           onDirectMerge={handleDirectMerge}
           onIgnore={handleIgnoreConflict}
+          logs={allLogs}
+          machines={machines}
           color={layoutConfig.themeColor}
         />
       )}

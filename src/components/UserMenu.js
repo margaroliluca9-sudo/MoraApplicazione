@@ -26,7 +26,7 @@ export const UserMenu = ({ name, role = "Tecnico", color = "blue", onLogout }) =
         data-action="user-menu"
         aria-label={`${name}: menu utente`}
         onClick={() => setOpen(!open)}
-        className={`w-10 h-10 rounded-full bg-${color}-600 text-white font-black flex items-center justify-center shadow-sm`}
+        className={`w-9 h-9 min-[401px]:w-10 min-[401px]:h-10 rounded-full bg-${color}-600 text-white font-black flex items-center justify-center shadow-sm`}
       >
         {String(name).charAt(0).toUpperCase()}
       </button>

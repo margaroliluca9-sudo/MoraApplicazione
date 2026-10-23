@@ -1,14 +1,16 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Download,
   X,
   ArrowRight,
   ArrowLeft,
+  Loader2,
 } from "lucide-react";
+import { isPhotoRef, resolvePhotos } from "../logPhotos";
 
 // GALLERIA FOTO GLOBALE CON SCARICAMENTO
 // gesti: scorri a destra/sinistra = foto dopo/prima, doppio tocco o due dita = ingrandisci, tira giù = chiudi
-export const PhotoViewerModal = ({ photos, onClose }) => {
+const Viewer = ({ photos, onClose }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [z, setZ] = useState({ s: 1, x: 0, y: 0 });
   const g = useRef(null);
@@ -142,6 +144,45 @@ export const PhotoViewerModal = ({ photos, onClose }) => {
           ))}
         </div>
       )}
+    </div>
+  );
+};
+
+// le foto dei rapporti nuovi stanno a parte: le scarico quando le apri (poi restano sul telefono)
+export const PhotoViewerModal = ({ photos, onClose }) => {
+  const needs = Array.isArray(photos) && photos.some(isPhotoRef);
+  const [real, setReal] = useState(needs ? null : photos);
+  const [failed, setFailed] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    if (!needs) {
+      setReal(photos);
+      return undefined;
+    }
+    setReal(null);
+    setFailed(false);
+    resolvePhotos(photos)
+      .then((r) => alive && (r.length ? setReal(r) : setFailed(true)))
+      .catch(() => alive && setFailed(true));
+    return () => {
+      alive = false;
+    };
+  }, [photos, needs]);
+  if (real) return <Viewer photos={real} onClose={onClose} />;
+  return (
+    <div className="fixed inset-0 z-[500] bg-black/90 flex flex-col items-center justify-center gap-4 text-white p-6 text-center" data-photo-loading onClick={onClose}>
+      {failed ? (
+        <>
+          <p className="font-bold">Foto non disponibili adesso</p>
+          <p className="text-sm text-white/70 max-w-xs">Servono un po' di rete per scaricarle la prima volta. Riprova quando c'è segnale.</p>
+        </>
+      ) : (
+        <>
+          <Loader2 className="w-8 h-8 animate-spin" />
+          <p className="text-sm text-white/80">Carico le foto…</p>
+        </>
+      )}
+      <button type="button" className="mt-2 px-5 py-2 rounded-full bg-white/15 font-bold text-sm" onClick={onClose}>Chiudi</button>
     </div>
   );
 };

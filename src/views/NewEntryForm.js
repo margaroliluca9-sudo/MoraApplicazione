@@ -30,7 +30,9 @@ import {
   serverTimestamp,
   doc,
   updateDoc,
+  writeBatch,
 } from "firebase/firestore";
+import { newLogId, putPhotos } from "../logPhotos";
 import { db, appId } from "../firebase";
 import { DEFAULT_LAYOUT } from "../constants";
 import {
@@ -421,17 +423,28 @@ export const NewEntryForm = ({
         dateString: finalDateString,
         userId: user.uid,
       };
-      const logRef = await addDoc(
-        collection(
-          db,
-          "artifacts",
-          appId,
-          "public",
-          "data",
-          "maintenance_logs"
-        ),
-        { ...logData, createdAt: serverTimestamp() }
-      );
+      // le foto vanno a parte (logPhotos.js): rapporto e foto si salvano insieme
+      let logRef;
+      if (logData.photos && logData.photos.length) {
+        const id = newLogId();
+        const batch = writeBatch(db);
+        const photoFields = putPhotos(batch, id, logData.photos);
+        logRef = doc(db, "artifacts", appId, "public", "data", "maintenance_logs", id);
+        batch.set(logRef, { ...logData, ...photoFields, createdAt: serverTimestamp() });
+        await batch.commit();
+      } else {
+        logRef = await addDoc(
+          collection(
+            db,
+            "artifacts",
+            appId,
+            "public",
+            "data",
+            "maintenance_logs"
+          ),
+          { ...logData, createdAt: serverTimestamp() }
+        );
+      }
       clearDraft();
 
       const existingCustomer = customers.find((c) => c.name === cleanCustomer);

@@ -76,6 +76,13 @@ html.dark .shadow-2xl {
   color: #475569;
   flex-shrink: 0;
 }
+/* telefoni stretti: un po' più piccolo, così il nome dell'app sta su una riga */
+@media (max-width: 400px) {
+  .mora-theme-btn {
+    width: 36px;
+    height: 36px;
+  }
+}
 html.dark .mora-theme-btn {
   border-color: #223049;
   background: #121b2c;
