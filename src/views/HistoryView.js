@@ -20,6 +20,7 @@ import { EditLogModal } from "../components/modals/EditLogModal";
 import { formatRope, formatRopeLong, ROPE_ITEMS } from "../ropes";
 import { printIntervention } from "../components/PrintLogButton";
 import { removeLogPhotos } from "../logPhotos";
+import { logsChanged } from "../logsWindow";
 
 // gruppi dello Storico: Oggi, Ieri, Questa settimana, Settimana scorsa, poi mese per mese
 const MESI = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"];
@@ -188,6 +189,7 @@ export const HistoryView = ({
       )
     );
     removeLogPhotos(isDeleting);
+    logsChanged();
     setIsDeleting(null);
     setPin("");
   };

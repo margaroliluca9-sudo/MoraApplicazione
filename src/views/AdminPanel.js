@@ -25,6 +25,7 @@ import {
   Database,
   HardDrive,
   Download,
+  Building2,
 } from "lucide-react";
 import {
   collection,
@@ -43,10 +44,12 @@ import {
   getDocs,
 } from "firebase/firestore";
 import { removeLogPhotos } from "../logPhotos";
+import { logsChanged } from "../logsWindow";
 import { db, appId } from "../firebase";
 import { describeError, getSafeMatricola, getLevenshteinDistance } from "../utils";
 import { PRO_INPUT, getButtonPrimaryClass, getProPanelClass } from "../ui";
 import { AdminTab } from "../components/AdminTab";
+import { CompanyAdmin } from "../components/CompanyAdmin";
 import { buildBackupPdf, pdfFileName } from "../pdf";
 import { openPdf } from "../components/PdfHost";
 import {
@@ -384,6 +387,7 @@ export const AdminPanel = ({
       const batch = writeBatch(db);
       ops.slice(i, i + 400).forEach(([ref, data]) => batch.update(ref, data));
       await batch.commit();
+      logsChanged();
     }
   };
 
@@ -447,6 +451,7 @@ export const AdminPanel = ({
         logsUpdated = ls.size;
       }
       await commitInChunks(ops);
+      logsChanged();
       setRenaming(null);
       alert(
         `"${oldName}" rinominato in "${newName}". Aggiornati ${logsUpdated} interventi` +
@@ -485,6 +490,7 @@ export const AdminPanel = ({
     } catch (e) {
       console.error(e);
     }
+    logsChanged();
     setItemToDelete(null);
   };
 
@@ -519,6 +525,7 @@ export const AdminPanel = ({
     await deleteDoc(
       doc(db, "artifacts", appId, "public", "data", "customers", source.id)
     );
+    logsChanged();
     setMergingItem(null);
   };
 
@@ -570,6 +577,7 @@ export const AdminPanel = ({
     await deleteDoc(
       doc(db, "artifacts", appId, "public", "data", "machines", source.id)
     );
+    logsChanged();
     setMergingItem(null);
   };
 
@@ -612,6 +620,7 @@ export const AdminPanel = ({
       const batch = writeBatch(db);
       snap.forEach((d) => batch.delete(d.ref));
       await batch.commit();
+      logsChanged();
     } catch (e) {
       console.error(e);
     }
@@ -665,6 +674,13 @@ export const AdminPanel = ({
         />
         <AdminTab
           color={layoutConfig.themeColor}
+          active={view === "company"}
+          onClick={() => setView("company")}
+          icon={Building2}
+          label="Azienda"
+        />
+        <AdminTab
+          color={layoutConfig.themeColor}
           active={view === "diagnostics"}
           onClick={() => setView("diagnostics")}
           icon={AlertOctagon}
@@ -672,6 +688,7 @@ export const AdminPanel = ({
         />
       </div>
 
+      {view === "company" && <CompanyAdmin color={layoutConfig.themeColor} />}
       {view === "vans" && (
         <VanAdmin
           vans={vans}

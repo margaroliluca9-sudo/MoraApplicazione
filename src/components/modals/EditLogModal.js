@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { doc, updateDoc, writeBatch } from "firebase/firestore";
 import { isPhotoRef, putPhotos, resolvePhotos } from "../../logPhotos";
+import { logsChanged } from "../../logsWindow";
 import { db, appId } from "../../firebase";
 import { DEFAULT_LAYOUT } from "../../constants";
 import { compressImage, describeError } from "../../utils";
@@ -137,7 +138,8 @@ export const EditLogModal = ({
         "maintenance_logs",
         log.id
       );
-      const { photos: _photos, id: _id, ...rest } = dataToSave;
+      // createdAt non si tocca (se l'intervento è appena nato senza rete sarebbe ancora vuoto)
+      const { photos: _photos, id: _id, createdAt: _created, ...rest } = dataToSave;
       const upd = {
           ...rest,
           technician: data.technician,
@@ -163,6 +165,7 @@ export const EditLogModal = ({
         // foto non scaricate (senza rete): restano come sono
         await updateDoc(logRef, upd);
       }
+      logsChanged();
       onClose();
     } catch (e) {
       console.error(e);

@@ -176,12 +176,35 @@ const hoursDue = async (now) => {
   const r = romeNow(now);
   if (r.dow === "Sat" || r.dow === "Sun" || isHoliday(r.iso)) return [];
   const docs = await listAll("hours_reminders");
-  return docs.filter((d) => {
+  const due = docs.filter((d) => {
     if (!d.enabled || !d.owner || d.lastSent === r.iso) return false;
     const [h, m] = String(d.time || "17:30").split(":").map(Number);
     const t = (h || 0) * 60 + (m || 0);
     return r.min >= t && r.min < t + 180;
   }).map((d) => ({ d, iso: r.iso }));
+  // chiusura aziendale (area admin): niente promemoria delle ore
+  if (due.length && (await isClosure(r.iso))) return [];
+  return due;
+};
+
+// chiusure aziendali decise dall'admin (settings/azienda.closures), anche «ogni anno»
+const inRange = (iso, from, to, yearly) => {
+  if (!from) return false;
+  const t = to || from;
+  if (!yearly) return iso >= from && iso <= t;
+  const x = iso.slice(5, 10);
+  const a = String(from).slice(5, 10);
+  const b = String(t).slice(5, 10);
+  return a <= b ? x >= a && x <= b : x >= a || x <= b;
+};
+const isClosure = async (iso) => {
+  try {
+    const j = await call(`${BASE}/${DATA}/settings/azienda`);
+    const list = (fromFields(j.fields || {}).closures) || [];
+    return list.some((c) => c && inRange(iso, c.from, c.to, !!c.yearly));
+  } catch (e) {
+    return false;
+  }
 };
 const markHoursSent = (doc, iso) =>
   call(`https://firestore.googleapis.com/v1/${doc.name}?updateMask.fieldPaths=lastSent`, {
@@ -192,17 +215,18 @@ const markHoursSent = (doc, iso) =>
 // "Tecnici online": ogni apertura dell'app lascia un documento in active_users che nessuno
 // cancellava; l'app li leggeva tutti a ogni avvio. Una volta all'ora tolgo quelli fermi da 2 giorni.
 const STALE = 2 * 24 * 3600 * 1000;
-const cleanPresence = async (now) => {
+// tolgo i documenti di una raccolta con il campo data più vecchio di "before"
+const cleanOld = async (collectionId, fieldPath, before) => {
   const rows = await call(`${BASE}/${DATA}:runQuery`, {
     method: "POST",
     body: JSON.stringify({
       structuredQuery: {
-        from: [{ collectionId: "active_users" }],
+        from: [{ collectionId }],
         where: {
           fieldFilter: {
-            field: { fieldPath: "lastActive" },
+            field: { fieldPath },
             op: "LESS_THAN",
-            value: { timestampValue: new Date(now - STALE).toISOString() },
+            value: { timestampValue: new Date(before).toISOString() },
           },
         },
         limit: 400,
@@ -213,6 +237,13 @@ const cleanPresence = async (now) => {
   if (!names.length) return 0;
   await call(`${BASE}:commit`, { method: "POST", body: JSON.stringify({ writes: names.map((n) => ({ delete: n })) }) });
   return names.length;
+};
+// registro degli accessi (area admin → System mostra gli ultimi 50): tengo un anno
+const LOG_KEEP = 365 * 24 * 3600 * 1000;
+const cleanPresence = async (now) => {
+  const n = await cleanOld("active_users", "lastActive", now - STALE);
+  await cleanOld("access_logs", "timestamp", now - LOG_KEEP).catch(() => 0);
+  return n;
 };
 
 const run = async (now = Date.now()) => {
@@ -272,3 +303,4 @@ module.exports.fromFields = fromFields;
 module.exports.messageFor = messageFor;
 module.exports.romeNow = romeNow;
 module.exports.isHoliday = isHoliday;
+module.exports.inRange = inRange;

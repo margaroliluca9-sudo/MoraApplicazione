@@ -27,10 +27,10 @@ import {
 import {
   collection,
   addDoc,
-  serverTimestamp,
   doc,
   updateDoc,
   writeBatch,
+  Timestamp,
 } from "firebase/firestore";
 import { newLogId, putPhotos } from "../logPhotos";
 import { db, appId } from "../firebase";
@@ -430,7 +430,7 @@ export const NewEntryForm = ({
         const batch = writeBatch(db);
         const photoFields = putPhotos(batch, id, logData.photos);
         logRef = doc(db, "artifacts", appId, "public", "data", "maintenance_logs", id);
-        batch.set(logRef, { ...logData, ...photoFields, createdAt: serverTimestamp() });
+        batch.set(logRef, { ...logData, ...photoFields, createdAt: Timestamp.now() });
         await batch.commit();
       } else {
         logRef = await addDoc(
@@ -442,7 +442,8 @@ export const NewEntryForm = ({
             "data",
             "maintenance_logs"
           ),
-          { ...logData, createdAt: serverTimestamp() }
+          // ora del telefono (non del server): così si vede subito anche senza rete
+          { ...logData, createdAt: Timestamp.now() }
         );
       }
       clearDraft();

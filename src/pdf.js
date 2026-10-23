@@ -8,15 +8,10 @@ import { getTechsString, formatCapacity, getSafeMatricola } from "./utils";
 import { formatRopeLong } from "./ropes";
 import { fmtMin, fmtDelta, deltaOf, kindOf, shortDay, rangeSummary, periodLabel, isFreeDay } from "./hours";
 import { MORA_LOGO_PNG, MORA_LOGO_RATIO } from "./pdfLogo";
+import { COMPANY_DEFAULT, companyInfo } from "./company";
 
-export const COMPANY = {
-  name: "ELETTROMECCANICA MORA s.r.l.",
-  address: "Via Piola n. 16 - 28013 GATTICO-VERUNO (NO)",
-  phone: "Tel. 0322 84.17.24 - Fax 0322 83.55.82",
-  web: "www.emora.it  info@emora.it - contabile@emora.it",
-  reg: "Reg. Impr. NO - Cod. Fisc. - Partita I.V.A.: 02236660037",
-  rea: "REA Novara n. 0223760 - elettromeccanicamorasrl@pec.it",
-};
+// intestazione: dati modificabili dall'admin (company.js)
+export const COMPANY = COMPANY_DEFAULT;
 
 const W = 595.28; // A4 in punti
 const H = 841.89;
@@ -160,8 +155,9 @@ const createFlow = async ({ title, subtitle, docTitle }) => {
     const lw = lh * MORA_LOGO_RATIO;
     page.drawImage(logo, { x: M, y: H - M - lh, width: lw, height: lh });
     const cx = M + lw + 12;
-    page.drawText(COMPANY.name, { x: cx, y: H - M - 9, size: 9.5, font: bold, color: col(C.ink) });
-    [COMPANY.address, COMPANY.phone, COMPANY.web].forEach((s, i) =>
+    const co = companyInfo();
+    page.drawText(co.name, { x: cx, y: H - M - 9, size: 9.5, font: bold, color: col(C.ink) });
+    [co.address, co.phone, co.web].forEach((s, i) =>
       page.drawText(s, { x: cx, y: H - M - 20 - i * 9, size: 7.2, font, color: col(C.grey) })
     );
     const tt = fitLine(bold, title, 12, 200);
@@ -435,7 +431,7 @@ export const buildInterventionsPdf = async ({ logs = [], today }) => {
   const { PDFDocument } = await loadLib();
   const out = await PDFDocument.create();
   out.setTitle(`Rapporti di intervento (${logs.length})`);
-  out.setAuthor(COMPANY.name);
+  out.setAuthor(companyInfo().name);
   for (const log of logs) {
     const one = await PDFDocument.load(await buildInterventionPdf({ log, today }));
     const pages = await out.copyPages(one, one.getPageIndices());

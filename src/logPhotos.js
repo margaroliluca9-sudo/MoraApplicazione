@@ -15,6 +15,7 @@ import {
   deleteDoc,
 } from "firebase/firestore";
 import { db, appId } from "./firebase";
+import { logsChanged } from "./logsWindow";
 
 export const PHOTO_COLL = "log_photos";
 const REF = "mora-foto:";
@@ -113,6 +114,7 @@ export const movePhotosOut = async (rawLogs, max = 5) => {
     batch.update(doc(logsColl(), l.id), fields);
     await batch.commit();
   }
+  if (todo.length) logsChanged();
   return todo.length;
 };
 
