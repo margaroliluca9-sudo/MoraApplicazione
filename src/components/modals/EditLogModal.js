@@ -5,6 +5,9 @@ import {
   RefreshCw,
   MinusCircle,
   Camera,
+  Users,
+  MapPin,
+  Wrench,
 } from "lucide-react";
 import { doc, updateDoc, writeBatch } from "firebase/firestore";
 import { isPhotoRef, putPhotos, resolvePhotos } from "../../logPhotos";
@@ -14,7 +17,21 @@ import { ticketYear } from "../../ticket";
 import { db, appId } from "../../firebase";
 import { DEFAULT_LAYOUT } from "../../constants";
 import { compressImage, describeError } from "../../utils";
-import { PRO_INPUT, getButtonPrimaryClass, getProPanelClass } from "../../ui";
+// stesso aspetto del modulo «Nuovo rapporto»
+const F_INPUT =
+  "w-full min-w-0 min-h-[48px] px-4 py-2.5 bg-white border border-slate-300 rounded-xl text-base font-semibold text-slate-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none placeholder:text-slate-400";
+const F_LABEL = "text-[13px] font-bold text-slate-600 ml-1";
+const Section = ({ icon: Icon, title, color, children }) => (
+  <section className="bg-white rounded-2xl border border-slate-200 p-4 space-y-4">
+    <h4 className="font-black text-slate-800 flex items-center gap-2">
+      <span className={`w-8 h-8 rounded-full bg-${color}-100 text-${color}-700 flex items-center justify-center`}>
+        <Icon className="w-4 h-4" />
+      </span>
+      {title}
+    </h4>
+    {children}
+  </section>
+);
 
 // --- MODALI DATI ---
 import { RopeFields } from "../RopeFields";
@@ -179,36 +196,35 @@ export const EditLogModal = ({
   };
 
   return (
-    <div className="fixed inset-0 bg-slate-900/50 z-[200] flex items-center justify-center p-4 backdrop-blur-md">
-      <div
-        className={`w-full max-w-md overflow-hidden flex flex-col max-h-[85vh] ${getProPanelClass(
-          color
-        )}`}
-      >
-        <div className="p-5 border-b border-slate-100 flex justify-between items-center bg-white">
-          <div>
+    <div className="fixed inset-0 bg-slate-900/50 z-[200] flex items-end md:items-center justify-center md:p-4 backdrop-blur-sm" data-section="edit-log">
+      <div className="w-full max-w-lg overflow-hidden flex flex-col max-h-[92vh] bg-slate-50 rounded-t-3xl md:rounded-3xl shadow-2xl">
+        <div className="p-5 border-b border-slate-100 flex justify-between items-start gap-3 bg-white">
+          <div className="min-w-0">
             <h3 className="font-black text-slate-800 tracking-tight text-lg">
-              Modifica Intervento
+              Modifica intervento
             </h3>
-            <p className="text-xs text-slate-400 font-bold">
-              {log.id.substring(0, 8)}
+            <p className="text-sm text-slate-500 font-semibold break-words">
+              {[log.customer, log.machineId ? `gru ${log.machineId}` : "", log.dateString].filter(Boolean).join(" · ")}
             </p>
           </div>
           <button
+            type="button"
             onClick={onClose}
-            className="p-2 hover:bg-slate-100 rounded-full transition-colors"
+            aria-label="Chiudi"
+            className="w-10 h-10 shrink-0 hover:bg-slate-100 rounded-full transition-colors flex items-center justify-center"
           >
-            <X className="w-5 h-5 text-slate-400" />
+            <X className="w-5 h-5 text-slate-500" />
           </button>
         </div>
-        <div className="p-6 space-y-5 overflow-y-auto bg-slate-50/50 custom-scrollbar">
-          <div className="grid grid-cols-2 gap-4">
+        <div className="p-4 space-y-4 overflow-y-auto custom-scrollbar">
+          <Section icon={Users} title="Chi e quando" color={color}>
+          <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">
-                Tecnico Principale
+              <label className={F_LABEL}>
+                Tecnico principale
               </label>
               <select
-                className={PRO_INPUT}
+                className={F_INPUT}
                 value={data.technician}
                 onChange={(e) =>
                   setData({ ...data, technician: e.target.value })
@@ -222,12 +238,12 @@ export const EditLogModal = ({
               </select>
             </div>
             <div className="space-y-1.5">
-              <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">
-                Data (DD/MM/YYYY)
+              <label className={F_LABEL}>
+                Data (gg/mm/aaaa)
               </label>
               <input
                 type="text"
-                className={PRO_INPUT}
+                className={F_INPUT}
                 value={data.dateString}
                 onChange={(e) =>
                   setData({ ...data, dateString: e.target.value })
@@ -236,17 +252,17 @@ export const EditLogModal = ({
             </div>
           </div>
 
-          <div className="space-y-2 bg-slate-100 p-3 rounded-xl border border-slate-200">
-            <div className="flex justify-between items-center mb-1">
-              <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">
-                Tecnici Aggiuntivi
+          <div className="space-y-2">
+            <div className="flex justify-between items-center">
+              <label className={F_LABEL}>
+                Hanno lavorato con te
               </label>
               <button
                 type="button"
                 onClick={addTechnician}
-                className={`text-[10px] font-bold flex items-center gap-1 text-${color}-600 hover:text-${color}-800`}
+                className={`text-sm font-bold flex items-center gap-1 min-h-[36px] text-${color}-700`}
               >
-                <PlusCircle className="w-3 h-3" /> Aggiungi
+                <PlusCircle className="w-4 h-4" /> Aggiungi
               </button>
             </div>
             {data.additionalTechnicians.map((tech, idx) => (
@@ -255,7 +271,7 @@ export const EditLogModal = ({
                 className="flex gap-2 items-center animate-in fade-in"
               >
                 <select
-                  className={`${PRO_INPUT} py-2`}
+                  className={F_INPUT}
                   value={tech}
                   onChange={(e) => updateAdditionalTech(idx, e.target.value)}
                 >
@@ -269,7 +285,8 @@ export const EditLogModal = ({
                 <button
                   type="button"
                   onClick={() => removeAdditionalTech(idx)}
-                  className="p-2 text-red-500 hover:bg-red-50 rounded-lg"
+                  aria-label="Togli tecnico"
+                  className="w-11 h-11 shrink-0 flex items-center justify-center text-red-500 hover:bg-red-50 rounded-full"
                 >
                   <MinusCircle className="w-5 h-5" />
                 </button>
@@ -278,12 +295,12 @@ export const EditLogModal = ({
           </div>
 
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">
-              Numero Assistenza (Opzionale)
+            <label className={F_LABEL}>
+              N. assistenza (se c'è)
             </label>
             <input
               type="text"
-              className={PRO_INPUT}
+              className={F_INPUT}
               value={data.ticketNumber || ""}
               onChange={(e) =>
                 setData({ ...data, ticketNumber: e.target.value })
@@ -291,12 +308,15 @@ export const EditLogModal = ({
             />
             <TicketTwins logs={allLogs} ticketNumber={data.ticketNumber} year={ticketYear(data)} selfId={log.id} />
           </div>
+          </Section>
+
+          <Section icon={MapPin} title="Cliente e gru" color={color}>
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">
+            <label className={F_LABEL}>
               Cliente
             </label>
             <select
-              className={PRO_INPUT}
+              className={F_INPUT}
               value={data.customer}
               onChange={(e) =>
                 setData({ ...data, customer: e.target.value.toUpperCase() })
@@ -309,15 +329,15 @@ export const EditLogModal = ({
               ))}
             </select>
           </div>
-          <div className="grid grid-cols-3 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
             {formSettings.showMachineId && (
               <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">
+                <label className={F_LABEL}>
                   Matricola
                 </label>
                 <input
                   type="text"
-                  className={PRO_INPUT}
+                  className={F_INPUT}
                   value={data.machineId}
                   onChange={(e) =>
                     setData({
@@ -330,11 +350,11 @@ export const EditLogModal = ({
             )}
             {formSettings.showMachineType && (
               <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">
+                <label className={F_LABEL}>
                   Tipo
                 </label>
                 <select
-                  className={PRO_INPUT}
+                  className={F_INPUT}
                   value={data.machineType || ""}
                   onChange={(e) =>
                     setData({ ...data, machineType: e.target.value })
@@ -357,12 +377,12 @@ export const EditLogModal = ({
             )}
             {formSettings.showCapacity && (
               <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">
+                <label className={F_LABEL}>
                   Portata
                 </label>
                 <input
                   type="text"
-                  className={PRO_INPUT}
+                  className={F_INPUT}
                   value={data.capacity}
                   onChange={(e) =>
                     setData({ ...data, capacity: e.target.value })
@@ -371,13 +391,16 @@ export const EditLogModal = ({
               </div>
             )}
           </div>
+          </Section>
+
+          <Section icon={Wrench} title="Cosa hai fatto" color={color}>
           <div className="space-y-1.5">
-            <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">
+            <label className={F_LABEL}>
               Descrizione
             </label>
             <textarea
               rows="4"
-              className={PRO_INPUT}
+              className={F_INPUT}
               value={data.description}
               onChange={(e) =>
                 setData({
@@ -394,17 +417,18 @@ export const EditLogModal = ({
             onChange={(ropes) => setData((p) => ({ ...p, ropes }))}
           />
 
-          <div className="space-y-2 bg-slate-100 p-3 rounded-xl border border-slate-200">
-            <div className="flex justify-between items-center mb-1">
-              <label className="text-[10px] font-bold text-slate-500 uppercase ml-1 flex items-center gap-1">
-                <Camera className="w-3 h-3" /> Foto Allegate
-              </label>
+          </Section>
+
+          <Section icon={Camera} title="Foto" color={color}>
+          <div className="space-y-2">
+            <div className="flex justify-between items-center">
+              <span className={F_LABEL}>Fino a 3 foto</span>
               <label
-                className={`text-[10px] font-bold flex items-center gap-1 text-${color}-600 hover:text-${color}-800 cursor-pointer ${
+                className={`text-sm font-bold flex items-center gap-1 min-h-[36px] text-${color}-700 cursor-pointer ${
                   data.photos.length >= 3 ? "opacity-50 cursor-not-allowed" : ""
                 }`}
               >
-                <PlusCircle className="w-3 h-3" /> Aggiungi
+                <PlusCircle className="w-4 h-4" /> Aggiungi
                 <input
                   type="file"
                   accept="image/*"
@@ -417,14 +441,14 @@ export const EditLogModal = ({
             </div>
 
             {uploadingPhotos && (
-              <div className="text-[10px] text-blue-600 font-bold animate-pulse flex items-center gap-1">
+              <div className="text-sm text-blue-600 font-bold animate-pulse flex items-center gap-1">
                 <RefreshCw className="w-3 h-3 animate-spin" /> Elaborazione in
                 corso...
               </div>
             )}
 
             {photoState === "loading" && (
-              <div className="text-[10px] text-blue-600 font-bold animate-pulse flex items-center gap-1" data-photo-state="loading">
+              <div className="text-sm text-blue-600 font-bold animate-pulse flex items-center gap-1" data-photo-state="loading">
                 <RefreshCw className="w-3 h-3 animate-spin" /> Carico le foto...
               </div>
             )}
@@ -438,35 +462,36 @@ export const EditLogModal = ({
                 <div key={idx} className="relative shrink-0 group">
                   <img
                     src={photoStr}
-                    className="w-16 h-16 object-cover rounded-xl border-2 border-white shadow-sm"
+                    className="w-20 h-20 object-cover rounded-xl border-2 border-white shadow-sm"
                     alt="Anteprima"
                   />
                   <button
                     type="button"
                     onClick={() => removePhoto(idx)}
-                    className="absolute -top-2 -right-2 bg-red-500 text-white p-1 rounded-full shadow-md opacity-0 group-hover:opacity-100 transition-opacity"
+                    aria-label="Togli foto"
+                    className="absolute -top-2 -right-2 bg-red-500 text-white w-7 h-7 rounded-full shadow-md flex items-center justify-center"
                   >
-                    <X className="w-3 h-3" />
+                    <X className="w-4 h-4" />
                   </button>
                 </div>
               ))}
               {photoState === "ready" && data.photos.length === 0 && !uploadingPhotos && (
-                <p className="text-[10px] text-slate-400 italic">
-                  Nessuna foto allegata.
+                <p className="text-sm text-slate-400">
+                  Nessuna foto.
                 </p>
               )}
             </div>
           </div>
+          </Section>
         </div>
-        <div className="p-6 border-t border-slate-100 bg-white">
+        <div className="p-4 border-t border-slate-200 bg-white" style={{ paddingBottom: "max(16px, env(safe-area-inset-bottom))" }}>
           <button
+            type="button"
             onClick={handleSave}
             disabled={loading || uploadingPhotos || photoState === "loading"}
-            className={`w-full py-4 rounded-lg font-bold text-xs transition-all ${getButtonPrimaryClass(
-              color
-            )}`}
+            className={`w-full h-12 rounded-full font-bold text-base text-white bg-${color}-600 hover:bg-${color}-700 disabled:opacity-60 transition-colors`}
           >
-            {loading ? "Salvataggio..." : "Salva Modifiche"}
+            {loading ? "Salvataggio..." : "Salva modifiche"}
           </button>
         </div>
       </div>
