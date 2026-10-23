@@ -14,10 +14,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
-          node-version: 20
+          node-version: 22
       - name: Controlla la password
         env:
           BACKUP_PASSWORD: ${{ secrets.BACKUP_PASSWORD }}
@@ -36,7 +36,7 @@ jobs:
           openssl enc -aes-256-cbc -salt -pbkdf2 -iter 200000 -in backup.json.gz -out backup.json.gz.enc -pass env:BACKUP_PASSWORD
           rm backup.json.gz
           echo "NOME=copia-$(date -u +%Y-%m-%d)" >> "$GITHUB_ENV"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v6
         with:
           name: ${{ env.NOME }}
           path: backup.json.gz.enc
