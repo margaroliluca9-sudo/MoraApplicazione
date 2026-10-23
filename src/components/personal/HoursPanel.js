@@ -1,12 +1,15 @@
 // LA MIA AREA · Le mie ore: calendario degli orari (ore fatte, straordinari, ore in meno,
 // ferie, permessi, malattia) con il riepilogo del mese.
 import React, { useState } from "react";
-import { ChevronLeft, ChevronRight, Plus, Minus, Share2, Check, BellRing } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus, Minus, Share2, Check, BellRing, FileText, MessageSquareText } from "lucide-react";
+import { openPdf } from "../PdfHost";
+import { buildHoursPdf, pdfFileName } from "../../pdf";
 import { Switch } from "./SettingsPanel";
 import { todayIso, longDay, monthGrid } from "../../personal";
 import {
-  KINDS, fmtMin, fmtDelta, byDate, deltaOf, isFreeDay, monthSummary, cellLabel, monthLabel, summaryText,
+  KINDS, fmtMin, fmtDelta, byDate, deltaOf, isFreeDay, monthSummary, cellLabel, monthLabel,
   saveDay, removeDay, getStd, setStd, withDefaults, getSince, saveHoursReminder,
+  periodDays, rangeSummary, presetPeriods, periodText, periodLabel,
 } from "../../hours";
 import { describeError } from "../../utils";
 import { PanelHeader, Sheet, Field, INPUT, PrimaryBtn, GhostBtn } from "./PersonalUi";
@@ -102,8 +105,20 @@ export const HoursPanel = ({ me, hours = [], reminder = null, onBack, onClose, c
       setError("Non tolto: " + describeError(e));
     }
   };
-  const share = async () => {
-    const text = summaryText(me, all, cur.y, cur.m, std);
+  // MANDA: scegli il periodo, poi PDF (carino, con le note) o testo
+  const [send, setSend] = useState(null); // { id, from, to }
+  const presets = presetPeriods(now);
+  const openSend = () => {
+    const ym = `${cur.y}-${String(cur.m + 1).padStart(2, "0")}`;
+    const p = presets.find((x) => x.from.slice(0, 7) === ym && (x.id === "mese" || x.id === "scorso"));
+    setSend(p ? { ...p } : { id: "scelta", from: `${ym}-01`, to: `${ym}-${String(new Date(cur.y, cur.m + 1, 0).getDate()).padStart(2, "0")}` });
+  };
+  const sendDays = send ? periodDays(hours, send.from, send.to, std, since) : [];
+  const sendSum = rangeSummary(sendDays, std);
+  const sendPdf = () =>
+    openPdf(() => buildHoursPdf({ me, from: send.from, to: send.to, days: sendDays, std }), pdfFileName("Ore", me, send.from, send.to));
+  const sendText = async () => {
+    const text = periodText(me, sendDays, send.from, send.to, std);
     try {
       if (navigator.share) await navigator.share({ title: "Le mie ore", text });
       else {
@@ -212,7 +227,7 @@ export const HoursPanel = ({ me, hours = [], reminder = null, onBack, onClose, c
               <div className="text-3xl font-black leading-none mt-1" data-hours-worked>{fmtMin(sum.worked)}</div>
               <div className="text-sm font-semibold opacity-90 mt-1">lavorate in {sum.workDays} {sum.workDays === 1 ? "giorno" : "giorni"}</div>
             </div>
-            <button type="button" onClick={share} data-action="hours-share" className="h-10 px-3 rounded-full bg-white/20 text-white font-bold text-sm flex items-center gap-1.5">
+            <button type="button" onClick={openSend} data-action="hours-share" className="h-10 px-3 rounded-full bg-white/20 text-white font-bold text-sm flex items-center gap-1.5">
               <Share2 className="w-4 h-4" /> Manda
             </button>
           </div>
@@ -281,6 +296,53 @@ export const HoursPanel = ({ me, hours = [], reminder = null, onBack, onClose, c
         </section>
       </div>
 
+      {send && (
+        <Sheet
+          title="Manda le ore"
+          section="hours-send"
+          onClose={() => setSend(null)}
+          footer={
+            <>
+              <GhostBtn onClick={sendText}>
+                <MessageSquareText className="w-4 h-4 inline mr-1" /> Testo
+              </GhostBtn>
+              <PrimaryBtn color={color} onClick={sendPdf}>
+                <FileText className="w-4 h-4 inline mr-1" /> PDF
+              </PrimaryBtn>
+            </>
+          }
+        >
+          <Field label="Periodo">
+            <div className="flex flex-wrap gap-2" data-section="hours-periods">
+              {[...presets, { id: "scelta", label: "Scegli le date" }].map((p) => (
+                <button key={p.id} type="button" data-period={p.id}
+                  onClick={() => setSend(p.id === "scelta" ? { ...send, id: "scelta" } : { ...p })}
+                  className={`h-10 px-3.5 rounded-full text-sm font-bold border ${send.id === p.id ? `bg-${color}-600 border-${color}-600 text-white` : "bg-white border-slate-300 text-slate-700"}`}>
+                  {p.label}
+                </button>
+              ))}
+            </div>
+          </Field>
+          {send.id === "scelta" && (
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Dal">
+                <input type="date" className={`${INPUT} mora-date`} value={send.from} aria-label="Dal" onChange={(e) => setSend({ ...send, from: e.target.value })} />
+              </Field>
+              <Field label="Al">
+                <input type="date" className={`${INPUT} mora-date`} value={send.to} aria-label="Al" onChange={(e) => setSend({ ...send, to: e.target.value })} />
+              </Field>
+            </div>
+          )}
+          <div className={`rounded-2xl bg-${color}-50 p-4 space-y-1`} data-section="hours-send-sum">
+            <p className="text-xs font-black text-slate-500 uppercase tracking-wide">{periodLabel(send.from, send.to)}</p>
+            <p className="text-2xl font-black text-slate-800">{fmtMin(sendSum.worked)} <span className="text-sm font-bold text-slate-500">in {sendSum.workDays} giorni</span></p>
+            <p className="text-sm font-bold text-slate-600">
+              {[sendSum.extra && `+${fmtMin(sendSum.extra)} straordinari`, sendSum.less && `-${fmtMin(sendSum.less)} in meno`, sendSum.ferie && `${sendSum.ferie} g ferie`, sendSum.permesso && `${fmtMin(sendSum.permesso)} permessi`, sendSum.malattia && `${sendSum.malattia} g malattia`].filter(Boolean).join(" · ") || "Nessuna differenza dall'orario normale"}
+            </p>
+            <p className="text-xs text-slate-500">Nel PDF: riepilogo, un giorno per riga con le note, spazio per le firme.</p>
+          </div>
+        </Sheet>
+      )}
       {edit && (
         <Sheet
           title={longDay(edit.date)}

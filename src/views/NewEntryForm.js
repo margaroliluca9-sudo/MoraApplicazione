@@ -18,6 +18,11 @@ import {
   Printer,
   History as HistoryIcon,
   RotateCcw,
+  Users,
+  MapPin,
+  Wrench,
+  ClipboardList,
+  Check,
 } from "lucide-react";
 import {
   collection,
@@ -36,8 +41,22 @@ import {
   getSafeMatricola,
   getSuggestedCapacities,
 } from "../utils";
-import { PRO_INPUT, getButtonPrimaryClass, getProPanelClass } from "../ui";
+import { getButtonPrimaryClass, getProPanelClass } from "../ui";
 import { RopeFields } from "../components/RopeFields";
+
+// stile del Nuovo rapporto: campi alti (dita e guanti), angoli morbidi
+const F_INPUT =
+  "w-full min-w-0 min-h-[48px] px-4 py-2.5 bg-white border border-slate-300 rounded-xl text-base font-semibold text-slate-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none placeholder:text-slate-400";
+const F_LABEL = "text-[13px] font-bold text-slate-600 ml-1";
+// i campi raggruppati in schede numerate
+const GROUP_OF = { technician: "chi", date: "chi", ticketNumber: "chi", customer: "dove", machine: "dove", capacity: "dove", description: "cosa", ropes: "cosa", photos: "foto", custom: "altro" };
+const GROUPS = {
+  chi: { title: "Chi e quando", icon: Users },
+  dove: { title: "Cliente e gru", icon: MapPin },
+  cosa: { title: "Cosa hai fatto", icon: Wrench },
+  foto: { title: "Foto", icon: Camera, optional: true },
+  altro: { title: "Altri dati", icon: ClipboardList, optional: true },
+};
 import { AssistantPanel } from "../components/AssistantPanel";
 import { logsOfMachine, findSameMatricola, normalizeMatricola } from "../assistant";
 import {
@@ -100,6 +119,24 @@ export const NewEntryForm = ({
   const [pendingDraft, setPendingDraft] = useState(() => (practice || prefill ? null : loadDraft()));
   // dopo "Salva": riepilogo con "Altra gru, stesso cliente", "Stampa", "Vai allo Storico"
   const [savedLog, setSavedLog] = useState(null);
+  // dopo il salvataggio: il riepilogo resta 3 secondi, poi si va da soli allo Storico
+  // (toccando un pulsante del riepilogo si resta qui)
+  const [autoGo, setAutoGo] = useState(false);
+  useEffect(() => {
+    if (!savedLog || practice) return undefined;
+    setAutoGo(true);
+    const t = setTimeout(() => onSuccess && onSuccess(), 3000);
+    const stop = () => {
+      clearTimeout(t);
+      setAutoGo(false);
+    };
+    window.addEventListener("mora-stay", stop);
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener("mora-stay", stop);
+    };
+  }, [savedLog, practice, onSuccess]);
+  const stay = () => window.dispatchEvent(new Event("mora-stay"));
   useEffect(() => {
     if (practice || pendingDraft || savedLog) return undefined;
     if (!formData.customer && !formData.description) return undefined;
@@ -476,7 +513,7 @@ export const NewEntryForm = ({
         return (
           <div key="tech" className="space-y-3">
             <div className="space-y-1">
-              <label className="text-xs font-black text-slate-700 uppercase tracking-wide ml-1">
+              <label className={F_LABEL}>
                 Tecnico Principale <span className="text-red-500">*</span>
               </label>
               <div className="relative">
@@ -488,7 +525,7 @@ export const NewEntryForm = ({
                 ) : (
                   <>
                     <select
-                      className={PRO_INPUT}
+                      className={F_INPUT}
                       value={formData.technician}
                       onChange={(e) =>
                         setFormData({ ...formData, technician: e.target.value })
@@ -530,7 +567,7 @@ export const NewEntryForm = ({
                     className="flex gap-2 items-center animate-in fade-in slide-in-from-top-1"
                   >
                     <select
-                      className={`${PRO_INPUT} py-2`}
+                      className={`${F_INPUT} h-11`}
                       value={tech}
                       onChange={(e) =>
                         updateAdditionalTech(idx, e.target.value)
@@ -565,13 +602,13 @@ export const NewEntryForm = ({
         return (
           <div key="mach" className="grid grid-cols-2 gap-4">
             <div className="space-y-1 relative">
-              <label className="text-xs font-black text-slate-700 uppercase tracking-wide ml-1">
+              <label className={F_LABEL}>
                 Matricola/Campata
               </label>
               <div className="relative">
                 <input
                   type="text"
-                  className={PRO_INPUT}
+                  className={F_INPUT}
                   value={formData.machineId}
                   onChange={handleMachineIdChange}
                   onFocus={() => setShowMachineSuggestions(true)}
@@ -628,11 +665,11 @@ export const NewEntryForm = ({
               )}
             </div>
             <div className="space-y-1">
-              <label className="text-xs font-black text-slate-700 uppercase tracking-wide ml-1">
+              <label className={F_LABEL}>
                 Tipo <span className="text-red-500">*</span>
               </label>
               <select
-                className={PRO_INPUT}
+                className={F_INPUT}
                 value={formData.machineType}
                 onChange={(e) =>
                   setFormData({ ...formData, machineType: e.target.value })
@@ -651,13 +688,13 @@ export const NewEntryForm = ({
       case "customer":
         return (
           <div key="cust" className="space-y-1 relative">
-            <label className="text-xs font-black text-slate-700 uppercase tracking-wide ml-1">
+            <label className={F_LABEL}>
               Cliente <span className="text-red-500">*</span>
             </label>
             <div className="relative">
               <input
                 type="text"
-                className={PRO_INPUT}
+                className={F_INPUT}
                 value={formData.customer}
                 onChange={handleCustomerChange}
                 onFocus={() => setShowCustomerSuggestions(true)}
@@ -728,12 +765,12 @@ export const NewEntryForm = ({
       case "description":
         return (
           <div key="desc" className="space-y-1">
-            <label className="text-xs font-black text-slate-700 uppercase tracking-wide ml-1">
+            <label className={F_LABEL}>
               Descrizione <span className="text-red-500">*</span>
             </label>
             <textarea
               rows="4"
-              className={PRO_INPUT}
+              className={F_INPUT}
               value={formData.description}
               onChange={(e) =>
                 setFormData({
@@ -755,37 +792,33 @@ export const NewEntryForm = ({
         );
       case "photos":
         return (
-          <div
-            key="photos"
-            className="space-y-2 bg-slate-50 p-4 rounded-xl border border-slate-200"
-          >
-            <div className="flex justify-between items-center">
-              <div>
-                <label className="text-[10px] font-bold text-slate-600 uppercase flex items-center gap-1.5">
-                  <Camera className="w-4 h-4 text-slate-400" /> Allega Foto
-                  (Opzionale)
-                </label>
-                <p className="text-[9px] text-slate-400 mt-0.5">
-                  Max 3 foto. Verranno ottimizzate automaticamente.
-                </p>
+          <div key="photos" className="space-y-2">
+            <div className="flex justify-between items-center gap-3 flex-wrap">
+              <p className="text-xs text-slate-500 font-semibold">Fino a 3 foto, dalla fotocamera o dalla galleria.</p>
+              <div className="flex gap-2">
+                {[
+                  ["camera", Camera, "Scatta", { capture: "environment" }],
+                  ["gallery", ImageIcon, "Galleria", { multiple: true }],
+                ].map(([id, Icon, label, extra]) => (
+                  <label
+                    key={id}
+                    data-action={"photo-" + id}
+                    className={`cursor-pointer h-11 px-3.5 bg-white border border-slate-300 rounded-xl text-sm font-bold text-slate-700 flex items-center gap-2 hover:bg-slate-100 transition-all ${
+                      formData.photos.length >= 3 ? "opacity-50 cursor-not-allowed" : ""
+                    }`}
+                  >
+                    <Icon className="w-4 h-4" /> {label}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      {...extra}
+                      className="hidden"
+                      onChange={handlePhotoUpload}
+                      disabled={formData.photos.length >= 3 || uploadingPhotos}
+                    />
+                  </label>
+                ))}
               </div>
-              <label
-                className={`cursor-pointer px-3 py-1.5 bg-white border border-slate-300 rounded-lg text-[10px] font-bold flex items-center gap-2 hover:bg-slate-100 transition-all ${
-                  formData.photos.length >= 3
-                    ? "opacity-50 cursor-not-allowed"
-                    : ""
-                }`}
-              >
-                <ImageIcon className="w-3 h-3" /> Scegli
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  className="hidden"
-                  onChange={handlePhotoUpload}
-                  disabled={formData.photos.length >= 3 || uploadingPhotos}
-                />
-              </label>
             </div>
 
             {uploadingPhotos && (
@@ -804,7 +837,7 @@ export const NewEntryForm = ({
                   >
                     <img
                       src={photoStr}
-                      className="w-20 h-20 object-cover rounded-xl border-2 border-white shadow-md"
+                      className="w-24 h-24 object-cover rounded-2xl border-2 border-white shadow-md"
                       alt="Anteprima"
                     />
                     <button
@@ -822,28 +855,29 @@ export const NewEntryForm = ({
           </div>
         );
       case "capacity":
-        const commonCapacities = [...suggestedCapacities].sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
+        // in ordine di utilizzo (le più usate prima), si aggiornano con ogni rapporto
+        const commonCapacities = suggestedCapacities;
         return layoutConfig.formSettings.showCapacity ? (
           <div key="cap" className="space-y-2">
-            <label className="text-xs font-black text-slate-700 uppercase tracking-wide ml-1">
+            <label className={F_LABEL}>
               Portata in Kilogrammi <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
-              className={PRO_INPUT}
+              className={F_INPUT}
               value={formData.capacity}
               onChange={(e) =>
                 setFormData({ ...formData, capacity: e.target.value })
               }
               placeholder="Es. 2000 kg"
             />
-            <div className="flex flex-wrap gap-1.5 mt-1">
+            <div className="flex flex-wrap gap-2 mt-1" data-section="capacity-chips">
               {commonCapacities.map((cap) => (
                 <button
                   key={cap}
                   type="button"
                   onClick={() => setFormData({ ...formData, capacity: cap })}
-                  className={`px-2.5 py-1.5 text-[10px] font-bold rounded-lg border transition-all active:scale-95 ${
+                  className={`h-10 px-3.5 text-sm font-bold rounded-full border transition-all active:scale-95 ${
                     formData.capacity === cap
                       ? "bg-" +
                         color +
@@ -864,12 +898,12 @@ export const NewEntryForm = ({
       case "date":
         return (
           <div key="date" className="space-y-1 relative">
-            <label className="text-xs font-black text-slate-700 uppercase tracking-wide ml-1">
+            <label className={F_LABEL}>
               Data Intervento <span className="text-red-500">*</span>
             </label>
             <input
               type="date"
-              className={PRO_INPUT}
+              className={`${F_INPUT} mora-date`}
               value={formData.dateString}
               max={getTodayString()}
               onChange={(e) =>
@@ -881,12 +915,12 @@ export const NewEntryForm = ({
       case "ticketNumber":
         return (
           <div key="ticketNumber" className="space-y-1">
-            <label className="text-xs font-black text-slate-700 uppercase tracking-wide ml-1">
+            <label className={F_LABEL}>
               Numero Assistenza (Opzionale)
             </label>
             <input
               type="text"
-              className={PRO_INPUT}
+              className={F_INPUT}
               value={formData.ticketNumber}
               onChange={(e) =>
                 setFormData({ ...formData, ticketNumber: e.target.value })
@@ -903,12 +937,12 @@ export const NewEntryForm = ({
           >
             {layoutConfig.customFields.map((f, i) => (
               <div key={i} className="space-y-1">
-                <label className="text-xs font-black text-slate-700 uppercase tracking-wide ml-1">
+                <label className={F_LABEL}>
                   {f.label}
                 </label>
                 <input
                   type={f.type || "text"}
-                  className={PRO_INPUT}
+                  className={F_INPUT}
                   placeholder={f.label}
                 />
               </div>
@@ -920,21 +954,53 @@ export const NewEntryForm = ({
     }
   };
 
+  // schede: campi consecutivi dello stesso gruppo (l'ordine lo decide l'admin)
+  const groupsInOrder = [];
+  formOrder.forEach((k) => {
+    const g = GROUP_OF[k] || "altro";
+    if (k === "custom" && !(layoutConfig.customFields || []).length) return;
+    if (k === "capacity" && !layoutConfig.formSettings.showCapacity) return;
+    const last = groupsInOrder[groupsInOrder.length - 1];
+    if (last && last.g === g) last.keys.push(k);
+    else groupsInOrder.push({ g, keys: [k] });
+  });
+  const done = {
+    chi: !!formData.technician && !!formData.dateString,
+    dove: !!formData.customer && !!formData.machineType && (!layoutConfig.formSettings.showCapacity || !!String(formData.capacity || "").trim()),
+    cosa: !!String(formData.description || "").trim(),
+    foto: formData.photos.length > 0,
+    altro: false,
+  };
+  const stepKeys = [...new Set(groupsInOrder.map((x) => x.g))].filter((g) => g !== "altro");
+
   return (
     <div
       className={`overflow-clip animate-in slide-in-from-bottom-6 duration-500 ${getProPanelClass(
         color
       )}`}
     >
-      <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
-        <h2 className="font-black text-slate-800 text-lg uppercase tracking-tight">
-          Nuovo Rapporto
-        </h2>
-        <div
-          className={`bg-${color}-600 text-white p-2.5 rounded-xl shadow-md`}
-        >
-          <HardHat className="w-5 h-5" />
+      <div className={`px-6 pt-5 pb-4 bg-gradient-to-br from-${color}-600 to-${color}-800 text-white`} data-section="report-head">
+        <div className="flex justify-between items-start gap-3">
+          <div className="min-w-0">
+            <h2 className="font-black text-2xl leading-tight">Nuovo rapporto</h2>
+            <p className="text-sm font-semibold text-white/80 truncate">
+              {[formData.technician, formData.customer, formData.machineId && "gru " + formData.machineId].filter(Boolean).join(" · ") || "Compila le schede qui sotto"}
+            </p>
+          </div>
+          <div className="bg-white/15 p-2.5 rounded-2xl shrink-0">
+            <HardHat className="w-6 h-6" />
+          </div>
         </div>
+        {!savedLog && (
+          <div className="flex gap-1.5 mt-4" data-section="report-progress">
+            {stepKeys.map((g) => (
+              <div key={g} className="flex-1 min-w-0">
+                <div className="h-1.5 rounded-full" style={{ backgroundColor: done[g] ? "#ffffff" : "rgba(255,255,255,.25)" }} />
+                <p className={`text-[10px] font-bold mt-1 truncate ${done[g] ? "text-white" : "text-white/60"}`}>{GROUPS[g].title}</p>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
       {pendingDraft && (
         <div className="mx-6 mt-5 p-4 rounded-2xl border-2 border-amber-300 bg-amber-50 space-y-3" data-section="draft-banner">
@@ -957,6 +1023,15 @@ export const NewEntryForm = ({
       )}
       {savedLog ? (
         <div className="p-6 space-y-4" data-section="report-saved">
+          {autoGo && (
+            <div className="space-y-1.5" data-section="auto-history">
+              <p className="text-xs font-bold text-slate-500">Tra 3 secondi vai allo Storico… (tocca un pulsante per restare)</p>
+              <div className="h-1.5 rounded-full bg-slate-200 overflow-hidden">
+                <div className={`h-full bg-${color}-600 rounded-full`} style={{ animation: "moraCountdown 3s linear forwards" }} />
+              </div>
+              <style>{"@keyframes moraCountdown { from { width: 0%; } to { width: 100%; } }"}</style>
+            </div>
+          )}
           <div className="flex items-center gap-3">
             <CheckCircle2 className="w-10 h-10 text-emerald-600 shrink-0" />
             <div className="min-w-0">
@@ -967,6 +1042,7 @@ export const NewEntryForm = ({
             </div>
           </div>
           <button type="button" data-action="same-customer" onClick={() => {
+              stay();
               setFormData((p) => ({ ...p, machineId: "", machineType: "", capacity: "", description: "", ticketNumber: "", photos: [], ropes: { fune: emptyRope(), catena: emptyRope() } }));
               setLastIntervention(null);
               setSavedLog(null);
@@ -975,7 +1051,7 @@ export const NewEntryForm = ({
             <RotateCcw className="w-5 h-5" /> Altra gru, stesso cliente
           </button>
           <div className="grid grid-cols-2 gap-3">
-            <button type="button" data-action="print-saved" onClick={() => printIntervention(savedLog)}
+            <button type="button" data-action="print-saved" onClick={() => { stay(); printIntervention(savedLog); }}
               className="h-12 rounded-xl border border-slate-300 text-slate-700 font-bold flex items-center justify-center gap-2">
               <Printer className="w-5 h-5" /> Stampa
             </button>
@@ -987,8 +1063,23 @@ export const NewEntryForm = ({
           <p className="text-xs text-slate-500 text-center font-semibold">«Altra gru» tiene tecnici, data e cliente: scegli solo la gru e scrivi la descrizione.</p>
         </div>
       ) : (
-      <form onSubmit={handleSubmit} className="p-6 space-y-6">
-        {formOrder.map((key) => (
+      <form onSubmit={handleSubmit} className="p-4 sm:p-6 space-y-4 bg-slate-50">
+        {groupsInOrder.map(({ g, keys }, gi) => {
+          const G = GROUPS[g];
+          const Icon = G.icon;
+          return (
+          <section key={g + gi} data-form-group={g} className="bg-white rounded-3xl border border-slate-200 p-4 sm:p-5 space-y-4 shadow-sm">
+            <div className="flex items-center gap-3">
+              <span className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${done[g] ? "bg-emerald-500 text-white" : `bg-${color}-50 text-${color}-700`}`}>
+                {done[g] ? <Check className="w-5 h-5" /> : <Icon className="w-5 h-5" />}
+              </span>
+              <h3 className="font-black text-slate-800 text-lg leading-tight flex-1">
+                <span className="text-slate-400 mr-1.5">{gi + 1}</span>
+                {G.title}
+              </h3>
+              {G.optional && <span className="text-[11px] font-bold text-slate-400">facoltativo</span>}
+            </div>
+        {keys.map((key) => (
           <React.Fragment key={key}>
             {renderField(key)}
             {key === "machine" && sameMatricola && (
@@ -1013,6 +1104,9 @@ export const NewEntryForm = ({
             {key === "machine" && <AssistantPanel machineLogs={assistantLogs} />}
           </React.Fragment>
         ))}
+          </section>
+          );
+        })}
         {lastIntervention && (
           <div className="bg-amber-50 p-4 rounded-xl border border-amber-100 animate-in fade-in slide-in-from-top-2 shadow-sm">
             <div className="flex items-center gap-2 mb-1.5">
@@ -1036,19 +1130,19 @@ export const NewEntryForm = ({
           </div>
         )}
 
-        <div data-section="save-bar" className={`flex gap-3 sticky z-20 -mx-6 px-6 py-3 bg-white/95 backdrop-blur border-t border-slate-200 ${isMobile ? "bottom-[86px]" : "bottom-0"}`}>
+        <div data-section="save-bar" className={`flex gap-3 sticky z-20 -mx-4 sm:-mx-6 px-4 sm:px-6 py-3 bg-white/95 backdrop-blur border-t border-slate-200 ${isMobile ? "" : "bottom-0"}`} style={isMobile ? { bottom: "calc(86px + var(--mora-safe-bottom))" } : undefined}>
           <button
             type="button"
             onClick={() => setShowClearConfirm(true)}
             title="Svuota Modulo"
-            className="p-4 rounded-xl text-slate-400 bg-slate-100 hover:bg-red-50 hover:text-red-500 transition-all active:scale-95"
+            className="w-14 rounded-2xl text-slate-500 bg-slate-100 hover:bg-red-50 hover:text-red-500 transition-all active:scale-95 flex items-center justify-center"
           >
             <Trash2 className="w-5 h-5" />
           </button>
           <button
             type="submit"
             disabled={isSubmitting || uploadingPhotos}
-            className={`flex-1 py-4 rounded-xl font-black text-sm uppercase tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95 ${getButtonPrimaryClass(
+            className={`flex-1 h-14 rounded-2xl font-black text-base uppercase tracking-widest flex items-center justify-center gap-2 transition-all active:scale-95 ${getButtonPrimaryClass(
               color
             )}`}
           >

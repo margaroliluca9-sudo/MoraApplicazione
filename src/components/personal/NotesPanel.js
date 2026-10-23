@@ -1,7 +1,7 @@
 // LA MIA AREA · Note personali: testo, elenco da spuntare, nota fissata in cima,
 // foto e fogli scansionati (l'intelligenza artificiale trascrive il foglio nel testo).
 import React, { useRef, useState } from "react";
-import { Pin, Plus, X, Camera, ScanLine, Loader2, RotateCw, Trash2, Sparkles } from "lucide-react";
+import { Pin, Plus, X, Camera, ScanLine, Loader2, RotateCw, Trash2, Sparkles, Image as ImageIcon } from "lucide-react";
 import { MAX_NOTE_PHOTOS, scanLook, rotate90, photoFromFile, readSheet } from "../../scan";
 import { sortNotes, saveNote, removePersonal } from "../../personal";
 import { describeError } from "../../utils";
@@ -25,6 +25,7 @@ export const NotesPanel = ({ me, notes, onBack, onClose, color = "blue", scanOn 
   const [info, setInfo] = useState("");
   const [view, setView] = useState(null);
   const fileRef = useRef(null);
+  const galleryRef = useRef(null);
   const modeRef = useRef("foto");
   const list = sortNotes(notes);
 
@@ -34,20 +35,24 @@ export const NotesPanel = ({ me, notes, onBack, onClose, color = "blue", scanOn 
     setInfo("");
     if ((edit.photos || []).length >= MAX_NOTE_PHOTOS) return setError(`Al massimo ${MAX_NOTE_PHOTOS} foto per nota.`);
     modeRef.current = mode;
-    if (fileRef.current) fileRef.current.click();
+    const ref = mode === "galleria" ? galleryRef : fileRef;
+    if (ref.current) ref.current.click();
   };
   const appendText = (cur, add) => (String(cur || "").trim() ? String(cur).replace(/\s+$/, "") + "\n\n" + add : add);
   const onFile = async (e) => {
-    const file = e.target.files && e.target.files[0];
+    const files = Array.from((e.target.files && e.target.files) || []);
     e.target.value = "";
-    if (!file) return;
+    if (!files.length) return;
     const mode = modeRef.current;
-    setBusy(mode);
+    setBusy(mode === "galleria" ? "foto" : mode);
     try {
-      const photo = await photoFromFile(file);
-      const shown = mode === "scan" ? await scanLook(photo) : photo;
-      setEdit((ed) => ({ ...ed, photos: [...(ed.photos || []), shown].slice(0, MAX_NOTE_PHOTOS) }));
-      if (mode === "scan") await readInto(photo);
+      const room = MAX_NOTE_PHOTOS - (edit.photos || []).length;
+      if (files.length > room) setInfo(`Prese le prime ${room}: al massimo ${MAX_NOTE_PHOTOS} foto per nota.`);
+      const photos = [];
+      for (const f of files.slice(0, Math.max(0, room))) photos.push(await photoFromFile(f));
+      const shown = mode === "scan" ? [await scanLook(photos[0])] : photos;
+      setEdit((ed) => ({ ...ed, photos: [...(ed.photos || []), ...shown].slice(0, MAX_NOTE_PHOTOS) }));
+      if (mode === "scan" && photos[0]) await readInto(photos[0]);
     } catch (err) {
       setError("Foto non caricata: " + describeError(err));
     }
@@ -168,10 +173,10 @@ export const NotesPanel = ({ me, notes, onBack, onClose, color = "blue", scanOn 
           <Field label="Titolo">
             <input className={INPUT} value={edit.title} aria-label="Titolo" onChange={(e) => setEdit({ ...edit, title: e.target.value })} />
           </Field>
-          <div className={`grid ${scanOn ? "grid-cols-2" : "grid-cols-1"} gap-2`} data-section="note-photo-buttons">
+          <div className="grid grid-cols-2 gap-2" data-section="note-photo-buttons">
             {scanOn && (
             <button type="button" data-action="note-scan" disabled={!!busy} onClick={() => pickPhoto("scan")}
-              className={`h-12 rounded-xl bg-${color}-600 text-white font-black text-sm flex items-center justify-center gap-2 disabled:opacity-50`}>
+              className={`col-span-2 h-12 rounded-xl bg-${color}-600 text-white font-black text-sm flex items-center justify-center gap-2 disabled:opacity-50`}>
               {busy === "scan" || busy === "leggo" ? <Loader2 className="w-5 h-5 animate-spin" /> : <ScanLine className="w-5 h-5" />} Scansiona foglio
             </button>
             )}
@@ -179,8 +184,13 @@ export const NotesPanel = ({ me, notes, onBack, onClose, color = "blue", scanOn 
               className="h-12 rounded-xl border-2 border-slate-300 text-slate-700 font-black text-sm flex items-center justify-center gap-2 disabled:opacity-50">
               {busy === "foto" ? <Loader2 className="w-5 h-5 animate-spin" /> : <Camera className="w-5 h-5" />} Foto
             </button>
+            <button type="button" data-action="note-gallery" disabled={!!busy} onClick={() => pickPhoto("galleria")}
+              className="h-12 rounded-xl border-2 border-slate-300 text-slate-700 font-black text-sm flex items-center justify-center gap-2 disabled:opacity-50">
+              <ImageIcon className="w-5 h-5" /> Galleria
+            </button>
           </div>
           <input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden" data-note-file onChange={onFile} />
+          <input ref={galleryRef} type="file" accept="image/*" multiple className="hidden" data-note-gallery onChange={onFile} />
           {busy === "leggo" && (
             <p className="text-sm font-bold text-slate-600 flex items-center gap-2" data-note-reading>
               <Sparkles className="w-4 h-4 text-amber-500" /> Sto leggendo il foglio…

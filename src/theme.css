@@ -85,3 +85,32 @@ html.dark .mora-theme-btn {
   outline: 3px solid #3b82f6;
   outline-offset: 2px;
 }
+
+/* tema scuro: barre semitrasparenti bianche (es. barra Salva del Nuovo rapporto) */
+html.dark .bg-white\/95,
+html.dark .bg-white\/90 { background-color: rgba(18, 27, 44, 0.95) }
+
+/* campo data: su iPhone non più largo degli altri */
+input[type="date"].mora-date {
+  -webkit-appearance: none;
+  appearance: none;
+  display: block;
+  min-width: 0;
+  max-width: 100%;
+  text-align: left;
+}
+input[type="date"].mora-date::-webkit-date-and-time-value { text-align: left; }
+
+/* iPhone con l'app installata: la barra di stato (ora, batteria) è trasparente,
+   sotto c'è questa striscia del colore dell'app; tutto il resto parte più in basso. */
+:root { --mora-status: #1d4ed8; --mora-safe-top: env(safe-area-inset-top, 0px); --mora-safe-bottom: env(safe-area-inset-bottom, 0px); }
+.mora-statusbar {
+  position: fixed; top: 0; left: 0; right: 0;
+  height: var(--mora-safe-top);
+  background: var(--mora-status);
+  z-index: 10000;
+  pointer-events: none;
+}
+body { padding-top: var(--mora-safe-top); }
+.sticky.top-0 { top: var(--mora-safe-top); }
+.fixed.inset-0, .fixed.top-0 { top: var(--mora-safe-top); }

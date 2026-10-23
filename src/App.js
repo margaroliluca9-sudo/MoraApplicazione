@@ -47,10 +47,13 @@ import { applyAppearance, getCachedLayout, cacheLayout } from "./appearance";
 import { NavButton } from "./components/NavButton";
 import { OnlineMenu, onlineUnread } from "./components/OnlineMenu";
 import { NotifyPrompt } from "./components/modals/NotifyPrompt";
-import { getSettings, wasAsked, markAsked, installTipShown } from "./settings";
+import { getSettings, wasAsked, markAsked, installTipShown, setSettingsOwner, settingsDocId, SETTINGS_COLL, applyRemoteSettings, pushSettings } from "./settings";
 import { AdminLoginModal } from "./components/AdminLoginModal";
 import { PhotoViewerModal } from "./components/PhotoViewerModal";
 import { PdfHost } from "./components/PdfHost";
+import { UserMenu } from "./components/UserMenu";
+import { installGestures } from "./gestures";
+import { Sidebar, TabStrip, TAB_INFO } from "./components/DesktopShell";
 import { refreshPush, getPushState, key as techKey, chatDoc } from "./chat";
 import { HOME_PREFS, cachedPrefs, cachePrefs, cleanLook } from "./home";
 import { PERSONAL } from "./personal";
@@ -135,6 +138,9 @@ export default function App() {
   const [isAdminAuthenticated, setIsAdminAuthenticated] = useState(false);
   const [showAdminLogin, setShowAdminLogin] = useState(false);
   const [isMobileView, setIsMobileView] = useState(window.innerWidth < 768);
+  const [winW, setWinW] = useState(window.innerWidth);
+  // TABLET E PC: schede aperte in alto (come un programma)
+  const [openTabs, setOpenTabs] = useState(["dashboard"]);
   const [currentTechName, setCurrentTechName] = useState(
     localStorage.getItem("mora_tech_last_name") || ""
   );
@@ -208,8 +214,9 @@ export default function App() {
     const updateLayout = () => {
       // Usiamo solo la larghezza dello schermo per determinare la vista mobile,
       // permettendo all'app di ruotare correttamente senza passare al layout desktop.
-      const isSmallScreen = window.innerWidth < 1024;
-      setIsMobileView(isSmallScreen);
+      // sotto i 768 px: telefono (barra in basso); da 768 in su: menu a sinistra e schede (tablet e PC)
+      setIsMobileView(window.innerWidth < 768);
+      setWinW(window.innerWidth);
     };
 
     const handleResize = () => {
@@ -596,6 +603,48 @@ export default function App() {
     [onlineMessages, chatMessages, chatReads, currentTechName]
   );
 
+  useEffect(() => {
+    if (TAB_INFO[activeTab]) setOpenTabs((t) => (t.includes(activeTab) ? t : [...t, activeTab]));
+  }, [activeTab]);
+  const closeTab = (id) => {
+    setOpenTabs((t) => {
+      const next = t.filter((x) => x !== id);
+      if (id === activeTab) setActiveTab(next[next.length - 1] || "dashboard");
+      return next.length ? next : ["dashboard"];
+    });
+  };
+  const sideW = isMobileView ? 0 : winW < 1100 ? 80 : 240;
+
+  // GESTI (indietro dal bordo, tasto indietro di Android, tieni premuto, tira giù per ricaricare)
+  useEffect(() => installGestures(), []);
+  useEffect(() => {
+    const home = (e) => {
+      if (activeTab !== "dashboard") {
+        setActiveTab("dashboard");
+        e.preventDefault();
+      }
+    };
+    window.addEventListener("mora-go-home", home);
+    return () => window.removeEventListener("mora-go-home", home);
+  }, [activeTab]);
+
+  // IMPOSTAZIONI UGUALI SU TUTTI I TELEFONI: le leggo dal tecnico collegato e le tengo aggiornate
+  useEffect(() => {
+    setSettingsOwner(currentTechName);
+    if (!user || !currentTechName) return undefined;
+    let first = true;
+    const unsub = onSnapshot(
+      chatDoc(SETTINGS_COLL, settingsDocId(currentTechName)),
+      (snap) => {
+        if (snap.exists()) applyRemoteSettings(snap.data());
+        else if (first) pushSettings();
+        first = false;
+      },
+      () => {}
+    );
+    return () => unsub();
+  }, [user, currentTechName]);
+
   // LA MIA AREA: carico solo i documenti del tecnico collegato
   useEffect(() => {
     const me = techKey(currentTechName);
@@ -766,7 +815,23 @@ export default function App() {
       className={`mora-app min-h-screen font-sans ${
         isMobileView ? "pb-24" : ""
       } relative bg-slate-100 text-slate-900 animate-in fade-in duration-700`}
+      style={isMobileView ? { paddingBottom: "calc(96px + var(--mora-safe-bottom))" } : { paddingLeft: sideW }}
     >
+      {!isMobileView && (
+        <Sidebar
+          active={activeTab}
+          onGo={setActiveTab}
+          onArea={() => {
+            setActiveTab("dashboard");
+            setTimeout(() => window.dispatchEvent(new CustomEvent("mora-open-area", { detail: { panel: "home" } })), 50);
+          }}
+          onAdmin={handleAdminAccess}
+          isOffice={isOffice}
+          title={layoutConfig.appTitle}
+          color={color}
+          compact={sideW < 200}
+        />
+      )}
       <PdfHost />
       <VanHost vanItems={vanItems} color={color} />
       <header
@@ -778,7 +843,7 @@ export default function App() {
             onClick={() => setActiveTab("dashboard")}
           >
             <div
-              className={`p-2 rounded-xl bg-${color}-600 text-white shadow-lg`}
+              className={`p-2 rounded-xl bg-${color}-600 text-white shadow-lg ${isMobileView ? "" : "hidden"}`}
             >
               <CraneMark className="w-5 h-5" />
             </div>
@@ -843,6 +908,8 @@ export default function App() {
               </span>
             </div>
           </div>
+          <div className="flex items-center gap-2">
+          <UserMenu name={currentTechName} role={isOffice ? "Ufficio" : isAdminAuthenticated ? "Tecnico · admin" : "Tecnico"} color={color} onLogout={handleLogout} />
           <button
             type="button"
             onClick={cycleTheme}
@@ -852,8 +919,10 @@ export default function App() {
           >
             <ThemeIcon className="w-5 h-5" />
           </button>
+          </div>
         </div>
       </header>
+      {!isMobileView && <TabStrip tabs={openTabs} active={activeTab} onGo={setActiveTab} onClose={closeTab} color={color} />}
       {(!isOnline || pendingCount > 0) && (
         <div
           role="status"
@@ -908,7 +977,7 @@ export default function App() {
         </div>
       )}
 
-      <main className="max-w-6xl mx-auto p-4 md:p-8 animate-in slide-in-from-bottom-4 duration-500">
+      <main className={`${isMobileView ? "max-w-6xl" : "max-w-7xl"} mx-auto p-4 md:p-8 animate-in slide-in-from-bottom-4 duration-500`}>
         {!user ? (
           <div className="py-40 text-center">
             <RefreshCw
@@ -1011,6 +1080,7 @@ export default function App() {
               />
             )}
             {activeTab === "new" && (
+              <div className={isMobileView ? "" : "max-w-3xl mx-auto"}>
               <NewEntryForm
                 user={user}
                 customers={customers}
@@ -1027,6 +1097,7 @@ export default function App() {
                 vans={vans}
                 vanItems={vanItems}
               />
+              </div>
             )}
             {activeTab === "admin" && isAdminAuthenticated && (
               <AdminPanel
@@ -1087,7 +1158,7 @@ export default function App() {
       )}
 
       {isMobileView && (
-        <nav className="fixed bottom-0 left-0 right-0 p-3 flex justify-around z-50 bg-white border-t border-slate-200 shadow-[0_-5px_20px_rgba(0,0,0,0.05)]">
+        <nav className="fixed bottom-0 left-0 right-0 p-3 flex justify-around z-50 bg-white border-t border-slate-200 shadow-[0_-5px_20px_rgba(0,0,0,0.05)]" style={{ paddingBottom: "calc(12px + var(--mora-safe-bottom))" }}>
           {isOffice ? (
             <>
               <NavButton

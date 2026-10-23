@@ -148,7 +148,7 @@ const Toggle = ({ label, sub, on, onChange, id }) => (
   </button>
 );
 
-export const HomeGrid = ({ items, home, me, color = "blue", searchBox, onEditingChange = () => {}, onSaved = () => {}, footer = null, onPreviewLook = () => {}, baseLook = {}, editable = true }) => {
+export const HomeGrid = ({ items, home, me, color = "blue", searchBox, onEditingChange = () => {}, onSaved = () => {}, footer = null, onPreviewLook = () => {}, baseLook = {}, editable = true, results = null }) => {
   const [draft, setDraft] = useState(null); // copia in modifica
   const [sel, setSel] = useState(null); // riquadro scelto (foglio opzioni)
   const [adding, setAdding] = useState(false);
@@ -331,7 +331,7 @@ export const HomeGrid = ({ items, home, me, color = "blue", searchBox, onEditing
       {/* la ricerca resta al suo posto: entrando in modifica i riquadri non si spostano sotto il dito */}
       {h.search && searchBox}
       {editing && (
-        <div className="fixed top-0 inset-x-0 z-[60] px-3 pt-3 pb-3 bg-white border-b border-slate-200 shadow-lg space-y-2" style={{ paddingTop: "max(12px, env(safe-area-inset-top))" }} data-section="home-edit-bar">
+        <div className="fixed top-0 inset-x-0 z-[60] px-3 pt-3 pb-3 bg-white border-b border-slate-200 shadow-lg space-y-2" data-section="home-edit-bar">
           <div className="max-w-3xl mx-auto space-y-2">
           <div className="flex items-center gap-2">
             <div className="flex-1 min-w-0">
@@ -350,6 +350,9 @@ export const HomeGrid = ({ items, home, me, color = "blue", searchBox, onEditing
       )}
 
       <style>{WIGGLE_CSS}</style>
+      {/* mentre si cerca: i risultati al posto dei riquadri (la barra di ricerca resta la stessa, la tastiera non si chiude) */}
+      {results && !editing ? results : (
+      <>
       <div ref={gridRef} className={`grid grid-cols-2 md:grid-cols-4 ${gap}`} data-section="home-tiles">
         {h.order.map((id) => {
           const item = items[id];
@@ -398,6 +401,8 @@ export const HomeGrid = ({ items, home, me, color = "blue", searchBox, onEditing
           )}
           {footer}
         </div>
+      )}
+      </>
       )}
 
       {editing && it && (

@@ -408,12 +408,12 @@ export const DashboardView = ({
     </div>
   );
 
+  let searchResults = null;
   if (searching) {
     const { cs, ms, ls } = results;
     const none = !cs.length && !ms.length && !ls.length;
-    return (
+    searchResults = (
       <div className="space-y-5" data-section="search-results">
-        {searchBox}
         {none && (
           <p className="text-sm text-slate-400 italic text-center py-8">
             Nessun risultato per "{query.trim()}".
@@ -571,9 +571,10 @@ export const DashboardView = ({
         home={home}
         me={currentTechName}
         color={color}
+        results={searchResults}
         searchBox={
           <div className="space-y-4">
-            <HomeHero me={currentTechName} logs={logs} todayCount={isOffice ? 0 : todayCount} now={heroNow()} force={heroForce()} />
+            {!searching && <HomeHero me={currentTechName} logs={logs} todayCount={isOffice ? 0 : todayCount} now={heroNow()} force={heroForce()} />}
             {searchBox}
           </div>
         }

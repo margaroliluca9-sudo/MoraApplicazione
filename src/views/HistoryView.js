@@ -252,6 +252,7 @@ export const HistoryView = ({
                     <button
                       type="button"
                       onClick={() => onOpenMachine(log.machineId, log.customer)}
+                      aria-label={`Scheda della gru ${log.machineId}`}
                       className={`block text-left text-sm font-bold text-${color}-700`}
                     >
                       Gru {log.machineId}
@@ -273,7 +274,7 @@ export const HistoryView = ({
                               e.stopPropagation();
                               onOpenPhotos(log.photos);
                             }}
-                            className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md flex items-center gap-1"
+                            className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md flex items-center gap-1" aria-label={`Vedi le ${log.photos.length} foto`}
                           >
                             <Camera className="w-3.5 h-3.5" /> {log.photos.length} foto
                           </button>
@@ -470,7 +471,7 @@ export const HistoryView = ({
                       {getTechsString(log)}
                     </td>
                     <td className="px-4 py-4 text-center align-top">
-                      <div className="flex justify-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="flex justify-center gap-2 opacity-70 group-hover:opacity-100 transition-opacity">
                         <button
                           onClick={() => printLog(log)}
                           className="text-slate-500 hover:scale-110"

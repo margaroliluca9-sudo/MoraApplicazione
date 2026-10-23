@@ -46,6 +46,7 @@ export const applyTheme = (mode) => {
   root.style.colorScheme = dark ? "dark" : "light";
   const meta = document.querySelector('meta[name="theme-color"]');
   if (meta) meta.setAttribute("content", dark ? "#0b1220" : "#1d4ed8");
+  root.style.setProperty("--mora-status", dark ? "#0b1220" : "#1d4ed8");
   return dark;
 };
 
