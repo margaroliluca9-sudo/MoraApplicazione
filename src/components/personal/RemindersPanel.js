@@ -1,6 +1,6 @@
 // LA MIA AREA · Promemoria (con avviso sul telefono) + contatti rapidi.
 import React, { useState } from "react";
-import { Bell, Phone, Plus } from "lucide-react";
+import { Bell, Phone, Plus, Check, Pencil, Trash2, RotateCcw } from "lucide-react";
 import {
   openReminders,
   doneReminders,
@@ -14,6 +14,7 @@ import {
 import { describeError } from "../../utils";
 import { PushBox } from "../modals/ChatModal";
 import { PanelHeader, Sheet, Field, INPUT, PrimaryBtn, GhostBtn, Empty } from "./PersonalUi";
+import { SwipeRow } from "../SwipeRow";
 
 export const RemindersPanel = ({ me, reminders, contacts, onBack, onClose, color = "blue" }) => {
   const [edit, setEdit] = useState(null);
@@ -66,7 +67,18 @@ export const RemindersPanel = ({ me, reminders, contacts, onBack, onClose, color
         {!open.length && <Empty>Nessun promemoria aperto.</Empty>}
         <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
           {open.map((r) => (
-            <div key={r.id} data-reminder={r.id} className="flex items-center gap-3 px-4 py-3 border-b border-slate-100 last:border-0">
+            <SwipeRow
+              key={r.id}
+              id={r.id}
+              rounded="rounded-none"
+              className="border-b border-slate-100 last:border-0"
+              actions={[
+                { id: "done", label: "Fatto", icon: Check, tone: "emerald", onClick: () => toggle(r) },
+                { id: "edit", label: "Modifica", icon: Pencil, tone: "blue", onClick: () => { setError(""); setEdit({ ...r }); } },
+                { id: "delete", label: "Elimina", icon: Trash2, tone: "red", confirm: true, onClick: () => run(() => removePersonal("reminders", r.id), "Non eliminato: ") },
+              ]}
+            >
+            <div data-reminder={r.id} className="flex items-center gap-3 px-4 py-3 bg-white">
               <input type="checkbox" checked={false} onChange={() => toggle(r)} aria-label={"Fatto: " + r.title} className="w-6 h-6 accent-blue-600 shrink-0" />
               <button type="button" onClick={() => { setError(""); setEdit({ ...r }); }} className="flex-1 min-w-0 text-left">
                 <span className="block font-bold text-slate-800 break-words">{r.title}</span>
@@ -74,6 +86,7 @@ export const RemindersPanel = ({ me, reminders, contacts, onBack, onClose, color
               </button>
               {r.notify && <Bell className="w-5 h-5 text-orange-600 shrink-0" aria-label="Avviso attivo" />}
             </div>
+            </SwipeRow>
           ))}
         </div>
         {done.length > 0 && (
@@ -84,10 +97,21 @@ export const RemindersPanel = ({ me, reminders, contacts, onBack, onClose, color
         {showDone && (
           <div className="bg-white rounded-2xl border border-slate-200 overflow-hidden">
             {done.slice(0, 30).map((r) => (
-              <div key={r.id} className="flex items-center gap-3 px-4 py-3 border-b border-slate-100 last:border-0">
-                <input type="checkbox" checked onChange={() => toggle(r)} aria-label={"Da rifare: " + r.title} className="w-6 h-6 accent-blue-600 shrink-0" />
-                <span className="flex-1 line-through text-slate-400 font-semibold break-words">{r.title}</span>
-              </div>
+              <SwipeRow
+                key={r.id}
+                id={r.id}
+                rounded="rounded-none"
+                className="border-b border-slate-100 last:border-0"
+                actions={[
+                  { id: "undo", label: "Da rifare", icon: RotateCcw, tone: "blue", onClick: () => toggle(r) },
+                  { id: "delete", label: "Elimina", icon: Trash2, tone: "red", confirm: true, onClick: () => run(() => removePersonal("reminders", r.id), "Non eliminato: ") },
+                ]}
+              >
+                <div className="flex items-center gap-3 px-4 py-3 bg-white">
+                  <input type="checkbox" checked onChange={() => toggle(r)} aria-label={"Da rifare: " + r.title} className="w-6 h-6 accent-blue-600 shrink-0" />
+                  <span className="flex-1 line-through text-slate-400 font-semibold break-words">{r.title}</span>
+                </div>
+              </SwipeRow>
             ))}
           </div>
         )}
@@ -104,7 +128,17 @@ export const RemindersPanel = ({ me, reminders, contacts, onBack, onClose, color
             {people.map((c) => {
               const href = telHref(c.phone);
               return (
-                <div key={c.id} className="flex items-center gap-3 px-4 py-3 border-b border-slate-100 last:border-0">
+                <SwipeRow
+                  key={c.id}
+                  id={c.id}
+                  rounded="rounded-none"
+                  className="border-b border-slate-100 last:border-0"
+                  actions={[
+                    { id: "edit", label: "Modifica", icon: Pencil, tone: "blue", onClick: () => { setError(""); setContact({ ...c }); } },
+                    { id: "delete", label: "Elimina", icon: Trash2, tone: "red", confirm: true, onClick: () => run(() => removePersonal("contacts", c.id), "Non eliminato: ") },
+                  ]}
+                >
+                <div className="flex items-center gap-3 px-4 py-3 bg-white">
                   <span className="w-10 h-10 rounded-full bg-slate-100 text-slate-700 font-black flex items-center justify-center shrink-0">
                     {String(c.name).charAt(0).toUpperCase()}
                   </span>
@@ -118,6 +152,7 @@ export const RemindersPanel = ({ me, reminders, contacts, onBack, onClose, color
                     </a>
                   )}
                 </div>
+                </SwipeRow>
               );
             })}
           </div>

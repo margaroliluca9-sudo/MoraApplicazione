@@ -1,6 +1,6 @@
 // LA MIA AREA · Calendario: impegni personali + interventi già fatti (dallo Storico).
 import React, { useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Check, Bell, MapPin } from "lucide-react";
+import { ChevronLeft, ChevronRight, Check, Bell, MapPin, Pencil, Trash2 } from "lucide-react";
 import {
   MONTHS,
   NOTIFY_BEFORE,
@@ -16,6 +16,7 @@ import {
 import { describeError } from "../../utils";
 import { PanelHeader, Sheet, Field, INPUT, PrimaryBtn, GhostBtn } from "./PersonalUi";
 import { PrintLogButton } from "../PrintLogButton";
+import { SwipeRow } from "../SwipeRow";
 
 const blank = (date) => ({ title: "", date, time: "", place: "", notifyBefore: "" });
 
@@ -131,8 +132,15 @@ export const CalendarPanel = ({ me, events, logs, onBack, onClose, color = "blue
             <p className="text-sm text-slate-500 px-1">Niente in questo giorno. Tocca «Impegno» per aggiungerne uno.</p>
           )}
           {dayEvents.map((e) => (
-            <button
+            <SwipeRow
               key={e.id}
+              id={e.id}
+              actions={[
+                { id: "edit", label: "Modifica", icon: Pencil, tone: "blue", onClick: () => { setError(""); setEdit({ ...blank(e.date), ...e, notifyBefore: e.notifyBefore == null ? "" : String(e.notifyBefore) }); } },
+                { id: "delete", label: "Elimina", icon: Trash2, tone: "red", confirm: true, onClick: () => removePersonal("events", e.id).catch((err) => setError("Non eliminato: " + describeError(err))) },
+              ]}
+            >
+            <button
               type="button"
               data-event={e.id}
               onClick={() => {
@@ -150,6 +158,7 @@ export const CalendarPanel = ({ me, events, logs, onBack, onClose, color = "blue
                 </span>
               </span>
             </button>
+            </SwipeRow>
           ))}
           {dayJobs.map((l) => (
             <div key={l.id} className="flex items-stretch gap-2">

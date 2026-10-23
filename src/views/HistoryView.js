@@ -20,6 +20,7 @@ import { EditLogModal } from "../components/modals/EditLogModal";
 import { formatRope, formatRopeLong, ROPE_ITEMS } from "../ropes";
 import { printIntervention } from "../components/PrintLogButton";
 import { removeLogPhotos } from "../logPhotos";
+import { SwipeRow } from "../components/SwipeRow";
 import { parseTicketQuery, matchTicket, ticketLabel } from "../ticket";
 import { logsChanged } from "../logsWindow";
 
@@ -267,6 +268,16 @@ export const HistoryView = ({
                       {group}
                     </div>
                   )}
+                  <SwipeRow
+                    id={log.id}
+                    rounded="rounded-3xl"
+                    actions={[
+                      { id: "print", label: "Stampa", icon: Printer, tone: "slate", onClick: () => printLog(log) },
+                      !readOnly && canChange && { id: "edit", label: "Modifica", icon: Edit, tone: "blue", onClick: () => handleEdit(log) },
+                      !readOnly && canChange && { id: "delete", label: "Elimina", icon: Trash2, tone: "red", onClick: () => handleDelete(log) },
+                      !readOnly && !canChange && { id: "unlock", label: "Modifica", icon: Lock, tone: "amber", onClick: onAuthAdmin },
+                    ]}
+                  >
                   <div className="p-4 space-y-2.5 bg-white rounded-3xl border border-slate-200 shadow-sm" data-log-card>
                     <div className="flex justify-between items-start gap-3">
                       <h4
@@ -353,6 +364,7 @@ export const HistoryView = ({
                       </div>
                     </div>
                   </div>
+                  </SwipeRow>
                 </React.Fragment>
               );
             })}

@@ -202,8 +202,15 @@ const BAY_STOP = 296; // posizione del camion fermo (inizio del cassone)
 const BED_LEN = 44;
 
 export class HeroWorld {
-  constructor({ now = new Date(), force = [], season = "normale", weekend = false, party = false, onSay = () => {}, onTone = () => {} } = {}) {
+  constructor({ now = new Date(), force = [], season = "normale", weekend = false, party = false, onSay = () => {}, onTone = () => {}, game = null } = {}) {
     this.t = 0;
+    // GIOCO (5 tocchi sul cielo della Home): sempre di giorno, un camion dopo l'altro da caricare,
+    // niente pilota automatico e niente sorprese; il vento cresce col tempo
+    if (game) {
+      now = new Date(now.getTime());
+      now.setHours(10, 30, 0, 0);
+      force = [...force, pick(["portale", "carroponte", "semiportale", "monotrave"]), pick(["sereno", "sereno", "nuvoloso"])];
+    }
     this.clock0 = now.getHours() + now.getMinutes() / 60 + now.getSeconds() / 3600;
     this.month = now.getMonth();
     this.season = season;
@@ -296,6 +303,34 @@ export class HeroWorld {
     this.confetti = party ? 0.1 : -1;
     this.tone = null;
     this.toneT = 0;
+    if (game) {
+      this.game = { score: 0, pieces: 0, trucks: 0, full: 0, wind: 0, spawn: 0.5, onEvent: game.onEvent || (() => {}), patience: 30 };
+      this.focus = 236;
+      this.cr.load = null;
+      this.objs = [];
+      this.pads.forEach((p) => this.placeOnPad(newObj(), p));
+      this.placeOnPad(newObj(), this.pads[0]);
+      this.nextTruck = 1.2;
+      this.nextEvent = 1e9;
+      this.queue = [];
+      this.ambient = [];
+      this.wait = 1e9;
+    }
+  }
+  // GIOCO: pulsanti ◀ ▶ (tenuti premuti) e «Gancio»
+  gameMove(dir) {
+    const cr = this.cr;
+    this.jobs = this.jobs.filter((j) => j.user && j.k !== "move");
+    cr.tx = dir < 0 ? this.xmin : dir > 0 ? this.xmax : clamp(cr.x + cr.v * 0.25, this.xmin, this.xmax);
+  }
+  gameHook() {
+    if (this.jobs.some((j) => j.user)) return false;
+    this.jobs = [{ k: "settle", user: true }, { k: "lower", user: true }, { k: "toggle", user: true }, { k: "wait", s: 0.3, user: true }, { k: "raise", user: true }];
+    return true;
+  }
+  // GIOCO: un po' di vento in più col passare del tempo (0 → 1)
+  setGameLevel(k) {
+    if (this.game) this.game.wind = clamp(k, 0, 1) * 9;
   }
 
   get hour() {
@@ -490,7 +525,7 @@ export class HeroWorld {
     this.updateCrane(dt);
     this.updateTruck(dt);
     if (!this.jobs.length) {
-      if (this.t > this.userUntil) {
+      if (!this.game && this.t > this.userUntil) {
         this.wait -= dt;
         if (this.wait <= 0) this.plan();
       }
@@ -498,7 +533,7 @@ export class HeroWorld {
     // sorprese
     this.nextEvent -= dt;
     if (this.queue.length && this.nextEvent > 2.5) this.nextEvent = 0.3;
-    if (this.nextEvent <= 0) {
+    if (this.nextEvent <= 0 && !this.game) {
       const k = this.queue.length ? this.queue.shift() : this.events.length < 3 ? pickW(Object.fromEntries(Object.entries(EVENTS).map(([n, e]) => [n, e.w(this)]))) : null;
       if (k && EVENTS[k]) {
         const ev = EVENTS[k].make(this);
@@ -666,7 +701,7 @@ export class HeroWorld {
       cr.hv = hv;
       cr.L = clamp(cr.L + hv * h, LMIN, LMAX + 2);
       const l = cr.L + 12 + (cr.load ? SLING + cr.load.h / 2 + 2 : 0);
-      const wind = (this.windNow || 0) * (0.25 + 0.2 * Math.sin(this.t * 0.9));
+      const wind = ((this.windNow || 0) + (this.game ? this.game.wind : 0)) * (0.25 + 0.2 * Math.sin(this.t * 0.9));
       cr.om += (-(g / l) * Math.sin(cr.th) - (a / l) * Math.cos(cr.th) + wind / l * 6 - 0.3 * cr.om) * h;
       cr.th = clamp(cr.th + cr.om * h, -0.9, 0.9);
     }
@@ -674,6 +709,7 @@ export class HeroWorld {
   }
 
   updateTruck(dt) {
+    if (this.game) return this.updateGameTruck(dt);
     const f = (k) => this.force.includes(k);
     if (!this.truck) {
       this.nextTruck -= dt;
@@ -717,6 +753,71 @@ export class HeroWorld {
     }
   }
 
+  // GIOCO: arriva un camion vuoto, aspetta di essere caricato (o finché ha pazienza) e riparte.
+  // Punti quando riparte: 10 per pezzo, +10 se pieno. Sulle piazzole torna sempre del materiale.
+  updateGameTruck(dt) {
+    const G = this.game;
+    G.spawn -= dt;
+    if (G.spawn <= 0) {
+      G.spawn = 2.2;
+      const pad = this.freePad();
+      if (this.objs.length < 4 && pad != null) {
+        this.placeOnPad(newObj(), pad);
+        this.dust(pad, GROUND, 5);
+      }
+    }
+    if (!this.truck) {
+      this.nextTruck -= dt;
+      if (this.nextTruck <= 0) {
+        this.truck = { x: -70, v: 46, state: "arrive", mode: "carico", load: [], cap: chance(0.5) ? 3 : 2, color: pick(TRUCKS), t: 0, patience: G.patience };
+        G.onEvent({ type: "arrive", cap: this.truck.cap });
+      }
+      return;
+    }
+    const t = this.truck;
+    t.t += dt;
+    if (t.state === "arrive") {
+      t.v = clamp((BAY_STOP - t.x) * 1.1, 3, 52);
+      t.x += t.v * dt;
+      if (BAY_STOP - t.x < 0.4) {
+        t.x = BAY_STOP;
+        t.v = 0;
+        t.state = "wait";
+        t.t = 0;
+      }
+    } else if (t.state === "wait") {
+      const busy = this.cr.x > t.x - 4 && this.cr.x < t.x + BED_LEN + 4 && this.cr.L > LMIN + 6;
+      const full = t.load.length >= t.cap;
+      if (full && !t.doneAt) t.doneAt = t.t;
+      if ((full && t.t - t.doneAt > 0.6 && !busy) || (t.t > t.patience && !busy)) {
+        t.state = "leave";
+        const n = t.load.length;
+        const pts = n * 10 + (full ? 10 : 0);
+        G.score += pts;
+        G.pieces += n;
+        G.trucks += 1;
+        if (full) G.full += 1;
+        G.patience = Math.max(14, G.patience - 1.5);
+        G.onEvent({ type: "leave", n, full, pts, score: G.score });
+        if (full) for (let i = 0; i < 26; i++) this.parts.push({ x: t.x + rnd(0, BED_LEN), y: GROUND - 20, vx: rnd(-14, 14), vy: rnd(-30, -10), g: 30, life: 1.4, max: 1.4, c: hex(pick(PARTY)), r: rnd(1, 2), rect: true, spin: rnd(0, 6), layer: "top" });
+      }
+    } else {
+      t.v = Math.min(70, t.v + 26 * dt);
+      t.x += t.v * dt;
+      if (t.x > VW + 30) {
+        this.truck = null;
+        this.nextTruck = 1.2;
+      }
+    }
+    return undefined;
+  }
+  // quanto manca prima che il camion riparta (0 → 1), per la barra del gioco
+  truckPatience() {
+    const t = this.truck;
+    if (!t || t.state !== "wait") return null;
+    return clamp(1 - t.t / t.patience, 0, 1);
+  }
+
   skyColors() {
     let [a, b, c] = skyAt(this.hour);
     if (this.tint) {
@@ -741,9 +842,11 @@ export class HeroWorld {
   draw(c, W, H, dpr) {
     // telefono: la scena riempie il riquadro; tablet e computer (riquadro molto largo): la scena resta
     // intera in altezza, appoggiata a destra, e a sinistra continuano cielo, colline e prato
-    const s = Math.min(Math.max(W / VW, H / VH) * 1.1, (H / VH) * 1.25);
+    // gioco: inquadratura stretta sulla gru (a tutto schermo anche sul telefono in verticale)
+    const s = this.focus ? Math.min(W / (VW - this.focus), H / (VH * 0.82)) : Math.min(Math.max(W / VW, H / VH) * 1.1, (H / VH) * 1.25);
     const ox = W - VW * s;
-    const oy = H - VH * s;
+    // gioco sul telefono in verticale: la terra al 68% dello schermo, sotto c'è il piazzale (comandi)
+    const oy = this.focus ? Math.min(H - VH * s, H * 0.68 - GROUND * s) : H - VH * s;
     this.view = { s, ox, oy };
     this.left = Math.min(0, -ox / s);
     if (!this.wideSeeded && this.left < -40) {
@@ -809,7 +912,7 @@ export class HeroWorld {
     this.drawClouds(c, (cl) => cl.depth >= 0.5);
     // terra
     c.fillStyle = rgba(mix(sc, [15, 23, 42], 0.55 + night * 0.3));
-    c.fillRect((this.left || 0) - 10, GROUND, VW + 20 - (this.left || 0), 10);
+    c.fillRect((this.left || 0) - 10, GROUND, VW + 20 - (this.left || 0), this.focus ? 400 : 10);
     c.strokeStyle = `rgba(250,204,21,${0.55 - night * 0.25})`;
     c.lineWidth = 0.8;
     c.setLineDash([4, 3]);
