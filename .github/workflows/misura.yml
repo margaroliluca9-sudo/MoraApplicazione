@@ -1,0 +1,27 @@
+# Temporaneo: conta i documenti di ogni raccolta (solo numeri, nessun dato).
+name: Misura letture
+on:
+  push:
+    branches: [misura]
+permissions:
+  contents: read
+jobs:
+  conta:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node .github/scripts/backup.js /tmp/b.json
+      - run: |
+          node -e '
+          const b=require("/tmp/b.json").collections;const now=Date.now();
+          for(const [c,d] of Object.entries(b)){const kb=Math.round(JSON.stringify(d).length/1024);
+            let extra="";
+            if(c==="active_users"){const ts=d.map(x=>x.fields.lastActive&&Date.parse(x.fields.lastActive.timestampValue)).filter(Boolean);
+              extra=" vecchi>1g:"+ts.filter(t=>now-t>864e5).length;}
+            if(c==="maintenance_logs"){const y={};d.forEach(x=>{const s=(x.fields.dateString||{}).stringValue||"";const k=s.split("/")[2]||"?";y[k]=(y[k]||0)+1;});
+              const ph=d.filter(x=>JSON.stringify(x.fields).includes("data:image")).length;extra=" anni:"+JSON.stringify(y)+" conFotoInline:"+ph;}
+            console.log(c, d.length, kb+"KB"+extra);}'
