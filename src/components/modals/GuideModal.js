@@ -430,7 +430,7 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
       title: "Su tablet e computer",
       points: [
         "Da tablet e computer l'app è come un programma: a sinistra il menu sempre visibile (Home, Nuovo rapporto, Storico, Esplora, Ufficio, La mia area, Impostazioni).",
-        "In alto le schede aperte, come nel browser: passi da una all'altra con un tocco e le chiudi con la ×.",
+        "In alto le schede aperte, come nel browser: passi da una all'altra con un tocco e le chiudi con la ×. Anche «La mia area» si apre in una scheda, come le altre pagine.",
         "Sui tablet stretti il menu mostra solo le icone con il nome sotto.",
       ],
     },

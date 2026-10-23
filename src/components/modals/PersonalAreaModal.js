@@ -61,6 +61,7 @@ export const PersonalAreaModal = ({
   color = "blue",
   initialPanel = null,
   areaTiles = null,
+  inline = false, // tablet/computer: dentro la sua scheda invece che in una finestra sopra la Home
 }) => {
   // parti accese o spente dall'admin
   const on = (id) => areaOn({ areaTiles }, id);
@@ -246,6 +247,12 @@ export const PersonalAreaModal = ({
       </div>
     );
 
+  if (inline)
+    return (
+      <div className="max-w-3xl mx-auto h-[calc(100vh-180px)] min-h-[560px] flex flex-col rounded-3xl overflow-hidden bg-white shadow-sm border border-slate-200" data-section="personal-area" data-inline="1">
+        {body}
+      </div>
+    );
   return (
     <div className="fixed inset-0 bg-slate-900/50 z-[150] flex items-stretch md:items-center justify-center md:p-4 backdrop-blur-md">
       <div className="w-full md:max-w-xl h-full md:h-[90vh] flex flex-col md:rounded-3xl overflow-hidden bg-white shadow-2xl" data-section="personal-area">

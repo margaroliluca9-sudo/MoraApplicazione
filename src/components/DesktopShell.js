@@ -12,6 +12,7 @@ export const TAB_INFO = {
   explore: { label: "Esplora", icon: Folder },
   database: { label: "Elenco gru", icon: Database },
   office: { label: "Ufficio", icon: Briefcase },
+  area: { label: "La mia area", icon: UserCircle },
   admin: { label: "Impostazioni", icon: Settings },
 };
 
@@ -48,7 +49,7 @@ export const Sidebar = ({ active, onGo, onArea, onAdmin, isOffice, title, color 
       {items.map(([id, label]) => (
         <Item key={id} id={id} label={label || TAB_INFO[id].label} icon={TAB_INFO[id].icon} on={active === id || (id === "explore" && active === "database")} onClick={() => onGo(id)} />
       ))}
-      {!isOffice && <Item id="area" label="La mia area" icon={UserCircle} onClick={onArea} />}
+      {!isOffice && <Item id="area" label="La mia area" icon={UserCircle} on={active === "area"} onClick={onArea} />}
       <div className="flex-1" />
       {!isOffice && <Item id="admin" label="Impostazioni" icon={Settings} on={active === "admin"} onClick={onAdmin} />}
     </aside>

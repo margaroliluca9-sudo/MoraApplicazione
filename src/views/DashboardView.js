@@ -104,6 +104,11 @@ export const DashboardView = ({
   onHomePrefs = () => {},
   onPreviewLook = () => {},
   isOffice = false, // ufficio: solo interventi ed Esplora
+  // tablet/computer: «La mia area» si apre in una scheda come le altre pagine
+  onOpenAreaTab = null, // dalla Home: apre la scheda
+  areaTab = false, // questa è la scheda «La mia area»
+  areaPanel = "home",
+  onCloseArea = () => {},
 }) => {
   const color = layoutConfig?.themeColor || "blue";
   const [query, setQuery] = useState("");
@@ -150,7 +155,20 @@ export const DashboardView = ({
     }
     return null;
   };
-  const [area, setArea] = useState(areaFromUrl);
+  const [area, setAreaRaw] = useState(() => (areaTab ? areaPanel || "home" : areaFromUrl()));
+  const tabRef = React.useRef(onOpenAreaTab);
+  tabRef.current = areaTab ? null : onOpenAreaTab;
+  const setArea = (p) => {
+    if (p && tabRef.current) tabRef.current(p);
+    else setAreaRaw(p);
+  };
+  // arrivato dalla notifica con l'app su tablet/computer: apro la scheda
+  useEffect(() => {
+    if (area && tabRef.current) {
+      tabRef.current(area);
+      setAreaRaw(null);
+    }
+  }, [area]);
   const [chatConv, setChatConv] = useState(convFromUrl);
   const [showChatRaw, setShowChat] = useState(() => convFromUrl() !== null);
   // chat spenta dall'admin: non si apre nemmeno dalle notifiche vecchie
@@ -525,6 +543,7 @@ export const DashboardView = ({
       )}
       {area && currentTechName && (
         <PersonalAreaModal
+          inline={areaTab}
           areaTiles={layoutConfig?.areaTiles || null}
           key={area}
           me={currentTechName}
@@ -544,13 +563,13 @@ export const DashboardView = ({
           onOpenMine={() => setShowMine(true)}
           color={color}
           initialPanel={area === "home" ? null : area}
-          onClose={() => setArea(null)}
+          onClose={() => (areaTab ? onCloseArea() : setArea(null))}
           onOpenMachine={(m, c) => {
-            setArea(null);
+            if (!areaTab) setArea(null);
             onOpenMachine(m, c);
           }}
           onOpenChat={() => {
-            setArea(null);
+            if (!areaTab) setArea(null);
             setChatConv(null);
             setShowChat(true);
           }}
@@ -565,6 +584,7 @@ export const DashboardView = ({
           onOpenMachine={onOpenMachine}
         />
       )}
+      {!areaTab && (
       <HomeGrid
         editable={!isOffice}
         items={items}
@@ -592,6 +612,7 @@ export const DashboardView = ({
           </button>
         }
       />
+      )}
       {showPractice && (
         <PracticeModal
           onClose={() => setShowPractice(false)}
