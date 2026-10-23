@@ -14,7 +14,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 20
-      - run: node .github/scripts/backup.js /tmp/b.json
+      - run: node .github/scripts/backup.js /tmp/b.json 2>&1 | sed "s/^/::notice::/"
       - run: |
           node -e '
           const b=require("/tmp/b.json").collections;const now=Date.now();
@@ -24,4 +24,4 @@ jobs:
               extra=" vecchi>1g:"+ts.filter(t=>now-t>864e5).length;}
             if(c==="maintenance_logs"){const y={};d.forEach(x=>{const s=(x.fields.dateString||{}).stringValue||"";const k=s.split("/")[2]||"?";y[k]=(y[k]||0)+1;});
               const ph=d.filter(x=>JSON.stringify(x.fields).includes("data:image")).length;extra=" anni:"+JSON.stringify(y)+" conFotoInline:"+ph;}
-            console.log(c, d.length, kb+"KB"+extra);}'
+            console.log("::notice::"+c+" "+d.length+" "+kb+"KB"+extra);}'
