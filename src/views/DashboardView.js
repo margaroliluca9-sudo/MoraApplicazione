@@ -1,3 +1,4 @@
+import { parseTicketQuery, matchTicket, ticketLabel } from "../ticket";
 import React, { useEffect, useMemo, useState } from "react";
 import { EmptyState } from "../components/EmptyState";
 import {
@@ -226,17 +227,22 @@ export const DashboardView = ({
 
   // RICERCA UNICA: clienti, gru, interventi (anche per N. assistenza)
   const tokens = query.trim().split(/\s+/).map(norm).filter(Boolean);
-  const searching = query.trim().length >= 2 && tokens.length > 0;
+  // numero di assistenza (riparte ogni anno): «5» = i n. 5 di tutti gli anni, «5/2027» solo quello
+  const tq = parseTicketQuery(query);
+  const searching = (query.trim().length >= 2 && tokens.length > 0) || !!tq;
   const results = useMemo(() => {
     if (!searching) return null;
+    const wide = query.trim().length >= 2;
     const hit = (text) => {
       const h = norm(text);
       return tokens.every((t) => h.includes(t));
     };
-    const cs = customers.filter((c) => hit(c.name));
-    const ms = machines.filter((m) =>
-      hit(`${getSafeMatricola(m)} ${m.customerName} ${m.type || ""}`),
-    );
+    const cs = wide ? customers.filter((c) => hit(c.name)) : [];
+    const ms = wide
+      ? machines.filter((m) => hit(`${getSafeMatricola(m)} ${m.customerName} ${m.type || ""}`))
+      : [];
+    const exact = tq ? logs.filter((l) => matchTicket(l, tq)).sort((a, b) => dateKey(b.dateString) - dateKey(a.dateString)) : [];
+    if (exact.length || !wide) return { cs, ms, ls: exact, ticket: tq };
     const ls = logs
       .filter((l) =>
         hit(
@@ -244,7 +250,7 @@ export const DashboardView = ({
         ),
       )
       .sort((a, b) => dateKey(b.dateString) - dateKey(a.dateString));
-    return { cs, ms, ls };
+    return { cs, ms, ls, ticket: null };
   }, [query, customers, machines, logs]);
 
   const items = {
@@ -490,7 +496,11 @@ export const DashboardView = ({
         )}
         {ls.length > 0 && (
           <Section
-            title="Interventi"
+            title={
+              results.ticket
+                ? `N. assistenza ${results.ticket.num}${results.ticket.year ? " del " + results.ticket.year : " · tutti gli anni"}`
+                : "Interventi"
+            }
             icon={ClipboardList}
             total={ls.length}
             max={MAX.logs}
@@ -505,7 +515,7 @@ export const DashboardView = ({
                 <span className="flex-1 min-w-0">
                   <span className="text-[10px] font-black text-slate-500 uppercase block">
                     {l.dateString}
-                    {l.ticketNumber ? ` · N. ${l.ticketNumber}` : ""}
+                    {l.ticketNumber ? ` · N. ${ticketLabel(l)}` : ""}
                   </span>
                   <span className="font-bold text-sm text-slate-800 block truncate">
                     {l.customer} · {l.machineId}

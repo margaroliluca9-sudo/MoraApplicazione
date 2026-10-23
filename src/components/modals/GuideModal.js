@@ -58,7 +58,7 @@ const reportStepsFor = ({ hasVan }) =>
     {
       icon: CalendarDays,
       title: "3. Data e N. assistenza",
-      text: "La data è già quella di oggi: cambiala solo se scrivi un lavoro di un altro giorno. Scrivi il N. assistenza se c'è: poi lo ritrovi con la ricerca e in Ufficio.",
+      text: "La data è già quella di oggi: cambiala solo se scrivi un lavoro di un altro giorno. Scrivi il N. assistenza se c'è: poi lo ritrovi con la ricerca e in Ufficio. Se quel numero c'è già nello stesso anno l'app te lo dice (va bene se è la stessa assistenza su un'altra gru).",
     },
     {
       icon: Building2,
@@ -134,7 +134,7 @@ const appStepsFor = ({ hasVan, chatEnabled, isAdmin }) =>
     {
       icon: Search,
       title: "La ricerca",
-      text: "Scrivi un cliente, una matricola, un N. assistenza, un tecnico o una parola della descrizione: trovi clienti, gru e interventi. Tocca un risultato per aprire la gru.",
+      text: "Scrivi un cliente, una matricola, un N. assistenza, un tecnico o una parola della descrizione: trovi clienti, gru e interventi. Tocca un risultato per aprire la gru. Il N. assistenza riparte ogni anno: «5» trova i n. 5 di tutti gli anni (il più recente in cima), «5/2027» solo quello del 2027.",
     },
     {
       icon: Factory,
@@ -311,6 +311,7 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
       title: "Ricerca in Home",
       points: [
         "Cerca insieme clienti, gru e interventi: nome, matricola, N. assistenza, tecnico, data o parole della descrizione.",
+        "Il N. assistenza riparte ogni anno: «5» trova i n. 5 di tutti gli anni (il più recente in cima), «5/2027» solo quello del 2027.",
         "Tocca un risultato per aprire la scheda della gru con tutto il suo storico.",
         "Nella scheda della gru: in cima quanti interventi e l'ultimo; «Nuovo rapporto su questa gru» apre il modulo con cliente, gru, tipo e portata già scritti.",
       ],
@@ -330,7 +331,7 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
       title: "Ufficio",
       points: [
         "Calendario degli interventi del mese o dell'anno.",
-        "Ricerca per N. assistenza.",
+        "Ricerca per N. assistenza, con l'anno (il numero riparte ogni anno): esce prima il numero esatto.",
         "Report in PDF o file Excel, filtrando per date, cliente, gru e tecnico.",
       ],
     },
@@ -504,7 +505,7 @@ const officeSteps = [
   {
     icon: Search,
     title: "Cerca qualsiasi cosa",
-    text: "Nella barra in alto scrivi un cliente, una matricola, un N. assistenza, un tecnico, una data o una parola della descrizione: trovi clienti, gru e interventi.",
+    text: "Nella barra in alto scrivi un cliente, una matricola, un N. assistenza, un tecnico, una data o una parola della descrizione: trovi clienti, gru e interventi. Il N. assistenza riparte ogni anno: «5» trova i n. 5 di tutti gli anni (il più recente in cima), «5/2027» solo quello del 2027.",
   },
   {
     icon: History,

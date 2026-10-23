@@ -33,6 +33,7 @@ import {
   Timestamp,
 } from "firebase/firestore";
 import { newLogId, putPhotos } from "../logPhotos";
+import { TicketTwins } from "../components/TicketTwins";
 import { db, appId } from "../firebase";
 import { DEFAULT_LAYOUT } from "../constants";
 import {
@@ -941,6 +942,7 @@ export const NewEntryForm = ({
               }
               placeholder="Es. #12345"
             />
+            <TicketTwins logs={allLogs} ticketNumber={formData.ticketNumber} year={String(formData.dateString || "").slice(0, 4)} />
           </div>
         );
       case "custom":

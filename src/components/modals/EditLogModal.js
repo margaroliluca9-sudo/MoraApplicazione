@@ -9,6 +9,8 @@ import {
 import { doc, updateDoc, writeBatch } from "firebase/firestore";
 import { isPhotoRef, putPhotos, resolvePhotos } from "../../logPhotos";
 import { logsChanged } from "../../logsWindow";
+import { TicketTwins } from "../TicketTwins";
+import { ticketYear } from "../../ticket";
 import { db, appId } from "../../firebase";
 import { DEFAULT_LAYOUT } from "../../constants";
 import { compressImage, describeError } from "../../utils";
@@ -32,6 +34,7 @@ export const EditLogModal = ({
   onClose,
   color = "blue",
   layoutConfig,
+  allLogs = [],
 }) => {
   const [data, setData] = useState({
     ...log,
@@ -286,6 +289,7 @@ export const EditLogModal = ({
                 setData({ ...data, ticketNumber: e.target.value })
               }
             />
+            <TicketTwins logs={allLogs} ticketNumber={data.ticketNumber} year={ticketYear(data)} selfId={log.id} />
           </div>
           <div className="space-y-1.5">
             <label className="text-[10px] font-bold text-slate-500 uppercase ml-1">
