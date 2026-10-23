@@ -85,7 +85,6 @@ const seasonal = (now) => {
   if (dPas > 0 && dPas <= 30) out.push(`Mancano ${dPas} giorni a Pasqua (${pasqua.getDate()} ${MESI[pasqua.getMonth()]}).`);
   const dow = now.getDay();
   if (dow >= 1 && dow <= 4) out.push(`Mancano ${6 - dow} giorni al weekend.`);
-  if (dow === 5) out.push("È venerdì: ultimo sforzo prima del weekend.");
   return out;
 };
 

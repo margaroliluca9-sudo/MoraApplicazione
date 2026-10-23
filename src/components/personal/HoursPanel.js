@@ -339,7 +339,7 @@ export const HoursPanel = ({ me, hours = [], reminder = null, onBack, onClose, c
             <p className="text-sm font-bold text-slate-600">
               {[sendSum.extra && `+${fmtMin(sendSum.extra)} straordinari`, sendSum.less && `-${fmtMin(sendSum.less)} in meno`, sendSum.ferie && `${sendSum.ferie} g ferie`, sendSum.permesso && `${fmtMin(sendSum.permesso)} permessi`, sendSum.malattia && `${sendSum.malattia} g malattia`].filter(Boolean).join(" · ") || "Nessuna differenza dall'orario normale"}
             </p>
-            <p className="text-xs text-slate-500">Nel PDF: riepilogo, un giorno per riga con le note, spazio per le firme.</p>
+            <p className="text-xs text-slate-500">Nel PDF: riepilogo e un giorno per riga con le note.</p>
           </div>
         </Sheet>
       )}

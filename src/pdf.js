@@ -522,7 +522,6 @@ export const buildHoursPdf = async ({ me, from, to, days = [], std = 480, today 
     ],
     rows,
   });
-  flow.signatures(["Firma del tecnico", "Visto (ufficio)"]);
   return flow.finish(`Stampato il ${printed} dall'app Assistenza Mora.`);
 };
 

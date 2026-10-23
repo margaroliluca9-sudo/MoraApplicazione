@@ -90,8 +90,7 @@ export const HomeHero = ({ me = "", logs = [], todayCount = 0, now = new Date(),
     const h = now.getHours();
     return h < 7 || h >= 18;
   });
-  const [msg, setMsg] = useState(null);
-  const [factIdx, setFactIdx] = useState(0);
+
   const [anim, setAnim] = useState(() => getSettings().heroAnim !== false);
   const [extra, setExtra] = useState("");
   const forced = force.join(",");
@@ -117,17 +116,6 @@ export const HomeHero = ({ me = "", logs = [], todayCount = 0, now = new Date(),
     return () => window.removeEventListener("mora-settings", on);
   }, []);
 
-  // la scritta: curiosità che girano ogni 7 secondi
-  useEffect(() => {
-    const t = setInterval(() => setFactIdx((i) => i + 1), 7000);
-    return () => clearInterval(t);
-  }, []);
-  // i messaggi del cielo restano 5 secondi
-  useEffect(() => {
-    if (!msg) return undefined;
-    const t = setTimeout(() => setMsg(null), 5000);
-    return () => clearTimeout(t);
-  }, [msg]);
 
   // IL MONDO
   useEffect(() => {
@@ -143,7 +131,7 @@ export const HomeHero = ({ me = "", logs = [], todayCount = 0, now = new Date(),
       season,
       weekend,
       party,
-      onSay: (text) => setMsg({ text, at: Date.now() }),
+      onSay: () => {}, // la scritta resta ferma: cambia solo aprendo la Home o ricaricando
       onTone: (d) => setDark(d),
     });
     world.current = w;
@@ -206,17 +194,9 @@ export const HomeHero = ({ me = "", logs = [], todayCount = 0, now = new Date(),
       }
     };
     document.addEventListener("visibilitychange", onVis);
-    let hintT = 0;
-    if (!still && hintCount() < 3) {
-      hintT = setTimeout(() => {
-        bumpHint();
-        setMsg({ text: "Trascina il dito sul cielo: guidi tu la gru. Tocca: il gancio scende", at: Date.now() });
-      }, 2500);
-    }
     return () => {
       if (raf) cancelAnimationFrame(raf);
       clearInterval(timer);
-      clearTimeout(hintT);
       if (ro) ro.disconnect();
       if (io) io.disconnect();
       document.removeEventListener("visibilitychange", onVis);
@@ -241,11 +221,17 @@ export const HomeHero = ({ me = "", logs = [], todayCount = 0, now = new Date(),
   };
   const up = () => world.current && world.current.pointerUp();
 
-  // scaletta mischiata a ogni apertura: i tuoi numeri, il periodo dell'anno, curiosità varie
-  const factsKey = facts.join("|");
-  const pool = useMemo(() => (seed >= 0 ? heroLines(factsKey ? factsKey.split("|") : [], new Date()) : []), [factsKey, seed]);
-  const fact = party ? `🎉 Traguardo: ${yearCount} interventi nel ${now.getFullYear()}!` : pool[factIdx % pool.length];
-  const chip = msg ? msg.text : fact;
+  // LA SCRITTA: scelta una volta quando si apre la Home (o si ricarica), poi resta ferma.
+  // Le prime 3 volte spiega come guidare la gru; poi i tuoi numeri, il periodo dell'anno o una curiosità.
+  const [line] = useState(() => {
+    if (hintCount() < 3) {
+      bumpHint();
+      return "Trascina il dito sul cielo: guidi tu la gru. Tocca: il gancio scende";
+    }
+    const all = heroLines(facts, new Date());
+    return all[Math.floor(Math.random() * all.length)];
+  });
+  const chip = party ? `🎉 Traguardo: ${yearCount} interventi nel ${now.getFullYear()}!` : line;
 
   return (
     <div
