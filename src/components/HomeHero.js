@@ -162,13 +162,27 @@ export const HomeHero = ({ me = "", logs = [], todayCount = 0, now = new Date(),
     let raf = 0;
     let last = 0;
     let visible = true;
+    let covered = false;
+    // telefono: 30 immagini al secondo bastano (metà lavoro, l'app resta più sciolta)
+    const phone = (() => {
+      try {
+        return window.matchMedia("(pointer: coarse)").matches;
+      } catch (e) {
+        return false;
+      }
+    })();
+    const STEP = phone ? 1000 / 31 : 0;
     const frame = (ts) => {
       raf = 0;
-      const dt = last ? (ts - last) / 1000 : 0.016;
+      if (STEP && last && ts - last < STEP) {
+        if (visible && !covered && !document.hidden) raf = requestAnimationFrame(frame);
+        return;
+      }
+      const dt = last ? Math.min(0.1, (ts - last) / 1000) : 0.016;
       last = ts;
       w.update(dt);
       w.draw(ctx, W, H, dpr);
-      if (visible && !document.hidden) raf = requestAnimationFrame(frame);
+      if (visible && !covered && !document.hidden) raf = requestAnimationFrame(frame);
     };
     const go = () => {
       if (!raf && !still) {
@@ -195,6 +209,19 @@ export const HomeHero = ({ me = "", logs = [], todayCount = 0, now = new Date(),
       if (visible) go();
     }) : null;
     if (io) io.observe(el);
+    // una finestra aperta sopra la Home (nota, rapporto…): il cielo si ferma finché non si chiude
+    const cover = setInterval(() => {
+      const r = el.getBoundingClientRect();
+      if (r.bottom < 0 || r.top > window.innerHeight) return;
+      const x = Math.min(window.innerWidth - 2, Math.max(1, r.left + r.width * 0.7));
+      const y = Math.min(window.innerHeight - 2, Math.max(1, r.top + r.height / 2));
+      const top = document.elementFromPoint(x, y);
+      const now = !!top && !el.contains(top);
+      if (now !== covered) {
+        covered = now;
+        if (!covered) go();
+      }
+    }, 800);
     // tornando nell'app dopo un po': si riparte da una scena nuova
     let hiddenAt = 0;
     const onVis = () => {
@@ -208,6 +235,7 @@ export const HomeHero = ({ me = "", logs = [], todayCount = 0, now = new Date(),
     return () => {
       if (raf) cancelAnimationFrame(raf);
       clearInterval(timer);
+      clearInterval(cover);
       if (ro) ro.disconnect();
       if (io) io.disconnect();
       document.removeEventListener("visibilitychange", onVis);

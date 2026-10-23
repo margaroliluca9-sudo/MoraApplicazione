@@ -563,16 +563,16 @@ export const NewEntryForm = ({
             </div>
 
             <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
-              <div className="flex justify-between items-center mb-2">
-                <label className="text-[11px] font-black text-slate-700 uppercase tracking-wide ml-1">
+              <div className="flex flex-wrap justify-between items-center gap-2 mb-2">
+                <label className="whitespace-nowrap text-sm font-black text-slate-700 ml-1">
                   Hanno lavorato con te?
                 </label>
                 <button
                   type="button"
                   onClick={addTechnician}
-                  className={`text-[10px] font-bold flex items-center gap-1 text-${color}-600 hover:text-${color}-800 transition-colors`}
+                  className={`shrink-0 whitespace-nowrap min-h-[36px] px-2.5 rounded-xl bg-white border border-${color}-200 text-xs font-bold flex items-center gap-1 text-${color}-700 hover:bg-${color}-50 transition-colors`}
                 >
-                  <PlusCircle className="w-3 h-3" /> Aggiungi Tecnico
+                  <PlusCircle className="w-4 h-4" /> Aggiungi Tecnico
                 </button>
               </div>
               <div className="space-y-2">
@@ -1012,7 +1012,7 @@ export const NewEntryForm = ({
             {stepKeys.map((g) => (
               <div key={g} className="flex-1 min-w-0">
                 <div className="h-1.5 rounded-full" style={{ backgroundColor: done[g] ? "#ffffff" : "rgba(255,255,255,.25)" }} />
-                <p className={`text-[10px] font-bold mt-1 truncate ${done[g] ? "text-white" : "text-white/60"}`}>{GROUPS[g].title}</p>
+                <p className={`text-[10px] mora-keep-size font-bold mt-1 truncate ${done[g] ? "text-white" : "text-white/60"}`}>{GROUPS[g].title}</p>
               </div>
             ))}
           </div>

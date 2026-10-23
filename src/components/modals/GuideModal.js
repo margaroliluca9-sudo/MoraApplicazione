@@ -611,7 +611,9 @@ const Tour = ({ steps, onGo, onEnd, endLabel, color, id, videos = [], onVideo = 
   const video = vid && videos.some((v) => v.id === vid) ? videoById(vid) : null;
   return (
     <div className="flex-1 flex flex-col p-5 min-h-0" data-section={"guide-tour-" + id}>
-      <div className="flex-1 overflow-y-auto flex flex-col items-center justify-center text-center gap-4 px-2">
+      {/* m-auto e non justify-center: se il testo è lungo (telefono piccolo) si scorre dall'inizio, senza tagliare il titolo */}
+      <div className="flex-1 overflow-y-auto flex flex-col px-2">
+      <div className="m-auto flex flex-col items-center text-center gap-4 py-2">
         <span className={`w-20 h-20 rounded-3xl bg-${color}-50 text-${color}-600 flex items-center justify-center shrink-0`}>
           <Icon className="w-10 h-10" />
         </span>
@@ -632,6 +634,7 @@ const Tour = ({ steps, onGo, onEnd, endLabel, color, id, videos = [], onVideo = 
             {s.go.label}
           </button>
         )}
+      </div>
       </div>
       <div className="flex justify-center flex-wrap gap-1.5 py-4">
         {steps.map((_, i) => (

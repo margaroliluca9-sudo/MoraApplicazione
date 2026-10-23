@@ -1,3 +1,4 @@
+import { EmptyState } from "../components/EmptyState";
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   Search,
@@ -81,6 +82,9 @@ export const HistoryView = ({
   const [searchTerm, setSearchTerm] = useState("");
   const [show, setShow] = useState("all"); // all | mine | photos
   const [page, setPage] = useState(1);
+  // telefono: i primi 20, poi altri 20 man mano che scorri (si apre subito anche con migliaia di interventi)
+  const [shown, setShown] = useState(20);
+  const moreRef = useRef(null);
   const [isDeleting, setIsDeleting] = useState(null);
   const [isEditing, setIsEditing] = useState(null);
   const [pin, setPin] = useState("");
@@ -155,11 +159,23 @@ export const HistoryView = ({
   });
 
   const ITEMS_PER_PAGE = 50;
-  const paginated = filtered.slice(
-    (page - 1) * ITEMS_PER_PAGE,
-    page * ITEMS_PER_PAGE
-  );
-  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
+  const paginated = isMobile
+    ? filtered.slice(0, shown)
+    : filtered.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
+  const totalPages = isMobile ? 1 : Math.ceil(filtered.length / ITEMS_PER_PAGE);
+  const hasMore = isMobile && filtered.length > shown;
+  useEffect(() => {
+    setShown(20);
+  }, [searchTerm, show]);
+  useEffect(() => {
+    const el = moreRef.current;
+    if (!hasMore || !el || typeof IntersectionObserver === "undefined") return undefined;
+    const io = new IntersectionObserver((en) => {
+      if (en[0] && en[0].isIntersecting) setShown((n) => n + 20);
+    }, { rootMargin: "600px 0px" });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [hasMore, shown]);
 
   const handleDelete = (log) => {
     const isRecent =
@@ -257,6 +273,13 @@ export const HistoryView = ({
       >
         {isMobile ? (
           <div className="space-y-3" data-section="history-cards">
+            {filtered.length === 0 && (
+              <EmptyState
+                color={color}
+                title="Nessun intervento"
+                text={searchTerm ? "Prova a cambiare quello che hai scritto nella ricerca." : show === "photos" ? "Nessun intervento con foto, per ora." : "Qui compariranno gli interventi."}
+              />
+            )}
             {paginated.map((log, i) => {
               const group = dayGroup(log.dateString);
               const showGroup = i === 0 || dayGroup(paginated[i - 1].dateString) !== group;
@@ -292,7 +315,7 @@ export const HistoryView = ({
                       type="button"
                       onClick={() => onOpenMachine(log.machineId, log.customer)}
                       aria-label={`Scheda della gru ${log.machineId}`}
-                      className={`block text-left text-sm font-bold text-${color}-700`}
+                      className={`block text-left text-sm font-bold text-${color}-700 py-1.5 -my-1.5`}
                     >
                       Gru {log.machineId}
                       <span className="font-semibold text-slate-500">
@@ -368,6 +391,17 @@ export const HistoryView = ({
                 </React.Fragment>
               );
             })}
+            {hasMore && (
+              <button
+                ref={moreRef}
+                type="button"
+                onClick={() => setShown((n) => n + 20)}
+                data-action="history-more"
+                className="w-full h-12 rounded-full bg-white border border-slate-200 text-slate-600 font-bold text-sm"
+              >
+                Altri interventi ({filtered.length - shown})
+              </button>
+            )}
           </div>
         ) : (
           <div className="overflow-x-auto custom-scrollbar w-full">

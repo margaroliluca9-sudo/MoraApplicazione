@@ -139,7 +139,7 @@ export const OnlineMenu = ({
             <span className="text-xs font-black text-slate-700 flex items-center gap-2">
               <span className="w-2 h-2 rounded-full bg-green-500" /> Online adesso ({users.length})
             </span>
-            <button type="button" onClick={onClose} aria-label="Chiudi" className="p-1.5 hover:bg-slate-200 rounded-full">
+            <button type="button" onClick={onClose} aria-label="Chiudi" className="p-2.5 -m-1 hover:bg-slate-200 rounded-full">
               <X className="w-4 h-4 text-slate-500" />
             </button>
           </div>

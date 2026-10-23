@@ -5,6 +5,8 @@ import App from "./App";
 import "./theme.css";
 import "./dark.css";
 import "./appearance.css";
+// grafica già pronta (prima veniva costruita dal telefono mentre usavi l'app: rallentava)
+import "./tailwind.css";
 import { applyTheme, getThemeMode } from "./theme";
 import { applyAppearance, getCachedLayout } from "./appearance";
 

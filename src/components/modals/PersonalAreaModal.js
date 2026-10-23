@@ -162,7 +162,7 @@ export const PersonalAreaModal = ({
             <div className="flex justify-between items-baseline">
               <h4 className="font-black text-slate-800 text-sm">Oggi</h4>
               {on("calendar") && (
-                <button type="button" onClick={() => setPanel("calendar")} className={`text-sm font-bold text-${color}-700`}>
+                <button type="button" onClick={() => setPanel("calendar")} className={`text-sm font-bold text-${color}-700 px-2 py-2 -mx-2 -my-2`}>
                   Calendario
                 </button>
               )}
