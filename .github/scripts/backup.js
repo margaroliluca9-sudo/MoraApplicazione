@@ -32,20 +32,14 @@ const call = async (url, opts = {}, retry = true) => {
   return r.json();
 };
 
-// tutte le raccolte dell'app, anche quelle aggiunte in futuro
-const collections = async () => {
-  const out = [];
-  let page = "";
-  for (;;) {
-    const j = await call(`${BASE}/${DATA}:listCollectionIds`, {
-      method: "POST",
-      body: JSON.stringify({ pageSize: 100, ...(page ? { pageToken: page } : {}) }),
-    });
-    out.push(...(j.collectionIds || []));
-    if (!j.nextPageToken) return out;
-    page = j.nextPageToken;
-  }
-};
+// tutte le raccolte dell'app (se ne aggiungi una nuova, mettila anche qui)
+const COLLECTIONS = [
+  "maintenance_logs", "customers", "machines", "machine_types", "technicians", "settings",
+  "chat_messages", "chat_photos", "chat_reads", "push_subscriptions", "active_users", "access_logs",
+  "ignored_conflicts", "home_prefs", "personal_settings", "personal_events", "personal_notes",
+  "personal_reminders", "personal_contacts", "personal_hours", "hours_reminders",
+  "vans", "van_items", "van_moves",
+];
 
 // i documenti restano nel formato di Firestore, così si possono rimettere identici
 const documents = async (coll) => {
@@ -62,11 +56,16 @@ const documents = async (coll) => {
 const main = async () => {
   const file = process.argv[2] || "backup.json";
   await signIn();
-  const names = (await collections()).sort();
+  const names = COLLECTIONS;
   const data = {};
   let total = 0;
   for (const c of names) {
-    data[c] = await documents(c);
+    try {
+      data[c] = await documents(c);
+    } catch (e) {
+      console.log(`::warning::${c} non letta: ${e.message}`);
+      continue;
+    }
     total += data[c].length;
     console.log(`${c}: ${data[c].length}`);
   }
