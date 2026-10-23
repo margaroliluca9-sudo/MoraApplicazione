@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import {
   Download,
   X,
@@ -7,8 +7,52 @@ import {
 } from "lucide-react";
 
 // GALLERIA FOTO GLOBALE CON SCARICAMENTO
+// gesti: scorri a destra/sinistra = foto dopo/prima, doppio tocco o due dita = ingrandisci, tira giù = chiudi
 export const PhotoViewerModal = ({ photos, onClose }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [z, setZ] = useState({ s: 1, x: 0, y: 0 });
+  const g = useRef(null);
+  const lastTap = useRef(0);
+  const n = photos ? photos.length : 0;
+  const go = (d) => {
+    setZ({ s: 1, x: 0, y: 0 });
+    setCurrentIndex((p) => (p + d + n) % n);
+  };
+  const dist = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+  const tStart = (e) => {
+    const t = e.touches;
+    if (t.length === 2) g.current = { pinch: dist(t), s0: z.s };
+    else g.current = { x0: t[0].clientX, y0: t[0].clientY, zx: z.x, zy: z.y, dx: 0, dy: 0 };
+  };
+  const tMove = (e) => {
+    const c = g.current;
+    if (!c) return;
+    const t = e.touches;
+    if (c.pinch && t.length === 2) {
+      setZ((o) => ({ ...o, s: Math.min(4, Math.max(1, (c.s0 * dist(t)) / c.pinch)) }));
+      return;
+    }
+    if (t.length !== 1 || c.pinch) return;
+    c.dx = t[0].clientX - c.x0;
+    c.dy = t[0].clientY - c.y0;
+    if (z.s > 1) setZ((o) => ({ ...o, x: c.zx + c.dx, y: c.zy + c.dy }));
+  };
+  const tEnd = () => {
+    const c = g.current;
+    g.current = null;
+    if (!c || c.pinch) {
+      if (z.s <= 1.05) setZ({ s: 1, x: 0, y: 0 });
+      return;
+    }
+    if (z.s > 1) return;
+    if (Math.abs(c.dx) > 60 && Math.abs(c.dx) > Math.abs(c.dy) && n > 1) go(c.dx < 0 ? 1 : -1);
+    else if (c.dy > 110 && Math.abs(c.dy) > Math.abs(c.dx)) onClose();
+    else if (Math.abs(c.dx) < 8 && Math.abs(c.dy) < 8) {
+      const now = Date.now();
+      if (now - lastTap.current < 300) setZ((o) => (o.s > 1 ? { s: 1, x: 0, y: 0 } : { s: 2.5, x: 0, y: 0 }));
+      lastTap.current = now;
+    }
+  };
 
   if (!photos || photos.length === 0) return null;
 
@@ -44,11 +88,17 @@ export const PhotoViewerModal = ({ photos, onClose }) => {
         </button>
       </div>
 
-      <div className="relative w-full max-w-5xl flex items-center justify-center flex-1 min-h-0">
+      <div className="relative w-full max-w-5xl flex items-center justify-center flex-1 min-h-0 overflow-hidden touch-none"
+        onTouchStart={tStart} onTouchMove={tMove} onTouchEnd={tEnd} onTouchCancel={tEnd}
+        onDoubleClick={() => setZ((o) => (o.s > 1 ? { s: 1, x: 0, y: 0 } : { s: 2.5, x: 0, y: 0 }))}
+        data-section="photo-stage">
         <img
+          key={currentIndex}
           src={photos[currentIndex]}
           alt={`Foto ${currentIndex + 1}`}
-          className="max-w-full max-h-full object-contain rounded-xl shadow-2xl animate-in zoom-in-95 duration-300"
+          draggable={false}
+          className="max-w-full max-h-full object-contain rounded-xl shadow-2xl animate-in zoom-in-95 duration-300 select-none"
+          style={{ transform: `translate(${z.x}px, ${z.y}px) scale(${z.s})`, transition: g.current ? "none" : "transform .2s" }}
         />
 
         {photos.length > 1 && (
@@ -56,7 +106,7 @@ export const PhotoViewerModal = ({ photos, onClose }) => {
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                setCurrentIndex((p) => (p === 0 ? photos.length - 1 : p - 1));
+                go(-1);
               }}
               className="absolute left-2 md:left-8 p-3 md:p-4 bg-black/40 hover:bg-black/70 text-white rounded-full backdrop-blur-sm transition-all shadow-lg"
             >
@@ -65,7 +115,7 @@ export const PhotoViewerModal = ({ photos, onClose }) => {
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                setCurrentIndex((p) => (p === photos.length - 1 ? 0 : p + 1));
+                go(1);
               }}
               className="absolute right-2 md:right-8 p-3 md:p-4 bg-black/40 hover:bg-black/70 text-white rounded-full backdrop-blur-sm transition-all shadow-lg"
             >

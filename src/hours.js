@@ -8,6 +8,7 @@ import { setDoc, deleteDoc } from "firebase/firestore";
 import { chatDoc, key } from "./chat";
 import { MONTHS, parseIso, isoOf } from "./personal";
 import { easterOf } from "./season";
+import { syncExtra } from "./settings";
 
 export const HOURS = "personal_hours";
 export const STD_DEFAULT = 480; // orario normale: 8 ore
@@ -188,7 +189,7 @@ export const getSince = () => {
 };
 export const markSince = () => {
   try {
-    if (!localStorage.getItem(SINCE_KEY)) localStorage.setItem(SINCE_KEY, isoOf(new Date()));
+    if (!localStorage.getItem(SINCE_KEY)) syncExtra("hoursSince", isoOf(new Date()));
   } catch (e) {
     // niente
   }
@@ -207,8 +208,78 @@ export const saveHoursReminder = (me, r) =>
 
 export const setStd = (n) => {
   try {
-    localStorage.setItem(STD_KEY, String(n));
+    syncExtra("hoursStd", n);
   } catch (e) {
     // niente
   }
+};
+
+// ---- PERIODO A SCELTA (Manda: PDF o testo) ----
+// tutti i giorni tra "from" e "to" (aaaa-mm-gg), con i giorni normali automatici
+export const periodDays = (list, from, to, std = STD_DEFAULT, since = "", today = isoOf(new Date())) => {
+  const out = [];
+  if (!from || !to || from > to) return out;
+  let y = Number(from.slice(0, 4));
+  let m = Number(from.slice(5, 7)) - 1;
+  const ey = Number(to.slice(0, 4));
+  const em = Number(to.slice(5, 7)) - 1;
+  while (y < ey || (y === ey && m <= em)) {
+    const k = ymOf(y, m);
+    withDefaults(list, y, m, std, since, today).forEach((h) => {
+      if (String(h.date).slice(0, 7) === k && h.date >= from && h.date <= to) out.push(h);
+    });
+    m += 1;
+    if (m > 11) {
+      m = 0;
+      y += 1;
+    }
+  }
+  return out.sort((a, b) => a.date.localeCompare(b.date));
+};
+export const rangeSummary = (days, std = STD_DEFAULT) => {
+  const s = { worked: 0, extra: 0, less: 0, workDays: 0, ferie: 0, malattia: 0, festa: 0, permesso: 0 };
+  (days || []).forEach((h) => {
+    if (h.kind === "lavoro") {
+      s.worked += Number(h.minutes) || 0;
+      s.workDays += 1;
+      const d = deltaOf(h, std);
+      if (d > 0) s.extra += d;
+      if (d < 0) s.less += -d;
+    } else if (h.kind === "permesso") s.permesso += Number(h.minutes) || 0;
+    else if (s[h.kind] !== undefined) s[h.kind] += 1;
+  });
+  return s;
+};
+const pad2 = (n) => String(n).padStart(2, "0");
+const iso3 = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+// periodi pronti
+export const presetPeriods = (now = new Date()) => {
+  const y = now.getFullYear();
+  const m = now.getMonth();
+  const dow = (now.getDay() + 6) % 7; // lunedì = 0
+  const mon = new Date(y, m, now.getDate() - dow);
+  const lastMon = new Date(y, m, now.getDate() - dow - 7);
+  return [
+    { id: "mese", label: "Questo mese", from: iso3(new Date(y, m, 1)), to: iso3(new Date(y, m + 1, 0)) },
+    { id: "scorso", label: "Mese scorso", from: iso3(new Date(y, m - 1, 1)), to: iso3(new Date(y, m, 0)) },
+    { id: "settimana", label: "Questa settimana", from: iso3(mon), to: iso3(new Date(mon.getFullYear(), mon.getMonth(), mon.getDate() + 6)) },
+    { id: "settscorsa", label: "Settimana scorsa", from: iso3(lastMon), to: iso3(new Date(lastMon.getFullYear(), lastMon.getMonth(), lastMon.getDate() + 6)) },
+    { id: "anno", label: "Quest'anno", from: `${y}-01-01`, to: `${y}-12-31` },
+  ];
+};
+export const fmtIso = (iso) => (iso ? `${Number(iso.slice(8, 10))}/${Number(iso.slice(5, 7))}/${iso.slice(0, 4)}` : "");
+export const periodLabel = (from, to) => `dal ${fmtIso(from)} al ${fmtIso(to)}`;
+// testo del periodo (WhatsApp, mail)
+export const periodText = (me, days, from, to, std = STD_DEFAULT) => {
+  const s = rangeSummary(days, std);
+  const lines = days.filter((h) => !h.auto || h.kind !== "lavoro").map((h) => `${shortDay(h.date)}: ${dayText(h, std)}${h.note ? " – " + h.note : ""}`);
+  const tot = [
+    `Ore lavorate: ${fmtMin(s.worked)} in ${s.workDays} giorni`,
+    s.extra ? `Straordinari: ${fmtMin(s.extra)}` : "",
+    s.less ? `Ore in meno: ${fmtMin(s.less)}` : "",
+    s.ferie ? `Ferie: ${s.ferie} ${s.ferie === 1 ? "giorno" : "giorni"}` : "",
+    s.permesso ? `Permessi: ${fmtMin(s.permesso)}` : "",
+    s.malattia ? `Malattia: ${s.malattia} ${s.malattia === 1 ? "giorno" : "giorni"}` : "",
+  ].filter(Boolean);
+  return `Ore ${periodLabel(from, to)} – ${me}\n${lines.join("\n")}${lines.length ? "\n" : ""}(gli altri giorni da lunedì a venerdì: ${fmtMin(std)}; sabato, domenica e feste tutto straordinario)\n\n${tot.join("\n")}`;
 };

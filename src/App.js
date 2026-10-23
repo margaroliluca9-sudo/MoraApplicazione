@@ -47,10 +47,12 @@ import { applyAppearance, getCachedLayout, cacheLayout } from "./appearance";
 import { NavButton } from "./components/NavButton";
 import { OnlineMenu, onlineUnread } from "./components/OnlineMenu";
 import { NotifyPrompt } from "./components/modals/NotifyPrompt";
-import { getSettings, wasAsked, markAsked, installTipShown } from "./settings";
+import { getSettings, wasAsked, markAsked, installTipShown, setSettingsOwner, settingsDocId, SETTINGS_COLL, applyRemoteSettings, pushSettings } from "./settings";
 import { AdminLoginModal } from "./components/AdminLoginModal";
 import { PhotoViewerModal } from "./components/PhotoViewerModal";
 import { PdfHost } from "./components/PdfHost";
+import { UserMenu } from "./components/UserMenu";
+import { installGestures } from "./gestures";
 import { refreshPush, getPushState, key as techKey, chatDoc } from "./chat";
 import { HOME_PREFS, cachedPrefs, cachePrefs, cleanLook } from "./home";
 import { PERSONAL } from "./personal";
@@ -596,6 +598,36 @@ export default function App() {
     [onlineMessages, chatMessages, chatReads, currentTechName]
   );
 
+  // GESTI (indietro dal bordo, tasto indietro di Android, tieni premuto, tira giù per ricaricare)
+  useEffect(() => installGestures(), []);
+  useEffect(() => {
+    const home = (e) => {
+      if (activeTab !== "dashboard") {
+        setActiveTab("dashboard");
+        e.preventDefault();
+      }
+    };
+    window.addEventListener("mora-go-home", home);
+    return () => window.removeEventListener("mora-go-home", home);
+  }, [activeTab]);
+
+  // IMPOSTAZIONI UGUALI SU TUTTI I TELEFONI: le leggo dal tecnico collegato e le tengo aggiornate
+  useEffect(() => {
+    setSettingsOwner(currentTechName);
+    if (!user || !currentTechName) return undefined;
+    let first = true;
+    const unsub = onSnapshot(
+      chatDoc(SETTINGS_COLL, settingsDocId(currentTechName)),
+      (snap) => {
+        if (snap.exists()) applyRemoteSettings(snap.data());
+        else if (first) pushSettings();
+        first = false;
+      },
+      () => {}
+    );
+    return () => unsub();
+  }, [user, currentTechName]);
+
   // LA MIA AREA: carico solo i documenti del tecnico collegato
   useEffect(() => {
     const me = techKey(currentTechName);
@@ -766,6 +798,7 @@ export default function App() {
       className={`mora-app min-h-screen font-sans ${
         isMobileView ? "pb-24" : ""
       } relative bg-slate-100 text-slate-900 animate-in fade-in duration-700`}
+      style={isMobileView ? { paddingBottom: "calc(96px + var(--mora-safe-bottom))" } : undefined}
     >
       <PdfHost />
       <VanHost vanItems={vanItems} color={color} />
@@ -843,6 +876,8 @@ export default function App() {
               </span>
             </div>
           </div>
+          <div className="flex items-center gap-2">
+          <UserMenu name={currentTechName} role={isOffice ? "Ufficio" : isAdminAuthenticated ? "Tecnico · admin" : "Tecnico"} color={color} onLogout={handleLogout} />
           <button
             type="button"
             onClick={cycleTheme}
@@ -852,6 +887,7 @@ export default function App() {
           >
             <ThemeIcon className="w-5 h-5" />
           </button>
+          </div>
         </div>
       </header>
       {(!isOnline || pendingCount > 0) && (
@@ -1087,7 +1123,7 @@ export default function App() {
       )}
 
       {isMobileView && (
-        <nav className="fixed bottom-0 left-0 right-0 p-3 flex justify-around z-50 bg-white border-t border-slate-200 shadow-[0_-5px_20px_rgba(0,0,0,0.05)]">
+        <nav className="fixed bottom-0 left-0 right-0 p-3 flex justify-around z-50 bg-white border-t border-slate-200 shadow-[0_-5px_20px_rgba(0,0,0,0.05)]" style={{ paddingBottom: "calc(12px + var(--mora-safe-bottom))" }}>
           {isOffice ? (
             <>
               <NavButton

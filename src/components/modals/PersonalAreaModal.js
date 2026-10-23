@@ -213,14 +213,16 @@ export const PersonalAreaModal = ({
 
           {on("numbers") && (
           <section className="flex gap-3" data-section="area-numbers">
-            <div className={`flex-1 rounded-3xl bg-${color}-600 text-white p-4`}>
+            <button type="button" onClick={onOpenMine} data-action="area-numbers-jobs" className={`flex-1 text-left rounded-3xl bg-${color}-600 text-white p-4 active:scale-[0.98] transition-transform`}>
               <div className="text-3xl font-black leading-none">{nums.jobs}</div>
               <div className="text-sm font-semibold mt-1">{nums.jobs === 1 ? "intervento questo mese" : "interventi questo mese"}</div>
-            </div>
-            <div className="flex-1 rounded-3xl bg-slate-800 text-white p-4">
+              <div className="text-xs font-bold text-white/75 mt-2">Tocca per vederli ›</div>
+            </button>
+            <button type="button" onClick={onOpenMine} data-action="area-numbers-customers" className="flex-1 text-left rounded-3xl bg-slate-800 text-white p-4 active:scale-[0.98] transition-transform" style={{ backgroundColor: "#1e293b" }}>
               <div className="text-3xl font-black leading-none">{nums.customers}</div>
               <div className="text-sm font-semibold mt-1">{nums.customers === 1 ? "cliente visitato" : "clienti visitati"}</div>
-            </div>
+              <div className="text-xs font-bold text-white/75 mt-2">Tocca per vederli ›</div>
+            </button>
           </section>
           )}
           {on("parts") && (

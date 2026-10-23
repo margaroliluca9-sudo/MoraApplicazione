@@ -6,6 +6,7 @@
 // La libreria pdf-lib viene caricata solo al momento della stampa.
 import { getTechsString, formatCapacity, getSafeMatricola } from "./utils";
 import { formatRopeLong } from "./ropes";
+import { fmtMin, fmtDelta, deltaOf, kindOf, shortDay, rangeSummary, periodLabel, isFreeDay } from "./hours";
 import { MORA_LOGO_PNG, MORA_LOGO_RATIO } from "./pdfLogo";
 
 export const COMPANY = {
@@ -479,6 +480,50 @@ export const buildLogsReportPdf = async ({ logs, periodLabel, today, subtitle = 
   flow.meta([`Generato il: ${today}`, `Totale interventi: ${logs.length}`, `Periodo: ${periodLabel}`]);
   flow.table({ columns: LOG_COLUMNS, rows: logs.map(logRow) });
   return flow.finish("Documento generato dall'app Assistenza Mora.");
+};
+
+// FOGLIO ORE (La mia area → Le mie ore → Manda → PDF): riepilogo e un giorno per riga, con le note
+const KIND_COLOR = { ferie: [29, 78, 216], permesso: [126, 34, 206], malattia: [185, 28, 28], festa: [100, 116, 139] };
+export const buildHoursPdf = async ({ me, from, to, days = [], std = 480, today }) => {
+  const printed = today || new Date().toLocaleDateString("it-IT");
+  const s = rangeSummary(days, std);
+  const flow = await createFlow({ title: "FOGLIO ORE", subtitle: `${me} · ${periodLabel(from, to)}`, docTitle: `Ore ${me}` });
+  flow.meta([`Tecnico: ${me}`, `Periodo: ${periodLabel(from, to)}`, `Orario normale: ${fmtMin(std)} (lun-ven)`]);
+  flow.tiles([
+    ["Ore lavorate", fmtMin(s.worked)],
+    ["Giorni lavorati", String(s.workDays)],
+    ["Straordinari", s.extra ? "+" + fmtMin(s.extra) : "0"],
+    ["Ore in meno", s.less ? "-" + fmtMin(s.less) : "0"],
+    ["Ferie", s.ferie ? `${s.ferie} g` : "0"],
+    ["Permessi", s.permesso ? fmtMin(s.permesso) : "0"],
+  ]);
+  if (s.malattia) flow.paragraph(`Malattia: ${s.malattia} ${s.malattia === 1 ? "giorno" : "giorni"}.`, { size: 9 });
+  const rows = days.map((h) => {
+    const free = isFreeDay(h.date);
+    const d = deltaOf(h, std);
+    const kind = kindOf(h.kind);
+    const typeTxt = h.kind === "lavoro" ? (free ? "Lavoro (festivo)" : "Lavoro") : kind.label;
+    const ore = h.kind === "lavoro" || h.kind === "permesso" ? fmtMin(h.minutes) : "-";
+    return [
+      { t: shortDay(h.date), b: true, c: free ? C.amber : C.text },
+      { t: typeTxt + (h.auto ? " (normale)" : ""), c: KIND_COLOR[h.kind] || C.text, b: h.kind !== "lavoro" },
+      { t: ore, b: true },
+      d ? { t: fmtDelta(d), b: true, c: d > 0 ? C.green : C.amber } : "",
+      h.note || "",
+    ];
+  });
+  flow.table({
+    columns: [
+      { label: "Giorno", w: 0.14 },
+      { label: "Tipo", w: 0.2 },
+      { label: "Ore", w: 0.11, align: "right" },
+      { label: "+ / -", w: 0.11, align: "right" },
+      { label: "Note", w: 0.44 },
+    ],
+    rows,
+  });
+  flow.signatures(["Firma del tecnico", "Visto (ufficio)"]);
+  return flow.finish(`Stampato il ${printed} dall'app Assistenza Mora.`);
 };
 
 // Elenco gru di un cliente (colonna Note vuota da compilare a penna)
