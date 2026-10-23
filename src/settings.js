@@ -1,7 +1,7 @@
 // IMPOSTAZIONI PERSONALI (La mia area → ⚙ Impostazioni). Valgono per questo telefono.
 //  - notifiche: accese/spente sul telefono + quali (messaggi dei colleghi, promemoria/impegni)
 //    le scelte "quali" stanno anche sull'iscrizione del telefono (push_subscriptions) così il server le rispetta
-//  - animazione all'avvio sì/no
+//  - animazione all'avvio sì/no; cielo animato in cima alla Home sì/no
 //  - farmi vedere tra i «Tecnici online» sì/no
 import { setDoc } from "firebase/firestore";
 import { chatDoc, subId, myEndpoint, key as techKey } from "./chat";
@@ -9,7 +9,7 @@ import { chatDoc, subId, myEndpoint, key as techKey } from "./chat";
 const KEY = "mora_personal_settings";
 const ASKED = "mora_notify_asked_v1"; // domanda "attivi le notifiche?" già fatta su questo telefono
 
-export const DEFAULT_SETTINGS = { chat: true, reminders: true, splash: true, showOnline: true, hours: false };
+export const DEFAULT_SETTINGS = { chat: true, reminders: true, splash: true, showOnline: true, hours: false, heroAnim: true };
 
 export const getSettings = () => {
   try {
