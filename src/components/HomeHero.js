@@ -248,7 +248,7 @@ export const HomeHero = ({ me = "", logs = [], todayCount = 0, now = new Date(),
       onPointerLeave={up}
     >
       <canvas ref={canvas} className="absolute inset-0 w-full h-full" aria-hidden="true" data-hero-canvas />
-      <div className="relative px-5 pt-4 pb-5 min-h-[184px] flex flex-col justify-between pointer-events-none" style={{ paddingRight: "36%" }}>
+      <div className="relative px-5 pt-4 pb-5 min-h-[184px] md:min-h-[220px] lg:min-h-[240px] flex flex-col justify-between pointer-events-none" style={{ paddingRight: "36%" }}>
         <div>
           <p className={`text-[22px] font-black leading-tight transition-colors duration-700 ${dark ? "text-white" : "text-slate-900"}`} style={{ textShadow: dark ? "0 1px 8px rgba(0,0,0,.35)" : "0 1px 8px rgba(255,255,255,.35)" }}>
             {hello}
