@@ -1,3 +1,4 @@
+import { parseTicketQuery, matchTicket, ticketLabel, ticketYear } from "../ticket";
 import React, { useState, useMemo } from "react";
 import {
   Search,
@@ -73,23 +74,20 @@ export const OfficeView = ({
   const ticketSearchResults = useMemo(() => {
     if (!ticketSearch.trim()) return [];
     const term = ticketSearch.toLowerCase().trim();
-    return logs.filter((l) => {
-      const matchNumber =
-        l.ticketNumber && l.ticketNumber.toLowerCase().includes(term);
-      if (!matchNumber) return false;
-
-      // Se è selezionato "tutti", non filtriamo per anno
-      if (ticketSearchYear === "tutti") return true;
-
-      // Controllo esatto sull'anno selezionato (formato DD/MM/YYYY)
-      if (l.dateString) {
-        const parts = l.dateString.split("/");
-        if (parts.length === 3 && parts[2] === ticketSearchYear) {
-          return true;
-        }
-      }
-      return false;
-    });
+    const inYear = (l) => ticketSearchYear === "tutti" || ticketYear(l) === ticketSearchYear;
+    // il numero riparte ogni anno: prima i numeri UGUALI (5 = 5, non 15 o 105), il più recente in cima
+    const tq = parseTicketQuery(term);
+    const byDate = (a, b) => {
+      const k = (l) => String(l.dateString || "").split("/").reverse().map((x) => x.padStart(2, "0")).join("");
+      return k(b).localeCompare(k(a));
+    };
+    if (tq) {
+      const exact = logs.filter((l) => matchTicket(l, { num: tq.num, year: tq.year || (ticketSearchYear === "tutti" ? "" : ticketSearchYear) }));
+      if (exact.length) return exact.sort(byDate);
+    }
+    return logs
+      .filter((l) => l.ticketNumber && String(l.ticketNumber).toLowerCase().includes(term) && inYear(l))
+      .sort(byDate);
   }, [logs, ticketSearch, ticketSearchYear]);
 
   const monthNames = [
@@ -534,7 +532,7 @@ export const OfficeView = ({
                         <span
                           className={`text-[10px] font-black text-${color}-700 bg-${color}-50 border border-${color}-200 px-2 py-1 rounded-lg uppercase`}
                         >
-                          N. {log.ticketNumber}
+                          N. {ticketLabel(log)}
                         </span>
                       </div>
                       {/* BOTTONE FOTO IN UFFICIO */}

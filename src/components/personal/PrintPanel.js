@@ -3,6 +3,7 @@ import React, { useMemo, useState } from "react";
 import { Search, Printer, List, Check } from "lucide-react";
 import { buildInterventionsPdf, buildLogsReportPdf, pdfFileName } from "../../pdf";
 import { withPhotosOr } from "../../logPhotos";
+import { parseTicketQuery, matchTicket } from "../../ticket";
 import { openPdf } from "../PdfHost";
 import { getTechsString } from "../../utils";
 import { isoFromLogDate, isoOf, todayIso, relDay, isMine } from "../../personal";
@@ -38,12 +39,16 @@ export const PrintPanel = ({ me, logs = [], technicians = [], onBack, onClose, c
   ];
   const list = useMemo(() => {
     const t = norm(q.trim());
+    // N. assistenza: numero uguale (riparte ogni anno, qui conta il periodo scelto)
+    const tq = parseTicketQuery(q);
+    const byTicket = tq && logs.some((l) => matchTicket(l, tq));
     return logs
       .filter((l) => {
         const iso = isoFromLogDate(l.dateString);
         if (!iso || iso < from || iso > to) return false;
         if (who === "me" && !isMine(l, me)) return false;
         if (who !== "all" && who !== "me" && !isMine(l, who)) return false;
+        if (byTicket) return matchTicket(l, tq);
         return !t || norm(`${l.customer} ${l.machineId} ${l.ticketNumber || ""} ${l.description} ${getTechsString(l)}`).includes(t);
       })
       .sort((a, b) => isoFromLogDate(b.dateString).localeCompare(isoFromLogDate(a.dateString)) || (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));

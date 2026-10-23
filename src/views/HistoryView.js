@@ -20,6 +20,7 @@ import { EditLogModal } from "../components/modals/EditLogModal";
 import { formatRope, formatRopeLong, ROPE_ITEMS } from "../ropes";
 import { printIntervention } from "../components/PrintLogButton";
 import { removeLogPhotos } from "../logPhotos";
+import { parseTicketQuery, matchTicket, ticketLabel } from "../ticket";
 import { logsChanged } from "../logsWindow";
 
 // gruppi dello Storico: Oggi, Ieri, Questa settimana, Settimana scorsa, poi mese per mese
@@ -134,11 +135,16 @@ export const HistoryView = ({
   const isMine = (l) =>
     String(l.technician || "").trim().toLowerCase() === meKey ||
     (l.additionalTechnicians || []).some((t) => String(t).trim().toLowerCase() === meKey);
+  // N. assistenza (riparte ogni anno): «5» = i n. 5 di tutti gli anni, «5/2027» solo quello del 2027
+  const tq = parseTicketQuery(searchTerm);
+  const byTicket = tq && logs.some((l) => matchTicket(l, tq));
   const filtered = logs.filter((l) => {
     if (show === "mine" && !isMine(l)) return false;
     if (show === "photos" && !(l.photos && l.photos.length)) return false;
+    if (byTicket) return matchTicket(l, tq);
     const s = searchTerm.toLowerCase();
     return (
+      (l.ticketNumber && String(l.ticketNumber).toLowerCase().includes(s)) ||
       (l.customer && l.customer.toLowerCase().includes(s)) ||
       (l.machineId && l.machineId.toLowerCase().includes(s)) ||
       (l.description && l.description.toLowerCase().includes(s)) ||
@@ -287,7 +293,7 @@ export const HistoryView = ({
                       <div className="flex flex-wrap gap-1.5">
                         {log.ticketNumber && (
                           <span className="text-xs font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md">
-                            N. assistenza {log.ticketNumber}
+                            N. assistenza {ticketLabel(log)}
                           </span>
                         )}
                         {log.photos && log.photos.length > 0 && (
@@ -437,7 +443,7 @@ export const HistoryView = ({
                       <div className="flex flex-col gap-1 mt-1.5 items-start">
                         {log.ticketNumber && (
                           <div className="text-[9px] font-bold text-blue-700 bg-blue-50 border border-blue-200 px-1.5 py-0.5 rounded inline-block uppercase tracking-wider whitespace-nowrap">
-                            N. Assistenza {log.ticketNumber}
+                            N. Assistenza {ticketLabel(log)}
                           </div>
                         )}
                         {log.photos && log.photos.length > 0 && (
@@ -567,6 +573,7 @@ export const HistoryView = ({
           onClose={() => setIsEditing(null)}
           color={color}
           layoutConfig={layoutConfig}
+          allLogs={logs}
         />
       )}
     </div>
