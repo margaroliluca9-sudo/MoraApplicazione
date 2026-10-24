@@ -151,6 +151,9 @@ body { padding-top: var(--mora-safe-top); }
 }
 
 /* ===== TEMA SCURO: colori usati dalla grafica nuova ===== */
+/* interruttori a due posizioni (Esplora «Per cliente / Elenco», barra del computer) */
+html.dark .bg-slate-200\/70, html.dark .bg-slate-200\/60 { background-color: rgba(30, 41, 62, 0.85); }
+html.dark .hover\:bg-slate-300\/70:hover { background-color: rgba(44, 58, 85, 0.85); }
 html.dark .ring-white { --tw-ring-color: #121b2c; }
 html.dark .fill-white { fill: #121b2c; }
 html.dark .fill-slate-200 { fill: #1a2436; }
