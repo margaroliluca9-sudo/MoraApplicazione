@@ -76,7 +76,6 @@ import { showVanUsage } from "../components/VanHost";
 import { loadDraft, saveDraft, clearDraft, draftWhen } from "../reportHelpers";
 import { printIntervention } from "../components/PrintLogButton";
 import { buzzSaved, buzzError, getSettings, setSetting } from "../settings";
-import { notifyColleagues, colleaguesOf } from "../team";
 
 export const NewEntryForm = ({
   user,
@@ -519,9 +518,6 @@ export const NewEntryForm = ({
           })
           .catch((err) => console.error("Magazzino furgone:", err));
       }
-
-      // INTERVENTO IN DUE: avviso i colleghi messi nel rapporto (se non c'è rete pazienza)
-      notifyColleagues({ ...logData, technician: formData.technician }).catch((err) => console.error("Avviso colleghi:", err));
 
       // riepilogo invece di andare subito allo Storico
       setSavedLog({ ...logData, id: logRef && logRef.id });
@@ -1083,11 +1079,6 @@ export const NewEntryForm = ({
               <p className="text-sm font-semibold text-slate-500 truncate">
                 {savedLog.customer} · gru {savedLog.machineId || "-"} · {savedLog.dateString}
               </p>
-              {colleaguesOf(savedLog).length > 0 && (
-                <p className="text-sm font-bold text-emerald-700" data-section="team-notified">
-                  Avviso mandato a {savedLog.additionalTechnicians.join(", ")} (se ha le notifiche accese)
-                </p>
-              )}
             </div>
           </div>
           <button type="button" data-action="same-customer" onClick={() => {

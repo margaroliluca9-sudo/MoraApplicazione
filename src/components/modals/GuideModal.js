@@ -249,7 +249,6 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
       points: [
         "Il modulo è diviso in schede numerate: 1 Chi e quando, 2 Cliente e gru, 3 Cosa hai fatto, 4 Foto. In alto la barra mostra quali sono complete; la scheda completa diventa verde con la spunta.",
         "Scegli tecnico principale (e quelli aggiuntivi), data, N. assistenza, cliente e gru.",
-        "Intervento in due: in «Hanno lavorato con te?» aggiungi i colleghi. Dopo «Salva» a ognuno arriva una notifica sul telefono («Luca ti ha messo nel rapporto · cliente · gru»), se ha le notifiche accese; il rapporto compare nello Storico di tutti («I miei») e nel foglio stampato con tutti i nomi.",
         "Tasti grandi (con i guanti): tocca «Guanti» in cima al Nuovo rapporto, oppure La mia area → ⚙ Impostazioni → «Tasti grandi». Campi, scritte e pulsanti diventano più grandi e più distanziati; il telefono se lo ricorda. Ritocca («Grandi») per tornare normale.",
         "Portata: sotto il campo le portate più usate, in ordine di utilizzo (si aggiornano da sole con i rapporti).",
         "Scrivendo il cliente compaiono le sue gru: tocca quella giusta e tipo e portata si compilano da soli.",
