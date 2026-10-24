@@ -4,6 +4,7 @@ import { getDocs } from "../../metered";
 import { db, appId } from "../../firebase";
 import { logsChanged } from "../../logsWindow";
 import { describeError } from "../../utils";
+import { DriveFolderPicker } from "../DriveFolderPicker";
 import {
   PRO_INPUT,
   PRO_BUTTON_SECONDARY,
@@ -21,6 +22,8 @@ export const EditCustomerModal = ({
   // paese e indirizzo (si vedono sotto il nome in Esplora, nel Nuovo rapporto e nella scheda cliente)
   const [city, setCity] = useState(customer.city || "");
   const [address, setAddress] = useState(customer.address || "");
+  // cartella del cliente nel Drive scelta a mano (null = la trova il programma dal nome)
+  const [folder, setFolder] = useState(customer.driveFolderId ? { id: customer.driveFolderId, name: customer.driveFolderName || "" } : null);
   const [loading, setLoading] = useState(false);
 
   const handleSave = async () => {
@@ -43,6 +46,8 @@ export const EditCustomerModal = ({
           name: cleanName,
           city: city.trim(),
           address: address.trim(),
+          driveFolderId: folder ? folder.id : "",
+          driveFolderName: folder ? folder.name : "",
           // scritto a mano: l'aggiornamento automatico dal Drive non lo tocca più
           ...(city.trim() !== (customer.city || "") || address.trim() !== (customer.address || "") ? { placeSource: "manual" } : {}),
         }
@@ -136,6 +141,7 @@ export const EditCustomerModal = ({
             data-customer-address
           />
         </div>
+        <DriveFolderPicker customerId={customer.id} value={folder} onChange={setFolder} />
         <div className="flex flex-col gap-2 pt-2">
           <button
             onClick={handleSave}

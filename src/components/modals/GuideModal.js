@@ -139,7 +139,7 @@ const appStepsFor = ({ hasVan, chatEnabled, isAdmin }) =>
     {
       icon: Factory,
       title: "La scheda della gru",
-      text: "Si apre toccando una gru (dalla ricerca, da Esplora o dallo Storico): in cima quanti interventi e l'ultimo, poi tutti gli interventi su quella gru, foto, fune e catena sostituite e l'assistente con le cose in sospeso. Con «Nuovo rapporto su questa gru» il modulo si apre con cliente e gru già scritti.",
+      text: "Si apre toccando una gru (dalla ricerca, da Esplora o dallo Storico): in cima quanti interventi e l'ultimo, poi tutti gli interventi su quella gru, foto, fune e catena sostituite e l'assistente con le cose in sospeso. Con «Nuovo rapporto su questa gru» il modulo si apre con cliente e gru già scritti. In cima c'è anche «Dall'ultima verifica»: com'era la fune o la catena nell'ultimo foglio di verifica del Drive (verde a posto, giallo da tenere d'occhio, rosso da sostituire), con numero di fabbrica, tipo, portata, paranco, matricola INAIL e anno. La gru si riconosce dal numero di fabbrica scritto in Matricola.",
     },
     {
       icon: PlusCircle,
@@ -487,7 +487,8 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
         "Design: colori, carattere, grandezza delle lettere, animazione di avvio, chat tra tecnici sì/no, messaggi da «Tecnici online» sì/no. «La mia area: cosa vedono i tecnici»: accendi o spegni per tutti Oggi, I miei interventi, Stampa, Calendario, Note, Scansiona foglio, Promemoria, Magazzino, Le mie ore, Cosa ho cambiato e i numeri del mese (i dati restano salvati).",
         "Staff: tecnici e password. Tipi, Clienti, Gru: anagrafiche e unione.",
         "Paese e indirizzo dei clienti: Clienti → matita per scriverli a mano, oppure «Importa paesi» per prenderli da un file Excel o CSV (colonne CLIENTE o RAGIONE SOCIALE, PAESE, INDIRIZZO). L'app abbina i nomi ai clienti che ci sono già e ti mostra l'elenco: spunti quelli da salvare (di base solo quelli che non hanno ancora il paese) e tocchi «Salva». Il paese compare sotto il nome in Esplora, nel Nuovo rapporto e nella scheda del cliente (con «Mappa» per aprirlo su Google Maps); in Esplora puoi anche cercare per paese.",
-        "Paesi dal Drive in automatico: un programmino installato una volta nel Google Drive (file apps-script/paesi-dal-drive.gs, istruzioni in cima al file) ogni lunedì mattina legge l'intestazione dei fogli verifica in Clienti / Verifiche e aggiorna paese e indirizzo dei clienti. Riempie solo i clienti senza paese o quelli che aveva già aggiornato lui: quello che scrivi a mano o importi da file non viene mai toccato. In Admin → Clienti vedi la data dell'ultimo aggiornamento.",
+        "Paesi dal Drive in automatico: un programmino installato una volta nel Google Drive (file apps-script/paesi-dal-drive.gs, istruzioni in cima al file) ogni mattina alle 6 apre l'ultimo foglio di verifica di ogni cliente in Clienti / Verifiche (solo quelli nuovi o cambiati). Dall'intestazione aggiorna paese e indirizzo: riempie solo i clienti senza paese o quelli che aveva già aggiornato lui, quello che scrivi a mano o importi da file non viene mai toccato. Dalla tabella prende le gru: stato di fune o catena, tipo, portata, paranco, matricola INAIL e anno, che si vedono nella scheda della gru («Dall'ultima verifica»). In Admin → Clienti vedi la data dell'ultimo giro, quanti clienti e quante gru.",
+        "Cartella nel Drive: il programmino abbina cliente e cartella dal nome. Se nel Drive il cliente ha un nome diverso, Clienti → matita → «Cartella nel Drive» → «Cambia», cerchi la cartella giusta e salvi: dal giro del mattino dopo usa quella. «Togli la scelta» torna all'abbinamento dal nome. Sotto la cartella è scritto se l'hai scelta tu, se l'ha trovata dal nome o se non ne ha trovata nessuna.",
         "«Doppioni» (in Clienti e in Gru): ti mostra una coppia alla volta di nomi che sembrano uguali, con quanti interventi e gru ha ognuno. L'app consiglia quale tenere (quello con più storia): «Tieni questo» sposta tutto sull'altro dopo averti chiesto conferma; «Sono diversi» non te li ripropone più; «Salta» li lascia per la prossima volta.",
         "Furgoni: crei i furgoni, scegli chi li usa («Nessuno» = tutto come prima), vedi tutti i magazzini e stampi la lista d'ordine.",
         "Azienda: avvisi in Home (con data di inizio e fine, poi spariscono da soli), chiusure aziendali (ferie collettive, ponti, patrono, anche «ogni anno»: Le mie ore le segna da sole e il promemoria delle ore non arriva), intestazione dei fogli stampati e password di tecnici e admin.",
@@ -540,7 +541,7 @@ const officeSteps = [
   {
     icon: Factory,
     title: "La scheda della gru",
-    text: "Toccando una gru vedi tutto il suo storico: date, tecnici, descrizioni, foto, fune e catena sostituite, e cosa era rimasto in sospeso.",
+    text: "Toccando una gru vedi tutto il suo storico: date, tecnici, descrizioni, foto, fune e catena sostituite, e cosa era rimasto in sospeso. In cima c'è anche «Dall'ultima verifica»: com'era la fune o la catena nell'ultimo foglio di verifica del Drive (verde a posto, giallo da tenere d'occhio, rosso da sostituire), con numero di fabbrica, tipo, portata, paranco, matricola INAIL e anno. La gru si riconosce dal numero di fabbrica scritto in Matricola.",
   },
   {
     icon: Sun,
@@ -593,7 +594,7 @@ const officeSections = [
     id: "machine",
     icon: Factory,
     title: "Scheda della gru",
-    points: ["Storico completo della gru: date, tecnici, descrizioni, foto, fune e catena sostituite, cose rimaste in sospeso."],
+    points: ["Storico completo della gru: date, tecnici, descrizioni, foto, fune e catena sostituite, cose rimaste in sospeso.", "«Dall'ultima verifica»: stato di fune o catena e dati della gru presi ogni mattina dall'ultimo foglio di verifica nel Drive (si abbina col numero di fabbrica in Matricola)."],
   },
   {
     id: "phone",

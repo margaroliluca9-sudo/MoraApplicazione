@@ -1,5 +1,5 @@
 // AREA ADMIN → Clienti: com'è andato l'aggiornamento automatico di paesi e indirizzi dal Drive
-// (lo fa ogni lunedì il programmino in apps-script/paesi-dal-drive.gs, che scrive l'esito in settings/drive_places).
+// (lo fa ogni mattina il programmino in apps-script/paesi-dal-drive.gs, che scrive l'esito in settings/drive_places).
 import React, { useEffect, useState } from "react";
 import { doc } from "firebase/firestore";
 import { RefreshCw } from "lucide-react";
@@ -31,7 +31,8 @@ export const DrivePlacesStatus = () => {
         <span>
           Paesi dal Drive: ultimo aggiornamento <b className="text-slate-700">{driveWhen(info.lastRun)}</b>
           {typeof info.aggiornati === "number" ? ` · ${info.aggiornati} ${info.aggiornati === 1 ? "cliente aggiornato" : "clienti aggiornati"}` : ""}
-          {" · "}ogni lunedì da solo
+          {typeof info.gru === "number" && info.gru > 0 ? ` · ${info.gru} gru con funi e catene` : ""}
+          {" · "}ogni mattina da solo
         </span>
       ) : (
         <span>Aggiornamento automatico dei paesi dal Drive non ancora attivo (vedi Guida → Area admin).</span>

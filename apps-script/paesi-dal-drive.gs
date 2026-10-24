@@ -1,19 +1,26 @@
 /**
- * PAESI E INDIRIZZI DEI CLIENTI DAL DRIVE → APP ASSISTENZA MORA (una volta a settimana, da solo)
+ * CLIENTI E GRU DAL DRIVE → APP ASSISTENZA MORA (ogni mattina, da solo)
  *
  * Gira dentro il Google Drive di chi lo installa (Google Apps Script): non servono password né chiavi.
- * Ogni lunedì mattina guarda la cartella «Clienti / Verifiche»: per ogni cliente apre il foglio verifica
- * più recente, legge paese e indirizzo dall'intestazione (es. «Località: OLEGGIO (NO) Via Verbano, 56/A»)
- * e li scrive nell'app sui clienti che corrispondono.
+ * Ogni mattina guarda la cartella «Clienti / Verifiche»: per ogni cliente apre il foglio verifica più recente e
+ *  - legge paese e indirizzo dall'intestazione (es. «Località: OLEGGIO (NO) Via Verbano, 56/A»);
+ *  - legge la tabella delle gru: numero di fabbrica, tipo, portata, paranco, matricola INAIL, anno e
+ *    com'era la fune o la catena all'ultima verifica (es. «Fune idonea, 1 filo rotto, distorta»).
+ * Nell'app la gru si riconosce dal numero di fabbrica (campo Matricola/Campata) e la sua scheda mostra
+ * «Dall'ultima verifica». Ogni giorno apre solo le cartelle con un foglio nuovo o cambiato.
  *
- * Non tocca mai quello che avete scritto a mano o importato da file: aggiorna solo i clienti
- * senza paese oppure quelli che aveva già aggiornato lui (campo placeSource = "drive").
+ * Cliente ↔ cartella: di solito li abbina dal nome. Se il nome è diverso, nell'app in Admin → Clienti → matita
+ * → «Cartella nel Drive» scegli tu la cartella giusta: dal giorno dopo vale quella.
+ *
+ * Paese e indirizzo: aggiorna solo i clienti senza paese o quelli che aveva già aggiornato lui
+ * (placeSource = "drive"); quello che scrivete a mano o importate da file non viene mai toccato.
  *
  * INSTALLAZIONE (una volta sola, 2 minuti):
- *   1. Apri https://script.google.com con l'account che vede la cartella Clienti → «Nuovo progetto».
+ *   1. Apri https://script.google.com con l'account che vede la cartella Clienti → il progetto (o «Nuovo progetto»).
  *   2. Cancella tutto e incolla questo file. Salva (icona del dischetto).
- *   3. In alto scegli la funzione «installa» e premi «Esegui». Google chiede i permessi: «Consenti».
- *   Fatto: aggiorna subito e poi ogni lunedì alle 6. L'esito si vede nell'app in Admin → Clienti.
+ *   3. In alto scegli la funzione «installa» e premi «Esegui» (Google chiede i permessi: «Consenti»).
+ *   Fatto: aggiorna subito e poi ogni mattina alle 6. L'esito si vede nell'app in Admin → Clienti.
+ *   (Per rileggere tutto da capo: esegui «ricomincia».)
  */
 
 var CONFIG = {
@@ -21,36 +28,149 @@ var CONFIG = {
   apiKey: "AIzaSyCQ3VhCtvxIP2cxtdSgMzYXaTg4E1zPlZE", // chiave web pubblica dell'app (è già dentro l'app)
   progetto: "mora-app-36607",
   dati: "artifacts/mora-maintenance-v1/public/data",
+  minuti: 4.5, // Google ferma i programmi dopo 6 minuti: mi fermo prima e riprendo il giorno dopo
 };
 
-/** Da eseguire una volta: crea l'appuntamento del lunedì e aggiorna subito. */
+/** Da eseguire una volta: crea l'appuntamento di ogni mattina e aggiorna subito. */
 function installa() {
   ScriptApp.getProjectTriggers().forEach(function (t) {
-    if (t.getHandlerFunction() === "aggiornaPaesi") ScriptApp.deleteTrigger(t);
+    var h = t.getHandlerFunction();
+    if (h === "aggiornaPaesi" || h === "aggiorna") ScriptApp.deleteTrigger(t);
   });
-  ScriptApp.newTrigger("aggiornaPaesi").timeBased().everyWeeks(1).onWeekDay(ScriptApp.WeekDay.MONDAY).atHour(6).create();
-  aggiornaPaesi();
+  ScriptApp.newTrigger("aggiorna").timeBased().everyDays(1).atHour(6).create();
+  aggiorna();
 }
 
-/** Il lavoro della settimana. */
+/** Dimentica cosa ha già letto: il prossimo giro rilegge tutte le cartelle. */
+function ricomincia() {
+  PropertiesService.getScriptProperties().deleteProperty("visti");
+  aggiorna();
+}
+
+/** vecchio nome (prima versione): fa la stessa cosa */
 function aggiornaPaesi() {
+  aggiorna();
+}
+
+/** Il lavoro di ogni mattina. */
+function aggiorna() {
+  var inizio = Date.now();
+  var props = PropertiesService.getScriptProperties();
+  var visti = JSON.parse(props.getProperty("visti") || "{}"); // cartella → ultimo foglio letto
   var cartella = trovaCartella_(CONFIG.cartelle);
-  var trovati = leggiDrive_(cartella); // [{ names: [...], city, address }]
   var token = accedi_();
   var clienti = leggiClienti_(token);
-  var risultato = abbina_(trovati, clienti);
-  var scritti = 0;
-  risultato.forEach(function (r) {
-    var c = r.cliente;
-    var libero = !String(c.city || "").trim() && !String(c.address || "").trim();
-    var nostro = c.placeSource === "drive";
-    if (!libero && !nostro) return; // scritto a mano o da file: non si tocca
-    if (c.city === r.city && (c.address || "") === r.address) return; // già uguale
-    scriviCliente_(token, c.id, { city: r.city, address: r.address, placeSource: "drive" });
-    scritti++;
+  // cartelle scelte a mano nell'app (cliente → cartella): valgono prima del nome
+  var scelte = {};
+  clienti.forEach(function (c) {
+    if (c.driveFolderId) scelte[c.driveFolderId] = c;
   });
-  scriviEsito_(token, { lastRun: new Date().toISOString(), letti: trovati.length, abbinati: risultato.length, aggiornati: scritti });
-  Logger.log("Clienti nel Drive: %s · abbinati: %s · aggiornati: %s", trovati.length, risultato.length, scritti);
+  var custs = indiceClienti_(
+    clienti.filter(function (c) {
+      return !c.driveFolderId;
+    })
+  );
+  var perId = {};
+  clienti.forEach(function (c) {
+    perId[c.id] = c;
+  });
+  var elenco = []; // tutte le cartelle, per la scelta nell'app
+  var scritture = [];
+  var conti = { cartelle: 0, lette: 0, abbinati: 0, clientiAggiornati: 0, gru: 0 };
+  var finito = true;
+  var cartelle = [];
+  var it = cartella.getFolders();
+  while (it.hasNext()) cartelle.push(it.next());
+  cartelle.sort(function (a, b) {
+    return a.getName().localeCompare(b.getName());
+  });
+  cartelle.forEach(function (cart) {
+    var voce = { id: cart.getId(), n: cart.getName().trim(), c: "" };
+    elenco.push(voce);
+    var scelto = scelte[voce.id];
+    if (scelto) voce.c = scelto.id;
+    else {
+      var m = /\|c:(.+)$/.exec(visti[voce.id] || "");
+      if (m && perId[m[1]] && !perId[m[1]].driveFolderId) voce.c = m[1];
+    }
+    if (!finito) return;
+    if (Date.now() - inizio > CONFIG.minuti * 60000) {
+      finito = false;
+      return;
+    }
+    conti.cartelle++;
+    try {
+      var file = ultimoFoglio_(cart);
+      if (!file) return;
+      // la chiave cambia se cambia il foglio o se nell'app scegli un altro cliente per questa cartella
+      var chiave = file.getId() + "|" + file.getLastUpdated().getTime() + "|" + (scelto ? scelto.id : "");
+      var prima = visti[voce.id] || "";
+      // già letto e abbinato: salto. Non abbinato: riprovo solo se nell'app sono cambiati i clienti
+      if ((prima.indexOf(chiave + "|c:") === 0 && voce.c) || prima === chiave + "|n" + clienti.length) return;
+      conti.lette++;
+      var foglio = leggiFoglio_(file);
+      var info = estrai(foglio.testo);
+      var cliente = scelto || abbinaUno_([cart.getName(), info.cliente].filter(String), custs);
+      visti[voce.id] = chiave + (cliente ? "|c:" + cliente.id : "|n" + clienti.length);
+      voce.c = cliente ? cliente.id : "";
+      if (!cliente) return;
+      conti.abbinati++;
+      // paese e indirizzo
+      if (info.city || info.address) {
+        var libero = !String(cliente.city || "").trim() && !String(cliente.address || "").trim();
+        var cambia = cliente.city !== info.city || (cliente.address || "") !== info.address;
+        if ((libero || cliente.placeSource === "drive") && cambia) {
+          scritture.push(aggiornaDoc_("customers/" + cliente.id, { city: info.city, address: info.address, placeSource: "drive" }));
+          conti.clientiAggiornati++;
+        }
+      }
+      // gru del foglio
+      var etichetta = etichettaFoglio_(file.getName());
+      estraiGru(foglio.tabelle).forEach(function (g, i) {
+        var id = (cliente.id + "_" + (g.fabKey || (g.internoKey ? "INT" + g.internoKey : "R" + i))).replace(/[^A-Za-z0-9_-]/g, "_");
+        scritture.push(
+          aggiornaDoc_("drive_cranes/" + id, {
+            customerId: cliente.id,
+            customerName: cliente.name,
+            fab: g.fab,
+            fabKey: g.fabKey,
+            interno: g.interno,
+            internoKey: g.internoKey,
+            tipo: g.tipo,
+            portata: g.portata,
+            paranco: g.paranco,
+            matricola: g.matricola,
+            anno: g.anno,
+            stato: g.stato,
+            foglio: etichetta,
+            foglioData: file.getLastUpdated().toISOString(),
+            updatedAt: new Date().toISOString(),
+          })
+        );
+        conti.gru++;
+      });
+    } catch (e) {
+      Logger.log("Salto %s: %s", cart.getName(), e);
+    }
+  });
+  scriviTutto_(token, scritture);
+  props.setProperty("visti", JSON.stringify(visti));
+  scriviTutto_(token, [
+    aggiornaDoc_("settings/drive_places", {
+      lastRun: new Date().toISOString(),
+      cartelle: conti.cartelle,
+      lette: conti.lette,
+      abbinati: conti.abbinati,
+      aggiornati: conti.clientiAggiornati,
+      gru: conti.gru,
+      finito: finito ? "sì" : "no",
+    }),
+    aggiornaDoc_("settings/drive_folders", { list: JSON.stringify(elenco), updatedAt: new Date().toISOString() }),
+  ]);
+  Logger.log(
+    "Cartelle: %s · lette oggi: %s · clienti abbinati: %s · paesi aggiornati: %s · gru aggiornate: %s%s",
+    conti.cartelle, conti.lette, conti.abbinati, conti.clientiAggiornati, conti.gru, finito ? "" : " · continua domani"
+  );
 }
 
 // ---------- Drive ----------
@@ -77,52 +197,142 @@ function trovaCartella_(percorso) {
   throw new Error("Non trovo la cartella " + percorso.join(" / ") + " nel Drive.");
 }
 
-function leggiDrive_(radice) {
-  var out = [];
-  var cartelle = radice.getFolders();
-  while (cartelle.hasNext()) {
-    var cart = cartelle.next();
-    try {
-      var testo = testoUltimoFoglio_(cart);
-      if (!testo) continue;
-      var info = estrai(testo);
-      if (!info.city && !info.address) continue;
-      out.push({ names: [cart.getName(), info.cliente].filter(String), city: info.city, address: info.address });
-    } catch (e) {
-      Logger.log("Salto %s: %s", cart.getName(), e);
-    }
-  }
-  return out;
-}
-
-function testoUltimoFoglio_(cart) {
+var DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+function ultimoFoglio_(cart) {
   var files = cart.getFiles();
   var best = null;
   while (files.hasNext()) {
     var f = files.next();
     var m = f.getMimeType();
-    if (m !== MimeType.GOOGLE_DOCS && m !== "application/vnd.openxmlformats-officedocument.wordprocessingml.document") continue;
+    if (m !== MimeType.GOOGLE_DOCS && m !== DOCX) continue;
     if (!best || f.getLastUpdated() > best.getLastUpdated()) best = f;
   }
-  if (!best) return "";
-  if (best.getMimeType() === MimeType.GOOGLE_DOCS) return DocumentApp.openById(best.getId()).getBody().getText().slice(0, 3000);
-  var parti = Utilities.unzip(best.getBlob().setContentType("application/zip"));
-  for (var i = 0; i < parti.length; i++) {
-    if (parti[i].getName() === "word/document.xml") {
-      var xml = parti[i].getDataAsString("UTF-8");
-      return xml
-        .replace(/<\/w:p>/g, "\n")
-        .replace(/<w:tab\/>/g, " ")
-        .replace(/<[^>]+>/g, "")
-        .replace(/&amp;/g, "&")
-        .replace(/&apos;/g, "'")
-        .replace(/&quot;/g, '"')
-        .replace(/&lt;/g, "<")
-        .replace(/&gt;/g, ">")
-        .slice(0, 3000);
-    }
+  return best;
+}
+
+function xmlTesto_(s) {
+  return String(s)
+    .replace(/<w:tab\/>/g, " ")
+    .replace(/<w:br\/>/g, " ")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&amp;/g, "&")
+    .replace(/&apos;/g, "'")
+    .replace(/&quot;/g, '"')
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">");
+}
+
+// { testo: "…intestazione…", tabelle: [ [ ["TIPO","PORTATA",…], [...] ], … ] }
+function leggiFoglio_(file) {
+  if (file.getMimeType() === MimeType.GOOGLE_DOCS) {
+    var body = DocumentApp.openById(file.getId()).getBody();
+    var tabelle = body.getTables().map(function (t) {
+      var righe = [];
+      for (var r = 0; r < t.getNumRows(); r++) {
+        var row = t.getRow(r);
+        var celle = [];
+        for (var c = 0; c < row.getNumCells(); c++) celle.push(row.getCell(c).getText().replace(/\s+/g, " ").trim());
+        righe.push(celle);
+      }
+      return righe;
+    });
+    return { testo: body.getText().slice(0, 3000), tabelle: tabelle };
   }
-  return "";
+  var parti = Utilities.unzip(file.getBlob().setContentType("application/zip"));
+  for (var i = 0; i < parti.length; i++) {
+    if (parti[i].getName() !== "word/document.xml") continue;
+    var xml = parti[i].getDataAsString("UTF-8");
+    return { testo: xmlTesto_(xml.replace(/<\/w:p>/g, "\n")).slice(0, 3000), tabelle: tabelleDocx(xml) };
+  }
+  return { testo: "", tabelle: [] };
+}
+
+function tabelleDocx(xml) {
+  var out = [];
+  (String(xml).match(/<w:tbl>[\s\S]*?<\/w:tbl>/g) || []).forEach(function (tbl) {
+    var righe = (tbl.match(/<w:tr[\s>][\s\S]*?<\/w:tr>/g) || []).map(function (tr) {
+      return (tr.match(/<w:tc[\s>][\s\S]*?<\/w:tc>/g) || []).map(function (tc) {
+        return xmlTesto_(tc.replace(/<\/w:p>/g, " ")).replace(/\s+/g, " ").trim();
+      });
+    });
+    out.push(righe);
+  });
+  return out;
+}
+
+// «UNIMETAL T10.26.docx» → «Trimestrale 10/2026»
+function etichettaFoglio_(nome) {
+  var m = String(nome || "").match(/\b([AT])\s?(\d{2})\s?[.\/,]\s?(\d{2})\b/i) || String(nome || "").match(/([AT])\s?(\d{2})\s?(?:\.|%2c|,)\s?(\d{2})/i);
+  if (!m) return "";
+  return (m[1].toUpperCase() === "A" ? "Annuale" : "Trimestrale") + " " + m[2] + "/20" + m[3];
+}
+
+// ---------- tabella delle gru ----------
+// numero di fabbrica «pulito» (uguale nell'app: src/driveCranes.js): «4738 A» → 4738A, «2774 (1)» → 2774
+function fabKey(s) {
+  var t = String(s || "").toUpperCase().replace(/[.\s]/g, "");
+  var m = t.match(/^[A-Z]{0,4}\d{2,8}(?:[A-Z](?![A-Z])|\/\d{1,4}|-\d{1,3})?/);
+  return m ? m[0] : "";
+}
+var STATO_RE = /(fune|funi|catena|catene|idone|sostitu|controllo|fuori servizio|smantellat|dismess|resto (nella norma|ok)|distort|gobb|fili? rott)/i;
+
+function estraiGru(tabelle) {
+  var out = [];
+  (tabelle || []).forEach(function (righe) {
+    var h = -1;
+    for (var r = 0; r < righe.length && r < 4; r++) {
+      var joined = righe[r].join(" | ").toUpperCase();
+      if (/PORTATA/.test(joined) && /(FABBRICA|TIPO|MATRICOLA|DESCRIZIONE)/.test(joined)) {
+        h = r;
+        break;
+      }
+    }
+    if (h < 0) return;
+    var head = righe[h].map(function (x) {
+      return String(x).toUpperCase().replace(/\s+/g, " ").trim();
+    });
+    var idx = function (re, not) {
+      for (var i = 0; i < head.length; i++) if (re.test(head[i]) && !(not && not.test(head[i]))) return i;
+      return -1;
+    };
+    var iFab = idx(/FABBRICA/);
+    var iMatr = idx(/ENPI|ISPESL|INAIL/);
+    if (iFab < 0) iFab = idx(/^MATRICOLA$|^N\.? ?MATRICOLA$/); // es. «DEN. INTERNA | DESCRIZIONE | MATRICOLA | PORTATA»
+    var iInt = idx(/INTERN|RIF/);
+    var iTipo = idx(/TIPO|DESCRIZIONE/, /PARANCO/);
+    var iPort = idx(/PORTATA/);
+    var iPar = idx(/PARANCO/);
+    var iAnno = idx(/ANNO/);
+    for (var k = h + 1; k < righe.length; k++) {
+      var c = righe[k];
+      if (!c || c.length < 2 || !c.join("").trim()) continue;
+      var get = function (i) {
+        return i >= 0 && i < c.length ? String(c[i] || "").trim() : "";
+      };
+      var fab = get(iFab);
+      var interno = get(iInt);
+      var tipo = get(iTipo);
+      if (!fabKey(fab) && !interno) continue;
+      var stato = "";
+      c.forEach(function (x, j) {
+        if (j === iTipo || j === iPar) return;
+        if (STATO_RE.test(x) && x.length > stato.length) stato = x;
+      });
+      out.push({
+        fab: fab.slice(0, 80),
+        fabKey: fabKey(fab),
+        interno: interno.slice(0, 40),
+        internoKey: fabKey(interno) || interno.toUpperCase().replace(/\s/g, ""),
+        tipo: tipo.slice(0, 80),
+        portata: (get(iPort).match(/^[\d.,+\s]+(kg)?/i) || [""])[0].trim(),
+        paranco: get(iPar).slice(0, 120),
+        matricola: get(iMatr).slice(0, 60),
+        anno: get(iAnno).slice(0, 40),
+        stato: stato.slice(0, 500),
+      });
+    }
+  });
+  return out;
 }
 
 // ---------- lettura dell'intestazione del foglio verifica ----------
@@ -208,44 +418,36 @@ function normName(s) {
     .trim();
 }
 
-function abbina_(trovati, clienti) {
-  var custs = clienti
+function indiceClienti_(clienti) {
+  return clienti
     .map(function (c) {
       return { c: c, k: normName(c.name) };
     })
     .filter(function (x) {
       return x.k;
     });
-  var usati = {};
-  var out = [];
-  trovati.forEach(function (p) {
-    var keys = p.names.map(normName).filter(String);
-    var hit = custs.filter(function (x) {
-      return !usati[x.c.id] && keys.indexOf(x.k) >= 0;
-    })[0];
-    if (!hit) {
-      var cands = custs.filter(function (x) {
-        return (
-          !usati[x.c.id] &&
-          keys.some(function (k) {
-            var a = k.length <= x.k.length ? k : x.k;
-            var b = k.length <= x.k.length ? x.k : k;
-            return a.length >= 4 && (" " + b + " ").indexOf(" " + a + " ") >= 0;
-          })
-        );
-      });
-      if (cands.length === 1) hit = cands[0];
-    }
-    if (!hit) return;
-    usati[hit.c.id] = true;
-    out.push({ cliente: hit.c, city: p.city, address: p.address });
+}
+
+// nome uguale; altrimenti «contiene» se il cliente possibile è uno solo
+function abbinaUno_(nomi, custs) {
+  var keys = nomi.map(normName).filter(String);
+  var hit = custs.filter(function (x) {
+    return keys.indexOf(x.k) >= 0;
+  })[0];
+  if (hit) return hit.c;
+  var cands = custs.filter(function (x) {
+    return keys.some(function (k) {
+      var a = k.length <= x.k.length ? k : x.k;
+      var b = k.length <= x.k.length ? x.k : k;
+      return a.length >= 4 && (" " + b + " ").indexOf(" " + a + " ") >= 0;
+    });
   });
-  return out;
+  return cands.length === 1 ? cands[0].c : null;
 }
 
 // ---------- database dell'app ----------
-function base_() {
-  return "https://firestore.googleapis.com/v1/projects/" + CONFIG.progetto + "/databases/(default)/documents/" + CONFIG.dati;
+function radice_() {
+  return "projects/" + CONFIG.progetto + "/databases/(default)/documents";
 }
 
 function accedi_() {
@@ -269,11 +471,11 @@ function leggiClienti_(token) {
   var out = [];
   var pagina = "";
   do {
-    var url = base_() + "/customers?pageSize=300" + (pagina ? "&pageToken=" + encodeURIComponent(pagina) : "");
+    var url = "https://firestore.googleapis.com/v1/" + radice_() + "/" + CONFIG.dati + "/customers?pageSize=300" + (pagina ? "&pageToken=" + encodeURIComponent(pagina) : "");
     var j = JSON.parse(UrlFetchApp.fetch(url, { headers: { Authorization: "Bearer " + token } }).getContentText());
     (j.documents || []).forEach(function (d) {
       var f = d.fields || {};
-      out.push({ id: d.name.split("/").pop(), name: valore_(f.name), city: valore_(f.city), address: valore_(f.address), placeSource: valore_(f.placeSource) });
+      out.push({ id: d.name.split("/").pop(), name: valore_(f.name), city: valore_(f.city), address: valore_(f.address), placeSource: valore_(f.placeSource), driveFolderId: valore_(f.driveFolderId) });
     });
     pagina = j.nextPageToken || "";
   } while (pagina);
@@ -283,34 +485,32 @@ function leggiClienti_(token) {
 function campi_(o) {
   var f = {};
   Object.keys(o).forEach(function (k) {
-    f[k] = typeof o[k] === "number" ? { integerValue: String(o[k]) } : { stringValue: String(o[k]) };
+    f[k] = typeof o[k] === "number" ? { integerValue: String(o[k]) } : { stringValue: String(o[k] == null ? "" : o[k]) };
   });
   return f;
 }
 
-function scriviCliente_(token, id, dati) {
-  var mask = Object.keys(dati)
-    .map(function (k) {
-      return "updateMask.fieldPaths=" + k;
-    })
-    .join("&");
-  UrlFetchApp.fetch(base_() + "/customers/" + id + "?" + mask, {
-    method: "patch",
-    contentType: "application/json",
-    headers: { Authorization: "Bearer " + token },
-    payload: JSON.stringify({ fields: campi_(dati) }),
-  });
+// una scrittura «aggiorna questi campi» (il resto del documento resta com'è)
+function aggiornaDoc_(percorso, dati) {
+  return {
+    update: { name: radice_() + "/" + CONFIG.dati + "/" + percorso, fields: campi_(dati) },
+    updateMask: { fieldPaths: Object.keys(dati) },
+  };
 }
 
-function scriviEsito_(token, dati) {
-  UrlFetchApp.fetch(base_() + "/settings/drive_places", {
-    method: "patch",
-    contentType: "application/json",
-    headers: { Authorization: "Bearer " + token },
-    payload: JSON.stringify({ fields: campi_(dati) }),
-    muteHttpExceptions: true,
-  });
+// scrive a pacchi di 300 (una chiamata per pacco)
+function scriviTutto_(token, scritture) {
+  for (var i = 0; i < scritture.length; i += 300) {
+    var r = UrlFetchApp.fetch("https://firestore.googleapis.com/v1/" + radice_() + ":commit", {
+      method: "post",
+      contentType: "application/json",
+      headers: { Authorization: "Bearer " + token },
+      payload: JSON.stringify({ writes: scritture.slice(i, i + 300) }),
+      muteHttpExceptions: true,
+    });
+    if (r.getResponseCode() >= 300) Logger.log("Scrittura non riuscita: %s", r.getContentText().slice(0, 300));
+  }
 }
 
-// per le prove fuori da Google (node): esporta la lettura dell'intestazione
-if (typeof module !== "undefined") module.exports = { estrai: estrai, normName: normName, abbina: abbina_ };
+// per le prove fuori da Google (node)
+if (typeof module !== "undefined") module.exports = { estrai: estrai, normName: normName, abbinaUno: abbinaUno_, estraiGru: estraiGru, tabelleDocx: tabelleDocx, fabKey: fabKey, etichettaFoglio: etichettaFoglio_ };

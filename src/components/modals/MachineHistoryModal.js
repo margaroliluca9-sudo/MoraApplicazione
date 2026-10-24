@@ -11,6 +11,7 @@ import { AssistantPanel } from "../AssistantPanel";
 import { PrintLogButton } from "../PrintLogButton";
 import { CraneTypeIcon } from "../CraneTypeIcon";
 import { EmptyState } from "../EmptyState";
+import { DriveCraneInfo } from "../DriveCraneInfo";
 
 // "oggi", "ieri", "5 giorni fa", "3 settimane fa", "2 mesi fa", "1 anno fa"
 const agoLabel = (dateString) => {
@@ -70,6 +71,7 @@ export const MachineHistoryModal = ({
               <X className="w-5 h-5" />
             </button>
           </div>
+          <DriveCraneInfo matricola={getSafeMatricola(machine)} customerName={machine.customerName} />
           {ROPE_ITEMS.map(({ id, title }) => {
             const last = lastRopeOf(machineLogs, id);
             return last ? (
