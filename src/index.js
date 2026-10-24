@@ -7,6 +7,8 @@ import "./dark.css";
 import "./appearance.css";
 // grafica già pronta (prima veniva costruita dal telefono mentre usavi l'app: rallentava)
 import "./tailwind.css";
+import { ErrorBoundary } from "./components/ErrorBoundary";
+import { installErrorLog } from "./errorLog";
 import { applyTheme, getThemeMode } from "./theme";
 import { applyAppearance, getCachedLayout } from "./appearance";
 
@@ -25,11 +27,16 @@ if (
   });
 }
 
+// errori sui telefoni → Area admin → System (vedi errorLog.js)
+installErrorLog();
+
 const rootElement = document.getElementById("root");
 const root = createRoot(rootElement);
 
 root.render(
   <StrictMode>
-    <App />
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
   </StrictMode>
 );

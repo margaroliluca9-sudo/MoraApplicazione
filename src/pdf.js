@@ -7,7 +7,6 @@
 import { getTechsString, formatCapacity, getSafeMatricola } from "./utils";
 import { formatRopeLong } from "./ropes";
 import { fmtMin, fmtDelta, deltaOf, kindOf, shortDay, rangeSummary, periodLabel, isFreeDay } from "./hours";
-import { MORA_LOGO_PNG, MORA_LOGO_RATIO } from "./pdfLogo";
 import { COMPANY_DEFAULT, companyInfo } from "./company";
 
 // intestazione: dati modificabili dall'admin (company.js)
@@ -50,9 +49,11 @@ const createDoc = async (title) => {
   doc.setProducer("Assistenza Mora");
   const font = await doc.embedFont(StandardFonts.Helvetica);
   const bold = await doc.embedFont(StandardFonts.HelveticaBold);
+  // il logo (pesante) si carica solo quando serve un PDF, non all'apertura dell'app
+  const { MORA_LOGO_PNG, MORA_LOGO_RATIO } = await import("./pdfLogo");
   const logo = await doc.embedPng(MORA_LOGO_PNG);
   const col = (c) => rgb(c[0] / 255, c[1] / 255, c[2] / 255);
-  return { lib, doc, font, bold, logo, col };
+  return { lib, doc, font, bold, logo, col, logoRatio: MORA_LOGO_RATIO };
 };
 
 // --- testo: solo caratteri stampabili con i font standard (WinAnsi) ---
@@ -144,7 +145,7 @@ const photoSources = (log) =>
 // cella = stringa oppure lista di pezzi { t: testo, b: grassetto, c: colore, s: dimensione }
 const createFlow = async ({ title, subtitle, docTitle }) => {
   const ctx = await createDoc(docTitle || title);
-  const { doc, font, bold, logo, col } = ctx;
+  const { doc, font, bold, logo, col, logoRatio } = ctx;
   const M = 36;
   const flow = { ctx, page: null, y: 0, M };
 
@@ -152,7 +153,7 @@ const createFlow = async ({ title, subtitle, docTitle }) => {
     const page = doc.addPage([W, H]);
     flow.page = page;
     const lh = 38;
-    const lw = lh * MORA_LOGO_RATIO;
+    const lw = lh * logoRatio;
     page.drawImage(logo, { x: M, y: H - M - lh, width: lw, height: lh });
     const cx = M + lw + 12;
     const co = companyInfo();

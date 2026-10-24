@@ -72,11 +72,14 @@ import { MachineHistoryModal } from "./components/modals/MachineHistoryModal";
 import { CustomerDetailModal } from "./components/modals/CustomerDetailModal";
 import { DashboardView } from "./views/DashboardView";
 import { ExploreView } from "./views/ExploreView";
-import { DatabaseView } from "./views/DatabaseView";
-import { OfficeView } from "./views/OfficeView";
+// Esplora database, Ufficio e Admin si scaricano solo quando servono (vedi lazy.js)
+import { lazyNamed, preloadLazy } from "./lazy";
+import { installErrorLog, setErrorContext } from "./errorLog";
 import { NewEntryForm } from "./views/NewEntryForm";
 import { HistoryView } from "./views/HistoryView";
-import { AdminPanel } from "./views/AdminPanel";
+const DatabaseView = lazyNamed(() => import("./views/DatabaseView"), "DatabaseView");
+const OfficeView = lazyNamed(() => import("./views/OfficeView"), "OfficeView");
+const AdminPanel = lazyNamed(() => import("./views/AdminPanel"), "AdminPanel");
 
 // SENZA RETE: "aggiornati oggi alle 8:42" / "ieri alle 17:10" / "il 16/10 alle 9:00"
 const readLastSync = () => {
@@ -793,6 +796,11 @@ export default function App() {
 
   // GESTI (indietro dal bordo, tasto indietro di Android, tieni premuto, tira giù per ricaricare)
   useEffect(() => installGestures(), []);
+  // dopo l'apertura, in sottofondo: scarico le parti caricate «quando servono» (così ci sono anche senza rete)
+  useEffect(() => preloadLazy(), []);
+  // errori sui telefoni: chi e in che schermata (vedi errorLog.js)
+  useEffect(() => installErrorLog(), []);
+  useEffect(() => setErrorContext(currentTechName, activeTab), [currentTechName, activeTab]);
   useEffect(() => {
     const home = (e) => {
       if (activeTab !== "dashboard") {

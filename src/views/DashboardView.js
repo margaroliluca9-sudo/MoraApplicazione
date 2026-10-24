@@ -34,11 +34,13 @@ import { PersonalAreaModal } from "../components/modals/PersonalAreaModal";
 import { HomeHero } from "../components/HomeHero";
 import { todayItems, monthNumbers, relDay, isoFromLogDate } from "../personal";
 import { HomeGrid } from "../components/HomeGrid";
-import { GuideModal } from "../components/modals/GuideModal";
+import { lazyNamed } from "../lazy";
 import { PracticeModal } from "../components/modals/PracticeModal";
 import { WIDGETS, resolveHome } from "../home";
 import { vanOf, itemsOf, lowItems, fmtQty } from "../van";
 import { PrintLogButton } from "../components/PrintLogButton";
+// la Guida (tanto testo) si scarica solo quando la apri
+const GuideModal = lazyNamed(() => import("../components/modals/GuideModal"), "GuideModal", <div className="fixed inset-0 z-[160] bg-white" />);
 
 // --- VIEWS PRINCIPALI ---
 

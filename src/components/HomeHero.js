@@ -10,7 +10,9 @@ import { HeroWorld } from "./hero/world";
 import { heroLines } from "./hero/facts";
 import { activeNotices } from "../company";
 import { createPortal } from "react-dom";
-import { CraneGame } from "./CraneGame";
+import { lazyNamed } from "../lazy";
+// il gioco si scarica solo quando lo apri (5 tocchi sul cielo)
+const CraneGame = lazyNamed(() => import("./CraneGame"), "CraneGame", <div className="fixed inset-0 z-[600] bg-slate-500" />);
 
 export const skyOf = (hour) =>
   hour >= 5 && hour < 9 ? "alba" : hour >= 9 && hour < 17 ? "giorno" : hour >= 17 && hour < 20 ? "tramonto" : "notte";

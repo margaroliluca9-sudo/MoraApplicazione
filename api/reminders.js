@@ -240,9 +240,12 @@ const cleanOld = async (collectionId, fieldPath, before) => {
 };
 // registro degli accessi (area admin → System mostra gli ultimi 50): tengo un anno
 const LOG_KEEP = 365 * 24 * 3600 * 1000;
+const ERR_KEEP = 60 * 24 * 3600 * 1000;
 const cleanPresence = async (now) => {
   const n = await cleanOld("active_users", "lastActive", now - STALE);
   await cleanOld("access_logs", "timestamp", now - LOG_KEEP).catch(() => 0);
+  // errori arrivati dai telefoni (Area admin → System): tengo 60 giorni
+  await cleanOld("app_errors", "when", now - ERR_KEEP).catch(() => 0);
   return n;
 };
 
