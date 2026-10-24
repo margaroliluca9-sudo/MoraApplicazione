@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback } from "react";
+import { fuzzyFilter } from "../fuzzy";
 import {
   Search,
   Factory,
@@ -18,9 +19,8 @@ export const ExploreView = React.memo(
 
     const filteredCustomers = useMemo(() => {
       if (!searchTerm) return customers;
-      return customers.filter((c) =>
-        c.name.toLowerCase().includes(searchTerm.toLowerCase())
-      );
+      // perdona gli errori di battitura (vedi fuzzy.js)
+      return fuzzyFilter(customers, searchTerm, (c) => c.name);
     }, [customers, searchTerm]);
 
     const getCustomerMachines = useCallback(

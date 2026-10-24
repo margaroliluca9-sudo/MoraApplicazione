@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from "react";
+import { fuzzyFilter } from "../fuzzy";
 import { EmptyState } from "../components/EmptyState";
 import { Search, ChevronRight, Users } from "lucide-react";
 import { getTechsString, getSafeMatricola } from "../utils";
@@ -18,24 +19,11 @@ export const DatabaseView = ({
   const color = themeColor || "blue";
 
   const filteredData = useMemo(() => {
-    const s = searchTerm.toLowerCase();
-    if (tab === "customers")
-      return customers.filter(
-        (c) => c.name && c.name.toLowerCase().includes(s)
-      );
-    if (tab === "machines")
-      return machines.filter(
-        (m) =>
-          (m.matricola || m.id).toLowerCase().includes(s) ||
-          (m.customerName && m.customerName.toLowerCase().includes(s))
-      );
-    if (tab === "logs")
-      return logs.filter(
-        (l) =>
-          (l.description && l.description.toLowerCase().includes(s)) ||
-          (l.machineId && l.machineId.toLowerCase().includes(s)) ||
-          (l.customer && l.customer.toLowerCase().includes(s))
-      );
+    // ricerca che perdona gli errori di battitura (vedi fuzzy.js)
+    const s = searchTerm;
+    if (tab === "customers") return fuzzyFilter(customers.filter((c) => c.name), s, (c) => c.name);
+    if (tab === "machines") return fuzzyFilter(machines, s, (m) => `${m.matricola || m.id} ${m.customerName || ""}`);
+    if (tab === "logs") return fuzzyFilter(logs, s, (l) => `${l.description || ""} ${l.machineId || ""} ${l.customer || ""}`);
     return [];
   }, [tab, searchTerm, customers, machines, logs]);
 

@@ -35,6 +35,7 @@ import { HomeHero } from "../components/HomeHero";
 import { todayItems, monthNumbers, relDay, isoFromLogDate } from "../personal";
 import { HomeGrid } from "../components/HomeGrid";
 import { lazyNamed } from "../lazy";
+import { fuzzyFilter, queryWords } from "../fuzzy";
 import { PracticeModal } from "../components/modals/PracticeModal";
 import { WIDGETS, resolveHome } from "../home";
 import { vanOf, itemsOf, lowItems, fmtQty } from "../van";
@@ -235,23 +236,18 @@ export const DashboardView = ({
   const results = useMemo(() => {
     if (!searching) return null;
     const wide = query.trim().length >= 2;
-    const hit = (text) => {
-      const h = norm(text);
-      return tokens.every((t) => h.includes(t));
-    };
-    const cs = wide ? customers.filter((c) => hit(c.name)) : [];
-    const ms = wide
-      ? machines.filter((m) => hit(`${getSafeMatricola(m)} ${m.customerName} ${m.type || ""}`))
-      : [];
+    // perdona gli errori di battitura («rosi» trova Rossi): vedi fuzzy.js
+    const words = queryWords(query);
+    const cs = wide ? fuzzyFilter(customers, words, (c) => c.name) : [];
+    const ms = wide ? fuzzyFilter(machines, words, (m) => `${getSafeMatricola(m)} ${m.customerName} ${m.type || ""}`) : [];
     const exact = tq ? logs.filter((l) => matchTicket(l, tq)).sort((a, b) => dateKey(b.dateString) - dateKey(a.dateString)) : [];
     if (exact.length || !wide) return { cs, ms, ls: exact, ticket: tq };
-    const ls = logs
-      .filter((l) =>
-        hit(
-          `${l.ticketNumber || ""} ${l.customer} ${l.machineId} ${l.description} ${l.technician} ${(l.additionalTechnicians || []).join(" ")} ${l.dateString} ${formatRope(l.fune)} ${formatRope(l.catena)}`,
-        ),
-      )
-      .sort((a, b) => dateKey(b.dateString) - dateKey(a.dateString));
+    const byDate = logs.slice().sort((a, b) => dateKey(b.dateString) - dateKey(a.dateString));
+    const ls = fuzzyFilter(
+      byDate,
+      words,
+      (l) => `${l.ticketNumber || ""} ${l.customer} ${l.machineId} ${l.description} ${l.technician} ${(l.additionalTechnicians || []).join(" ")} ${l.dateString} ${formatRope(l.fune)} ${formatRope(l.catena)}`,
+    );
     return { cs, ms, ls, ticket: null };
   }, [query, customers, machines, logs]);
 

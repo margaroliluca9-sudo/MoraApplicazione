@@ -134,7 +134,7 @@ const appStepsFor = ({ hasVan, chatEnabled, isAdmin }) =>
     {
       icon: Search,
       title: "La ricerca",
-      text: "Scrivi un cliente, una matricola, un N. assistenza, un tecnico o una parola della descrizione: trovi clienti, gru e interventi. Tocca un risultato per aprire la gru. Il N. assistenza riparte ogni anno: «5» trova i n. 5 di tutti gli anni (il più recente in cima), «5/2027» solo quello del 2027.",
+      text: "Scrivi un cliente, una matricola, un N. assistenza, un tecnico o una parola della descrizione: trovi clienti, gru e interventi. Non serve scrivere giusto: «rosi» trova Rossi, «biachi» trova Bianchi (prima i risultati scritti uguali, poi quelli «quasi»); solo i numeri devono essere esatti. Vale anche nello Storico e in Esplora. Tocca un risultato per aprire la gru. Il N. assistenza riparte ogni anno: «5» trova i n. 5 di tutti gli anni (il più recente in cima), «5/2027» solo quello del 2027.",
     },
     {
       icon: Factory,

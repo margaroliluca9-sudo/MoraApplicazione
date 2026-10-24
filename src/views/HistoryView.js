@@ -1,5 +1,6 @@
 import { EmptyState } from "../components/EmptyState";
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import { fuzzyFilter } from "../fuzzy";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import {
   Search,
   User,
@@ -137,26 +138,22 @@ export const HistoryView = ({
   // ---------------------------------------------------------
 
   const meKey = String(me || "").trim().toLowerCase();
-  const isMine = (l) =>
-    String(l.technician || "").trim().toLowerCase() === meKey ||
-    (l.additionalTechnicians || []).some((t) => String(t).trim().toLowerCase() === meKey);
   // N. assistenza (riparte ogni anno): «5» = i n. 5 di tutti gli anni, «5/2027» solo quello del 2027
-  const tq = parseTicketQuery(searchTerm);
-  const byTicket = tq && logs.some((l) => matchTicket(l, tq));
-  const filtered = logs.filter((l) => {
-    if (show === "mine" && !isMine(l)) return false;
-    if (show === "photos" && !(l.photos && l.photos.length)) return false;
-    if (byTicket) return matchTicket(l, tq);
-    const s = searchTerm.toLowerCase();
-    return (
-      (l.ticketNumber && String(l.ticketNumber).toLowerCase().includes(s)) ||
-      (l.customer && l.customer.toLowerCase().includes(s)) ||
-      (l.machineId && l.machineId.toLowerCase().includes(s)) ||
-      (l.description && l.description.toLowerCase().includes(s)) ||
-      (l.fune && formatRope(l.fune).toLowerCase().includes(s)) ||
-      (l.catena && formatRope(l.catena).toLowerCase().includes(s))
-    );
-  });
+  // ricerca che perdona gli errori di battitura («biachi» trova Bianchi): vedi fuzzy.js
+  const filtered = useMemo(() => {
+    const q = parseTicketQuery(searchTerm);
+    const ticket = q && logs.some((l) => matchTicket(l, q));
+    const mine = (l) =>
+      String(l.technician || "").trim().toLowerCase() === meKey ||
+      (l.additionalTechnicians || []).some((t) => String(t).trim().toLowerCase() === meKey);
+    const base = logs.filter((l) => {
+      if (show === "mine" && !mine(l)) return false;
+      if (show === "photos" && !(l.photos && l.photos.length)) return false;
+      return !ticket || matchTicket(l, q);
+    });
+    if (ticket) return base;
+    return fuzzyFilter(base, searchTerm, (l) => `${l.ticketNumber || ""} ${l.customer || ""} ${l.machineId || ""} ${l.description || ""} ${l.fune ? formatRope(l.fune) : ""} ${l.catena ? formatRope(l.catena) : ""}`);
+  }, [logs, show, searchTerm, meKey]);
 
   const ITEMS_PER_PAGE = 50;
   const paginated = isMobile
