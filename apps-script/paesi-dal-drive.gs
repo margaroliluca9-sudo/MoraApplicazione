@@ -29,7 +29,7 @@ var CONFIG = {
   apiKey: "AIzaSyCQ3VhCtvxIP2cxtdSgMzYXaTg4E1zPlZE", // chiave web pubblica dell'app (è già dentro l'app)
   progetto: "mora-app-36607",
   dati: "artifacts/mora-maintenance-v1/public/data",
-  minuti: 4.5, // Google ferma i programmi dopo 6 minuti: mi fermo prima e riprendo il giorno dopo
+  minuti: 4, // Google ferma i programmi dopo 6 minuti: mi fermo prima e riprendo il giorno dopo
 };
 
 /** Da eseguire una volta: crea l'appuntamento di ogni mattina e aggiorna subito. */
@@ -56,8 +56,21 @@ function aggiornaPaesi() {
   aggiorna();
 }
 
-/** Il lavoro di ogni mattina. */
+/** Il lavoro di ogni mattina. Se si ferma per un errore lo scrive nell'app (Admin → Drive, riquadro rosso). */
 function aggiorna() {
+  try {
+    giro_();
+  } catch (e) {
+    try {
+      scriviTutto_(accedi_(), [aggiornaDoc_("settings/drive_places", { lastError: String((e && e.message) || e).slice(0, 300), lastErrorAt: new Date().toISOString() })]);
+    } catch (e2) {
+      Logger.log("Non riesco nemmeno a scrivere l'errore: %s", e2);
+    }
+    throw e;
+  }
+}
+
+function giro_() {
   var inizio = Date.now();
   var props = PropertiesService.getScriptProperties();
   // cosa ho già letto, una voce per cartella (Google tiene al massimo 9 KB per voce):
@@ -90,7 +103,7 @@ function aggiorna() {
   });
   var elenco = []; // tutte le cartelle, per la scelta nell'app
   var scritture = [];
-  var conti = { cartelle: 0, lette: 0, abbinati: 0, clientiAggiornati: 0, gru: 0 };
+  var conti = { cartelle: 0, lette: 0, abbinati: 0, clientiAggiornati: 0, gru: 0, errori: [] };
   var finito = true;
   var cartelle = [];
   var it = cartella.getFolders();
@@ -186,11 +199,19 @@ function aggiorna() {
       nuoviVisti["v_" + voce.id] = JSON.stringify(ora);
     } catch (e) {
       Logger.log("Salto %s: %s", cart.getName(), e);
+      conti.errori.push(cart.getName().trim() + ": " + String((e && e.message) || e).slice(0, 120));
     }
   });
-  scriviTutto_(token, scritture);
+  var falliti = scriviTutto_(token, scritture);
+  if (falliti) conti.errori.push("Database: " + falliti + " scritture non riuscite");
   if (Object.keys(nuoviVisti).length) props.setProperties(nuoviVisti);
   props.deleteProperty("visti"); // formato vecchio
+  // totali (anche delle cartelle non rilette oggi): quante abbinate a un cliente e quante gru in tutto
+  var gruTotali = 0;
+  elenco.forEach(function (v) {
+    var rec = nuoviVisti["v_" + v.id] ? JSON.parse(nuoviVisti["v_" + v.id]) : visto(v.id);
+    gruTotali += ((rec && rec.g) || []).length;
+  });
   scriviTutto_(token, [
     aggiornaDoc_("settings/drive_places", {
       lastRun: new Date().toISOString(),
@@ -200,12 +221,22 @@ function aggiorna() {
       aggiornati: conti.clientiAggiornati,
       gru: conti.gru,
       finito: finito ? "sì" : "no",
+      cartelleTotali: elenco.length,
+      cartelleAbbinate: elenco.filter(function (v) {
+        return v.c;
+      }).length,
+      gruTotali: gruTotali,
+      errori: conti.errori.length,
+      erroriLista: JSON.stringify(conti.errori.slice(0, 15)),
+      durata: Math.round((Date.now() - inizio) / 1000),
+      lastError: "",
+      versione: 5,
     }),
     aggiornaDoc_("settings/drive_folders", { list: JSON.stringify(elenco), updatedAt: new Date().toISOString() }),
   ]);
   Logger.log(
-    "Cartelle: %s · lette oggi: %s · clienti abbinati: %s · paesi aggiornati: %s · gru aggiornate: %s%s",
-    conti.cartelle, conti.lette, conti.abbinati, conti.clientiAggiornati, conti.gru, finito ? "" : " · continua domani"
+    "Cartelle: %s · lette oggi: %s · clienti abbinati: %s · paesi aggiornati: %s · gru aggiornate: %s · problemi: %s%s",
+    conti.cartelle, conti.lette, conti.abbinati, conti.clientiAggiornati, conti.gru, conti.errori.length, finito ? "" : " · continua domani"
   );
 }
 
@@ -536,6 +567,7 @@ function aggiornaDoc_(percorso, dati) {
 
 // scrive a pacchi di 300 (una chiamata per pacco)
 function scriviTutto_(token, scritture) {
+  var falliti = 0;
   for (var i = 0; i < scritture.length; i += 300) {
     var r = UrlFetchApp.fetch("https://firestore.googleapis.com/v1/" + radice_() + ":commit", {
       method: "post",
@@ -544,8 +576,12 @@ function scriviTutto_(token, scritture) {
       payload: JSON.stringify({ writes: scritture.slice(i, i + 300) }),
       muteHttpExceptions: true,
     });
-    if (r.getResponseCode() >= 300) Logger.log("Scrittura non riuscita: %s", r.getContentText().slice(0, 300));
+    if (r.getResponseCode() >= 300) {
+      Logger.log("Scrittura non riuscita: %s", r.getContentText().slice(0, 300));
+      falliti += Math.min(300, scritture.length - i);
+    }
   }
+  return falliti;
 }
 
 // per le prove fuori da Google (node)
