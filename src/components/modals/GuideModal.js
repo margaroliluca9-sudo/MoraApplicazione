@@ -489,8 +489,8 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
         "Furgoni: crei i furgoni, scegli chi li usa («Nessuno» = tutto come prima), vedi tutti i magazzini e stampi la lista d'ordine.",
         "Azienda: avvisi in Home (con data di inizio e fine, poi spariscono da soli), chiusure aziendali (ferie collettive, ponti, patrono, anche «ogni anno»: Le mie ore le segna da sole e il promemoria delle ore non arriva), intestazione dei fogli stampati e password di tecnici e admin.",
         "Cestino: i rapporti eliminati restano qui 30 giorni, con le foto, chi li ha eliminati e quando. «Recupera» li rimette nello Storico com'erano; «Per sempre» li cancella subito. Dopo 30 giorni si cancellano da soli.",
-        "System: copia di sicurezza (si fa da sola ogni domenica; «Fai una copia adesso» con la password admin, e la data dell'ultima riuscita), «Errori sui telefoni» (se l'app va in errore sul telefono di qualcuno qui vedi cosa è successo, a chi, in che schermata e su che telefono; si cancellano da soli dopo 60 giorni), tecnici collegati, archivio e backup in PDF.",
-        "Se una schermata va in errore non resta la pagina bianca: compare «Qualcosa è andato storto» con il tasto «Riprova», e l'errore arriva da solo in Area admin → System.",
+        "System: copia di sicurezza (si fa da sola ogni domenica; «Fai una copia adesso» con la password admin, e la data dell'ultima riuscita), «Errori e segnalazioni» (se l'app va in errore sul telefono di qualcuno, o se qualcuno usa «Segnala un problema», qui vedi cosa è successo, a chi, in che schermata e su che telefono, con la foto dello schermo se c'è; si cancellano da soli dopo 60 giorni), tecnici collegati, archivio e backup in PDF.",
+        "Qualcosa non va? Tocca il tuo nome in alto a destra → «Segnala un problema»: scrivi cosa è successo e, se puoi, aggiungi una foto dello schermo. La segnalazione arriva all'admin. Se una schermata va in errore non resta la pagina bianca: compare «Qualcosa è andato storto» con il tasto «Riprova», e l'errore arriva da solo in Area admin → System.",
       ],
     },
   ].filter(Boolean);

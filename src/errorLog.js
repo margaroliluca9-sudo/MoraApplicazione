@@ -93,6 +93,40 @@ export const reportError = (err, kind = "errore") => {
   }
 };
 
+// «SEGNALA UN PROBLEMA» (menu in alto a destra): il tecnico scrive cosa non va e può aggiungere
+// una foto dello schermo. Finisce nello stesso elenco di Area admin → System.
+const REP_KEY = "mora_rep_day";
+export const sendReport = async ({ text = "", photo = "" } = {}) => {
+  const msg = String(text || "").trim().slice(0, 1000);
+  if (!msg && !photo) throw new Error("vuoto");
+  try {
+    const today = new Date().toISOString().slice(0, 10);
+    const [d, n] = (localStorage.getItem(REP_KEY) || "").split("|");
+    const count = d === today ? Number(n) || 0 : 0;
+    if (count >= 10) throw new Error("troppe");
+    localStorage.setItem(REP_KEY, `${today}|${count + 1}`);
+  } catch (e) {
+    if (e && e.message === "troppe") throw e;
+  }
+  const data = {
+    when: serverTimestamp(),
+    at: Date.now(),
+    kind: "segnalazione",
+    msg: msg || "(solo foto)",
+    stack: "",
+    screen,
+    who,
+    device: deviceName(),
+    online: navigator.onLine !== false,
+    version: appVersion(),
+    photo: photo || "",
+  };
+  if (window.__moraTest) (window.__errReports = window.__errReports || []).push(data);
+  // senza rete parte da sola appena torna (il database la tiene in coda)
+  addDoc(collection(db, "artifacts", appId, "public", "data", ERRORS_COLL), data).catch(() => {});
+  return true;
+};
+
 let installed = false;
 export const installErrorLog = () => {
   if (installed) return;

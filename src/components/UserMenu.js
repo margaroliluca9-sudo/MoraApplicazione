@@ -1,11 +1,13 @@
-// IN ALTO A DESTRA: chi è collegato su questo telefono e «Esci» (per tutti: tecnici, ufficio, admin).
+// IN ALTO A DESTRA: chi è collegato su questo telefono, «Segnala un problema» e «Esci» (per tutti: tecnici, ufficio, admin).
 // Uscendo si torna alla schermata d'accesso; i dati restano salvati.
 import React, { useEffect, useRef, useState } from "react";
-import { LogOut } from "lucide-react";
+import { LogOut, MessageSquareWarning } from "lucide-react";
+import { ReportProblemModal } from "./modals/ReportProblemModal";
 
 export const UserMenu = ({ name, role = "Tecnico", color = "blue", onLogout }) => {
   const [open, setOpen] = useState(false);
   const [ask, setAsk] = useState(false);
+  const [report, setReport] = useState(false);
   const box = useRef(null);
   useEffect(() => {
     if (!open) return undefined;
@@ -36,6 +38,10 @@ export const UserMenu = ({ name, role = "Tecnico", color = "blue", onLogout }) =
             <p className="font-black text-slate-800 leading-tight truncate">{name}</p>
             <p className="text-xs font-bold text-slate-500">{role} · collegato su questo dispositivo</p>
           </div>
+          <button type="button" data-action="report-problem" onClick={() => { setOpen(false); setReport(true); }}
+            className="w-full h-11 rounded-xl border border-slate-200 text-slate-700 font-bold text-sm flex items-center justify-center gap-2">
+            <MessageSquareWarning className="w-4 h-4 text-amber-600" /> Segnala un problema
+          </button>
           {!ask ? (
             <button type="button" data-action="logout" onClick={() => setAsk(true)}
               className="w-full h-11 rounded-xl border border-red-200 bg-red-50 text-red-700 font-black text-sm flex items-center justify-center gap-2">
@@ -52,6 +58,7 @@ export const UserMenu = ({ name, role = "Tecnico", color = "blue", onLogout }) =
           )}
         </div>
       )}
+      {report && <ReportProblemModal onClose={() => setReport(false)} color={color} />}
     </div>
   );
 };

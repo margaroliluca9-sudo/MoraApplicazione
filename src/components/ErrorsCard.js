@@ -7,7 +7,7 @@ import { db, appId } from "../firebase";
 import { ERRORS_COLL } from "../errorLog";
 
 const SCREENS = { dashboard: "Home", new: "Nuovo rapporto", history: "Storico", office: "Ufficio", database: "Database", explore: "Esplora", admin: "Admin" };
-const KINDS = { schermata: "Schermata bloccata", promessa: "Operazione non riuscita", errore: "Errore" };
+const KINDS = { schermata: "Schermata bloccata", promessa: "Operazione non riuscita", errore: "Errore", segnalazione: "Segnalazione" };
 const ref = () => collection(db, "artifacts", appId, "public", "data", ERRORS_COLL);
 const ms = (r) => (r.when && r.when.seconds ? r.when.seconds * 1000 : Number(r.at) || 0);
 const fmt = (t) => (t ? new Date(t).toLocaleString("it-IT", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "");
@@ -17,13 +17,14 @@ export const groupErrors = (rows) => {
   const g = new Map();
   rows.forEach((r) => {
     const k = (r.msg || "").trim();
-    const x = g.get(k) || { msg: k, kind: r.kind, n: 0, last: 0, who: new Set(), devices: new Set(), screens: new Set(), stack: r.stack || "", ids: [] };
+    const x = g.get(k) || { msg: k, kind: r.kind, n: 0, last: 0, who: new Set(), devices: new Set(), screens: new Set(), stack: r.stack || "", photo: "", ids: [] };
     x.n += 1;
     x.ids.push(r.id);
     const t = ms(r);
     if (t >= x.last) {
       x.last = t;
       x.stack = r.stack || x.stack;
+      x.photo = r.photo || x.photo;
     }
     if (r.who) x.who.add(r.who);
     if (r.device) x.devices.add(r.device);
@@ -37,6 +38,7 @@ export const ErrorsCard = ({ color = "blue" }) => {
   const [rows, setRows] = useState(null);
   const [busy, setBusy] = useState(false);
   const [open, setOpen] = useState(null);
+  const [zoom, setZoom] = useState(null);
   const [err, setErr] = useState("");
 
   const load = async () => {
@@ -72,8 +74,8 @@ export const ErrorsCard = ({ color = "blue" }) => {
           <Bug className="w-5 h-5" />
         </span>
         <div className="flex-1 min-w-0">
-          <p className="font-black text-slate-800">Errori sui telefoni</p>
-          <p className="text-xs text-slate-500">Se l'app va in errore sul telefono di qualcuno, qui vedi cosa è successo, a chi e su che telefono. Si cancellano da soli dopo 60 giorni.</p>
+          <p className="font-black text-slate-800">Errori e segnalazioni</p>
+          <p className="text-xs text-slate-500">Se l'app va in errore sul telefono di qualcuno, o se un tecnico usa «Segnala un problema» (menu in alto a destra), qui vedi cosa è successo, a chi e su che telefono. Si cancellano da soli dopo 60 giorni.</p>
         </div>
       </div>
       {rows == null ? (
@@ -87,7 +89,7 @@ export const ErrorsCard = ({ color = "blue" }) => {
       ) : (
         <div className="mt-3 space-y-2" data-errors-list>
           {groups.map((g, i) => (
-            <div key={g.msg + i} className="rounded-xl border border-slate-200 bg-slate-50">
+            <div key={g.msg + i} className={`rounded-xl border ${g.kind === "segnalazione" ? "border-amber-200 bg-amber-50" : "border-slate-200 bg-slate-50"}`}>
               <button type="button" onClick={() => setOpen(open === i ? null : i)} className="w-full text-left p-3 flex gap-2 items-start">
                 <span className="flex-1 min-w-0">
                   <span className="block text-sm font-black text-slate-800 break-words">{g.msg || "Errore senza descrizione"}</span>
@@ -106,6 +108,11 @@ export const ErrorsCard = ({ color = "blue" }) => {
                   <p className="text-xs text-slate-600">
                     <b>Telefoni:</b> {[...g.devices].join(" — ") || "—"}
                   </p>
+                  {g.photo && (
+                    <button type="button" onClick={() => setZoom(zoom === i ? null : i)} className={zoom === i ? "block w-full" : "block w-32"} aria-label="Ingrandisci la foto">
+                      <img src={g.photo} alt="Foto dello schermo" className={`${zoom === i ? "w-full h-auto" : "w-32 h-32 object-cover"} rounded-lg border border-slate-200`} data-errors-photo />
+                    </button>
+                  )}
                   {g.stack && <pre className="text-[11px] leading-snug text-slate-500 bg-white border border-slate-200 rounded-lg p-2 overflow-x-auto whitespace-pre-wrap break-all max-h-40">{g.stack}</pre>}
                 </div>
               )}
