@@ -973,7 +973,7 @@ export default function App() {
       setIsAdminAuthenticated(true);
       setActiveTab("admin");
     } else if (!isAdminAuthenticated) {
-      setShowAdminLogin(true);
+      setShowAdminLogin("admin"); // dopo l'accesso si va direttamente nell'Area admin
     } else {
       setActiveTab("admin");
     }
@@ -1472,8 +1472,8 @@ export default function App() {
         <AdminLoginModal
           onSuccess={() => {
             setIsAdminAuthenticated(true);
+            if (showAdminLogin === "admin" || activeTab === "admin") setActiveTab("admin");
             setShowAdminLogin(false);
-            if (activeTab === "admin") setActiveTab("admin");
           }}
           onCancel={() => setShowAdminLogin(false)}
           color={color}

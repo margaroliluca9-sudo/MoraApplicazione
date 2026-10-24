@@ -104,4 +104,6 @@ export const setPasswordHashes = (s = {}) => {
 export const passwordHash = (input) => sha256Hex(SALT + String(input));
 
 export const isAdminPassword = (input) => matches(input, adminHash);
+// impronta della password admin attuale (l'accesso con impronta/Face ID vale finché la password non cambia)
+export const currentAdminHash = () => adminHash;
 export const isStaffPassword = (input) => matches(input, staffHash);

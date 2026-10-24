@@ -53,6 +53,7 @@ import { AdminTab } from "../components/AdminTab";
 import { CompanyAdmin } from "../components/CompanyAdmin";
 import { BackupCard } from "../components/BackupCard";
 import { ErrorsCard } from "../components/ErrorsCard";
+import { BioCard } from "../components/BioCard";
 import { buildBackupPdf, pdfFileName } from "../pdf";
 import { openPdf } from "../components/PdfHost";
 import {
@@ -1351,6 +1352,7 @@ export const AdminPanel = ({
           </h4>
           <BackupCard color={layoutConfig.themeColor} />
           <ErrorsCard color={layoutConfig.themeColor} />
+          <BioCard color={layoutConfig.themeColor} />
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
             <div className="p-4 rounded-xl border border-slate-200 bg-slate-50 flex items-center justify-between">
               <div className="flex items-center gap-3">
