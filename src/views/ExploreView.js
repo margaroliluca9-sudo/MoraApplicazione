@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useEffect } from "react";
 import { fuzzyFilter } from "../fuzzy";
 import {
   Search,
@@ -6,17 +6,27 @@ import {
   ChevronRight,
   Users,
   Camera,
+  List,
+  Map as MapIcon,
 } from "lucide-react";
 import { getTechsString, formatCapacity, getSafeMatricola } from "../utils";
 import { PRO_INPUT, getProPanelClass } from "../ui";
 import { PrintLogButton } from "../components/PrintLogButton";
 import { placeOf } from "../places";
+import { CustomersMap } from "../components/CustomersMap";
 
 export const ExploreView = React.memo(
   ({ customers, machines, logs, color = "blue", onOpenPhotos }) => {
     const [searchTerm, setSearchTerm] = useState("");
     const [expandedCustomer, setExpandedCustomer] = useState(null);
     const [expandedMachine, setExpandedMachine] = useState(null);
+    // «Elenco» o «Mappa» (dove sono i clienti)
+    const [mode, setMode] = useState("list");
+    useEffect(() => {
+      if (mode !== "list" || !expandedCustomer) return;
+      const el = document.querySelector(`[data-explore-customer="${CSS.escape(expandedCustomer)}"]`);
+      if (el && el.scrollIntoView) el.scrollIntoView({ block: "start" });
+    }, [mode, expandedCustomer]);
 
     const filteredCustomers = useMemo(() => {
       if (!searchTerm) return customers;
@@ -63,7 +73,39 @@ export const ExploreView = React.memo(
             />
             <Search className="absolute right-3 top-3.5 text-slate-400 w-5 h-5" />
           </div>
+          <div className="mt-3 grid grid-cols-2 gap-1 p-1 rounded-full bg-slate-100" data-section="explore-mode">
+            {[
+              ["list", List, "Elenco"],
+              ["map", MapIcon, "Mappa"],
+            ].map(([id, Ic, label]) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setMode(id)}
+                data-explore-mode={id}
+                aria-pressed={mode === id}
+                className={`h-9 rounded-full text-sm font-bold flex items-center justify-center gap-1.5 ${mode === id ? `bg-white shadow-sm text-${color}-700` : "text-slate-600"}`}
+              >
+                <Ic className="w-4 h-4" /> {label}
+              </button>
+            ))}
+          </div>
         </div>
+
+        {mode === "map" ? (
+          <div className="flex-1 min-h-0 pb-20">
+            <CustomersMap
+              customers={filteredCustomers}
+              machines={machines}
+              color={color}
+              onShowMachines={(name) => {
+                setExpandedCustomer(name);
+                setExpandedMachine(null);
+                setMode("list");
+              }}
+            />
+          </div>
+        ) : (
 
         <div className="flex-1 overflow-y-auto space-y-2 custom-scrollbar pb-20">
           {filteredCustomers.map((c) => {
@@ -75,6 +117,7 @@ export const ExploreView = React.memo(
             return (
               <div
                 key={c.id}
+                data-explore-customer={c.name}
                 className={`bg-white rounded-xl shadow-sm border transition-all duration-300 overflow-hidden ${
                   isCustExpanded
                     ? `border-${color}-500 ring-1 ring-${color}-200`
@@ -214,6 +257,7 @@ export const ExploreView = React.memo(
             );
           })}
         </div>
+        )}
       </div>
     );
   }

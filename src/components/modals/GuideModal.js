@@ -160,7 +160,7 @@ const appStepsFor = ({ hasVan, chatEnabled, isAdmin }) =>
     {
       icon: Folder,
       title: "Esplora",
-      text: "«Per cliente»: sfogli i clienti, apri le loro gru e leggi gli interventi di ognuna. «Elenco gru e interventi»: tutte le gru e tutti gli interventi in un elenco, con ricerca (era il Database).",
+      text: "«Per cliente»: sfogli i clienti, apri le loro gru e leggi gli interventi di ognuna. «Elenco gru e interventi»: tutte le gru e tutti gli interventi in un elenco, con ricerca (era il Database). In «Per cliente» c'è anche «Mappa»: tutti i clienti su una cartina come Google Maps (trascini col dito, + e − o due dita per lo zoom, il pallino col numero sono più clienti vicini: toccalo per avvicinarti). Tocca un cliente: paese, quante gru, «Vedi le gru» e «Portami qui» (apre la strada su Google Maps). La ricerca vale anche sulla mappa (es. «novara»). La posizione la trova ogni mattina il programma del Drive dal paese e dall'indirizzo; il segnaposto chiaro vuol dire che c'è solo il paese, senza via.",
     },
     {
       icon: Briefcase,
@@ -326,6 +326,7 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
       points: [
         "«Per cliente»: sfoglia i clienti, apri le loro gru e leggi gli interventi di ogni gru, con foto e stampa.",
         "«Elenco gru e interventi» (era il Database): tutti i clienti, le gru e gli interventi in elenco, con ricerca veloce.",
+        "In «Per cliente» c'è anche «Mappa»: tutti i clienti su una cartina come Google Maps (trascini col dito, + e − o due dita per lo zoom, il pallino col numero sono più clienti vicini: toccalo per avvicinarti). Tocca un cliente: paese, quante gru, «Vedi le gru» e «Portami qui» (apre la strada su Google Maps). La ricerca vale anche sulla mappa (es. «novara»). La posizione la trova ogni mattina il programma del Drive dal paese e dall'indirizzo; il segnaposto chiaro vuol dire che c'è solo il paese, senza via.",
       ],
     },
     {
@@ -536,7 +537,7 @@ const officeSteps = [
   {
     icon: Folder,
     title: "Esplora",
-    text: "Sfogli i clienti, apri le loro gru e leggi gli interventi di ognuna, con foto e stampa.",
+    text: "Sfogli i clienti, apri le loro gru e leggi gli interventi di ognuna, con foto e stampa. Con «Mappa» vedi dove sono tutti i clienti e con «Portami qui» apri la strada su Google Maps.",
     go: { label: "Apri Esplora", to: "explore" },
   },
   {
@@ -589,7 +590,7 @@ const officeSections = [
     id: "explore",
     icon: Folder,
     title: "Esplora",
-    points: ["Sfoglia i clienti, apri le loro gru e leggi gli interventi di ognuna, con foto e stampa."],
+    points: ["Sfoglia i clienti, apri le loro gru e leggi gli interventi di ognuna, con foto e stampa.", "«Mappa»: dove sono tutti i clienti; tocca un cliente per «Portami qui»."],
   },
   {
     id: "machine",

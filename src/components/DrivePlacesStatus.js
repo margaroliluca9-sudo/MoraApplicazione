@@ -80,6 +80,7 @@ export const DrivePlacesStatus = () => {
         num(info.lette) && `${info.lette} fogli letti (solo nuovi o cambiati)`,
         num(info.aggiornati) && `${info.aggiornati} paesi aggiornati`,
         num(info.gru) && `${info.gru} gru aggiornate`,
+        num(info.posizioni) && Number(info.posizioni) > 0 && `${info.posizioni} clienti messi sulla mappa`,
         num(info.durata) && `in ${Math.max(1, Math.round(Number(info.durata) / 60))} min`,
       ].filter(Boolean)
     : [];
