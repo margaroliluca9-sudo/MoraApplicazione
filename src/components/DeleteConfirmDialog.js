@@ -10,6 +10,7 @@ export const DeleteConfirmDialog = ({
   error,
   title,
   isFree,
+  note = "",
 }) => (
   <div className="fixed inset-0 bg-slate-900/60 z-[200] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-300">
     <div
@@ -25,6 +26,7 @@ export const DeleteConfirmDialog = ({
       <h4 className="font-bold text-slate-800 text-sm">
         {title}
       </h4>
+      {note && <p className="text-xs text-slate-500 leading-snug" data-delete-note>{note}</p>}
       {isFree ? (
         <p className="text-sm text-slate-600 font-medium leading-relaxed">
           Modifica recente: eliminazione consentita senza PIN.

@@ -12,8 +12,6 @@ import {
   Printer,
   Lock,
 } from "lucide-react";
-import { doc, deleteDoc } from "firebase/firestore";
-import { db, appId } from "../firebase";
 import { isAdminPassword } from "../passwords";
 import { getTechsString, formatCapacity } from "../utils";
 import { getProPanelClass } from "../ui";
@@ -21,10 +19,9 @@ import { DeleteConfirmDialog } from "../components/DeleteConfirmDialog";
 import { EditLogModal } from "../components/modals/EditLogModal";
 import { formatRope, formatRopeLong, ROPE_ITEMS } from "../ropes";
 import { printIntervention } from "../components/PrintLogButton";
-import { removeLogPhotos } from "../logPhotos";
+import { trashLog } from "../trash";
 import { SwipeRow } from "../components/SwipeRow";
 import { parseTicketQuery, matchTicket, ticketLabel } from "../ticket";
-import { logsChanged } from "../logsWindow";
 
 // gruppi dello Storico: Oggi, Ieri, Questa settimana, Settimana scorsa, poi mese per mese
 const MESI = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"];
@@ -197,19 +194,8 @@ export const HistoryView = ({
 
   const confirmDelete = async () => {
     if (!isFreeAction && !isAdminPassword(pin)) return setErr(true);
-    await deleteDoc(
-      doc(
-        db,
-        "artifacts",
-        appId,
-        "public",
-        "data",
-        "maintenance_logs",
-        isDeleting
-      )
-    );
-    removeLogPhotos(isDeleting);
-    logsChanged();
+    // non si perde: va nel cestino per 30 giorni (Area admin → Cestino)
+    await trashLog(isDeleting, me || (isAdmin ? "admin" : ""), logs.find((l) => l.id === isDeleting));
     setIsDeleting(null);
     setPin("");
   };
@@ -605,6 +591,7 @@ export const HistoryView = ({
           error={err}
           title="Elimina"
           isFree={isFreeAction}
+          note="Va nel cestino: l'admin lo può recuperare per 30 giorni."
         />
       )}
       {isEditing && (

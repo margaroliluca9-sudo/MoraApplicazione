@@ -241,9 +241,33 @@ const cleanOld = async (collectionId, fieldPath, before) => {
 // registro degli accessi (area admin → System mostra gli ultimi 50): tengo un anno
 const LOG_KEEP = 365 * 24 * 3600 * 1000;
 const ERR_KEEP = 60 * 24 * 3600 * 1000;
+const TRASH_KEEP = 30 * 24 * 3600 * 1000;
+const cleanTrash = async (before) => {
+  const rows = await call(`${BASE}/${DATA}:runQuery`, {
+    method: "POST",
+    body: JSON.stringify({
+      structuredQuery: {
+        from: [{ collectionId: "deleted_logs" }],
+        where: { fieldFilter: { field: { fieldPath: "deletedAt" }, op: "LESS_THAN", value: { timestampValue: new Date(before).toISOString() } } },
+        limit: 200,
+      },
+    }),
+  });
+  const names = (rows || []).filter((x) => x.document).map((x) => x.document.name);
+  if (!names.length) return 0;
+  const writes = [];
+  names.forEach((n) => {
+    writes.push({ delete: n });
+    writes.push({ delete: n.replace("/deleted_logs/", "/log_photos/") });
+  });
+  await call(`${BASE}:commit`, { method: "POST", body: JSON.stringify({ writes }) });
+  return names.length;
+};
 const cleanPresence = async (now) => {
   const n = await cleanOld("active_users", "lastActive", now - STALE);
   await cleanOld("access_logs", "timestamp", now - LOG_KEEP).catch(() => 0);
+  // cestino dei rapporti (Area admin → Cestino): dopo 30 giorni via per sempre, foto comprese
+  await cleanTrash(now - TRASH_KEEP).catch(() => 0);
   // errori arrivati dai telefoni (Area admin → System): tengo 60 giorni
   await cleanOld("app_errors", "when", now - ERR_KEEP).catch(() => 0);
   return n;

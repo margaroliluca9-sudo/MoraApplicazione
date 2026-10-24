@@ -43,7 +43,8 @@ import {
   where,
   getDocs,
 } from "firebase/firestore";
-import { removeLogPhotos } from "../logPhotos";
+import { trashLog } from "../trash";
+import { TrashView } from "../components/TrashView";
 import { logsChanged } from "../logsWindow";
 import { db, appId } from "../firebase";
 import { describeError, getSafeMatricola, getLevenshteinDistance } from "../utils";
@@ -477,18 +478,20 @@ export const AdminPanel = ({
   const confirmDeleteAdmin = async () => {
     if (!itemToDelete) return;
     try {
-      await deleteDoc(
-        doc(
-          db,
-          "artifacts",
-          appId,
-          "public",
-          "data",
-          itemToDelete.coll,
-          itemToDelete.id
-        )
-      );
-      if (itemToDelete.coll === "maintenance_logs") removeLogPhotos(itemToDelete.id);
+      // i rapporti vanno nel cestino (si recuperano per 30 giorni); il resto si elimina
+      if (itemToDelete.coll === "maintenance_logs") await trashLog(itemToDelete.id, "admin");
+      else
+        await deleteDoc(
+          doc(
+            db,
+            "artifacts",
+            appId,
+            "public",
+            "data",
+            itemToDelete.coll,
+            itemToDelete.id
+          )
+        );
     } catch (e) {
       console.error(e);
     }
@@ -683,6 +686,13 @@ export const AdminPanel = ({
         />
         <AdminTab
           color={layoutConfig.themeColor}
+          active={view === "trash"}
+          onClick={() => setView("trash")}
+          icon={Trash2}
+          label="Cestino"
+        />
+        <AdminTab
+          color={layoutConfig.themeColor}
           active={view === "diagnostics"}
           onClick={() => setView("diagnostics")}
           icon={AlertOctagon}
@@ -691,6 +701,7 @@ export const AdminPanel = ({
       </div>
 
       {view === "company" && <CompanyAdmin color={layoutConfig.themeColor} />}
+      {view === "trash" && <TrashView color={layoutConfig.themeColor} />}
       {view === "vans" && (
         <VanAdmin
           vans={vans}

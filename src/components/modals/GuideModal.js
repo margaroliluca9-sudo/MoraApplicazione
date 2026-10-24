@@ -280,7 +280,7 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
         "Sotto la ricerca: «Tutti», «I miei» (solo quelli dove c'eri tu) e «Con foto».",
         "Tocca «Gru …» su un intervento per aprire la scheda di quella gru.",
         "Fune e catena sostituite sono indicate sotto la descrizione.",
-        "Modificare o eliminare: entro 3 minuti dal salvataggio lo puoi fare tu (matita e cestino), dopo compare un lucchetto e serve la password admin.",
+        "Modificare o eliminare: entro 3 minuti dal salvataggio lo puoi fare tu (matita e cestino), dopo compare un lucchetto e serve la password admin. Un rapporto eliminato non si perde: va nel cestino e l'admin lo può recuperare per 30 giorni (Area admin → Cestino).",
       ],
     },
     {
@@ -488,6 +488,7 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
         "«Doppioni» (in Clienti e in Gru): ti mostra una coppia alla volta di nomi che sembrano uguali, con quanti interventi e gru ha ognuno. L'app consiglia quale tenere (quello con più storia): «Tieni questo» sposta tutto sull'altro dopo averti chiesto conferma; «Sono diversi» non te li ripropone più; «Salta» li lascia per la prossima volta.",
         "Furgoni: crei i furgoni, scegli chi li usa («Nessuno» = tutto come prima), vedi tutti i magazzini e stampi la lista d'ordine.",
         "Azienda: avvisi in Home (con data di inizio e fine, poi spariscono da soli), chiusure aziendali (ferie collettive, ponti, patrono, anche «ogni anno»: Le mie ore le segna da sole e il promemoria delle ore non arriva), intestazione dei fogli stampati e password di tecnici e admin.",
+        "Cestino: i rapporti eliminati restano qui 30 giorni, con le foto, chi li ha eliminati e quando. «Recupera» li rimette nello Storico com'erano; «Per sempre» li cancella subito. Dopo 30 giorni si cancellano da soli.",
         "System: copia di sicurezza (si fa da sola ogni domenica; «Fai una copia adesso» con la password admin, e la data dell'ultima riuscita), «Errori sui telefoni» (se l'app va in errore sul telefono di qualcuno qui vedi cosa è successo, a chi, in che schermata e su che telefono; si cancellano da soli dopo 60 giorni), tecnici collegati, archivio e backup in PDF.",
         "Se una schermata va in errore non resta la pagina bianca: compare «Qualcosa è andato storto» con il tasto «Riprova», e l'errore arriva da solo in Area admin → System.",
       ],
