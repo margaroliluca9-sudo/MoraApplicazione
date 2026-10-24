@@ -1,5 +1,6 @@
 import { parseTicketQuery, matchTicket, ticketLabel, ticketYear } from "../ticket";
 import React, { useState, useMemo } from "react";
+import { OfficeCharts } from "../components/OfficeCharts";
 import {
   Search,
   X,
@@ -456,6 +457,9 @@ export const OfficeView = ({
           </div>
         </div>
       </div>
+
+      {/* grafici: gru con più guasti, clienti con verifiche e riparazioni (vedi OfficeCharts.js) */}
+      <OfficeCharts logs={calendarFilteredLogs} label={dynamicMonthLabel} onOpen={(title, list) => setPopoverData({ date: title, logs: list })} />
 
       <div className="space-y-2 mt-4">
         <div className="flex items-center gap-2 ml-1">

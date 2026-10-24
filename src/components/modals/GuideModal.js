@@ -165,7 +165,7 @@ const appStepsFor = ({ hasVan, chatEnabled, isAdmin }) =>
     {
       icon: Briefcase,
       title: "Ufficio",
-      text: "Calendario degli interventi del mese o dell'anno, ricerca per N. assistenza e report in PDF o Excel filtrando per date, cliente, gru e tecnico.",
+      text: "Calendario degli interventi del mese o dell'anno, ricerca per N. assistenza e report in PDF o Excel filtrando per date, cliente, gru e tecnico. In più due grafici del mese o dell'anno scelto: «Gru con più guasti» (contano le riparazioni, non le verifiche periodiche) e «Clienti con più interventi» con verifiche (blu) e riparazioni (arancio). Tocca una riga per vedere gli interventi.",
     },
     {
       icon: UserCircle,

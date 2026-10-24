@@ -150,6 +150,11 @@ body { padding-top: var(--mora-safe-top); }
   .animate-in { animation: none !important; }
 }
 
+/* ===== GRAFICI UFFICIO: blu = verifiche, arancio = riparazioni (coppia controllata per i daltonici, chiaro e scuro) ===== */
+.mora-bar-check { background-color: #2563eb; }
+.mora-bar-fix { background-color: #ea580c; }
+html.dark .mora-bar-check { background-color: #3b82f6; }
+
 /* ===== TEMA SCURO: colori usati dalla grafica nuova ===== */
 /* interruttori a due posizioni (Esplora «Per cliente / Elenco», barra del computer) */
 html.dark .bg-slate-200\/70, html.dark .bg-slate-200\/60 { background-color: rgba(30, 41, 62, 0.85); }
