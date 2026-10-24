@@ -95,6 +95,40 @@ export const CraneGame = ({ onClose, me = "" }) => {
     loadBoard();
   }, [loadBoard]);
 
+  // iPhone: tenendo premuto un tasto compariva il menu «Copia / Cerca info / Traduci» sopra il gioco.
+  // Sul capannone e sui tasti blocco il «tieni premuto» del telefono (i tasti funzionano lo stesso) e
+  // se una selezione parte comunque la tolgo subito.
+  const root = useRef(null);
+  useEffect(() => {
+    const el = root.current;
+    if (!el) return undefined;
+    const onTouch = (ev) => {
+      const t = ev.target;
+      if (!t || !t.closest || t.closest("input,textarea")) return;
+      const onPad = t.closest("[data-game-pad]") && !t.closest('[data-game-btn="select"],[data-game-btn="start"]');
+      if ((onPad || (box.current && box.current.contains(t))) && ev.cancelable) ev.preventDefault();
+    };
+    const noSelect = (ev) => {
+      const t = ev.target;
+      if (t && t.closest && t.closest("input,textarea")) return;
+      ev.preventDefault();
+    };
+    const clearSel = () => {
+      const a = document.activeElement;
+      if (a && /^(INPUT|TEXTAREA)$/.test(a.tagName)) return;
+      const s = window.getSelection && window.getSelection();
+      if (s && s.rangeCount && !s.isCollapsed) s.removeAllRanges();
+    };
+    el.addEventListener("touchstart", onTouch, { passive: false });
+    el.addEventListener("selectstart", noSelect);
+    document.addEventListener("selectionchange", clearSel);
+    return () => {
+      el.removeEventListener("touchstart", onTouch);
+      el.removeEventListener("selectstart", noSelect);
+      document.removeEventListener("selectionchange", clearSel);
+    };
+  }, []);
+
   // motore + disegno
   useEffect(() => {
     const el = box.current;
@@ -359,6 +393,7 @@ export const CraneGame = ({ onClose, me = "" }) => {
 
   return (
     <div
+      ref={root}
       className="mora-game fixed inset-0 z-[600] bg-slate-400 select-none overflow-hidden"
       data-section="crane-game"
       style={{ touchAction: "none", WebkitTouchCallout: "none", WebkitUserSelect: "none", userSelect: "none" }}
