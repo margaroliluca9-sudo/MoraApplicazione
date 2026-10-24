@@ -1,9 +1,10 @@
 // GIOCO SEGRETO DEL CARROPONTE: 5 tocchi veloci sul cielo della Home.
 // Motore e disegno in game/engine.js, suoni in game/sound.js, classifica in game/scores.js.
-// Comandi: trascina il dito sul capannone = sposti il carrello; tieni premuto GIÙ = scende il gancio.
+// Comandi come un Game Boy: croce ◀ ▶ = sposti il carrello, A (o ▼) = cala il gancio finché tieni premuto,
+// B = ferma il carrello, START = pausa, SELECT = suoni. Si può anche trascinare il dito sul capannone.
 // Sul computer: frecce ← → e barra spaziatrice.
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { X, Trophy, RotateCcw, Heart, Volume2, VolumeX, ArrowDown, Medal, Pause, Play, Lock, Paintbrush } from "lucide-react";
+import { X, Trophy, RotateCcw, Heart, Volume2, VolumeX, Medal, Pause, Play, Lock, Paintbrush } from "lucide-react";
 import { CraneEngine, stageNews, TRUCKS_PER_STAGE } from "../game/engine";
 import { play, soundOn, setSoundOn } from "../game/sound";
 import { topScores, saveScore } from "../game/scores";
@@ -240,6 +241,59 @@ export const CraneGame = ({ onClose, me = "" }) => {
     ev.stopPropagation();
     if (drag.current === ev.pointerId) drag.current = null;
   };
+  // TASTIERA DA GAME BOY: croce per il carrello, A per il gancio, B per fermarsi
+  const tick = () => {
+    try {
+      if (navigator.vibrate) navigator.vibrate(8);
+    } catch (e) {
+      // niente
+    }
+  };
+  const moving = useRef(0);
+  const move = (dir) => (ev) => {
+    ev.stopPropagation();
+    if (phase !== "play" || !eng.current) return;
+    const e = eng.current;
+    if (dir) {
+      try {
+        ev.currentTarget.setPointerCapture(ev.pointerId);
+      } catch (err) {
+        // niente
+      }
+      moving.current = dir;
+      e.setTarget(dir > 0 ? 400 : -40);
+      setTip(false);
+      tick();
+    } else if (moving.current) {
+      moving.current = 0;
+      // lascio il tasto: il carrello frena dolce dove si trova
+      e.setTarget(e.trolley.x + e.trolley.v * 0.2);
+    }
+  };
+  const brake = (ev) => {
+    ev.stopPropagation();
+    if (phase !== "play" || !eng.current) return;
+    moving.current = 0;
+    eng.current.setTarget(eng.current.trolley.x);
+    tick();
+  };
+  const [padDown, setPadDown] = useState("");
+  const padBtn = (id, onDown, onUpFn) => ({
+    onPointerDown: (ev) => {
+      setPadDown(id);
+      onDown(ev);
+    },
+    onPointerUp: (ev) => {
+      setPadDown("");
+      if (onUpFn) onUpFn(ev);
+    },
+    onPointerCancel: (ev) => {
+      setPadDown("");
+      if (onUpFn) onUpFn(ev);
+    },
+    onContextMenu: (e) => e.preventDefault(),
+  });
+
   const press = (on) => (ev) => {
     ev.stopPropagation();
     if (phase !== "play" || !eng.current) return;
@@ -347,9 +401,9 @@ export const CraneGame = ({ onClose, me = "" }) => {
       {phase === "play" && tip && (
         <div className="absolute inset-x-0 flex justify-center pointer-events-none" style={{ top: "38%" }}>
           <span className="px-4 py-2 rounded-2xl bg-slate-900/80 text-white font-bold text-sm text-center leading-snug">
-            Trascina il dito per spostare il carrello
+            ◀ ▶ muovi il carrello · B lo fermi
             <br />
-            Tieni premuto GIÙ per calare il gancio
+            Tieni premuto A per calare il gancio
           </span>
         </div>
       )}
@@ -391,22 +445,63 @@ export const CraneGame = ({ onClose, me = "" }) => {
         </div>
       )}
 
-      {/* GIÙ */}
+      {/* TASTI DA GAME BOY */}
       {phase === "play" && (
-        <div className="absolute right-0 bottom-0 p-5 flex flex-col items-end gap-2" style={{ paddingBottom: "max(22px, env(safe-area-inset-bottom))" }}>
-          <button
-            type="button"
-            aria-label="Giù: tieni premuto per calare il gancio"
-            data-game-btn="down"
-            onPointerDown={press(true)}
-            onPointerUp={press(false)}
-            onPointerCancel={press(false)}
-            onContextMenu={(e) => e.preventDefault()}
-            className={`w-28 h-28 rounded-full text-white shadow-2xl flex flex-col items-center justify-center font-black text-lg border-4 transition-transform ${hold ? "bg-amber-600 border-amber-200 scale-95" : "bg-amber-500 border-white/80"}`}
-          >
-            <ArrowDown className="w-10 h-10" />
-            GIÙ
-          </button>
+        <div className="absolute inset-x-0 bottom-0 px-3 flex items-end justify-between gap-1 pointer-events-none" style={{ paddingBottom: "max(18px, env(safe-area-inset-bottom))" }} data-game-pad>
+          {/* croce */}
+          <div className="relative w-[120px] h-[120px] shrink-0 pointer-events-auto" aria-label="Croce direzionale">
+            <span className="absolute left-[40px] top-[40px] w-[40px] h-[40px] bg-slate-800" />
+            {[
+              ["up", "left-[40px] top-0 rounded-t-lg", "▲", "Su: il gancio risale", (ev) => press(false)(ev), null],
+              ["down", "left-[40px] bottom-0 rounded-b-lg", "▼", "Giù: tieni premuto per calare il gancio", press(true), press(false)],
+              ["left", "left-0 top-[40px] rounded-l-lg", "◀", "Sinistra: tieni premuto per spostare il carrello", move(-1), move(0)],
+              ["right", "right-0 top-[40px] rounded-r-lg", "▶", "Destra: tieni premuto per spostare il carrello", move(1), move(0)],
+            ].map(([id, pos, sym, label, down, up]) => (
+              <button
+                key={id}
+                type="button"
+                aria-label={label}
+                data-game-btn={id === "down" ? "pad-down" : id}
+                {...padBtn(id, down, up)}
+                className={`absolute ${pos} w-[40px] h-[40px] bg-slate-800 text-slate-300 text-lg flex items-center justify-center shadow-[0_4px_0_#0f172a] ${padDown === id ? "translate-y-[3px] shadow-none bg-slate-700" : ""}`}
+              >
+                {sym}
+              </button>
+            ))}
+          </div>
+          {/* SELECT / START */}
+          <div className="flex gap-2 mb-1 pointer-events-auto">
+            {[
+              ["select", "SELECT", toggleSound, sound ? "Spegni i suoni" : "Accendi i suoni"],
+              ["start", "START", pause, "Pausa"],
+            ].map(([id, lab, fn, aria]) => (
+              <button key={id} type="button" onClick={fn} aria-label={aria} data-game-btn={id} className="flex flex-col items-center gap-1">
+                <span className="block w-10 h-3.5 rounded-full bg-slate-700 shadow-[0_2px_0_#0f172a] -rotate-[20deg]" />
+                <span className="text-[9px] font-black tracking-wider text-slate-800/70">{lab}</span>
+              </button>
+            ))}
+          </div>
+          {/* B e A */}
+          <div className="relative w-[124px] h-[104px] shrink-0 pointer-events-auto">
+            <button
+              type="button"
+              aria-label="B: ferma il carrello"
+              data-game-btn="b"
+              {...padBtn("b", brake, null)}
+              className={`absolute left-0 bottom-0 w-[56px] h-[56px] rounded-full bg-rose-800 text-white/90 font-black text-xl flex items-center justify-center shadow-[0_5px_0_#4c0519] ${padDown === "b" ? "translate-y-[4px] shadow-none" : ""}`}
+            >
+              B
+            </button>
+            <button
+              type="button"
+              aria-label="A: tieni premuto per calare il gancio"
+              data-game-btn="down"
+              {...padBtn("a", press(true), press(false))}
+              className={`absolute right-0 top-0 w-[62px] h-[62px] rounded-full text-white font-black text-2xl flex items-center justify-center ${hold || padDown === "a" ? "bg-rose-700 translate-y-[4px] shadow-none" : "bg-rose-600 shadow-[0_5px_0_#4c0519]"}`}
+            >
+              A
+            </button>
+          </div>
         </div>
       )}
 
@@ -416,8 +511,9 @@ export const CraneGame = ({ onClose, me = "" }) => {
           <div className="bg-white rounded-3xl shadow-2xl p-5 max-w-sm w-full space-y-3 text-center my-auto">
             <h2 className="text-2xl font-black text-slate-800">Carroponte Mora</h2>
             <ul className="text-left text-sm text-slate-600 space-y-1.5">
-              <li>👉 <b>Trascina il dito</b> sul capannone: il carrello lo segue</li>
-              <li>⬇️ <b>Tieni premuto GIÙ</b>: il gancio scende e aggancia da solo il pezzo che tocca. Lascia: risale</li>
+              <li>🎮 Tasti come un <b>Game Boy</b>: <b>◀ ▶</b> muovi il carrello, <b>B</b> lo fermi</li>
+              <li>🅰️ <b>Tieni premuto A</b> (o ▼): il gancio scende e aggancia da solo il pezzo che tocca. Lascia: risale</li>
+              <li>⏸️ <b>START</b> = pausa · <b>SELECT</b> = suoni. Puoi anche trascinare il dito sul capannone</li>
               <li>🚚 Ogni camion vuole <b>pezzi precisi</b>: li vedi disegnati sul cassone</li>
               <li>✨ Appoggia <b>piano e senza dondolare</b>: «Perfetto!» vale di più (e di fila moltiplica)</li>
               <li>💥 Se sbatti è una «Botta!», se sbagli pezzo perdi punti</li>
