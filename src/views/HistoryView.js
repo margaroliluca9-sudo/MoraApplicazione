@@ -9,6 +9,7 @@ import {
   Edit,
   Clock,
   Camera,
+  PenLine,
   Printer,
   Lock,
 } from "lucide-react";
@@ -20,6 +21,8 @@ import { EditLogModal } from "../components/modals/EditLogModal";
 import { formatRope, formatRopeLong, ROPE_ITEMS } from "../ropes";
 import { printIntervention } from "../components/PrintLogButton";
 import { trashLog } from "../trash";
+import { editsOf } from "../logHistory";
+import { EditsModal } from "../components/modals/EditsModal";
 import { SwipeRow } from "../components/SwipeRow";
 import { parseTicketQuery, matchTicket, ticketLabel } from "../ticket";
 
@@ -85,6 +88,7 @@ export const HistoryView = ({
   const moreRef = useRef(null);
   const [isDeleting, setIsDeleting] = useState(null);
   const [isEditing, setIsEditing] = useState(null);
+  const [showEdits, setShowEdits] = useState(null); // rapporto di cui vedere la storia delle modifiche
   const [pin, setPin] = useState("");
   const [err, setErr] = useState(false);
   const [isFreeAction, setIsFreeAction] = useState(false);
@@ -306,7 +310,7 @@ export const HistoryView = ({
                         {log.capacity ? ` · ${formatCapacity(log.capacity)}` : ""}
                       </span>
                     </button>
-                    {(log.ticketNumber || (log.photos && log.photos.length > 0)) && (
+                    {(log.ticketNumber || (log.photos && log.photos.length > 0) || editsOf(log).length > 0) && (
                       <div className="flex flex-wrap gap-1.5">
                         {log.ticketNumber && (
                           <span className="text-xs font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded-md">
@@ -322,6 +326,19 @@ export const HistoryView = ({
                             className="text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md flex items-center gap-1" aria-label={`Vedi le ${log.photos.length} foto`}
                           >
                             <Camera className="w-3.5 h-3.5" /> {log.photos.length} foto
+                          </button>
+                        )}
+                        {editsOf(log).length > 0 && (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShowEdits(log);
+                            }}
+                            data-action="log-edits"
+                            className="text-xs font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md flex items-center gap-1"
+                          >
+                            <PenLine className="w-3.5 h-3.5" /> Modificato {editsOf(log).length === 1 ? "1 volta" : `${editsOf(log).length} volte`}
                           </button>
                         )}
                       </div>
@@ -520,6 +537,11 @@ export const HistoryView = ({
                     <td className="px-4 py-4 text-xs text-slate-600 italic break-words whitespace-pre-wrap align-top border-r border-slate-100 overflow-hidden">
                       "{log.description}"
                       <RopeInfo log={log} />
+                      {editsOf(log).length > 0 && (
+                        <button type="button" onClick={() => setShowEdits(log)} data-action="log-edits" className="mt-1 not-italic text-[11px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md inline-flex items-center gap-1">
+                          <PenLine className="w-3 h-3" /> Modificato {editsOf(log).length === 1 ? "1 volta" : `${editsOf(log).length} volte`}
+                        </button>
+                      )}
                     </td>
                     <td className="px-4 py-4 text-[10px] font-bold uppercase text-slate-600 align-top border-r border-slate-100 overflow-hidden">
                       {getTechsString(log)}
@@ -594,6 +616,7 @@ export const HistoryView = ({
           note="Va nel cestino: l'admin lo può recuperare per 30 giorni."
         />
       )}
+      {showEdits && <EditsModal log={logs.find((l) => l.id === showEdits.id) || showEdits} onClose={() => setShowEdits(null)} color={color} />}
       {isEditing && (
         <EditLogModal
           log={logs.find((l) => l.id === isEditing)}
@@ -604,6 +627,7 @@ export const HistoryView = ({
           color={color}
           layoutConfig={layoutConfig}
           allLogs={logs}
+          me={me || (isAdmin ? "admin" : "")}
         />
       )}
     </div>

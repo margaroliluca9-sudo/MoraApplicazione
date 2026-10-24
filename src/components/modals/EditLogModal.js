@@ -10,6 +10,7 @@ import {
   Wrench,
 } from "lucide-react";
 import { doc, updateDoc, writeBatch } from "firebase/firestore";
+import { diffLog, withEdit } from "../../logHistory";
 import { isPhotoRef, putPhotos, resolvePhotos } from "../../logPhotos";
 import { logsChanged } from "../../logsWindow";
 import { TicketTwins } from "../TicketTwins";
@@ -52,6 +53,7 @@ export const EditLogModal = ({
   color = "blue",
   layoutConfig,
   allLogs = [],
+  me = "",
 }) => {
   const [data, setData] = useState({
     ...log,
@@ -172,6 +174,10 @@ export const EditLogModal = ({
           dateString: data.dateString,
           ticketNumber: data.ticketNumber || "",
         };
+      // storia delle modifiche (chi, quando, cosa): vedi logHistory.js
+      const photosBefore = Number(log.photoCount) || (Array.isArray(log.photos) ? log.photos.length : 0);
+      const edits = withEdit(log, diffLog(log, upd, photosBefore, photoState === "ready" ? data.photos.length : photosBefore), me);
+      if (edits) upd.edits = edits;
       const hasSeparate = hadRefs || Number(log.photoCount) > 0;
       if (photoState === "ready" && !data.photos.length && !hasSeparate) {
         // nessuna foto, né prima né ora

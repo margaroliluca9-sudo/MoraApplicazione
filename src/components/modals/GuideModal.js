@@ -280,7 +280,7 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
         "Sotto la ricerca: «Tutti», «I miei» (solo quelli dove c'eri tu) e «Con foto».",
         "Tocca «Gru …» su un intervento per aprire la scheda di quella gru.",
         "Fune e catena sostituite sono indicate sotto la descrizione.",
-        "Modificare o eliminare: entro 3 minuti dal salvataggio lo puoi fare tu (matita e cestino), dopo compare un lucchetto e serve la password admin. Un rapporto eliminato non si perde: va nel cestino e l'admin lo può recuperare per 30 giorni (Area admin → Cestino).",
+        "Modificare o eliminare: entro 3 minuti dal salvataggio lo puoi fare tu (matita e cestino), dopo compare un lucchetto e serve la password admin. Se un rapporto è stato modificato compare «Modificato 2 volte»: toccalo per vedere chi l'ha cambiato, quando e cosa (prima → dopo). Un rapporto eliminato non si perde: va nel cestino e l'admin lo può recuperare per 30 giorni (Area admin → Cestino).",
       ],
     },
     {
