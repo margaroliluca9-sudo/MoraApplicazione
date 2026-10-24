@@ -88,7 +88,7 @@ const reportStepsFor = ({ hasVan }) =>
     {
       icon: Camera,
       title: "9. Le foto",
-      text: "In «Allega Foto» puoi aggiungere fino a 3 foto dalla fotocamera o dalla galleria. Vengono ridotte da sole e finiscono anche nel foglio stampato.",
+      text: "In «Allega Foto» puoi aggiungere fino a 3 foto dalla fotocamera o dalla galleria. Vengono ridotte da sole e finiscono anche nel foglio stampato. Per indicare il punto rotto tocca la foto (o la matita sull'angolo): puoi disegnarci sopra una freccia, un cerchio o un tratto a mano libera, in rosso, giallo o bianco; ↶ toglie l'ultimo segno, il cestino li toglie tutti, «Fatto» salva la foto con i segni (va anche nel rapporto stampato), la X esce senza cambiare niente. Si può fare anche quando modifichi un rapporto.",
     },
     {
       icon: Save,
@@ -255,6 +255,7 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
         "Sotto la gru l'assistente ricorda cosa era rimasto in sospeso l'ultima volta e i guasti che si ripetono.",
         "Fune o catena sostituita: se lo scrivi nella descrizione, l'app chiede certificato, diametro e lunghezza (o «dati non disponibili» con il motivo).",
         "Foto: «Scatta» apre la fotocamera, «Galleria» prende le foto già fatte (fino a 3).",
+        "Disegnare sulla foto: tocca la foto o la matita sull'angolo, scegli Freccia, Cerchio o Penna e il colore, disegna col dito e tocca «Fatto». Utile per far vedere dov'è il filo rotto della fune o la crepa.",
         "Il pulsante «Salva» resta sempre in fondo allo schermo, anche mentre scorri il modulo.",
         "Il rapporto si salva da solo sul telefono mentre scrivi: se l'app si chiude, riaprendo trovi «Hai un rapporto non finito» con «Riprendi» o «Scarta».",
         "Quando il rapporto è salvato il telefono vibra con due colpetti; se c'è un errore vibra una volta, più a lungo (Android: su iPhone il browser non può vibrare). Si spegne da La mia area → ⚙ Impostazioni → «Vibrazione al salvataggio».",

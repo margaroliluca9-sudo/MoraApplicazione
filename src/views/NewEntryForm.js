@@ -6,6 +6,7 @@ import {
   Factory,
   User,
   X,
+  Pencil,
   Trash2,
   Lock,
   ChevronDown,
@@ -75,6 +76,7 @@ import { vanOf, applyReport, findUsedParts, itemsOf } from "../van";
 import { showVanUsage } from "../components/VanHost";
 import { loadDraft, saveDraft, clearDraft, draftWhen } from "../reportHelpers";
 import { printIntervention } from "../components/PrintLogButton";
+import { PhotoMarkup } from "../components/modals/PhotoMarkup";
 import { buzzSaved, buzzError, getSettings, setSetting } from "../settings";
 
 export const NewEntryForm = ({
@@ -113,6 +115,8 @@ export const NewEntryForm = ({
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [uploadingPhotos, setUploadingPhotos] = useState(false);
+  // foto su cui si sta disegnando (frecce, cerchi): indice in formData.photos
+  const [markIdx, setMarkIdx] = useState(null);
 
   const [showMachineSuggestions, setShowMachineSuggestions] = useState(false);
   const [showCustomerSuggestions, setShowCustomerSuggestions] = useState(false);
@@ -866,6 +870,7 @@ export const NewEntryForm = ({
                       src={photoStr}
                       className="w-24 h-24 object-cover rounded-2xl border-2 border-white shadow-md"
                       alt="Anteprima"
+                      onClick={() => setMarkIdx(idx)}
                     />
                     <button
                       type="button"
@@ -875,9 +880,29 @@ export const NewEntryForm = ({
                     >
                       <X className="w-3 h-3" />
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => setMarkIdx(idx)}
+                      data-action="markup-photo"
+                      aria-label="Disegna sulla foto"
+                      className="absolute -bottom-2 -left-2 bg-white text-slate-700 w-8 h-8 rounded-full shadow-md border border-slate-200 flex items-center justify-center"
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </button>
                   </div>
                 ))}
               </div>
+            )}
+            {markIdx !== null && formData.photos[markIdx] && (
+              <PhotoMarkup
+                src={formData.photos[markIdx]}
+                onClose={() => setMarkIdx(null)}
+                onSave={(img) => {
+                  const i = markIdx;
+                  setFormData((p) => ({ ...p, photos: p.photos.map((x, j) => (j === i ? img : x)) }));
+                  setMarkIdx(null);
+                }}
+              />
             )}
           </div>
         );
