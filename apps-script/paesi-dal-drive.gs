@@ -13,6 +13,8 @@
  * → «Cartella nel Drive» scegli tu la cartella giusta: dal giorno dopo vale quella. Sempre in Admin → Drive si vede
  * da quale cartella e foglio arriva ogni dato e si possono correggere paese e gru (le correzioni non le tocco mai).
  *
+ * I clienti segnati «Solo interventi» nell'app (niente verifiche, quindi niente cartella) non li abbino mai.
+ *
  * Paese e indirizzo: aggiorna solo i clienti senza paese o quelli che aveva già aggiornato lui
  * (placeSource = "drive"); quello che scrivete a mano o importate da file non viene mai toccato.
  *
@@ -90,11 +92,11 @@ function giro_() {
   // cartelle scelte a mano nell'app (cliente → cartella): valgono prima del nome
   var scelte = {};
   clienti.forEach(function (c) {
-    if (c.driveFolderId) scelte[c.driveFolderId] = c;
+    if (c.driveFolderId && !c.driveNone) scelte[c.driveFolderId] = c;
   });
   var custs = indiceClienti_(
     clienti.filter(function (c) {
-      return !c.driveFolderId;
+      return !c.driveFolderId && !c.driveNone; // «Solo interventi»: nessuna cartella
     })
   );
   var perId = {};
@@ -542,7 +544,7 @@ function leggiClienti_(token) {
     var j = JSON.parse(UrlFetchApp.fetch(url, { headers: { Authorization: "Bearer " + token } }).getContentText());
     (j.documents || []).forEach(function (d) {
       var f = d.fields || {};
-      out.push({ id: d.name.split("/").pop(), name: valore_(f.name), city: valore_(f.city), address: valore_(f.address), placeSource: valore_(f.placeSource), placeFolder: valore_(f.placeFolder), placeSheet: valore_(f.placeSheet), driveFolderId: valore_(f.driveFolderId) });
+      out.push({ id: d.name.split("/").pop(), name: valore_(f.name), city: valore_(f.city), address: valore_(f.address), placeSource: valore_(f.placeSource), placeFolder: valore_(f.placeFolder), placeSheet: valore_(f.placeSheet), driveFolderId: valore_(f.driveFolderId), driveNone: valore_(f.driveNone) === true });
     });
     pagina = j.nextPageToken || "";
   } while (pagina);

@@ -1,15 +1,15 @@
 // AREA ADMIN → Drive → un cliente: cartella nel Drive, paese e indirizzo (con da dove arrivano) e le gru
 // lette dall'ultimo foglio di verifica. Le gru si possono correggere, abbinare a mano a una gru dell'app o
 // nascondere: il programma del Drive non tocca mai le correzioni (scrive solo i suoi campi).
-import React, { useEffect, useMemo, useState } from "react";
-import { collection, doc, query, updateDoc, where } from "firebase/firestore";
-import { X, Folder, MapPin, ExternalLink, Pencil, EyeOff, Eye, RotateCcw, Check, Loader2, Factory } from "lucide-react";
+import React, { useMemo, useState } from "react";
+import { doc, updateDoc } from "firebase/firestore";
+import { X, Folder, MapPin, ExternalLink, Pencil, EyeOff, Eye, RotateCcw, Check, Loader2, Factory, Wrench } from "lucide-react";
 import { db, appId } from "../../firebase";
-import { getDocs } from "../../metered";
 import { describeError, getSafeMatricola } from "../../utils";
 import { DriveFolderPicker } from "../DriveFolderPicker";
 import { clearDriveCache } from "../DriveCraneInfo";
-import { FIX_FIELDS, withFix, isFixed, machineOfRow, statoTone } from "../../driveCranes";
+import { FIX_FIELDS, withFix, isFixed, matchOfRow, statoTone, reviewCustomer } from "../../driveCranes";
+import { CheckCard } from "../DriveCheck";
 
 const ref = (coll, id) => doc(db, "artifacts", appId, "public", "data", coll, id);
 const TONE = { red: "text-red-700", amber: "text-amber-700", emerald: "text-emerald-700", slate: "text-slate-700" };
@@ -22,7 +22,8 @@ const CraneRow = ({ row, machines, color, onSaved }) => {
   const [fix, setFix] = useState(row.fix || {});
   const [linkTo, setLinkTo] = useState(row.linkTo || "");
   const shown = withFix(row);
-  const m = machineOfRow(row, machines);
+  const x = matchOfRow(row, machines);
+  const m = x ? x.m : null;
 
   const save = async (data) => {
     setBusy(true);
@@ -56,7 +57,11 @@ const CraneRow = ({ row, machines, color, onSaved }) => {
           </span>
           <span className={`block text-xs font-semibold ${m ? "text-emerald-700" : "text-amber-700"}`} data-drive-crane-machine>
             <Factory className="inline w-3.5 h-3.5 -mt-0.5 mr-1" />
-            {m ? `Sulla scheda della gru ${getSafeMatricola(m)}${row.linkTo ? " (abbinata da te)" : ""}` : "Nessuna gru nell'app con questo numero: «Correggi» per abbinarla"}
+            {m
+              ? `Sulla scheda della gru ${getSafeMatricola(m)}${row.linkTo ? " (abbinata da te)" : row.okFor === m.id ? " (controllata)" : ""}`
+              : row.linkTo === "-" || row.noApp
+              ? "Non è una gru dell'app (deciso da te)"
+              : "Nessuna gru nell'app con questo numero: «Correggi» per abbinarla"}
           </span>
           <span className="block text-[11px] text-slate-400">
             {[row.foglio || row.foglioNome, row.cartella && `cartella ${row.cartella}`].filter(Boolean).join(" · ")}
@@ -77,7 +82,7 @@ const CraneRow = ({ row, machines, color, onSaved }) => {
             {row.hidden ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" />} {row.hidden ? "Mostra" : "Nascondi"}
           </button>
           {isFixed(row) && (
-            <button type="button" disabled={busy} onClick={() => save({ fix: {}, linkTo: "" })} className="h-8 px-3 rounded-full bg-slate-100 text-slate-700 text-xs font-bold flex items-center gap-1" data-action="crane-reset">
+            <button type="button" disabled={busy} onClick={() => save({ fix: {}, linkTo: "", okFor: "", noApp: false, noSugg: "" })} className="h-8 px-3 rounded-full bg-slate-100 text-slate-700 text-xs font-bold flex items-center gap-1" data-action="crane-reset">
               <RotateCcw className="w-3.5 h-3.5" /> Torna ai dati del Drive
             </button>
           )}
@@ -88,6 +93,7 @@ const CraneRow = ({ row, machines, color, onSaved }) => {
             Gru dell'app
             <select className={input} value={linkTo} onChange={(e) => setLinkTo(e.target.value)} data-crane-link>
               <option value="">In automatico (numero di fabbrica)</option>
+              <option value="-">Nessuna: non è una gru dell'app</option>
               {machines.map((mm) => (
                 <option key={mm.id} value={getSafeMatricola(mm)}>
                   {getSafeMatricola(mm)}
@@ -115,7 +121,7 @@ const CraneRow = ({ row, machines, color, onSaved }) => {
                 FIX_FIELDS.forEach(([k]) => {
                   if (String(fix[k] || "").trim()) clean[k] = String(fix[k]).trim();
                 });
-                save({ fix: clean, linkTo });
+                save({ fix: clean, linkTo, okFor: "" });
               }}
               className={`flex-1 h-10 rounded-full bg-${color}-600 text-white text-xs font-bold flex items-center justify-center gap-1`}
               data-action="crane-fix-save"
@@ -129,11 +135,10 @@ const CraneRow = ({ row, machines, color, onSaved }) => {
   );
 };
 
-export const DriveCustomerModal = ({ customer, machines = [], color = "blue", onClose }) => {
+export const DriveCustomerModal = ({ customer, machines = [], rows: allRows = null, onRowSaved = () => {}, color = "blue", onClose }) => {
   const [folder, setFolder] = useState(customer.driveFolderId ? { id: customer.driveFolderId, name: customer.driveFolderName || "" } : null);
   const [city, setCity] = useState(customer.city || "");
   const [address, setAddress] = useState(customer.address || "");
-  const [rows, setRows] = useState(null);
   const [busy, setBusy] = useState("");
   const [msg, setMsg] = useState("");
 
@@ -142,18 +147,11 @@ export const DriveCustomerModal = ({ customer, machines = [], color = "blue", on
     [machines, customer.name]
   );
 
-  useEffect(() => {
-    let alive = true;
-    getDocs(query(collection(db, "artifacts", appId, "public", "data", "drive_cranes"), where("customerId", "==", customer.id)))
-      .then((s) => alive && setRows(s.docs.map((d) => ({ id: d.id, ...d.data() })).sort((a, b) => String(a.fab || "").localeCompare(String(b.fab || ""), "it", { numeric: true }))))
-      .catch((e) => {
-        console.error(e);
-        if (alive) setRows([]);
-      });
-    return () => {
-      alive = false;
-    };
-  }, [customer.id]);
+  const rows = useMemo(
+    () => (allRows ? allRows.filter((r) => r.customerId === customer.id).sort((a, b) => String(a.fab || "").localeCompare(String(b.fab || ""), "it", { numeric: true })) : null),
+    [allRows, customer.id]
+  );
+  const review = useMemo(() => reviewCustomer(rows || [], myMachines), [rows, myMachines]);
 
   const folderChanged = (folder ? folder.id : "") !== (customer.driveFolderId || "");
   const placeChanged = city.trim() !== (customer.city || "") || address.trim() !== (customer.address || "");
@@ -200,6 +198,30 @@ export const DriveCustomerModal = ({ customer, machines = [], color = "blue", on
             </p>
           )}
 
+          <label className={`${box} flex items-start gap-3 cursor-pointer`} data-section="drive-none">
+            <input
+              type="checkbox"
+              className="mt-0.5 w-5 h-5 shrink-0"
+              checked={!!customer.driveNone}
+              disabled={!!busy}
+              data-drive-none
+              onChange={(e) =>
+                saveCustomer(
+                  "none",
+                  { driveNone: e.target.checked },
+                  e.target.checked ? "Segnato: solo interventi, niente verifiche nel Drive." : "Tolto «solo interventi»: il programma cerca di nuovo la sua cartella."
+                )
+              }
+            />
+            <span className="min-w-0">
+              <span className="font-black text-sm text-slate-800 flex items-center gap-2">
+                <Wrench className="w-4 h-4" /> Solo interventi, niente verifiche
+              </span>
+              <span className="block text-xs text-slate-500">Per i clienti che non hanno una cartella nel Drive perché facciamo solo lavori e non le verifiche trimestrali. Il programma non gli abbina nessuna cartella.</span>
+            </span>
+          </label>
+
+          {!customer.driveNone && (
           <section className={box}>
             <h4 className="font-black text-sm text-slate-800 flex items-center gap-2">
               <Folder className="w-4 h-4" /> Cartella nel Drive
@@ -219,6 +241,7 @@ export const DriveCustomerModal = ({ customer, machines = [], color = "blue", on
               </button>
             )}
           </section>
+          )}
 
           <section className={box}>
             <h4 className="font-black text-sm text-slate-800 flex items-center gap-2">
@@ -262,11 +285,16 @@ export const DriveCustomerModal = ({ customer, machines = [], color = "blue", on
             ) : !rows.length ? (
               <p className="text-sm text-slate-500">Nessuna gru letta dal Drive per questo cliente.</p>
             ) : (
+              <>
+              {[...review.doubts.map((d) => ["doubt", d]), ...review.suggestions.map((d) => ["suggestion", d])].map(([k, d]) => (
+                <CheckCard key={d.row.id + k} kind={k} item={d} onSaved={onRowSaved} color={color} />
+              ))}
               <ul className="divide-y divide-slate-100 -mx-1">
                 {rows.map((r) => (
-                  <CraneRow key={r.id} row={r} machines={myMachines} color={color} onSaved={(nr) => setRows((p) => p.map((x) => (x.id === nr.id ? nr : x)))} />
+                  <CraneRow key={r.id} row={r} machines={myMachines} color={color} onSaved={onRowSaved} />
                 ))}
               </ul>
+              </>
             )}
           </section>
         </div>
