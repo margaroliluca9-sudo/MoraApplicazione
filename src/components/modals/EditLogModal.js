@@ -8,10 +8,12 @@ import {
   Users,
   MapPin,
   Wrench,
+  Pencil,
 } from "lucide-react";
 import { doc, updateDoc, writeBatch } from "firebase/firestore";
 import { diffLog, withEdit } from "../../logHistory";
 import { isPhotoRef, putPhotos, resolvePhotos } from "../../logPhotos";
+import { PhotoMarkup } from "./PhotoMarkup";
 import { logsChanged } from "../../logsWindow";
 import { TicketTwins } from "../TicketTwins";
 import { ticketYear } from "../../ticket";
@@ -63,6 +65,7 @@ export const EditLogModal = ({
   });
   const [loading, setLoading] = useState(false);
   const [uploadingPhotos, setUploadingPhotos] = useState(false);
+  const [markIdx, setMarkIdx] = useState(null); // foto su cui si disegna
   // foto tenute a parte: le scarico prima di poterle cambiare
   const hadRefs = (log.photos || []).some(isPhotoRef);
   const [photoState, setPhotoState] = useState(hadRefs ? "loading" : "ready");
@@ -479,8 +482,28 @@ export const EditLogModal = ({
                   >
                     <X className="w-4 h-4" />
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => setMarkIdx(idx)}
+                    data-action="markup-photo"
+                    aria-label="Disegna sulla foto"
+                    className="absolute -bottom-2 -left-2 bg-white text-slate-700 w-8 h-8 rounded-full shadow-md border border-slate-200 flex items-center justify-center"
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </button>
                 </div>
               ))}
+              {markIdx !== null && data.photos[markIdx] && (
+                <PhotoMarkup
+                  src={data.photos[markIdx]}
+                  onClose={() => setMarkIdx(null)}
+                  onSave={(img) => {
+                    const i = markIdx;
+                    setData((p) => ({ ...p, photos: p.photos.map((x, j) => (j === i ? img : x)) }));
+                    setMarkIdx(null);
+                  }}
+                />
+              )}
               {photoState === "ready" && data.photos.length === 0 && !uploadingPhotos && (
                 <p className="text-sm text-slate-400">
                   Nessuna foto.
