@@ -39,6 +39,7 @@ import { AdminTab } from "../components/AdminTab";
 import { CompanyAdmin } from "../components/CompanyAdmin";
 import { BackupCard } from "../components/BackupCard";
 import { ExportCard } from "../components/ExportCard";
+import { TvCard } from "../components/TvCard";
 import { ErrorsCard } from "../components/ErrorsCard";
 import { ReadsCard } from "../components/ReadsCard";
 import { BioCard } from "../components/BioCard";
@@ -70,6 +71,7 @@ export const AdminPanel = ({
   vans = [],
   vanItems = [],
   currentTechName = "",
+  onOpenTv,
 }) => {
   const [view, setView] = useState("design");
   const [renaming, setRenaming] = useState(null); // { id, value }
@@ -1340,6 +1342,7 @@ export const AdminPanel = ({
           </h4>
           <BackupCard color={layoutConfig.themeColor} />
           <ExportCard color={layoutConfig.themeColor} customers={customers} machines={machines} />
+          {onOpenTv && <TvCard color={layoutConfig.themeColor} onOpen={onOpenTv} />}
           <ReadsCard color={layoutConfig.themeColor} />
           <ErrorsCard color={layoutConfig.themeColor} />
           <BioCard color={layoutConfig.themeColor} />

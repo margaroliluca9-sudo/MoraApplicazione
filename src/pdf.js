@@ -490,7 +490,6 @@ export const buildMonthSummaryPdf = async ({ logs, monthLabel, today }) => {
   flow.meta([`Mese: ${monthLabel}`, `Generato il: ${printed}`, `Interventi: ${logs.length}`]);
   flow.tiles([
     ["Interventi", logs.length],
-    ["Verifiche", logs.length - fix],
     ["Riparazioni", fix],
     ["Clienti", clientsN],
     ["Gru", cranesN],
@@ -511,8 +510,8 @@ export const buildMonthSummaryPdf = async ({ logs, monthLabel, today }) => {
   if (techs.size) {
     flow.heading("Tecnici");
     flow.table({
-      columns: [{ label: "Tecnico", w: 0.55 }, { label: "Interventi", w: 0.15, align: "right" }, { label: "Verifiche", w: 0.15, align: "right" }, { label: "Riparazioni", w: 0.15, align: "right" }],
-      rows: [...techs.entries()].sort((a, b) => b[1].n - a[1].n).map(([t, x]) => [[{ t, b: true, c: C.ink }], String(x.n), String(x.n - x.fix), String(x.fix)]),
+      columns: [{ label: "Tecnico", w: 0.6 }, { label: "Interventi", w: 0.2, align: "right" }, { label: "Riparazioni", w: 0.2, align: "right" }],
+      rows: [...techs.entries()].sort((a, b) => b[1].n - a[1].n).map(([t, x]) => [[{ t, b: true, c: C.ink }], String(x.n), String(x.fix)]),
       light: true,
     });
   }
@@ -520,8 +519,8 @@ export const buildMonthSummaryPdf = async ({ logs, monthLabel, today }) => {
   if (clients.length) {
     flow.heading("Clienti con più interventi");
     flow.table({
-      columns: [{ label: "Cliente", w: 0.55 }, { label: "Interventi", w: 0.15, align: "right" }, { label: "Verifiche", w: 0.15, align: "right" }, { label: "Riparazioni", w: 0.15, align: "right" }],
-      rows: clients.map((x) => [[{ t: x.customer, b: true, c: C.ink }], String(x.check + x.fix), String(x.check), String(x.fix)]),
+      columns: [{ label: "Cliente", w: 0.6 }, { label: "Interventi", w: 0.2, align: "right" }, { label: "Riparazioni", w: 0.2, align: "right" }],
+      rows: clients.map((x) => [[{ t: x.customer, b: true, c: C.ink }], String(x.check + x.fix), String(x.fix)]),
       light: true,
     });
   }

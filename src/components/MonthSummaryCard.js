@@ -67,7 +67,7 @@ export const MonthSummaryCard = ({ logs = [], color = "blue", now = new Date() }
           ))}
         </select>
         <span className="text-sm text-slate-600" data-summary-count>
-          <b className="text-slate-800">{list.length}</b> interventi · {list.length - fix} verifiche · {fix} riparazioni
+          <b className="text-slate-800">{list.length}</b> interventi · {fix} riparazioni
         </span>
         <button
           type="button"

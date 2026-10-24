@@ -8,7 +8,6 @@ import {
   Calendar as CalendarIcon,
   Printer,
   Activity,
-  Tv,
   Trophy,
   PieChart,
   BarChart,
@@ -26,7 +25,6 @@ import { openPdf } from "../components/PdfHost";
 import { PrintLogButton } from "../components/PrintLogButton";
 
 export const OfficeView = ({
-  onOpenTv,
   logs,
   machines,
   customers,
@@ -270,17 +268,6 @@ export const OfficeView = ({
             </div>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            {onOpenTv && (
-              <button
-                type="button"
-                onClick={onOpenTv}
-                data-action="open-tv"
-                title="Interventi di oggi e tecnici online a tutto schermo, per la TV dell'ufficio"
-                className={`h-10 px-3 rounded-lg bg-${color}-600 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm`}
-              >
-                <Tv className="w-4 h-4" /> Schermo TV
-              </button>
-            )}
             <div className="flex bg-slate-100 p-1 rounded-lg w-fit">
               <button
                 onClick={() => setViewMode("month")}
@@ -475,7 +462,7 @@ export const OfficeView = ({
       {/* riepilogo del mese appena finito, in PDF (vedi MonthSummaryCard.js) */}
       <MonthSummaryCard logs={logs} color={color} />
 
-      {/* grafici: gru con più guasti, clienti con verifiche e riparazioni (vedi OfficeCharts.js) */}
+      {/* grafici: gru con più guasti, clienti con più interventi (vedi OfficeCharts.js) */}
       <OfficeCharts logs={calendarFilteredLogs} label={dynamicMonthLabel} onOpen={(title, list) => setPopoverData({ date: title, logs: list })} />
 
       <div className="space-y-2 mt-4">

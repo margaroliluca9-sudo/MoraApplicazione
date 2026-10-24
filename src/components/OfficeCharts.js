@@ -1,8 +1,7 @@
 // UFFICIO → grafici del periodo scelto (mese o anno):
 //  - «Gru con più guasti»: le gru dove si è riparato di più (non contano le verifiche periodiche)
-//  - «Clienti con più interventi»: per ognuno verifiche e riparazioni
-// Tocca una riga per vedere gli interventi. Colori controllati per chi distingue male i colori
-// (blu = verifiche, arancio = riparazioni) e sempre con la scritta accanto.
+//  - «Clienti con più interventi»: quanti interventi e quante riparazioni
+// Tocca una riga per vedere gli interventi. (L'app non sa quali sono verifiche: non si conta.)
 import React, { useMemo } from "react";
 import { Wrench, Building2 } from "lucide-react";
 
@@ -58,10 +57,6 @@ export const OfficeCharts = ({ logs, label = "", onOpen }) => {
         <p className="mt-3 text-xs text-slate-500">Contano le riparazioni (sostituito, riparato, guasto…), non le verifiche periodiche.</p>
       </Panel>
       <Panel icon={Building2} title="Clienti con più interventi" label={label} section="chart-clients">
-        <div className="flex gap-4 mb-3 text-xs font-bold text-slate-600" data-chart-legend>
-          <span className="flex items-center gap-1.5"><span className="mora-bar-check w-3 h-3 rounded-sm" /> Verifiche</span>
-          <span className="flex items-center gap-1.5"><span className="mora-bar-fix w-3 h-3 rounded-sm" /> Riparazioni</span>
-        </div>
         {clients.length === 0 ? (
           <p className="text-sm text-slate-400">Nessun intervento in questo periodo.</p>
         ) : (
@@ -73,19 +68,18 @@ export const OfficeCharts = ({ logs, label = "", onOpen }) => {
                   key={x.customer}
                   type="button"
                   onClick={() => onOpen && onOpen(`Interventi: ${x.customer}`, x.logs)}
-                  title={`${x.customer}: ${x.check} verifiche, ${x.fix} riparazioni`}
+                  title={`${x.customer}: ${tot} ${tot === 1 ? "intervento" : "interventi"}, ${x.fix} ${x.fix === 1 ? "riparazione" : "riparazioni"}`}
                   className="w-full text-left group"
                   data-chart-row
                 >
                   <span className="flex justify-between gap-2 text-sm">
                     <span className="font-bold text-slate-700 truncate group-hover:underline">{x.customer}</span>
                     <span className="text-slate-500 tabular-nums shrink-0">
-                      <b className="text-slate-800">{tot}</b> · {x.check} ver. · {x.fix} rip.
+                      <b className="text-slate-800">{tot}</b>{x.fix > 0 ? ` · ${x.fix} rip.` : ""}
                     </span>
                   </span>
-                  <span className="mt-1 flex h-2.5 rounded-full overflow-hidden gap-[2px]" style={{ width: `${(tot / maxK) * 100}%` }}>
-                    {x.check > 0 && <span className="mora-bar-check h-full" style={{ flexGrow: x.check }} />}
-                    {x.fix > 0 && <span className="mora-bar-fix h-full" style={{ flexGrow: x.fix }} />}
+                  <span className="mt-1 block h-2.5 w-full rounded-full bg-slate-100 overflow-hidden">
+                    <span className="mora-bar-check block h-full rounded-full" style={{ width: `${(tot / maxK) * 100}%` }} />
                   </span>
                 </button>
               );

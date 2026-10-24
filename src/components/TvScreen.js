@@ -3,7 +3,7 @@
 // Si apre da Ufficio → «Schermo TV» oppure con l'indirizzo dell'app + ?tv=1 (utile come preferito sulla TV).
 // Non legge niente di più: usa gli stessi dati che l'app ha già.
 import React, { useEffect, useMemo, useState } from "react";
-import { X, Maximize, Users, Wrench, ClipboardCheck, CalendarDays, Megaphone } from "lucide-react";
+import { X, Maximize, Users, Wrench, CalendarDays, Megaphone } from "lucide-react";
 import { isRepair } from "./OfficeCharts";
 
 const parse = (ds) => {
@@ -28,7 +28,7 @@ export const tvNumbers = (logs, now = new Date()) => {
     const n = logs.filter((l) => sameDay(parse(l.dateString), d)).length;
     return { d, n, label: i === 6 ? "Oggi" : DAYS[d.getDay()] };
   });
-  return { today, yesterday, month: month.length, fix: month.filter(isRepair).length, check: month.filter((l) => !isRepair(l)).length, week };
+  return { today, yesterday, month: month.length, fix: month.filter(isRepair).length, week };
 };
 
 export const TvScreen = ({ logs = [], users = [], notices = [], onClose, color = "blue" }) => {
@@ -118,7 +118,7 @@ export const TvScreen = ({ logs = [], users = [], notices = [], onClose, color =
                     </span>
                     <span className="text-right shrink-0">
                       <span className="block text-sm md:text-lg font-bold text-slate-200">{techs(l)}</span>
-                      <span className="block text-xs md:text-base text-slate-400">{isRepair(l) ? "Riparazione" : "Verifica"}{created(l) ? ` · ${new Date(created(l)).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}` : ""}</span>
+                      <span className="block text-xs md:text-base text-slate-400">{isRepair(l) ? "Riparazione" : ""}{created(l) ? `${isRepair(l) ? " · " : ""}${new Date(created(l)).toLocaleTimeString("it-IT", { hour: "2-digit", minute: "2-digit" })}` : ""}</span>
                     </span>
                   </li>
                 ))}
@@ -141,7 +141,7 @@ export const TvScreen = ({ logs = [], users = [], notices = [], onClose, color =
               </div>
             )}
             <p className="mt-auto pt-4 text-xs md:text-base text-slate-500 flex gap-4">
-              <span className="flex items-center gap-1.5"><span className="mora-bar-check w-3 h-3 rounded-full" /> Verifica</span>
+              <span className="flex items-center gap-1.5"><span className="mora-bar-check w-3 h-3 rounded-full" /> Intervento</span>
               <span className="flex items-center gap-1.5"><span className="mora-bar-fix w-3 h-3 rounded-full" /> Riparazione</span>
             </p>
           </section>
@@ -168,14 +168,10 @@ export const TvScreen = ({ logs = [], users = [], notices = [], onClose, color =
               <h2 className="text-lg md:text-2xl font-black flex items-center gap-2 mb-3 capitalize">
                 <CalendarDays className="w-6 h-6 text-sky-400" /> {now.toLocaleDateString("it-IT", { month: "long" })}
               </h2>
-              <div className="grid grid-cols-3 gap-2 text-center">
+              <div className="grid grid-cols-2 gap-2 text-center">
                 <div className="rounded-2xl bg-white/5 py-3">
                   <p className="text-3xl md:text-5xl font-black tabular-nums">{n.month}</p>
                   <p className="text-xs md:text-base text-slate-400 font-bold">interventi</p>
-                </div>
-                <div className="rounded-2xl bg-white/5 py-3">
-                  <p className="text-3xl md:text-5xl font-black tabular-nums flex items-center justify-center gap-1"><ClipboardCheck className="w-5 h-5 md:w-7 md:h-7 text-sky-400" />{n.check}</p>
-                  <p className="text-xs md:text-base text-slate-400 font-bold">verifiche</p>
                 </div>
                 <div className="rounded-2xl bg-white/5 py-3">
                   <p className="text-3xl md:text-5xl font-black tabular-nums flex items-center justify-center gap-1"><Wrench className="w-5 h-5 md:w-7 md:h-7 text-orange-400" />{n.fix}</p>

@@ -1322,7 +1322,6 @@ export default function App() {
             )}
             {activeTab === "office" && (
               <OfficeView
-                onOpenTv={() => setTvOpen(true)}
                 logs={logs}
                 machines={machines}
                 customers={customers}
@@ -1375,6 +1374,7 @@ export default function App() {
                 vans={vans}
                 vanItems={vanItems}
                 currentTechName={currentTechName}
+                onOpenTv={() => setTvOpen(true)}
               />
             )}
           </div>
