@@ -39,7 +39,13 @@ export const EditCustomerModal = ({
 
       batch.update(
         doc(db, "artifacts", appId, "public", "data", "customers", customer.id),
-        { name: cleanName, city: city.trim(), address: address.trim() }
+        {
+          name: cleanName,
+          city: city.trim(),
+          address: address.trim(),
+          // scritto a mano: l'aggiornamento automatico dal Drive non lo tocca più
+          ...(city.trim() !== (customer.city || "") || address.trim() !== (customer.address || "") ? { placeSource: "manual" } : {}),
+        }
       );
 
       // il nome cambia anche negli interventi e nelle gru solo se l'hai cambiato davvero

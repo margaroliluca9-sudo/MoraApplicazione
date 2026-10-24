@@ -43,6 +43,7 @@ import { ExportCard } from "../components/ExportCard";
 import { TvCard } from "../components/TvCard";
 import { ImportPlacesModal } from "../components/modals/ImportPlacesModal";
 import { placeOf } from "../places";
+import { DrivePlacesStatus } from "../components/DrivePlacesStatus";
 import { ErrorsCard } from "../components/ErrorsCard";
 import { ReadsCard } from "../components/ReadsCard";
 import { BioCard } from "../components/BioCard";
@@ -1194,6 +1195,7 @@ export const AdminPanel = ({
               </button>
             </div>
           </div>
+          <DrivePlacesStatus />
           <div
             className={`max-h-[500px] overflow-y-auto custom-scrollbar p-1 ${
               listViewMode === "grid"

@@ -53,7 +53,7 @@ export const ImportPlacesModal = ({ customers = [], onClose, color = "blue" }) =
       for (let i = 0; i < chosen.length; i += 400) {
         const batch = writeBatch(db);
         chosen.slice(i, i + 400).forEach((f) => {
-          batch.update(doc(db, "artifacts", appId, "public", "data", "customers", f.customer.id), { city: f.city, address: f.address });
+          batch.update(doc(db, "artifacts", appId, "public", "data", "customers", f.customer.id), { city: f.city, address: f.address, placeSource: "file" });
         });
         await batch.commit();
       }
