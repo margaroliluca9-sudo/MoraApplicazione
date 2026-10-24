@@ -26,7 +26,9 @@ jobs:
       - name: Costruisci l'app (come Vercel)
         env:
           CI: "false"
-        run: npm run build
+        run: |
+          npm run build > build.log 2>&1 || { tail -40 build.log | while IFS= read -r l; do echo "::error::$l"; done; exit 1; }
+          tail -5 build.log
       - name: Strumenti di prova
         run: |
           mkdir -p .ci
@@ -35,4 +37,5 @@ jobs:
       - name: Prova l'app
         run: |
           node tests/build-harness.js "$PWD/.ci/node_modules" src "$PWD/.ci/pagina"
-          node tests/smoke.js "$PWD/.ci/node_modules" "$PWD/.ci/pagina"
+          node tests/smoke.js "$PWD/.ci/node_modules" "$PWD/.ci/pagina" > prova.log 2>&1 || { grep -v "^OK" prova.log | tail -40 | while IFS= read -r l; do echo "::error::$l"; done; exit 1; }
+          cat prova.log
