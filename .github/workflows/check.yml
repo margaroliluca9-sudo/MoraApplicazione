@@ -1,0 +1,38 @@
+# CONTROLLO PRIMA DI PUBBLICARE: a ogni modifica GitHub costruisce l'app e la prova da solo
+# (pagine principali, Area admin, Ufficio, schermo TV, gioco) con un database FINTO, senza toccare i dati veri.
+# Se qualcosa non va, il controllo diventa rosso e Vercel NON pubblica quella versione
+# (vedi scripts/vercel-wait-check.js): i tecnici restano sulla versione di prima, che funziona.
+name: Controllo app
+on:
+  push:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: controllo-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  controllo:
+    name: Controllo app
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+      - name: Installa
+        run: npm install --no-audit --no-fund
+      - name: Costruisci l'app (come Vercel)
+        env:
+          CI: "false"
+        run: npm run build
+      - name: Strumenti di prova
+        run: |
+          mkdir -p .ci
+          npm install --no-save --no-audit --no-fund --prefix .ci react@19.2.8 react-dom@19.2.8 scheduler@0.27.0 typescript@6.0.3 playwright@1.56.0
+          npx --prefix .ci playwright install --with-deps chromium
+      - name: Prova l'app
+        run: |
+          node tests/build-harness.js "$PWD/.ci/node_modules" src "$PWD/.ci/pagina"
+          node tests/smoke.js "$PWD/.ci/node_modules" "$PWD/.ci/pagina"
