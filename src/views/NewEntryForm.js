@@ -1026,7 +1026,7 @@ export const NewEntryForm = ({
               aria-pressed={gloves}
               title={gloves ? "Tasti grandi accesi: tocca per tornare normale" : "Tasti grandi (con i guanti)"}
               onClick={() => setSetting("gloves", !gloves)}
-              className={`mora-gloves-btn h-11 px-3 rounded-2xl flex items-center gap-1.5 text-sm font-black transition-colors ${gloves ? "bg-white text-slate-800" : "bg-white/15 text-white"}`}
+              className={`h-11 px-3 rounded-2xl flex items-center gap-1.5 text-sm font-black transition-colors ${gloves ? "bg-white text-slate-800" : "bg-white/15 text-white"}`}
             >
               <Hand className="w-5 h-5" /> {gloves ? "Grandi" : "Guanti"}
             </button>
