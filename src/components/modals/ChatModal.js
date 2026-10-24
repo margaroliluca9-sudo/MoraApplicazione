@@ -15,7 +15,8 @@ import {
   Loader2,
   Image as ImageIcon,
 } from "lucide-react";
-import { getDoc, updateDoc, deleteDoc } from "firebase/firestore";
+import { updateDoc, deleteDoc } from "firebase/firestore";
+import { getDoc } from "../../metered";
 import { compressImage, describeError } from "../../utils";
 import {
   GROUP,

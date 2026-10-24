@@ -2,7 +2,8 @@
 // Va in "deleted_logs" (stesso id) con chi l'ha eliminato e quando; le foto restano dove sono.
 // Dall'Area admin → Cestino si recupera con un tocco (torna uguale, foto comprese) per 30 giorni,
 // poi il server (api/reminders.js) lo cancella per sempre insieme alle foto.
-import { collection, doc, getDoc, getDocs, limit, orderBy, query, serverTimestamp, writeBatch } from "firebase/firestore";
+import { collection, doc, limit, orderBy, query, serverTimestamp, writeBatch } from "firebase/firestore";
+import { getDoc, getDocs } from "./metered";
 import { db, appId } from "./firebase";
 import { logsChanged } from "./logsWindow";
 import { removeLogPhotos, isPhotoRef } from "./logPhotos";

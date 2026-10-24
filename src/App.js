@@ -15,23 +15,9 @@ import {
   Folder,
 } from "lucide-react";
 import { signInAnonymously, onAuthStateChanged } from "firebase/auth";
-import {
-  collection,
-  addDoc,
-  onSnapshot,
-  serverTimestamp,
-  Timestamp,
-  orderBy,
-  limit,
-  documentId,
-  getDocsFromCache,
-  getDocsFromServer,
-  doc,
-  setDoc,
-  deleteDoc,
-  query,
-  where,
-} from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, Timestamp, orderBy, limit, documentId, getDocsFromCache, doc, setDoc, deleteDoc, query, where } from "firebase/firestore";
+import { onSnapshot, getDocsFromServer, startReadsMeter, setReadsOwner, readsToday, FREE_READS } from "./metered";
+import { loadReadsDay } from "./components/ReadsCard";
 import { auth, db, appId } from "./firebase";
 import { DEFAULT_LAYOUT } from "./constants";
 import { getSafeMatricola } from "./utils";
@@ -810,6 +796,24 @@ export default function App() {
   // errori sui telefoni: chi e in che schermata (vedi errorLog.js)
   useEffect(() => installErrorLog(), []);
   useEffect(() => setErrorContext(currentTechName, activeTab), [currentTechName, activeTab]);
+  // contatore delle letture del database (Area admin → System)
+  useEffect(() => startReadsMeter(), []);
+  useEffect(() => setReadsOwner(currentTechName), [currentTechName]);
+  // all'admin: avviso in Home se oggi le letture sono oltre l'80% del limite gratuito (controllo una volta all'ora)
+  const [readsPct, setReadsPct] = useState(0);
+  useEffect(() => {
+    if (!user || !isAdminAuthenticated) return undefined;
+    const check = () =>
+      loadReadsDay(readsToday().date)
+        .then((d) => setReadsPct(Math.round((d.total / FREE_READS) * 100)))
+        .catch(() => {});
+    const t0 = setTimeout(check, 15000);
+    const t = setInterval(check, 60 * 60 * 1000);
+    return () => {
+      clearTimeout(t0);
+      clearInterval(t);
+    };
+  }, [user, isAdminAuthenticated]);
   useEffect(() => {
     const home = (e) => {
       if (activeTab !== "dashboard") {
@@ -1225,6 +1229,11 @@ export default function App() {
       )}
 
       <main className={`${isMobileView ? "max-w-6xl" : "max-w-7xl"} mx-auto p-4 md:p-8 animate-in slide-in-from-bottom-4 duration-500`}>
+        {isAdminAuthenticated && readsPct >= 80 && activeTab === "dashboard" && (
+          <button type="button" onClick={handleAdminAccess} data-section="reads-warning" className="w-full mb-4 p-3 rounded-2xl bg-amber-50 border border-amber-200 text-amber-900 text-sm font-bold text-left">
+            ⚠️ Database: oggi siamo al {readsPct}% delle letture gratuite. Tocca per vedere da dove arrivano (System).
+          </button>
+        )}
         {!user ? (
           <div className="py-40 text-center">
             <RefreshCw

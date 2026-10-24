@@ -6,14 +6,8 @@
 // Dentro l'app log.photos resta una lista lunga quanto le foto: per i rapporti nuovi contiene
 // dei segnaposto ("mora-foto:id:rev:n") che diventano foto vere con resolvePhotos/withPhotos.
 // I rapporti vecchi con le foto dentro continuano a funzionare come prima.
-import {
-  doc,
-  collection,
-  getDocFromCache,
-  getDocFromServer,
-  writeBatch,
-  deleteDoc,
-} from "firebase/firestore";
+import { doc, collection, getDocFromCache, writeBatch, deleteDoc } from "firebase/firestore";
+import { getDocFromServer } from "./metered";
 import { db, appId } from "./firebase";
 import { logsChanged } from "./logsWindow";
 

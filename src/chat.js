@@ -6,15 +6,8 @@
 //  .../public/data/push_subscriptions  telefoni iscritti alle notifiche
 // Conversazioni: "group" (tutti) oppure "dm:anna|marco" (nomi in minuscolo, in ordine).
 // Le notifiche le spedisce il "postino" /api/notify (cartella api/, gira su Vercel).
-import {
-  collection,
-  doc,
-  addDoc,
-  getDocs,
-  setDoc,
-  deleteDoc,
-  serverTimestamp,
-} from "firebase/firestore";
+import { collection, doc, addDoc, setDoc, deleteDoc, serverTimestamp } from "firebase/firestore";
+import { getDocs } from "./metered";
 import { db, appId } from "./firebase";
 
 export const VAPID_PUBLIC_KEY =

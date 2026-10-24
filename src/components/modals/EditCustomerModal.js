@@ -1,12 +1,6 @@
 import React, { useState } from "react";
-import {
-  collection,
-  doc,
-  query,
-  writeBatch,
-  where,
-  getDocs,
-} from "firebase/firestore";
+import { collection, doc, query, writeBatch, where } from "firebase/firestore";
+import { getDocs } from "../../metered";
 import { db, appId } from "../../firebase";
 import { logsChanged } from "../../logsWindow";
 import { describeError } from "../../utils";

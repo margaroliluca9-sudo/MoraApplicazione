@@ -1,6 +1,7 @@
 // CLASSIFICA DEL GIOCO tra i tecnici: un documento per tecnico (il suo record).
 // Si legge solo aprendo il gioco e a fine partita (al massimo 10 righe).
-import { doc, collection, getDoc, getDocs, setDoc, query, orderBy, limit } from "firebase/firestore";
+import { doc, collection, setDoc, query, orderBy, limit } from "firebase/firestore";
+import { getDoc, getDocs } from "../metered";
 import { db, appId } from "../firebase";
 import { key } from "../chat";
 

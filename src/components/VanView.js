@@ -2,7 +2,8 @@
 // Lo usano i tecnici con un furgone assegnato (dalla "La mia area") e l'admin (pagina Furgoni).
 import React, { useEffect, useMemo, useState } from "react";
 import { Search, Minus, Plus, AlertTriangle, Pencil } from "lucide-react";
-import { onSnapshot, query, where } from "firebase/firestore";
+import { query, where } from "firebase/firestore";
+import { onSnapshot } from "../metered";
 import { chatRef } from "../chat";
 import {
   VAN,

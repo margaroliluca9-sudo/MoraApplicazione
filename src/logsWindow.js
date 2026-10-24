@@ -6,17 +6,8 @@
 // Nell'app si vedono sempre tutti, in ogni pagina.
 // Si accende da solo (settings/layout.logsWindowed) quando l'admin ha sistemato i pochi interventi
 // senza data di creazione: fino ad allora si scarica tutto come prima.
-import {
-  collection,
-  doc,
-  query,
-  where,
-  getDocsFromCache,
-  getDocsFromServer,
-  writeBatch,
-  setDoc,
-  Timestamp,
-} from "firebase/firestore";
+import { collection, doc, query, where, getDocsFromCache, writeBatch, setDoc, Timestamp } from "firebase/firestore";
+import { getDocsFromServer } from "./metered";
 import { db, appId } from "./firebase";
 
 const logsColl = () => collection(db, "artifacts", appId, "public", "data", "maintenance_logs");

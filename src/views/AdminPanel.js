@@ -27,22 +27,8 @@ import {
   Download,
   Building2,
 } from "lucide-react";
-import {
-  collection,
-  onSnapshot,
-  serverTimestamp,
-  Timestamp,
-  doc,
-  setDoc,
-  deleteDoc,
-  updateDoc,
-  query,
-  orderBy,
-  limit,
-  writeBatch,
-  where,
-  getDocs,
-} from "firebase/firestore";
+import { collection, serverTimestamp, Timestamp, doc, setDoc, deleteDoc, updateDoc, query, orderBy, limit, writeBatch, where } from "firebase/firestore";
+import { onSnapshot, getDocs } from "../metered";
 import { trashLog } from "../trash";
 import { TrashView } from "../components/TrashView";
 import { logsChanged } from "../logsWindow";
@@ -53,6 +39,7 @@ import { AdminTab } from "../components/AdminTab";
 import { CompanyAdmin } from "../components/CompanyAdmin";
 import { BackupCard } from "../components/BackupCard";
 import { ErrorsCard } from "../components/ErrorsCard";
+import { ReadsCard } from "../components/ReadsCard";
 import { BioCard } from "../components/BioCard";
 import { buildBackupPdf, pdfFileName } from "../pdf";
 import { openPdf } from "../components/PdfHost";
@@ -1351,6 +1338,7 @@ export const AdminPanel = ({
             <Activity className="w-5 h-5 text-blue-500" /> Stato Sistema
           </h4>
           <BackupCard color={layoutConfig.themeColor} />
+          <ReadsCard color={layoutConfig.themeColor} />
           <ErrorsCard color={layoutConfig.themeColor} />
           <BioCard color={layoutConfig.themeColor} />
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
