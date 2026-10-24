@@ -27,7 +27,7 @@ jobs:
         env:
           CI: "false"
         run: |
-          npm run build > build.log 2>&1 || { echo "::error::uscita $?"; tail -40 build.log | while IFS= read -r l; do echo "::error::$l"; done; exit 1; }
+          npm run build > build.log 2>&1 || { echo "::error::$(tail -80 build.log | sed -e 's/%/%25/g' -e 's/\r//g' | sed ':a;N;$!ba;s/\n/%0A/g')"; exit 1; }
           tail -5 build.log
       - name: Strumenti di prova
         run: |
@@ -37,5 +37,5 @@ jobs:
       - name: Prova l'app
         run: |
           node tests/build-harness.js "$PWD/.ci/node_modules" src "$PWD/.ci/pagina"
-          node tests/smoke.js "$PWD/.ci/node_modules" "$PWD/.ci/pagina" > prova.log 2>&1 || { grep -v "^OK" prova.log | tail -40 | while IFS= read -r l; do echo "::error::$l"; done; exit 1; }
+          node tests/smoke.js "$PWD/.ci/node_modules" "$PWD/.ci/pagina" > prova.log 2>&1 || { echo "::error::$(grep -v '^OK' prova.log | tail -60 | sed -e 's/%/%25/g' | sed ':a;N;$!ba;s/\n/%0A/g')"; exit 1; }
           cat prova.log
