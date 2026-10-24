@@ -7,6 +7,8 @@
 //  - LIVELLI: si parte facilissimo (1 pezzo, niente vento, gancio che dondola poco, freccia che indica cosa fare)
 //    e ogni livello aggiunge qualcosa: più pezzi, meno tempo, vento, gancio più ballerino, vetro fragile.
 
+import { lookById } from "./looks";
+
 const VW = 360;
 const G = 1500; // gravità (unità virtuali/s²)
 const SLING = 9; // funi tra gancio e pezzo
@@ -99,6 +101,8 @@ export class CraneEngine {
     this.wind = 0;
     this.windT = 0;
     this.lockL = null; // dopo un appoggio il gancio resta lì finché non si lascia il tasto
+    this.look = lookById("giallo"); // colori della trave (vedi looks.js)
+    this.beamName = "";
     // magazzino iniziale
     [["cassa", 0], ["bobina", 1], ["motore", 2]].forEach(([k, s]) => this.putOnSpot(item(k), s));
   }
@@ -114,6 +118,12 @@ export class CraneEngine {
     this.bedY = this.floorY - 30; // piano del cassone
     this.Lmin = 34;
     this.Lmax = this.floorY - this.beamY - HOOK - 2;
+  }
+
+  // il tuo carroponte: colore della trave e nome scritto sopra
+  setLook(id, name) {
+    this.look = lookById(id);
+    this.beamName = String(name || "");
   }
 
   // ---------- pezzi ----------
@@ -764,14 +774,34 @@ export class CraneEngine {
     c.fillStyle = "#475569";
     c.fillRect(2, by - 24, 10, this.floorY - by + 24);
     c.fillRect(348, by - 24, 10, this.floorY - by + 24);
-    // trave gialla
+    // trave (gialla, o del colore che hai scelto)
+    const lk = this.look || lookById("giallo");
     const gy = by - 20;
     const g = c.createLinearGradient(0, gy, 0, gy + 20);
-    g.addColorStop(0, "#fde047");
-    g.addColorStop(1, "#eab308");
+    g.addColorStop(0, lk.top);
+    g.addColorStop(1, lk.bottom);
     c.fillStyle = g;
     c.fillRect(0, gy, VW, 20);
-    c.fillStyle = "#a16207";
+    if (lk.stripes) {
+      // strisce gialle e nere lungo tutta la trave (tranne il centro, per il nome)
+      c.save();
+      c.beginPath();
+      c.rect(26, gy, 104, 20);
+      c.rect(230, gy, 104, 20);
+      c.clip();
+      c.fillStyle = "#111827";
+      for (let i = 0; i < VW + 40; i += 16) {
+        c.beginPath();
+        c.moveTo(i, gy);
+        c.lineTo(i + 8, gy);
+        c.lineTo(i - 12, gy + 20);
+        c.lineTo(i - 20, gy + 20);
+        c.closePath();
+        c.fill();
+      }
+      c.restore();
+    }
+    c.fillStyle = lk.edge;
     c.fillRect(0, gy + 18, VW, 2);
     // strisce di pericolo alle testate
     [0, VW - 26].forEach((x) => {
@@ -791,10 +821,10 @@ export class CraneEngine {
       }
       c.restore();
     });
-    c.fillStyle = "#111827";
+    c.fillStyle = lk.ink;
     c.font = "900 9px system-ui, sans-serif";
     c.textAlign = "center";
-    c.fillText("5 t", 180, gy + 13);
+    c.fillText(this.beamName ? `${this.beamName} · 5 t` : "5 t", 180, gy + 13);
     // carrello
     const tx = tr.x;
     c.fillStyle = "#334155";

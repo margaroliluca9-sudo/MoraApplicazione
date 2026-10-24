@@ -3,10 +3,11 @@
 // Comandi: trascina il dito sul capannone = sposti il carrello; tieni premuto GIÙ = scende il gancio.
 // Sul computer: frecce ← → e barra spaziatrice.
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { X, Trophy, RotateCcw, Heart, Volume2, VolumeX, ArrowDown, Medal, Pause, Play } from "lucide-react";
+import { X, Trophy, RotateCcw, Heart, Volume2, VolumeX, ArrowDown, Medal, Pause, Play, Lock, Paintbrush } from "lucide-react";
 import { CraneEngine, stageNews, TRUCKS_PER_STAGE } from "../game/engine";
 import { play, soundOn, setSoundOn } from "../game/sound";
 import { topScores, saveScore } from "../game/scores";
+import { LOOKS, lookById, unlocked, readLook, saveLook, cleanName } from "../game/looks";
 
 const REC = "mora_crane_game_record";
 const readRec = () => {
@@ -49,6 +50,7 @@ const Board = ({ rows, me, loading }) => {
       {rows.slice(0, 5).map((r, i) => (
         <li key={r.id} className={`flex items-center gap-2 px-3 py-1.5 rounded-xl ${String(r.name).trim().toLowerCase() === mine ? "bg-amber-50 border border-amber-200" : "bg-slate-50"}`}>
           <span className="w-6 text-center font-black text-slate-500">{i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : i + 1}</span>
+          <span className="w-3 h-3 rounded-full shrink-0 border border-black/10" style={{ background: lookById(r.look).bottom }} aria-hidden="true" />
           <span className="flex-1 font-bold text-slate-700 truncate">{r.name}</span>
           <span className="font-black text-slate-800 tabular-nums">{r.best}</span>
         </li>
@@ -76,6 +78,8 @@ export const CraneGame = ({ onClose, me = "" }) => {
   const [boardLoading, setBoardLoading] = useState(true);
   const [round, setRound] = useState(0);
   const [tip, setTip] = useState(true);
+  const [look, setLook] = useState(readLook); // il tuo carroponte (colore + nome)
+  const [custom, setCustom] = useState(false);
   const phaseRef = useRef(phase);
   phaseRef.current = phase;
 
@@ -126,6 +130,8 @@ export const CraneGame = ({ onClose, me = "" }) => {
         }
       },
     });
+    const lk = readLook();
+    e.setLook(lk.id, lk.name);
     eng.current = e;
     if (window.__moraTest) window.__crane = e; // solo per le prove automatiche
     let raf = 0;
@@ -199,7 +205,7 @@ export const CraneGame = ({ onClose, me = "" }) => {
       setRecord(result.score);
     }
     if (me && result.score > 0) {
-      saveScore(me, result.score)
+      saveScore(me, result.score, readLook().id)
         .catch(() => false)
         .then(loadBoard);
     } else loadBoard();
@@ -247,6 +253,22 @@ export const CraneGame = ({ onClose, me = "" }) => {
     eng.current.press(on);
     setHold(on);
     if (on) setTip(false);
+  };
+
+  // record per sbloccare i colori: quello del telefono o quello in classifica
+  const mine = (board || []).find((r) => String(r.name).trim().toLowerCase() === String(me || "").trim().toLowerCase());
+  const best = Math.max(record, mine ? Number(mine.best) || 0 : 0);
+  const chooseLook = (id) => {
+    const next = { ...look, id };
+    setLook(next);
+    saveLook(next);
+    if (eng.current) eng.current.setLook(next.id, next.name);
+  };
+  const setBeamName = (v) => {
+    const next = { ...look, name: cleanName(v) };
+    setLook(next);
+    saveLook(next);
+    if (eng.current) eng.current.setLook(next.id, next.name);
   };
 
   const start = () => {
@@ -402,6 +424,51 @@ export const CraneGame = ({ onClose, me = "" }) => {
               <li>❤️ 3 vite: ne perdi una se un camion riparte senza tutto</li>
               <li>📈 Si parte facile, con la freccia verde che ti guida. Ogni {TRUCKS_PER_STAGE} camion si passa di livello: più pezzi, meno tempo, vento e il vetro fragile. Ogni 3 livelli una vita in più</li>
             </ul>
+            <div className="rounded-2xl border border-slate-200 p-3 text-left" data-game-look>
+              <button type="button" onClick={() => setCustom(!custom)} className="w-full flex items-center gap-2" data-action="game-look">
+                <span className="w-9 h-5 rounded border border-black/10" style={{ background: `linear-gradient(${lookById(look.id).top}, ${lookById(look.id).bottom})` }} />
+                <span className="flex-1 text-sm font-black text-slate-700">Il tuo carroponte{look.name ? ` · ${look.name}` : ""}</span>
+                <Paintbrush className="w-4 h-4 text-slate-400" />
+              </button>
+              {custom && (
+                <div className="mt-3 space-y-3">
+                  <div className="grid grid-cols-4 gap-2">
+                    {LOOKS.map((l) => {
+                      const ok = unlocked(l, best);
+                      const on = look.id === l.id;
+                      return (
+                        <button
+                          key={l.id}
+                          type="button"
+                          disabled={!ok}
+                          onClick={() => chooseLook(l.id)}
+                          data-look={l.id}
+                          aria-label={ok ? l.label : `${l.label}: si sblocca a ${l.need} punti`}
+                          className={`rounded-xl p-1.5 border-2 text-center ${on ? "border-amber-500 bg-amber-50" : "border-slate-200"} ${ok ? "" : "opacity-60"}`}
+                        >
+                          <span className="relative block h-6 rounded-md border border-black/10" style={{ background: l.stripes ? `repeating-linear-gradient(-45deg, ${l.top} 0 6px, #111827 6px 12px)` : `linear-gradient(${l.top}, ${l.bottom})` }}>
+                            {!ok && <Lock className="w-3.5 h-3.5 text-slate-700 absolute inset-0 m-auto" />}
+                          </span>
+                          <span className="block text-[11px] font-bold text-slate-600 mt-1 leading-tight">{ok ? l.label : `${l.need} punti`}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                  <label className="block">
+                    <span className="text-xs font-black text-slate-500">Nome sulla trave (max 10 lettere)</span>
+                    <input
+                      value={look.name}
+                      onChange={(e) => setBeamName(e.target.value)}
+                      placeholder="Es. LUCA 1"
+                      maxLength={10}
+                      className="mt-1 w-full h-11 px-3 rounded-xl border border-slate-200 bg-slate-50 font-black tracking-wide text-slate-800 uppercase outline-none"
+                      data-look-name
+                    />
+                  </label>
+                  <p className="text-xs text-slate-500">I colori si sbloccano col tuo record. Il tuo: {best} punti.</p>
+                </div>
+              )}
+            </div>
             <div className="space-y-1.5">
               <p className="text-xs font-black text-slate-500 flex items-center justify-center gap-1"><Medal className="w-4 h-4" /> CLASSIFICA</p>
               <Board rows={board} me={me} loading={boardLoading} />

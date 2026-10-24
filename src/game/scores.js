@@ -13,13 +13,13 @@ export const topScores = async () => {
 };
 
 // salva il record solo se è più alto di quello che c'è
-export const saveScore = async (me, score) => {
+export const saveScore = async (me, score, look = "") => {
   const k = key(me);
   if (!k || !(score > 0)) return false;
   const d = doc(ref(), k.replace(/[^a-z0-9_-]/gi, "_"));
   const cur = await getDoc(d);
   const best = cur.exists() ? Number(cur.data().best) || 0 : 0;
   if (score <= best) return false;
-  await setDoc(d, { name: String(me).trim(), owner: k, best: score, at: Date.now() });
+  await setDoc(d, { name: String(me).trim(), owner: k, best: score, at: Date.now(), look: look || "" });
   return true;
 };
