@@ -20,14 +20,14 @@ jobs:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
         with:
-          node-version: 22
+          node-version: 20
       - name: Installa
         run: npm install --no-audit --no-fund
       - name: Costruisci l'app (come Vercel)
         env:
           CI: "false"
         run: |
-          npm run build > build.log 2>&1 || { tail -40 build.log | while IFS= read -r l; do echo "::error::$l"; done; exit 1; }
+          npm run build > build.log 2>&1 || { echo "::error::uscita $?"; tail -40 build.log | while IFS= read -r l; do echo "::error::$l"; done; exit 1; }
           tail -5 build.log
       - name: Strumenti di prova
         run: |
