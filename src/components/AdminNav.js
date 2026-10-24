@@ -1,10 +1,19 @@
 // AREA ADMIN: le schede sono divise in 4 gruppi (prima erano 10 in fila).
 // Tocchi un gruppo grande e sotto compaiono solo le sue schede. L'ultima scheda aperta si ricorda.
 import React from "react";
-import { User, Users, Factory, Layers, FolderOpen, Building2, Truck, Palette, AlertOctagon, Trash2, Settings } from "lucide-react";
+import { User, Users, Factory, Layers, FolderOpen, Building2, Truck, Palette, AlertOctagon, Trash2, Settings, History } from "lucide-react";
 
 export const ADMIN_GROUPS = [
-  { id: "people", label: "Persone", icon: User, desc: "Tecnici", views: [["techs", "Staff", User]] },
+  {
+    id: "people",
+    label: "Persone",
+    icon: User,
+    desc: "Tecnici, chi ha modificato",
+    views: [
+      ["techs", "Staff", User],
+      ["edits", "Modifiche", History],
+    ],
+  },
   {
     id: "customers",
     label: "Clienti e gru",

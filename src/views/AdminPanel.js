@@ -38,6 +38,7 @@ import { TvCard } from "../components/TvCard";
 import { ImportPlacesModal } from "../components/modals/ImportPlacesModal";
 import { placeOf } from "../places";
 import { DriveAdmin } from "./DriveAdmin";
+import { EditsRegister } from "../components/EditsRegister";
 import { ErrorsCard } from "../components/ErrorsCard";
 import { ReadsCard } from "../components/ReadsCard";
 import { BioCard } from "../components/BioCard";
@@ -626,6 +627,11 @@ export const AdminPanel = ({
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <AdminNav view={view} onChange={setView} color={layoutConfig.themeColor} />
 
+      {view === "edits" && (
+        <div className={`p-5 shadow-xl ${getProPanelClass(layoutConfig.themeColor)}`}>
+          <EditsRegister logs={allLogs} technicians={technicians} color={layoutConfig.themeColor} onOpenTrash={() => setView("trash")} />
+        </div>
+      )}
       {view === "company" && <CompanyAdmin color={layoutConfig.themeColor} />}
       {view === "drive" && <DriveAdmin customers={customers} machines={machines} color={layoutConfig.themeColor} />}
       {view === "trash" && <TrashView color={layoutConfig.themeColor} />}
