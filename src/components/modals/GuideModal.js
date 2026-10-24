@@ -485,6 +485,7 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
       icon: Settings,
       title: "Impostazioni (solo admin)",
       points: [
+        "Le schede sono in 4 gruppi: «Persone» (Staff: i tecnici), «Clienti e gru» (Clienti, Gru, Tipi, Drive), «Azienda» (Azienda con avvisi, chiusure e password, Furgoni, Design) e «Sistema» (System con backup, Excel, letture e schermo TV, Cestino). Tocchi il gruppo e sotto compaiono le sue schede; l'app si ricorda l'ultima che hai aperto.",
         "Design: colori, carattere, grandezza delle lettere, animazione di avvio, chat tra tecnici sì/no, messaggi da «Tecnici online» sì/no. «La mia area: cosa vedono i tecnici»: accendi o spegni per tutti Oggi, I miei interventi, Stampa, Calendario, Note, Scansiona foglio, Promemoria, Magazzino, Le mie ore, Cosa ho cambiato e i numeri del mese (i dati restano salvati).",
         "Staff: tecnici e password. Tipi, Clienti, Gru: anagrafiche e unione.",
         "Paese e indirizzo dei clienti: Clienti → matita per scriverli a mano, oppure «Importa paesi» per prenderli da un file Excel o CSV (colonne CLIENTE o RAGIONE SOCIALE, PAESE, INDIRIZZO). L'app abbina i nomi ai clienti che ci sono già e ti mostra l'elenco: spunti quelli da salvare (di base solo quelli che non hanno ancora il paese) e tocchi «Salva». Il paese compare sotto il nome in Esplora, nel Nuovo rapporto e nella scheda del cliente (con «Mappa» per aprirlo su Google Maps); in Esplora puoi anche cercare per paese.",

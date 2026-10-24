@@ -91,13 +91,24 @@ const check = (label, got, want) => {
   await wait(p, 500);
   await clickText(p, /^(impostazioni|admin)/);
   await wait(p, 1500);
-  const tabs = await p.evaluate(() => [...document.querySelectorAll('[data-section="admin-tabs"] button')].map((b) => b.textContent.trim()));
-  check("Area admin: schede", tabs.length >= 9, true);
-  for (const t of tabs) {
-    await p.evaluate((t) => [...document.querySelectorAll('[data-section="admin-tabs"] button')].find((b) => b.textContent.trim() === t).click(), t);
+  // Area admin: 4 gruppi (Persone, Clienti e gru, Azienda, Sistema), ognuno con le sue schede
+  const groups = await p.evaluate(() => [...document.querySelectorAll("[data-admin-group]")].map((b) => b.dataset.adminGroup));
+  check("Area admin: gruppi", groups.length, 4);
+  let seen = 0;
+  for (const g of groups) {
+    await p.evaluate((g) => document.querySelector(`[data-admin-group="${g}"]`).click(), g);
     await wait(p, 800);
-    check(`Admin › ${t}`, await noCrash(p), true);
+    check(`Admin › ${g}`, await noCrash(p), true);
+    seen++;
+    const tabs = await p.evaluate(() => [...document.querySelectorAll('[data-section="admin-tabs"] button')].map((b) => b.textContent.trim()));
+    for (const t of tabs.slice(1)) {
+      await p.evaluate((t) => [...document.querySelectorAll('[data-section="admin-tabs"] button')].find((b) => b.textContent.trim() === t).click(), t);
+      await wait(p, 800);
+      check(`Admin › ${g} › ${t}`, await noCrash(p), true);
+      seen++;
+    }
   }
+  check("Area admin: schede", seen >= 9, true);
   await p.close();
 
   // --- schermo TV ---

@@ -1,17 +1,12 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { AREA_TILES, areaOn } from "../areaTiles";
 import {
-  Factory,
   User,
   Trash2,
   RefreshCw,
-  Layers,
   Activity,
-  AlertOctagon,
-  Truck,
   Terminal,
   Users,
-  Palette,
   Wifi,
   WifiOff,
   Edit,
@@ -25,9 +20,7 @@ import {
   Database,
   HardDrive,
   Download,
-  Building2,
   MapPin,
-  FolderOpen,
 } from "lucide-react";
 import { collection, serverTimestamp, Timestamp, doc, setDoc, deleteDoc, updateDoc, query, orderBy, limit, writeBatch, where } from "firebase/firestore";
 import { onSnapshot, getDocs } from "../metered";
@@ -37,7 +30,7 @@ import { logsChanged } from "../logsWindow";
 import { db, appId } from "../firebase";
 import { describeError, getSafeMatricola, getLevenshteinDistance } from "../utils";
 import { PRO_INPUT, getButtonPrimaryClass, getProPanelClass } from "../ui";
-import { AdminTab } from "../components/AdminTab";
+import { AdminNav, savedAdminView } from "../components/AdminNav";
 import { CompanyAdmin } from "../components/CompanyAdmin";
 import { BackupCard } from "../components/BackupCard";
 import { ExportCard } from "../components/ExportCard";
@@ -78,7 +71,7 @@ export const AdminPanel = ({
   currentTechName = "",
   onOpenTv,
 }) => {
-  const [view, setView] = useState("design");
+  const [view, setView] = useState(savedAdminView);
   const [renaming, setRenaming] = useState(null); // { id, value }
   const [renameBusy, setRenameBusy] = useState(false);
   const [kickBusy, setKickBusy] = useState(null);
@@ -631,78 +624,7 @@ export const AdminPanel = ({
 
   return (
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-      <div className="flex p-1.5 rounded-full md:rounded-3xl border border-slate-200 overflow-x-auto md:overflow-visible md:flex-wrap gap-1 bg-white no-scrollbar shadow-sm" data-section="admin-tabs">
-        <AdminTab
-          color={layoutConfig.themeColor}
-          active={view === "design"}
-          onClick={() => setView("design")}
-          icon={Palette}
-          label="Design"
-        />
-        <AdminTab
-          color={layoutConfig.themeColor}
-          active={view === "techs"}
-          onClick={() => setView("techs")}
-          icon={User}
-          label="Staff"
-        />
-        <AdminTab
-          color={layoutConfig.themeColor}
-          active={view === "types"}
-          onClick={() => setView("types")}
-          icon={Layers}
-          label="Tipi"
-        />
-        <AdminTab
-          color={layoutConfig.themeColor}
-          active={view === "clients"}
-          onClick={() => setView("clients")}
-          icon={Users}
-          label="Clienti"
-        />
-        <AdminTab
-          color={layoutConfig.themeColor}
-          active={view === "machines"}
-          onClick={() => setView("machines")}
-          icon={Factory}
-          label="Gru"
-        />
-        <AdminTab
-          color={layoutConfig.themeColor}
-          active={view === "drive"}
-          onClick={() => setView("drive")}
-          icon={FolderOpen}
-          label="Drive"
-        />
-        <AdminTab
-          color={layoutConfig.themeColor}
-          active={view === "vans"}
-          onClick={() => setView("vans")}
-          icon={Truck}
-          label="Furgoni"
-        />
-        <AdminTab
-          color={layoutConfig.themeColor}
-          active={view === "company"}
-          onClick={() => setView("company")}
-          icon={Building2}
-          label="Azienda"
-        />
-        <AdminTab
-          color={layoutConfig.themeColor}
-          active={view === "trash"}
-          onClick={() => setView("trash")}
-          icon={Trash2}
-          label="Cestino"
-        />
-        <AdminTab
-          color={layoutConfig.themeColor}
-          active={view === "diagnostics"}
-          onClick={() => setView("diagnostics")}
-          icon={AlertOctagon}
-          label="System"
-        />
-      </div>
+      <AdminNav view={view} onChange={setView} color={layoutConfig.themeColor} />
 
       {view === "company" && <CompanyAdmin color={layoutConfig.themeColor} />}
       {view === "drive" && <DriveAdmin customers={customers} machines={machines} color={layoutConfig.themeColor} />}
