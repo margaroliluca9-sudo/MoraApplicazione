@@ -412,10 +412,10 @@ export const buildInterventionPdf = async ({ log, today }) => {
     ["Fune sostituita", formatRopeLong(log.fune)],
     ["Catena sostituita", formatRopeLong(log.catena)],
   ]);
-  // dati della gru presi dall'ultimo foglio di verifica nel Drive (vedi src/driveForPrint.js)
+  // dati della gru e del paranco presi dal Drive (vedi src/driveForPrint.js): niente esito della verifica
   const dr = log._drive;
-  if (dr) {
-    flow.heading(`Dati della gru dall'ultima verifica${dr.foglio ? ` (${dr.foglio})` : ""}`);
+  if (dr && [dr.fab, dr.tipo, dr.portata, dr.paranco, dr.matricola, dr.anno].some((v) => String(v || "").trim())) {
+    flow.heading("Dati della gru");
     flow.details([
       ["N. fabbrica", dr.fab],
       ["Tipo", dr.tipo],
@@ -423,7 +423,6 @@ export const buildInterventionPdf = async ({ log, today }) => {
       ["Paranco", dr.paranco],
       ["Matricola INAIL", dr.matricola],
       ["Anno", dr.anno],
-      ["Fune / catena", dr.stato],
     ]);
   }
   flow.heading("Descrizione del lavoro");

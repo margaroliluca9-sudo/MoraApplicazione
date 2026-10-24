@@ -290,7 +290,7 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
       title: "Stampare",
       points: [
         "Il pulsante «Stampa» c'è su ogni intervento: Storico, scheda della gru, I miei interventi, Esplora, Ufficio, ricerca e calendario.",
-        "Nel rapporto stampato ci sono anche i dati presi dal Drive: il paese e l'indirizzo del cliente (riga «Luogo») e, se la gru è nell'ultimo foglio di verifica, il riquadro «Dati della gru dall'ultima verifica» con numero di fabbrica, tipo, portata, paranco, matricola INAIL, anno e com'era la fune o la catena (con le correzioni fatte in Admin → Drive). Se la gru non è nel Drive il rapporto esce come prima.",
+        "Nel rapporto stampato ci sono anche i dati presi dal Drive: il paese e l'indirizzo del cliente (riga «Luogo») e, se la gru è nel Drive, il riquadro «Dati della gru» con numero di fabbrica, tipo, portata, paranco, matricola INAIL e anno (con le correzioni fatte in Admin → Drive). L'esito della verifica (fune o catena) non viene stampato. Se la gru non è nel Drive il rapporto esce come prima.",
         "Il foglio ha l'intestazione Mora, i dati della gru, la descrizione e le foto.",
         "Dalla finestra del PDF: «Condividi o stampa» (WhatsApp, mail, stampante), «Apri PDF» oppure «Scarica».",
         "Più interventi insieme: La mia area → «Stampa interventi». Scegli giorno o periodo (Oggi, Ieri, Ultimi 7 giorni o le date), il tecnico (tutti, solo i tuoi o un collega), tocca quelli che vuoi o «Seleziona tutti».",
