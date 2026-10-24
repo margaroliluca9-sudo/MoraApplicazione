@@ -7,6 +7,7 @@
 import { getTechsString, formatCapacity, getSafeMatricola } from "./utils";
 import { isRepair, officeCharts } from "./repairs";
 import { formatRopeLong } from "./ropes";
+import { fabKey } from "./driveCranes";
 import { fmtMin, fmtDelta, deltaOf, kindOf, shortDay, rangeSummary, periodLabel, isFreeDay } from "./hours";
 import { COMPANY_DEFAULT, companyInfo } from "./company";
 
@@ -402,29 +403,23 @@ export const buildInterventionPdf = async ({ log, today }) => {
     docTitle: `Rapporto intervento ${log.ticketNumber || log.dateString || ""}`,
   });
   flow.meta([`Data: ${log.dateString || "-"}`, `N. Assistenza: ${log.ticketNumber || "-"}`, `Stampato il: ${printed}`]);
+  // dati della gru e del paranco presi dal Drive (vedi src/driveForPrint.js), senza ripetere quelli dell'intervento
+  const dr = log._drive;
   flow.details([
     ["Tecnico/i", getTechsString(log)],
     ["Cliente", log.customer],
     ["Luogo", log._place || ""],
     ["Matricola gru", log.machineId],
-    ["Tipo", log.machineType],
-    ["Portata", log.capacity ? formatCapacity(log.capacity) : ""],
+    // n. di fabbrica solo se è diverso dalla matricola (di solito è lo stesso numero)
+    ["N. fabbrica", dr && dr.fab && fabKey(dr.fab) !== fabKey(log.machineId) ? dr.fab : ""],
+    ["Tipo", log.machineType || (dr && dr.tipo) || ""],
+    ["Portata", log.capacity ? formatCapacity(log.capacity) : dr && dr.portata ? `${dr.portata} kg` : ""],
+    ["Paranco", (dr && dr.paranco) || ""],
+    ["Matricola INAIL", (dr && dr.matricola) || ""],
+    ["Anno", (dr && dr.anno) || ""],
     ["Fune sostituita", formatRopeLong(log.fune)],
     ["Catena sostituita", formatRopeLong(log.catena)],
   ]);
-  // dati della gru e del paranco presi dal Drive (vedi src/driveForPrint.js): niente esito della verifica
-  const dr = log._drive;
-  if (dr && [dr.fab, dr.tipo, dr.portata, dr.paranco, dr.matricola, dr.anno].some((v) => String(v || "").trim())) {
-    flow.heading("Dati della gru");
-    flow.details([
-      ["N. fabbrica", dr.fab],
-      ["Tipo", dr.tipo],
-      ["Portata", dr.portata ? `${dr.portata} kg` : ""],
-      ["Paranco", dr.paranco],
-      ["Matricola INAIL", dr.matricola],
-      ["Anno", dr.anno],
-    ]);
-  }
   flow.heading("Descrizione del lavoro");
   flow.textBox(log.description || "");
   const images = [];
