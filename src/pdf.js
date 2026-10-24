@@ -405,12 +405,27 @@ export const buildInterventionPdf = async ({ log, today }) => {
   flow.details([
     ["Tecnico/i", getTechsString(log)],
     ["Cliente", log.customer],
+    ["Luogo", log._place || ""],
     ["Matricola gru", log.machineId],
     ["Tipo", log.machineType],
     ["Portata", log.capacity ? formatCapacity(log.capacity) : ""],
     ["Fune sostituita", formatRopeLong(log.fune)],
     ["Catena sostituita", formatRopeLong(log.catena)],
   ]);
+  // dati della gru presi dall'ultimo foglio di verifica nel Drive (vedi src/driveForPrint.js)
+  const dr = log._drive;
+  if (dr) {
+    flow.heading(`Dati della gru dall'ultima verifica${dr.foglio ? ` (${dr.foglio})` : ""}`);
+    flow.details([
+      ["N. fabbrica", dr.fab],
+      ["Tipo", dr.tipo],
+      ["Portata", dr.portata ? `${dr.portata} kg` : ""],
+      ["Paranco", dr.paranco],
+      ["Matricola INAIL", dr.matricola],
+      ["Anno", dr.anno],
+      ["Fune / catena", dr.stato],
+    ]);
+  }
   flow.heading("Descrizione del lavoro");
   flow.textBox(log.description || "");
   const images = [];

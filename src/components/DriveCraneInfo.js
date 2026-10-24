@@ -9,7 +9,7 @@ import { findDriveCrane, statoTone } from "../driveCranes";
 
 // una sola lettura per cliente finché l'app resta aperta
 const cache = {};
-const loadRows = (customerName) => {
+export const loadRows = (customerName) => {
   const k = String(customerName || "");
   if (!cache[k]) {
     cache[k] = getDocs(query(collection(db, "artifacts", appId, "public", "data", "drive_cranes"), where("customerName", "==", k)))

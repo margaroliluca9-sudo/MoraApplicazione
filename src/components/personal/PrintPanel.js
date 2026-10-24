@@ -2,6 +2,7 @@
 import React, { useMemo, useState } from "react";
 import { Search, Printer, List, Check } from "lucide-react";
 import { buildInterventionsPdf, buildLogsReportPdf, pdfFileName } from "../../pdf";
+import { withDriveInfo } from "../../driveForPrint";
 import { withPhotosOr } from "../../logPhotos";
 import { parseTicketQuery, matchTicket } from "../../ticket";
 import { openPdf } from "../PdfHost";
@@ -60,7 +61,7 @@ export const PrintPanel = ({ me, logs = [], technicians = [], onBack, onClose, c
   const period = from === to ? itDate(from) : `${itDate(from)} - ${itDate(to)}`;
   const printed = new Date().toLocaleDateString("it-IT");
   const printReports = () =>
-    openPdf(async () => buildInterventionsPdf({ logs: await Promise.all(chosen.map(withPhotosOr)) }), pdfFileName("Rapporti", period.replace(/\//g, "-").replace(/ /g, "")));
+    openPdf(async () => buildInterventionsPdf({ logs: await Promise.all(chosen.map(async (l) => withDriveInfo(await withPhotosOr(l)))) }), pdfFileName("Rapporti", period.replace(/\//g, "-").replace(/ /g, "")));
   const printTable = () =>
     openPdf(
       () => buildLogsReportPdf({ logs: chosen, periodLabel: period, today: printed, subtitle: "Interventi scelti" }),

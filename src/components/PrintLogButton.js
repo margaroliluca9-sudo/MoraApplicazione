@@ -4,10 +4,11 @@ import { Printer } from "lucide-react";
 import { buildInterventionPdf, pdfFileName } from "../pdf";
 import { openPdf } from "./PdfHost";
 import { withPhotosOr } from "../logPhotos";
+import { withDriveInfo } from "../driveForPrint";
 
 export const printIntervention = (log) =>
   openPdf(
-    async () => buildInterventionPdf({ log: await withPhotosOr(log) }),
+    async () => buildInterventionPdf({ log: await withDriveInfo(await withPhotosOr(log)) }),
     pdfFileName("Assistenza", log.ticketNumber, log.customer, (log.dateString || "").replace(/\//g, "-"))
   );
 
