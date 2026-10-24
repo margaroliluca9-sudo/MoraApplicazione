@@ -10,6 +10,7 @@ import {
 import { getTechsString, formatCapacity, getSafeMatricola } from "../utils";
 import { PRO_INPUT, getProPanelClass } from "../ui";
 import { PrintLogButton } from "../components/PrintLogButton";
+import { placeOf } from "../places";
 
 export const ExploreView = React.memo(
   ({ customers, machines, logs, color = "blue", onOpenPhotos }) => {
@@ -20,7 +21,7 @@ export const ExploreView = React.memo(
     const filteredCustomers = useMemo(() => {
       if (!searchTerm) return customers;
       // perdona gli errori di battitura (vedi fuzzy.js)
-      return fuzzyFilter(customers, searchTerm, (c) => c.name);
+      return fuzzyFilter(customers, searchTerm, (c) => `${c.name} ${c.city || ""}`);
     }, [customers, searchTerm]);
 
     const getCustomerMachines = useCallback(
@@ -90,8 +91,15 @@ export const ExploreView = React.memo(
                         isCustExpanded ? `text-${color}-600` : "text-slate-400"
                       }`}
                     />
-                    <span className="font-bold text-sm text-slate-700">
-                      {c.name}
+                    <span className="min-w-0">
+                      <span className="block font-bold text-sm text-slate-700">
+                        {c.name}
+                      </span>
+                      {placeOf(c) && (
+                        <span className="block text-xs text-slate-500 truncate" data-customer-place>
+                          {placeOf(c)}
+                        </span>
+                      )}
                     </span>
                   </div>
                   <ChevronRight

@@ -18,6 +18,9 @@ export const EditCustomerModal = ({
   color = "blue",
 }) => {
   const [name, setName] = useState(customer.name || "");
+  // paese e indirizzo (si vedono sotto il nome in Esplora, nel Nuovo rapporto e nella scheda cliente)
+  const [city, setCity] = useState(customer.city || "");
+  const [address, setAddress] = useState(customer.address || "");
   const [loading, setLoading] = useState(false);
 
   const handleSave = async () => {
@@ -36,8 +39,15 @@ export const EditCustomerModal = ({
 
       batch.update(
         doc(db, "artifacts", appId, "public", "data", "customers", customer.id),
-        { name: cleanName }
+        { name: cleanName, city: city.trim(), address: address.trim() }
       );
+
+      // il nome cambia anche negli interventi e nelle gru solo se l'hai cambiato davvero
+      if (cleanName === customer.name) {
+        await batch.commit();
+        onClose();
+        return;
+      }
 
       const qLogs = query(
         collection(
@@ -92,6 +102,32 @@ export const EditCustomerModal = ({
             className={PRO_INPUT}
             value={name}
             onChange={(e) => setName(e.target.value)}
+          />
+        </div>
+        <div className="space-y-1">
+          <label className="text-[9px] font-bold text-slate-400 uppercase ml-1">
+            Paese
+          </label>
+          <input
+            type="text"
+            className={PRO_INPUT}
+            value={city}
+            placeholder="Es. Borgomanero (NO)"
+            onChange={(e) => setCity(e.target.value)}
+            data-customer-city
+          />
+        </div>
+        <div className="space-y-1">
+          <label className="text-[9px] font-bold text-slate-400 uppercase ml-1">
+            Indirizzo
+          </label>
+          <input
+            type="text"
+            className={PRO_INPUT}
+            value={address}
+            placeholder="Es. Via Roma, 10"
+            onChange={(e) => setAddress(e.target.value)}
+            data-customer-address
           />
         </div>
         <div className="flex flex-col gap-2 pt-2">

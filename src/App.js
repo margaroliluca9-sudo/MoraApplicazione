@@ -1412,6 +1412,7 @@ export default function App() {
       {viewingCustomerDetail && (
         <CustomerDetailModal
           customerName={viewingCustomerDetail}
+          customers={customers}
           machines={machines}
           onClose={() => setViewingCustomerDetail(null)}
           onOpenMachine={openMachineDetail}

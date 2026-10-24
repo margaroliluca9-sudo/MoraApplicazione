@@ -750,6 +750,7 @@ export const NewEntryForm = ({
                       className="p-3 hover:bg-slate-50 cursor-pointer font-bold text-xs text-slate-700 border-b border-slate-50"
                     >
                       {c.name}
+                      {c.city && <span className="block font-semibold text-[11px] text-slate-500">{c.city}</span>}
                     </li>
                   ))}
                 {customers.length === 0 && (

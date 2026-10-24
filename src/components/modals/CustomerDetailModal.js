@@ -10,9 +10,11 @@ import { formatCapacity, getSafeMatricola } from "../../utils";
 import { getProPanelClass } from "../../ui";
 import { buildCustomerMachinesPdf, pdfFileName } from "../../pdf";
 import { openPdf } from "../PdfHost";
+import { placeOf, mapsUrl } from "../../places";
 
 export const CustomerDetailModal = ({
   customerName,
+  customers = [],
   machines,
   onClose,
   onOpenMachine,
@@ -22,6 +24,9 @@ export const CustomerDetailModal = ({
   const customerMachines = machines.filter(
     (m) => m.customerName === customerName
   );
+  const customer = customers.find((c) => c.name === customerName) || null;
+  const place = placeOf(customer);
+  const map = mapsUrl(customer);
 
   return (
     <div className="fixed inset-0 bg-slate-900/50 z-[200] flex items-center justify-center p-4 backdrop-blur-md animate-in fade-in duration-300">
@@ -39,6 +44,16 @@ export const CustomerDetailModal = ({
               <h2 className="text-xl font-black tracking-tight text-slate-800 break-words">
                 {customerName}
               </h2>
+              {place && (
+                <p className="text-sm text-slate-600 font-semibold" data-customer-place>
+                  {place}
+                  {map && (
+                    <a href={map} target="_blank" rel="noopener noreferrer" className={`ml-2 text-${color}-700 font-bold underline`} data-action="customer-map">
+                      Mappa
+                    </a>
+                  )}
+                </p>
+              )}
               <p className="text-xs text-slate-500 font-bold">
                 {customerMachines.length} Gru Registrate
               </p>

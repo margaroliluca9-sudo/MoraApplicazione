@@ -26,6 +26,7 @@ import {
   HardDrive,
   Download,
   Building2,
+  MapPin,
 } from "lucide-react";
 import { collection, serverTimestamp, Timestamp, doc, setDoc, deleteDoc, updateDoc, query, orderBy, limit, writeBatch, where } from "firebase/firestore";
 import { onSnapshot, getDocs } from "../metered";
@@ -40,6 +41,8 @@ import { CompanyAdmin } from "../components/CompanyAdmin";
 import { BackupCard } from "../components/BackupCard";
 import { ExportCard } from "../components/ExportCard";
 import { TvCard } from "../components/TvCard";
+import { ImportPlacesModal } from "../components/modals/ImportPlacesModal";
+import { placeOf } from "../places";
 import { ErrorsCard } from "../components/ErrorsCard";
 import { ReadsCard } from "../components/ReadsCard";
 import { BioCard } from "../components/BioCard";
@@ -82,6 +85,7 @@ export const AdminPanel = ({
   const [logs, setLogs] = useState([]);
   const [activeUsers, setActiveUsers] = useState([]);
   const [editingCustomer, setEditingCustomer] = useState(null);
+  const [importPlaces, setImportPlaces] = useState(false);
   const [editingMachine, setEditingMachine] = useState(null);
   const [mergingItem, setMergingItem] = useState(null);
   const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -1178,6 +1182,16 @@ export const AdminPanel = ({
                   Doppioni
                 </span>
               </button>
+              <button
+                type="button"
+                onClick={() => setImportPlaces(true)}
+                title="Importa paesi e indirizzi da un file Excel"
+                data-action="import-places"
+                className="p-2 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-lg hover:bg-emerald-100 flex items-center gap-1.5 shrink-0"
+              >
+                <MapPin className="w-4 h-4" />
+                <span className="text-[10px] font-bold">Importa paesi</span>
+              </button>
             </div>
           </div>
           <div
@@ -1198,8 +1212,15 @@ export const AdminPanel = ({
                       <Users className="w-4 h-4" />
                     </div>
                   )}
-                  <span className="font-bold text-xs text-slate-700 truncate">
-                    {String(c.name)}
+                  <span className="min-w-0">
+                    <span className="block font-bold text-xs text-slate-700 truncate">
+                      {String(c.name)}
+                    </span>
+                    {placeOf(c) && (
+                      <span className="block text-[11px] text-slate-500 truncate" data-customer-place>
+                        {placeOf(c)}
+                      </span>
+                    )}
                   </span>
                 </div>
                 <div className="flex gap-2 shrink-0">
@@ -1552,6 +1573,9 @@ export const AdminPanel = ({
         </div>
       )}
 
+      {importPlaces && (
+        <ImportPlacesModal customers={customers} onClose={() => setImportPlaces(false)} color={layoutConfig.themeColor} />
+      )}
       {editingCustomer && (
         <EditCustomerModal
           customer={editingCustomer}
