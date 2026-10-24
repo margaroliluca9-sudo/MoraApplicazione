@@ -57,7 +57,7 @@ import { getSettings, wasAsked, markAsked, installTipShown, setSettingsOwner, se
 import { AdminLoginModal } from "./components/AdminLoginModal";
 import { PhotoViewerModal } from "./components/PhotoViewerModal";
 import { withPhotoRefs, movePhotosOut, prefetchRecent } from "./logPhotos";
-import { applyCompany } from "./company";
+import { applyCompany, activeNotices } from "./company";
 import { windowStart, recentQuery, loadOlder, reloadOlderFromCache, prepareWindow } from "./logsWindow";
 import { PdfHost } from "./components/PdfHost";
 import { UserMenu } from "./components/UserMenu";
@@ -80,6 +80,7 @@ import { HistoryView } from "./views/HistoryView";
 const DatabaseView = lazyNamed(() => import("./views/DatabaseView"), "DatabaseView");
 const OfficeView = lazyNamed(() => import("./views/OfficeView"), "OfficeView");
 const AdminPanel = lazyNamed(() => import("./views/AdminPanel"), "AdminPanel");
+const TvScreen = lazyNamed(() => import("./components/TvScreen"), "TvScreen", <div className="fixed inset-0 z-[500] bg-slate-950" />);
 
 // SENZA RETE: "aggiornati oggi alle 8:42" / "ieri alle 17:10" / "il 16/10 alle 9:00"
 const readLastSync = () => {
@@ -150,6 +151,14 @@ export default function App() {
 
   const [user, setUser] = useState(null);
   const [activeTab, setActiveTab] = useState("dashboard");
+  // schermo per la TV dell'ufficio (Ufficio → «Schermo TV», oppure indirizzo con ?tv=1)
+  const [tvOpen, setTvOpen] = useState(() => {
+    try {
+      return new URLSearchParams(window.location.search).get("tv") === "1";
+    } catch (e) {
+      return false;
+    }
+  });
   useEffect(() => {
     if (activeTab !== "new") setNewPrefill(null);
   }, [activeTab]);
@@ -1304,6 +1313,7 @@ export default function App() {
             )}
             {activeTab === "office" && (
               <OfficeView
+                onOpenTv={() => setTvOpen(true)}
                 logs={logs}
                 machines={machines}
                 customers={customers}
@@ -1361,6 +1371,7 @@ export default function App() {
           </div>
         )}
       </main>
+      {tvOpen && user && <TvScreen logs={logs} users={visibleUsers} notices={activeNotices()} color={color} onClose={() => setTvOpen(false)} />}
 
       {/* Visualizzatore Foto Globale */}
       {globalPhotoView && (

@@ -165,7 +165,7 @@ const appStepsFor = ({ hasVan, chatEnabled, isAdmin }) =>
     {
       icon: Briefcase,
       title: "Ufficio",
-      text: "Calendario degli interventi del mese o dell'anno, ricerca per N. assistenza e report in PDF o Excel filtrando per date, cliente, gru e tecnico. In più due grafici del mese o dell'anno scelto: «Gru con più guasti» (contano le riparazioni, non le verifiche periodiche) e «Clienti con più interventi» con verifiche (blu) e riparazioni (arancio). Tocca una riga per vedere gli interventi.",
+      text: "Calendario degli interventi del mese o dell'anno, ricerca per N. assistenza e report in PDF o Excel filtrando per date, cliente, gru e tecnico. In più due grafici del mese o dell'anno scelto: «Gru con più guasti» (contano le riparazioni, non le verifiche periodiche) e «Clienti con più interventi» con verifiche (blu) e riparazioni (arancio). Tocca una riga per vedere gli interventi. «Schermo TV» apre a tutto schermo, per la TV dell'ufficio, gli interventi di oggi, i tecnici online, i numeri del mese, gli ultimi 7 giorni e gli avvisi; si aggiorna da solo e lo schermo non si spegne. Sulla TV puoi salvare come preferito l'indirizzo dell'app con ?tv=1 alla fine: si apre direttamente così.",
     },
     {
       icon: UserCircle,
