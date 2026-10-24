@@ -5,6 +5,7 @@
 // Tutti con l'intestazione Mora (logo, indirizzo, telefoni).
 // La libreria pdf-lib viene caricata solo al momento della stampa.
 import { getTechsString, formatCapacity, getSafeMatricola } from "./utils";
+import { isRepair, officeCharts } from "./repairs";
 import { formatRopeLong } from "./ropes";
 import { fmtMin, fmtDelta, deltaOf, kindOf, shortDay, rangeSummary, periodLabel, isFreeDay } from "./hours";
 import { COMPANY_DEFAULT, companyInfo } from "./company";
@@ -477,6 +478,65 @@ export const buildLogsReportPdf = async ({ logs, periodLabel, today, subtitle = 
   flow.meta([`Generato il: ${today}`, `Totale interventi: ${logs.length}`, `Periodo: ${periodLabel}`]);
   flow.table({ columns: LOG_COLUMNS, rows: logs.map(logRow) });
   return flow.finish("Documento generato dall'app Assistenza Mora.");
+};
+
+// RIEPILOGO DEL MESE (Ufficio): numeri, tecnici, clienti, gru con più guasti e tutti gli interventi del mese
+export const buildMonthSummaryPdf = async ({ logs, monthLabel, today }) => {
+  const printed = today || new Date().toLocaleDateString("it-IT");
+  const flow = await createFlow({ title: "RIEPILOGO DEL MESE", subtitle: monthLabel, docTitle: `Riepilogo ${monthLabel}` });
+  const fix = logs.filter(isRepair).length;
+  const clientsN = new Set(logs.map((l) => String(l.customer || "").trim()).filter(Boolean)).size;
+  const cranesN = new Set(logs.map((l) => `${l.customer}|${l.machineId}`)).size;
+  flow.meta([`Mese: ${monthLabel}`, `Generato il: ${printed}`, `Interventi: ${logs.length}`]);
+  flow.tiles([
+    ["Interventi", logs.length],
+    ["Verifiche", logs.length - fix],
+    ["Riparazioni", fix],
+    ["Clienti", clientsN],
+    ["Gru", cranesN],
+  ]);
+  // tecnici (un intervento conta per tutti quelli che c'erano)
+  const techs = new Map();
+  logs.forEach((l) =>
+    [l.technician, ...(l.additionalTechnicians || [])]
+      .map((t) => String(t || "").trim())
+      .filter(Boolean)
+      .forEach((t) => {
+        const x = techs.get(t) || { n: 0, fix: 0 };
+        x.n += 1;
+        if (isRepair(l)) x.fix += 1;
+        techs.set(t, x);
+      })
+  );
+  if (techs.size) {
+    flow.heading("Tecnici");
+    flow.table({
+      columns: [{ label: "Tecnico", w: 0.55 }, { label: "Interventi", w: 0.15, align: "right" }, { label: "Verifiche", w: 0.15, align: "right" }, { label: "Riparazioni", w: 0.15, align: "right" }],
+      rows: [...techs.entries()].sort((a, b) => b[1].n - a[1].n).map(([t, x]) => [[{ t, b: true, c: C.ink }], String(x.n), String(x.n - x.fix), String(x.fix)]),
+      light: true,
+    });
+  }
+  const { cranes, clients } = officeCharts(logs, 10);
+  if (clients.length) {
+    flow.heading("Clienti con più interventi");
+    flow.table({
+      columns: [{ label: "Cliente", w: 0.55 }, { label: "Interventi", w: 0.15, align: "right" }, { label: "Verifiche", w: 0.15, align: "right" }, { label: "Riparazioni", w: 0.15, align: "right" }],
+      rows: clients.map((x) => [[{ t: x.customer, b: true, c: C.ink }], String(x.check + x.fix), String(x.check), String(x.fix)]),
+      light: true,
+    });
+  }
+  if (cranes.length) {
+    flow.heading("Gru con più guasti");
+    flow.table({
+      columns: [{ label: "Cliente", w: 0.45 }, { label: "Gru", w: 0.15 }, { label: "Tipo", w: 0.25 }, { label: "Riparazioni", w: 0.15, align: "right" }],
+      rows: cranes.map((x) => [[{ t: x.customer, b: true, c: C.ink }], String(x.machineId), x.type || "-", String(x.n)]),
+      light: true,
+    });
+  }
+  flow.heading("Tutti gli interventi del mese");
+  const sorted = logs.slice().sort((a, b) => dateKey(a.dateString) - dateKey(b.dateString));
+  flow.table({ columns: LOG_COLUMNS, rows: sorted.map(logRow) });
+  return flow.finish("Riepilogo generato dall'app Assistenza Mora.");
 };
 
 // FOGLIO ORE (La mia area → Le mie ore → Manda → PDF): riepilogo e un giorno per riga, con le note

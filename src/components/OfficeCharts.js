@@ -6,35 +6,9 @@
 import React, { useMemo } from "react";
 import { Wrench, Building2 } from "lucide-react";
 
-// riparazione = c'è stato da sistemare qualcosa; verifica = controllo periodico senza riparazioni
-const FIX = /(sostitu|ripar|guast|rott|cambiat|non funzion|blocc|smontat|rifatt|aggiust|bruciat|spezzat|sistemat|montat)/i;
-export const isRepair = (l) => FIX.test(String((l && l.description) || ""));
+import { isRepair, officeCharts } from "../repairs";
 
-export const officeCharts = (logs) => {
-  const cranes = new Map();
-  const clients = new Map();
-  logs.forEach((l) => {
-    const fix = isRepair(l);
-    const c = String(l.customer || "").trim();
-    if (!c) return;
-    const k = `${c}|${l.machineId || ""}`;
-    if (fix) {
-      const x = cranes.get(k) || { customer: c, machineId: l.machineId || "", type: l.machineType || "", n: 0, logs: [] };
-      x.n += 1;
-      x.logs.push(l);
-      cranes.set(k, x);
-    }
-    const y = clients.get(c) || { customer: c, check: 0, fix: 0, logs: [] };
-    if (fix) y.fix += 1;
-    else y.check += 1;
-    y.logs.push(l);
-    clients.set(c, y);
-  });
-  return {
-    cranes: [...cranes.values()].sort((a, b) => b.n - a.n || a.customer.localeCompare(b.customer)).slice(0, 8),
-    clients: [...clients.values()].sort((a, b) => b.check + b.fix - (a.check + a.fix) || a.customer.localeCompare(b.customer)).slice(0, 8),
-  };
-};
+export { isRepair, officeCharts };
 
 const Panel = ({ icon: Icon, title, label, children, section }) => (
   <div className="p-5 bg-white rounded-2xl border border-slate-200 shadow-sm" data-section={section}>

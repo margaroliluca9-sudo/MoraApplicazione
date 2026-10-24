@@ -273,7 +273,45 @@ const cleanPresence = async (now) => {
   return n;
 };
 
+// RIEPILOGO DEL MESE: il 1° del mese dalle 9 avviso all'admin (Luca) che in Ufficio c'è il PDF del mese finito.
+// Una volta sola: il mese avvisato resta in settings/riepilogo.
+const MESI = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre"];
+const ADMINS = ["luca"];
+const monthNotice = async (now) => {
+  const r = romeNow(now);
+  if (r.iso.slice(8) !== "01" || r.min < 9 * 60) return 0;
+  const y = Number(r.iso.slice(0, 4));
+  const m = Number(r.iso.slice(5, 7)) - 1; // mese di oggi (0-11)
+  const py = m === 0 ? y - 1 : y;
+  const pm = m === 0 ? 11 : m - 1;
+  const key2 = `${py}-${String(pm + 1).padStart(2, "0")}`;
+  let last = "";
+  try {
+    const d = await call(`${BASE}/${DATA}/settings/riepilogo`);
+    last = (fromFields(d.fields || {}).lastMonth) || "";
+  } catch (e) {
+    if (!/Firestore 404/.test(String(e.message))) throw e;
+  }
+  if (last === key2) return 0;
+  // prima segno (così anche se qualcosa va storto non arrivano avvisi doppi)
+  await call(`${BASE}/${DATA}/settings/riepilogo?updateMask.fieldPaths=lastMonth`, {
+    method: "PATCH",
+    body: JSON.stringify({ fields: { lastMonth: { stringValue: key2 } } }),
+  });
+  const subs = (await subscriptions()).filter((s) => allowedEndpoint(s.endpoint) && s.keys && s.keys.p256dh && s.keys.auth && ADMINS.includes(key(s.technician)));
+  const payload = JSON.stringify({
+    title: `Riepilogo di ${MESI[pm]} pronto`,
+    body: `In Ufficio trovi il PDF di ${MESI[pm]} ${py}: interventi, tecnici, clienti e gru con più guasti.`,
+    tag: `riepilogo-${key2}`,
+    url: "/",
+  });
+  const res = await Promise.all(subs.map((s) => send(s, payload)));
+  return res.filter((st) => st >= 200 && st < 300).length;
+};
+
 const run = async (now = Date.now()) => {
+  // riepilogo del mese (il 1° dalle 9): un avviso all'admin
+  const monthSent = await monthNotice(now).catch(() => 0);
   // il controllo gira ogni 5 minuti: la pulizia solo nei primi 5 minuti di ogni ora
   if (new Date(now).getUTCMinutes() < 5) await cleanPresence(now).catch(() => 0);
   const due = [];
@@ -283,7 +321,7 @@ const run = async (now = Date.now()) => {
     }
   }
   const hours = await hoursDue(now).catch(() => []);
-  if (!due.length && !hours.length) return { due: 0, sent: 0, hours: 0 };
+  if (!due.length && !hours.length) return { due: 0, sent: monthSent, hours: 0 };
   const subs = (await subscriptions()).filter((s) => allowedEndpoint(s.endpoint) && s.keys && s.keys.p256dh && s.keys.auth);
   let sent = 0;
   for (const { kind, d } of due) {
@@ -312,7 +350,7 @@ const run = async (now = Date.now()) => {
     }
     await markHoursSent(d, iso);
   }
-  return { due: due.length, hours: hours.length, sent };
+  return { due: due.length, hours: hours.length, sent: sent + monthSent };
 };
 
 const handler = async (req, res) => {
@@ -326,6 +364,7 @@ const handler = async (req, res) => {
 
 module.exports = handler;
 module.exports.run = run;
+module.exports.monthNotice = monthNotice;
 module.exports.fromFields = fromFields;
 module.exports.messageFor = messageFor;
 module.exports.romeNow = romeNow;

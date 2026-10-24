@@ -1,6 +1,7 @@
 import { parseTicketQuery, matchTicket, ticketLabel, ticketYear } from "../ticket";
 import React, { useState, useMemo } from "react";
 import { OfficeCharts } from "../components/OfficeCharts";
+import { MonthSummaryCard } from "../components/MonthSummaryCard";
 import {
   Search,
   X,
@@ -470,6 +471,9 @@ export const OfficeView = ({
           </div>
         </div>
       </div>
+
+      {/* riepilogo del mese appena finito, in PDF (vedi MonthSummaryCard.js) */}
+      <MonthSummaryCard logs={logs} color={color} />
 
       {/* grafici: gru con più guasti, clienti con verifiche e riparazioni (vedi OfficeCharts.js) */}
       <OfficeCharts logs={calendarFilteredLogs} label={dynamicMonthLabel} onOpen={(title, list) => setPopoverData({ date: title, logs: list })} />

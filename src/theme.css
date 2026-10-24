@@ -150,6 +150,10 @@ body { padding-top: var(--mora-safe-top); }
   .animate-in { animation: none !important; }
 }
 
+/* ===== GIOCO: su iPhone tenendo premuto non deve comparire «Copia / Incolla» né la lente ===== */
+.mora-game, .mora-game * { -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
+.mora-game input { -webkit-user-select: text; user-select: text; }
+
 /* ===== GRAFICI UFFICIO: blu = verifiche, arancio = riparazioni (coppia controllata per i daltonici, chiaro e scuro) ===== */
 .mora-bar-check { background-color: #2563eb; }
 .mora-bar-fix { background-color: #ea580c; }

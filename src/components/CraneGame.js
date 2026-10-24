@@ -326,6 +326,14 @@ export const CraneGame = ({ onClose, me = "" }) => {
   };
 
   const start = () => {
+    // iPhone: se il campo del nome era ancora attivo, tenendo premuto comparivano «Copia / Incolla»
+    try {
+      if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
+      const sel = window.getSelection && window.getSelection();
+      if (sel && sel.removeAllRanges) sel.removeAllRanges();
+    } catch (e) {
+      // niente
+    }
     setScore(0);
     setLives(3);
     setLevel(0);
@@ -351,9 +359,10 @@ export const CraneGame = ({ onClose, me = "" }) => {
 
   return (
     <div
-      className="fixed inset-0 z-[600] bg-slate-400 select-none overflow-hidden"
+      className="mora-game fixed inset-0 z-[600] bg-slate-400 select-none overflow-hidden"
       data-section="crane-game"
-      style={{ touchAction: "none" }}
+      style={{ touchAction: "none", WebkitTouchCallout: "none", WebkitUserSelect: "none", userSelect: "none" }}
+      onContextMenu={(e) => e.preventDefault()}
       onPointerDown={stop}
       onPointerMove={stop}
       onPointerUp={stop}
