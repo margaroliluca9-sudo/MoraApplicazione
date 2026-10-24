@@ -4,6 +4,7 @@
 // { customerId, customerName, fab, fabKey, interno, internoKey, tipo, portata, paranco, matricola, anno,
 //   stato: "Fune idonea …", foglio: "Trimestrale 10/2026", updatedAt }.
 // Sulla scheda della gru l'app cerca la riga con lo stesso numero di fabbrica (quello scritto in Matricola).
+import { getSafeMatricola } from "./utils";
 
 // stessa regola del programmino: "4738 A" → "4738A", "2774 (1)" → "2774", "625/1987N.1" → "625/1987"
 export const fabKey = (s) => {
@@ -14,13 +15,47 @@ export const fabKey = (s) => {
 
 const normCust = (s) => String(s || "").trim().toUpperCase();
 
-// la riga del Drive che corrisponde a questa gru (o null)
+// correzioni fatte in Admin → Drive (il programma del Drive non le tocca):
+//   fix: { stato, tipo, portata, paranco, matricola, anno }  → valgono al posto di quelle del foglio
+//   linkTo: "M12"  → questa riga va sulla gru dell'app con questa matricola (invece che col numero di fabbrica)
+//   hidden: true   → non mostrarla da nessuna parte
+export const FIX_FIELDS = [
+  ["stato", "Fune / catena"],
+  ["tipo", "Tipo"],
+  ["portata", "Portata (kg)"],
+  ["paranco", "Paranco"],
+  ["matricola", "Matricola INAIL"],
+  ["anno", "Anno"],
+];
+export const withFix = (r) => {
+  if (!r) return r;
+  const out = { ...r };
+  const fix = r.fix || {};
+  FIX_FIELDS.forEach(([k]) => {
+    if (String(fix[k] || "").trim()) out[k] = fix[k];
+  });
+  return out;
+};
+export const isFixed = (r) => !!r && (!!String(r.linkTo || "").trim() || FIX_FIELDS.some(([k]) => String((r.fix || {})[k] || "").trim()));
+
+// la riga del Drive che corrisponde a questa gru (o null), già con le correzioni
 export const findDriveCrane = (rows, matricola, customerName) => {
   const k = fabKey(matricola);
   if (!k) return null;
   const cust = normCust(customerName);
-  const mine = (rows || []).filter((r) => !cust || normCust(r.customerName) === cust);
-  return mine.find((r) => r.fabKey === k) || mine.find((r) => r.internoKey && r.internoKey === k) || null;
+  const mine = (rows || []).filter((r) => !r.hidden && (!cust || normCust(r.customerName) === cust));
+  const linked = mine.find((r) => r.linkTo && fabKey(r.linkTo) === k);
+  if (linked) return withFix(linked);
+  const free = mine.filter((r) => !r.linkTo);
+  return withFix(free.find((r) => r.fabKey === k) || free.find((r) => r.internoKey && r.internoKey === k) || null);
+};
+
+// a quale gru dell'app va questa riga (o null)
+export const machineOfRow = (row, machines) => {
+  const list = (machines || []).filter((m) => normCust(m.customerName) === normCust(row.customerName));
+  const mat = getSafeMatricola;
+  if (row.linkTo) return list.find((m) => fabKey(mat(m)) === fabKey(row.linkTo)) || null;
+  return list.find((m) => fabKey(mat(m)) === row.fabKey) || (row.internoKey ? list.find((m) => fabKey(mat(m)) === row.internoKey) : null) || null;
 };
 
 // colore dello stato: rosso = da fermare, giallo = da guardare, verde = a posto

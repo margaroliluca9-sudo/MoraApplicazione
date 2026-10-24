@@ -22,6 +22,10 @@ const loadRows = (customerName) => {
   }
   return cache[k];
 };
+// dopo una correzione in Admin → Drive: la prossima scheda rilegge
+export const clearDriveCache = () => {
+  Object.keys(cache).forEach((k) => delete cache[k]);
+};
 
 const TONES = {
   red: "bg-red-50 border-red-200 text-red-800",

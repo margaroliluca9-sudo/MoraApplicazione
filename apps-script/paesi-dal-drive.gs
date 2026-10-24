@@ -9,8 +9,9 @@
  * Nell'app la gru si riconosce dal numero di fabbrica (campo Matricola/Campata) e la sua scheda mostra
  * «Dall'ultima verifica». Ogni giorno apre solo le cartelle con un foglio nuovo o cambiato.
  *
- * Cliente ↔ cartella: di solito li abbina dal nome. Se il nome è diverso, nell'app in Admin → Clienti → matita
- * → «Cartella nel Drive» scegli tu la cartella giusta: dal giorno dopo vale quella.
+ * Cliente ↔ cartella: di solito li abbina dal nome. Se il nome è diverso, nell'app in Admin → Drive → il cliente
+ * → «Cartella nel Drive» scegli tu la cartella giusta: dal giorno dopo vale quella. Sempre in Admin → Drive si vede
+ * da quale cartella e foglio arriva ogni dato e si possono correggere paese e gru (le correzioni non le tocco mai).
  *
  * Paese e indirizzo: aggiorna solo i clienti senza paese o quelli che aveva già aggiornato lui
  * (placeSource = "drive"); quello che scrivete a mano o importate da file non viene mai toccato.
@@ -19,7 +20,7 @@
  *   1. Apri https://script.google.com con l'account che vede la cartella Clienti → il progetto (o «Nuovo progetto»).
  *   2. Cancella tutto e incolla questo file. Salva (icona del dischetto).
  *   3. In alto scegli la funzione «installa» e premi «Esegui» (Google chiede i permessi: «Consenti»).
- *   Fatto: aggiorna subito e poi ogni mattina alle 6. L'esito si vede nell'app in Admin → Clienti.
+ *   Fatto: aggiorna subito e poi ogni mattina alle 6. L'esito si vede nell'app in Admin → Drive.
  *   (Per rileggere tutto da capo: esegui «ricomincia».)
  */
 
@@ -43,7 +44,10 @@ function installa() {
 
 /** Dimentica cosa ha già letto: il prossimo giro rilegge tutte le cartelle. */
 function ricomincia() {
-  PropertiesService.getScriptProperties().deleteProperty("visti");
+  var props = PropertiesService.getScriptProperties();
+  Object.keys(props.getProperties()).forEach(function (k) {
+    if (k.indexOf("v_") === 0 || k === "visti") props.deleteProperty(k);
+  });
   aggiorna();
 }
 
@@ -56,7 +60,17 @@ function aggiornaPaesi() {
 function aggiorna() {
   var inizio = Date.now();
   var props = PropertiesService.getScriptProperties();
-  var visti = JSON.parse(props.getProperty("visti") || "{}"); // cartella → ultimo foglio letto
+  // cosa ho già letto, una voce per cartella (Google tiene al massimo 9 KB per voce):
+  // v_<cartella> = { k: foglio letto, c: cliente abbinato, n: quanti clienti c'erano, g: gru scritte }
+  var tutte = props.getProperties();
+  var visto = function (id) {
+    try {
+      return JSON.parse(tutte["v_" + id] || "null");
+    } catch (e) {
+      return null;
+    }
+  };
+  var nuoviVisti = {};
   var cartella = trovaCartella_(CONFIG.cartelle);
   var token = accedi_();
   var clienti = leggiClienti_(token);
@@ -88,11 +102,9 @@ function aggiorna() {
     var voce = { id: cart.getId(), n: cart.getName().trim(), c: "" };
     elenco.push(voce);
     var scelto = scelte[voce.id];
+    var prima = visto(voce.id) || {};
     if (scelto) voce.c = scelto.id;
-    else {
-      var m = /\|c:(.+)$/.exec(visti[voce.id] || "");
-      if (m && perId[m[1]] && !perId[m[1]].driveFolderId) voce.c = m[1];
-    }
+    else if (prima.c && perId[prima.c] && !perId[prima.c].driveFolderId) voce.c = prima.c;
     if (!finito) return;
     if (Date.now() - inizio > CONFIG.minuti * 60000) {
       finito = false;
@@ -104,57 +116,81 @@ function aggiorna() {
       if (!file) return;
       // la chiave cambia se cambia il foglio o se nell'app scegli un altro cliente per questa cartella
       var chiave = file.getId() + "|" + file.getLastUpdated().getTime() + "|" + (scelto ? scelto.id : "");
-      var prima = visti[voce.id] || "";
       // già letto e abbinato: salto. Non abbinato: riprovo solo se nell'app sono cambiati i clienti
-      if ((prima.indexOf(chiave + "|c:") === 0 && voce.c) || prima === chiave + "|n" + clienti.length) return;
+      if (prima.k === chiave && ((prima.c && voce.c) || (!prima.c && prima.n === clienti.length))) return;
       conti.lette++;
       var foglio = leggiFoglio_(file);
       var info = estrai(foglio.testo);
       var cliente = scelto || abbinaUno_([cart.getName(), info.cliente].filter(String), custs);
-      visti[voce.id] = chiave + (cliente ? "|c:" + cliente.id : "|n" + clienti.length);
-      voce.c = cliente ? cliente.id : "";
-      if (!cliente) return;
-      conti.abbinati++;
-      // paese e indirizzo
-      if (info.city || info.address) {
-        var libero = !String(cliente.city || "").trim() && !String(cliente.address || "").trim();
-        var cambia = cliente.city !== info.city || (cliente.address || "") !== info.address;
-        if ((libero || cliente.placeSource === "drive") && cambia) {
-          scritture.push(aggiornaDoc_("customers/" + cliente.id, { city: info.city, address: info.address, placeSource: "drive" }));
-          conti.clientiAggiornati++;
+      var dove = { placeFolder: voce.n, placeSheet: file.getName(), placeSheetUrl: file.getUrl() };
+      var ora = { k: chiave, c: cliente ? cliente.id : "", n: clienti.length, g: [] };
+      voce.c = ora.c;
+      if (cliente) {
+        conti.abbinati++;
+        // paese e indirizzo (+ da quale cartella e foglio li ho presi, si vede in Admin → Drive)
+        if (info.city || info.address) {
+          var libero = !String(cliente.city || "").trim() && !String(cliente.address || "").trim();
+          var cambia = cliente.city !== info.city || (cliente.address || "") !== info.address;
+          if (libero || cliente.placeSource === "drive") {
+            if (cambia) conti.clientiAggiornati++;
+            if (cambia || cliente.placeSheet !== dove.placeSheet || cliente.placeFolder !== dove.placeFolder) {
+              scritture.push(
+                aggiornaDoc_("customers/" + cliente.id, {
+                  city: info.city,
+                  address: info.address,
+                  placeSource: "drive",
+                  placeFolder: dove.placeFolder,
+                  placeSheet: dove.placeSheet,
+                  placeSheetUrl: dove.placeSheetUrl,
+                })
+              );
+            }
+          }
         }
+        // gru del foglio (le correzioni fatte nell'app restano: qui scrivo solo i campi del Drive)
+        var etichetta = etichettaFoglio_(file.getName());
+        estraiGru(foglio.tabelle).forEach(function (g, i) {
+          var id = (cliente.id + "_" + (g.fabKey || (g.internoKey ? "INT" + g.internoKey : "R" + i))).replace(/[^A-Za-z0-9_-]/g, "_");
+          if (ora.g.indexOf(id) >= 0) return;
+          ora.g.push(id);
+          scritture.push(
+            aggiornaDoc_("drive_cranes/" + id, {
+              customerId: cliente.id,
+              customerName: cliente.name,
+              fab: g.fab,
+              fabKey: g.fabKey,
+              interno: g.interno,
+              internoKey: g.internoKey,
+              tipo: g.tipo,
+              portata: g.portata,
+              paranco: g.paranco,
+              matricola: g.matricola,
+              anno: g.anno,
+              stato: g.stato,
+              foglio: etichetta,
+              foglioNome: file.getName(),
+              foglioUrl: file.getUrl(),
+              foglioData: file.getLastUpdated().toISOString(),
+              cartella: voce.n,
+              cartellaId: voce.id,
+              updatedAt: new Date().toISOString(),
+            })
+          );
+          conti.gru++;
+        });
       }
-      // gru del foglio
-      var etichetta = etichettaFoglio_(file.getName());
-      estraiGru(foglio.tabelle).forEach(function (g, i) {
-        var id = (cliente.id + "_" + (g.fabKey || (g.internoKey ? "INT" + g.internoKey : "R" + i))).replace(/[^A-Za-z0-9_-]/g, "_");
-        scritture.push(
-          aggiornaDoc_("drive_cranes/" + id, {
-            customerId: cliente.id,
-            customerName: cliente.name,
-            fab: g.fab,
-            fabKey: g.fabKey,
-            interno: g.interno,
-            internoKey: g.internoKey,
-            tipo: g.tipo,
-            portata: g.portata,
-            paranco: g.paranco,
-            matricola: g.matricola,
-            anno: g.anno,
-            stato: g.stato,
-            foglio: etichetta,
-            foglioData: file.getLastUpdated().toISOString(),
-            updatedAt: new Date().toISOString(),
-          })
-        );
-        conti.gru++;
+      // gru scritte la volta prima e che ora non ci sono più (foglio cambiato o cliente cambiato): le tolgo
+      (prima.g || []).forEach(function (id) {
+        if (ora.g.indexOf(id) < 0) scritture.push({ delete: radice_() + "/" + CONFIG.dati + "/drive_cranes/" + id });
       });
+      nuoviVisti["v_" + voce.id] = JSON.stringify(ora);
     } catch (e) {
       Logger.log("Salto %s: %s", cart.getName(), e);
     }
   });
   scriviTutto_(token, scritture);
-  props.setProperty("visti", JSON.stringify(visti));
+  if (Object.keys(nuoviVisti).length) props.setProperties(nuoviVisti);
+  props.deleteProperty("visti"); // formato vecchio
   scriviTutto_(token, [
     aggiornaDoc_("settings/drive_places", {
       lastRun: new Date().toISOString(),
@@ -475,7 +511,7 @@ function leggiClienti_(token) {
     var j = JSON.parse(UrlFetchApp.fetch(url, { headers: { Authorization: "Bearer " + token } }).getContentText());
     (j.documents || []).forEach(function (d) {
       var f = d.fields || {};
-      out.push({ id: d.name.split("/").pop(), name: valore_(f.name), city: valore_(f.city), address: valore_(f.address), placeSource: valore_(f.placeSource), driveFolderId: valore_(f.driveFolderId) });
+      out.push({ id: d.name.split("/").pop(), name: valore_(f.name), city: valore_(f.city), address: valore_(f.address), placeSource: valore_(f.placeSource), placeFolder: valore_(f.placeFolder), placeSheet: valore_(f.placeSheet), driveFolderId: valore_(f.driveFolderId) });
     });
     pagina = j.nextPageToken || "";
   } while (pagina);

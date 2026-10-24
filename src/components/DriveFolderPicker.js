@@ -8,7 +8,7 @@ import { db, appId } from "../firebase";
 import { getDoc } from "../metered";
 
 let cache = null;
-const loadFolders = () => {
+export const loadFolders = () => {
   if (!cache) {
     cache = getDoc(doc(db, "artifacts", appId, "public", "data", "settings", "drive_folders"))
       .then((s) => {
@@ -29,7 +29,7 @@ const loadFolders = () => {
 };
 
 // value = { id, name } scelto a mano, oppure null (decide l'app dal nome)
-export const DriveFolderPicker = ({ customerId, value, onChange }) => {
+export const DriveFolderPicker = ({ customerId, value, onChange, label = true }) => {
   const [folders, setFolders] = useState(null);
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
@@ -50,7 +50,7 @@ export const DriveFolderPicker = ({ customerId, value, onChange }) => {
   const shown = value ? value.name : auto ? auto.n : "";
   return (
     <div className="space-y-1" data-section="drive-folder">
-      <label className="text-[9px] font-bold text-slate-400 uppercase ml-1">Cartella nel Drive</label>
+      {label && <label className="text-[9px] font-bold text-slate-400 uppercase ml-1">Cartella nel Drive</label>}
       {!folders.length ? (
         <p className="text-xs text-slate-500 ml-1">L'elenco arriva dopo il primo giro del programma del Drive (vedi Guida).</p>
       ) : (

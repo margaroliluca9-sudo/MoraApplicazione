@@ -27,6 +27,7 @@ import {
   Download,
   Building2,
   MapPin,
+  FolderOpen,
 } from "lucide-react";
 import { collection, serverTimestamp, Timestamp, doc, setDoc, deleteDoc, updateDoc, query, orderBy, limit, writeBatch, where } from "firebase/firestore";
 import { onSnapshot, getDocs } from "../metered";
@@ -43,7 +44,7 @@ import { ExportCard } from "../components/ExportCard";
 import { TvCard } from "../components/TvCard";
 import { ImportPlacesModal } from "../components/modals/ImportPlacesModal";
 import { placeOf } from "../places";
-import { DrivePlacesStatus } from "../components/DrivePlacesStatus";
+import { DriveAdmin } from "./DriveAdmin";
 import { ErrorsCard } from "../components/ErrorsCard";
 import { ReadsCard } from "../components/ReadsCard";
 import { BioCard } from "../components/BioCard";
@@ -668,6 +669,13 @@ export const AdminPanel = ({
         />
         <AdminTab
           color={layoutConfig.themeColor}
+          active={view === "drive"}
+          onClick={() => setView("drive")}
+          icon={FolderOpen}
+          label="Drive"
+        />
+        <AdminTab
+          color={layoutConfig.themeColor}
           active={view === "vans"}
           onClick={() => setView("vans")}
           icon={Truck}
@@ -697,6 +705,7 @@ export const AdminPanel = ({
       </div>
 
       {view === "company" && <CompanyAdmin color={layoutConfig.themeColor} />}
+      {view === "drive" && <DriveAdmin customers={customers} machines={machines} color={layoutConfig.themeColor} />}
       {view === "trash" && <TrashView color={layoutConfig.themeColor} />}
       {view === "vans" && (
         <VanAdmin
@@ -1195,7 +1204,6 @@ export const AdminPanel = ({
               </button>
             </div>
           </div>
-          <DrivePlacesStatus />
           <div
             className={`max-h-[500px] overflow-y-auto custom-scrollbar p-1 ${
               listViewMode === "grid"
