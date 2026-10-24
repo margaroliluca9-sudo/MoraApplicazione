@@ -106,7 +106,7 @@ export const CraneGame = ({ onClose, me = "" }) => {
     let dpr = 1;
     const size = () => {
       const r = el.getBoundingClientRect();
-      dpr = Math.min(2, window.devicePixelRatio || 1);
+      dpr = Math.min(3, window.devicePixelRatio || 1); // fino a 3: nitido anche sugli schermi più fini
       W = Math.max(1, r.width);
       H = Math.max(1, r.height);
       cv.width = Math.round(W * dpr);

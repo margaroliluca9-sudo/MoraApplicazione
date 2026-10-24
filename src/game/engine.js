@@ -8,6 +8,7 @@
 //    e ogni livello aggiunge qualcosa: più pezzi, meno tempo, vento, gancio più ballerino, vetro fragile.
 
 import { lookById } from "./looks";
+import { paintBackground, paintVignette, paintItem, paintTruck, paintCrane, paintDust, softShadow } from "./art";
 
 const VW = 360;
 const G = 1500; // gravità (unità virtuali/s²)
@@ -567,159 +568,69 @@ export class CraneEngine {
     const ox = (vw - VW) / 2;
     if (Math.abs(H / s - this.vh) > 1) this.layout(H / s);
     this.view = { s, ox };
-    const sh = this.shake > 0 ? this.shake * 10 : 0;
-    c.setTransform(dpr * s, 0, 0, dpr * s, dpr * (ox * s + rnd(-sh, sh)), dpr * rnd(-sh, sh) * 0.6);
     const L = -ox - 20;
     const R = VW + ox + 20;
     const fy = this.floorY;
-    // parete del capannone
-    let g = c.createLinearGradient(0, 0, 0, fy);
-    g.addColorStop(0, "#94a3b8");
-    g.addColorStop(1, "#cbd5e1");
-    c.fillStyle = g;
-    c.fillRect(L, -40, R - L, fy + 40);
-    // lamiera ondulata
-    c.strokeStyle = "rgba(100,116,139,.18)";
-    c.lineWidth = 1;
-    for (let x = Math.floor(L / 9) * 9; x < R; x += 9) {
-      c.beginPath();
-      c.moveTo(x, 0);
-      c.lineTo(x, fy);
-      c.stroke();
-    }
     const by = this.beamY;
-    // tetto con le capriate
-    g = c.createLinearGradient(0, -40, 0, by - 120);
-    g.addColorStop(0, "#334155");
-    g.addColorStop(1, "#475569");
-    c.fillStyle = g;
-    c.fillRect(L, -40, R - L, by - 80);
-    c.strokeStyle = "#1e293b";
-    c.lineWidth = 3;
-    c.beginPath();
-    c.moveTo(L, by - 122);
-    c.lineTo(R, by - 122);
-    c.stroke();
-    c.lineWidth = 1.5;
-    for (let x = Math.floor(L / 40) * 40; x < R; x += 40) {
-      c.beginPath();
-      c.moveTo(x, by - 122);
-      c.lineTo(x + 20, by - 160);
-      c.lineTo(x + 40, by - 122);
-      c.stroke();
+    // SFONDO FERMO: disegnato una volta sola (in alta risoluzione) e poi solo copiato
+    const key = `${W}x${H}@${dpr}|${fy}|${by}`;
+    if (this.bgKey !== key && typeof document !== "undefined") {
+      const mk = () => {
+        const cv = document.createElement("canvas");
+        cv.width = Math.max(1, Math.round(W * dpr));
+        cv.height = Math.max(1, Math.round(H * dpr));
+        return cv;
+      };
+      this.bg = mk();
+      const b = this.bg.getContext("2d");
+      b.setTransform(dpr * s, 0, 0, dpr * s, dpr * ox * s, 0);
+      paintBackground(b, { L, R, fy, by, vh: this.vh });
+      // piazzole del magazzino dipinte a terra
+      this.spots.forEach((x) => {
+        b.fillStyle = "rgba(255,255,255,.22)";
+        b.fillRect(x - 23, fy + 1, 46, 2);
+      });
+      this.vig = mk();
+      paintVignette(this.vig.getContext("2d"), this.vig.width, this.vig.height);
+      this.bgKey = key;
+      // granelli di polvere nella luce
+      const rr = (a, z) => a + Math.random() * (z - a);
+      this.motes = Array.from({ length: 34 }, () => ({ x: rr(0, VW), y: rr(by - 30, fy - 10), r: rr(0.4, 1.1), a: rr(0.12, 0.35), sp: rr(0.2, 0.6), ph: rr(0, 6.28) }));
     }
-    // finestroni con luce
-    for (let x = Math.floor(L / 90) * 90 + 15; x < R; x += 90) {
-      g = c.createLinearGradient(0, by - 112, 0, by - 70);
-      g.addColorStop(0, "#e0f2fe");
-      g.addColorStop(1, "#7dd3fc");
-      c.fillStyle = g;
-      c.fillRect(x, by - 112, 60, 40);
-      c.strokeStyle = "#475569";
-      c.lineWidth = 2;
-      c.strokeRect(x, by - 112, 60, 40);
-      c.beginPath();
-      c.moveTo(x + 30, by - 112);
-      c.lineTo(x + 30, by - 72);
-      c.moveTo(x, by - 92);
-      c.lineTo(x + 60, by - 92);
-      c.stroke();
-    }
-    // lampade con la luce che scende
-    for (let x = Math.floor(L / 120) * 120 + 60; x < R; x += 120) {
-      c.strokeStyle = "#1e293b";
-      c.lineWidth = 1;
-      c.beginPath();
-      c.moveTo(x, by - 122);
-      c.lineTo(x, by - 60);
-      c.stroke();
-      c.fillStyle = "#334155";
-      c.beginPath();
-      c.moveTo(x - 9, by - 52);
-      c.lineTo(x + 9, by - 52);
-      c.lineTo(x + 5, by - 60);
-      c.lineTo(x - 5, by - 60);
-      c.closePath();
-      c.fill();
-      g = c.createLinearGradient(0, by - 52, 0, fy);
-      g.addColorStop(0, "rgba(254,249,195,.35)");
-      g.addColorStop(1, "rgba(254,249,195,0)");
-      c.fillStyle = g;
-      c.beginPath();
-      c.moveTo(x - 8, by - 52);
-      c.lineTo(x + 8, by - 52);
-      c.lineTo(x + 60, fy);
-      c.lineTo(x - 60, fy);
-      c.closePath();
-      c.fill();
-      c.fillStyle = "#fef9c3";
-      c.fillRect(x - 7, by - 53, 14, 2);
-    }
-    // scritta sul muro
-    c.fillStyle = "rgba(51,65,85,.35)";
-    c.font = "900 14px system-ui, sans-serif";
-    c.textAlign = "center";
-    c.fillText("ELETTROMECCANICA MORA", 180, by - 30);
-    // portone del carico (a destra)
-    c.fillStyle = "#64748b";
-    c.fillRect(140, fy - 150, 220, 150);
-    c.fillStyle = "#475569";
-    for (let y = fy - 146; y < fy; y += 10) c.fillRect(142, y, 216, 2);
-    c.fillStyle = "#facc15";
-    c.fillRect(140, fy - 154, 220, 4);
-    // pavimento
-    g = c.createLinearGradient(0, fy, 0, this.vh);
-    g.addColorStop(0, "#9ca3af");
-    g.addColorStop(1, "#6b7280");
-    c.fillStyle = g;
-    c.fillRect(L, fy, R - L, this.vh - fy + 40);
-    c.fillStyle = "#facc15";
-    c.fillRect(L, fy, R - L, 2);
-    // zona magazzino (strisce)
-    c.save();
-    c.beginPath();
-    c.rect(8, fy + 4, 132, 14);
-    c.clip();
-    c.fillStyle = "rgba(250,204,21,.85)";
-    for (let x = 0; x < 200; x += 12) {
-      c.beginPath();
-      c.moveTo(x, fy + 4);
-      c.lineTo(x + 6, fy + 4);
-      c.lineTo(x - 2, fy + 18);
-      c.lineTo(x - 8, fy + 18);
-      c.closePath();
-      c.fill();
-    }
-    c.restore();
-    c.fillStyle = "rgba(255,255,255,.8)";
-    c.font = "800 9px system-ui, sans-serif";
-    c.fillText("MAGAZZINO", 72, fy + 32);
-    c.fillText("CARICO", 224, fy + 32);
-    // piazzole
-    this.spots.forEach((x) => {
-      c.fillStyle = "rgba(255,255,255,.25)";
-      c.fillRect(x - 22, fy - 2, 44, 3);
-    });
+    const sh = this.shake > 0 ? this.shake * 10 : 0;
+    const jx = rnd(-sh, sh);
+    const jy = rnd(-sh, sh) * 0.6;
+    c.setTransform(1, 0, 0, 1, 0, 0);
+    if (this.bg) c.drawImage(this.bg, dpr * jx * s, dpr * jy * s);
+    c.setTransform(dpr * s, 0, 0, dpr * s, dpr * (ox * s + jx * s), dpr * jy * s);
 
-    // camion (dietro ai pezzi)
-    this.drawTruck(c);
+    // camion (dietro ai pezzi) e il suo riflesso sul pavimento lucido
+    const t = this.truck;
+    if (t) {
+      this.reflect(c, () => this.drawTruck(c, true));
+      this.drawTruck(c);
+    }
     // ombra del gancio/pezzo sul punto dove scende
     const { hx, hy } = this.hookPos();
     const hw = this.load ? this.load.w / 2 : 6;
     const sf = this.surface(hx, hw);
     const dist = sf.y - (hy + HOOK + (this.load ? SLING + this.load.h : 0));
-    c.fillStyle = `rgba(15,23,42,${clamp(0.35 - dist / 900, 0.08, 0.35)})`;
-    c.beginPath();
-    c.ellipse(hx, sf.y, hw * (1 + dist / 400), 3.5, 0, 0, Math.PI * 2);
-    c.fill();
-    // pezzi
-    for (const o of this.items) if (!o.onTruck) this.drawItem(c, o, o.x, o.y - (o.drop || 0) * 60);
-    for (const o of this.items) if (o.onTruck && this.truck) this.drawItem(c, o, o.x + this.truck.off, o.y);
+    softShadow(c, hx, sf.y, hw * (1.1 + dist / 300), clamp(0.5 - dist / 700, 0.12, 0.5), 3.5 + dist / 120);
+    // pezzi: riflesso, ombra, pezzo
+    const ground = this.items.filter((o) => !o.onTruck);
+    this.reflect(c, () => ground.forEach((o) => paintItem(c, o, o.x, o.y - (o.drop || 0) * 60)));
+    ground.forEach((o) => {
+      if (Math.abs(o.y - fy) < 1) softShadow(c, o.x, fy, o.w * 0.62, 0.45, 4);
+      paintItem(c, o, o.x, o.y - (o.drop || 0) * 60);
+    });
+    for (const o of this.items) if (o.onTruck && t) paintItem(c, o, o.x + t.off, o.y);
 
     // primi livelli: freccia che dice cosa fare
     if (this.rules.help && !this.over) this.drawHelp(c);
-    // carroponte: vie di corsa, trave, carrello
+    // carroponte: colonne, trave, carrello, funi, gancio (e pezzo appeso)
     this.drawCrane(c);
+    // polvere nella luce
+    if (this.motes) paintDust(c, this.motes, this.t);
 
     // particelle
     for (const p of this.parts) {
@@ -741,156 +652,91 @@ export class CraneEngine {
     }
     // scritte dei punti
     c.textAlign = "center";
-    for (const t of this.texts) {
-      c.globalAlpha = Math.min(1, t.life * 2);
-      c.font = "900 15px system-ui, sans-serif";
-      c.lineWidth = 4;
-      c.strokeStyle = "rgba(15,23,42,.7)";
-      c.strokeText(t.text, t.x, t.y);
-      c.fillStyle = t.color;
-      c.fillText(t.text, t.x, t.y);
+    for (const tx of this.texts) {
+      c.globalAlpha = Math.min(1, tx.life * 2);
+      c.font = '900 16px "Barlow", system-ui, sans-serif';
+      c.lineWidth = 4.5;
+      c.lineJoin = "round";
+      c.strokeStyle = "rgba(2,6,23,.75)";
+      c.strokeText(tx.text, tx.x, tx.y);
+      c.fillStyle = tx.color;
+      c.fillText(tx.text, tx.x, tx.y);
       c.globalAlpha = 1;
     }
-    // vento
+    // vento: folate d'aria
     if (Math.abs(this.wind) > 40) {
       const k = Math.min(1, Math.abs(this.wind) / 420);
-      c.strokeStyle = `rgba(255,255,255,${0.25 + k * 0.4})`;
-      c.lineWidth = 1.5;
-      for (let i = 0; i < 6; i++) {
-        const y = 140 + i * 45 + Math.sin(this.t * 2 + i) * 8;
-        const x = ((this.t * 160 * Math.sign(this.wind) + i * 77) % 420 + 420) % 420 - 30;
+      c.lineCap = "round";
+      for (let i = 0; i < 7; i++) {
+        const y = 140 + i * 42 + Math.sin(this.t * 2 + i) * 8;
+        const x = ((this.t * 170 * Math.sign(this.wind) + i * 77) % 420 + 420) % 420 - 30;
+        c.strokeStyle = `rgba(255,255,255,${0.18 + k * 0.4})`;
+        c.lineWidth = 1.4;
         c.beginPath();
         c.moveTo(x, y);
-        c.lineTo(x + 26 * Math.sign(this.wind), y);
+        c.quadraticCurveTo(x + 14 * Math.sign(this.wind), y - 3, x + 30 * Math.sign(this.wind), y);
         c.stroke();
       }
     }
+    // bordi un po' più scuri (effetto foto)
+    if (this.vig) {
+      c.setTransform(1, 0, 0, 1, 0, 0);
+      c.drawImage(this.vig, 0, 0);
+    }
+  }
+
+  // riflesso sul pavimento lucido (sotto la linea del pavimento, capovolto e trasparente)
+  reflect(c, fn) {
+    const fy = this.floorY;
+    c.save();
+    c.beginPath();
+    c.rect(-400, fy + 3, 1200, 60);
+    c.clip();
+    c.translate(0, 2 * fy + 3);
+    c.scale(1, -1);
+    c.globalAlpha = 0.13;
+    fn();
+    c.restore();
   }
 
   drawCrane(c) {
     const by = this.beamY;
     const tr = this.trolley;
-    // colonne e vie di corsa
-    c.fillStyle = "#475569";
-    c.fillRect(2, by - 24, 10, this.floorY - by + 24);
-    c.fillRect(348, by - 24, 10, this.floorY - by + 24);
-    // trave (gialla, o del colore che hai scelto)
-    const lk = this.look || lookById("giallo");
-    const gy = by - 20;
-    const g = c.createLinearGradient(0, gy, 0, gy + 20);
-    g.addColorStop(0, lk.top);
-    g.addColorStop(1, lk.bottom);
-    c.fillStyle = g;
-    c.fillRect(0, gy, VW, 20);
-    if (lk.stripes) {
-      // strisce gialle e nere lungo tutta la trave (tranne il centro, per il nome)
-      c.save();
-      c.beginPath();
-      c.rect(26, gy, 104, 20);
-      c.rect(230, gy, 104, 20);
-      c.clip();
-      c.fillStyle = "#111827";
-      for (let i = 0; i < VW + 40; i += 16) {
-        c.beginPath();
-        c.moveTo(i, gy);
-        c.lineTo(i + 8, gy);
-        c.lineTo(i - 12, gy + 20);
-        c.lineTo(i - 20, gy + 20);
-        c.closePath();
-        c.fill();
-      }
-      c.restore();
-    }
-    c.fillStyle = lk.edge;
-    c.fillRect(0, gy + 18, VW, 2);
-    // strisce di pericolo alle testate
-    [0, VW - 26].forEach((x) => {
-      c.save();
-      c.beginPath();
-      c.rect(x, gy, 26, 20);
-      c.clip();
-      c.fillStyle = "#111827";
-      for (let i = -20; i < 40; i += 10) {
-        c.beginPath();
-        c.moveTo(x + i, gy);
-        c.lineTo(x + i + 5, gy);
-        c.lineTo(x + i + 25, gy + 20);
-        c.lineTo(x + i + 20, gy + 20);
-        c.closePath();
-        c.fill();
-      }
-      c.restore();
+    const hook = this.hookPos();
+    paintCrane(c, {
+      by,
+      floorY: this.floorY,
+      VW,
+      look: this.look || lookById("giallo"),
+      name: this.beamName,
+      trolley: tr,
+      hook,
+      th: this.th,
+      t: this.t,
+      moving: Math.abs(tr.v) > 8,
     });
-    c.fillStyle = lk.ink;
-    c.font = "900 9px system-ui, sans-serif";
-    c.textAlign = "center";
-    c.fillText(this.beamName ? `${this.beamName} · 5 t` : "5 t", 180, gy + 13);
-    // carrello
-    const tx = tr.x;
-    c.fillStyle = "#334155";
-    c.fillRect(tx - 20, by - 4, 40, 14);
-    c.fillStyle = "#1e293b";
-    c.fillRect(tx - 20, by + 8, 40, 3);
-    c.fillStyle = "#0f172a";
-    [tx - 13, tx + 13].forEach((wx) => {
-      c.beginPath();
-      c.arc(wx, by - 4, 3.5, 0, Math.PI * 2);
-      c.fill();
-    });
-    c.fillStyle = "#f59e0b";
-    c.fillRect(tx - 6, by - 1, 12, 7);
-    // lampeggiante quando si muove
-    if (Math.abs(tr.v) > 8 && Math.sin(this.t * 14) > 0) {
-      c.fillStyle = "#fb923c";
-      c.beginPath();
-      c.arc(tx + 16, by - 6, 2.5, 0, Math.PI * 2);
-      c.fill();
-    }
-    // funi e gancio
-    const { hx, hy } = this.hookPos();
-    c.strokeStyle = "#1f2937";
-    c.lineWidth = 1.2;
-    c.beginPath();
-    c.moveTo(tx - 4, by + 10);
-    c.lineTo(hx - 4, hy);
-    c.moveTo(tx + 4, by + 10);
-    c.lineTo(hx + 4, hy);
-    c.stroke();
-    c.save();
-    c.translate(hx, hy);
-    c.rotate(-this.th);
-    c.fillStyle = "#f59e0b";
-    c.beginPath();
-    c.roundRect ? c.roundRect(-9, 0, 18, 10, 3) : c.rect(-9, 0, 18, 10);
-    c.fill();
-    c.fillStyle = "#78350f";
-    c.beginPath();
-    c.arc(0, 5, 2.5, 0, Math.PI * 2);
-    c.fill();
-    c.strokeStyle = "#111827";
-    c.lineWidth = 2.4;
-    c.beginPath();
-    c.moveTo(0, 10);
-    c.lineTo(0, 14);
-    c.arc(-2.5, 14, 2.5, 0, Math.PI, false);
-    c.stroke();
-    c.restore();
-    // pezzo appeso: sulla stessa linea della fune
+    // pezzo appeso: sulla stessa linea della fune, con le brache
     const o = this.load;
     if (o) {
       c.save();
-      c.translate(hx, hy);
+      c.translate(hook.hx, hook.hy);
       c.rotate(-this.th);
       const base = HOOK + SLING + o.h;
-      c.strokeStyle = "#334155";
-      c.lineWidth = 1;
+      c.strokeStyle = "#1e293b";
+      c.lineWidth = 1.2;
       c.beginPath();
       c.moveTo(0, HOOK);
       c.lineTo(-o.w / 2 + 3, base - o.h);
       c.moveTo(0, HOOK);
       c.lineTo(o.w / 2 - 3, base - o.h);
       c.stroke();
-      this.drawItem(c, o, 0, base);
+      c.strokeStyle = "rgba(250,204,21,.9)";
+      c.lineWidth = 0.6;
+      c.beginPath();
+      c.moveTo(0, HOOK);
+      c.lineTo(-o.w / 2 + 3, base - o.h);
+      c.stroke();
+      paintItem(c, o, 0, base);
       c.restore();
     }
   }
@@ -941,185 +787,82 @@ export class CraneEngine {
     c.restore();
   }
 
-  drawTruck(c) {
+  drawTruck(c, onlyBody = false) {
     const t = this.truck;
     if (!t) return;
     const off = t.off;
     const by = this.bedY;
     const x0 = t.bedL + off - 6;
     const x1 = t.bedR + off;
-    // cassone
-    c.fillStyle = "#374151";
-    c.fillRect(x0, by, x1 - x0, 7);
-    c.fillStyle = "#1f2937";
-    c.fillRect(x0, by + 7, x1 - x0 + 46, 8);
-    // cabina
-    c.fillStyle = t.color;
-    c.beginPath();
-    c.roundRect ? c.roundRect(x1 + 2, by - 26, 44, 41, 5) : c.rect(x1 + 2, by - 26, 44, 41);
-    c.fill();
-    c.fillStyle = "#bae6fd";
-    c.fillRect(x1 + 24, by - 21, 17, 13);
-    c.fillStyle = "rgba(0,0,0,.2)";
-    c.fillRect(x1 + 2, by + 4, 44, 3);
-    // ruote
-    [x0 + 18, x0 + 52, x1 + 26].forEach((wx) => {
-      c.fillStyle = "#0f172a";
-      c.beginPath();
-      c.arc(wx, this.floorY - 7, 8, 0, Math.PI * 2);
-      c.fill();
-      c.fillStyle = "#9ca3af";
-      c.beginPath();
-      c.arc(wx, this.floorY - 7, 3, 0, Math.PI * 2);
-      c.fill();
-    });
+    paintTruck(c, { x0, x1, bedY: by, floorY: this.floorY, color: t.color, t: -off / 9 });
+    if (onlyBody) return;
     // posti (con l'icona del pezzo che serve)
     t.slots.forEach((s) => {
       const sx = s.x + off;
       if (!s.item) {
-        c.setLineDash([4, 3]);
-        c.strokeStyle = "rgba(255,255,255,.9)";
-        c.lineWidth = 1.5;
         const k = KINDS[s.kind];
+        c.fillStyle = "rgba(255,255,255,.10)";
+        c.fillRect(sx - k.w / 2, by - k.h, k.w, k.h);
+        c.setLineDash([4, 3]);
+        c.strokeStyle = "rgba(255,255,255,.95)";
+        c.lineWidth = 1.5;
         c.strokeRect(sx - k.w / 2, by - k.h, k.w, k.h);
         c.setLineDash([]);
-        c.globalAlpha = 0.35;
-        this.drawItem(c, { ...k, kind: s.kind, tone: 0.5 }, sx, by);
+        c.globalAlpha = 0.4 + 0.15 * Math.sin(this.t * 4);
+        paintItem(c, { ...k, kind: s.kind, tone: 0.5 }, sx, by);
         c.globalAlpha = 1;
-      } else if (s.item.kind === s.kind) {
-        c.fillStyle = "#22c55e";
-        c.beginPath();
-        c.arc(sx, by - s.item.h - 9, 6, 0, Math.PI * 2);
-        c.fill();
-        c.strokeStyle = "#fff";
-        c.lineWidth = 2;
-        c.beginPath();
-        c.moveTo(sx - 3, by - s.item.h - 9);
-        c.lineTo(sx - 1, by - s.item.h - 7);
-        c.lineTo(sx + 3, by - s.item.h - 12);
-        c.stroke();
       } else {
-        c.fillStyle = "#ef4444";
+        const ok = s.item.kind === s.kind;
+        const cy = by - s.item.h - 10;
+        c.fillStyle = ok ? "#16a34a" : "#dc2626";
         c.beginPath();
-        c.arc(sx, by - s.item.h - 9, 6, 0, Math.PI * 2);
+        c.arc(sx, cy, 7, 0, Math.PI * 2);
         c.fill();
+        c.strokeStyle = "rgba(255,255,255,.9)";
+        c.lineWidth = 1.2;
+        c.stroke();
         c.strokeStyle = "#fff";
         c.lineWidth = 2;
+        c.lineCap = "round";
         c.beginPath();
-        c.moveTo(sx - 3, by - s.item.h - 12);
-        c.lineTo(sx + 3, by - s.item.h - 6);
-        c.moveTo(sx + 3, by - s.item.h - 12);
-        c.lineTo(sx - 3, by - s.item.h - 6);
+        if (ok) {
+          c.moveTo(sx - 3, cy);
+          c.lineTo(sx - 1, cy + 2.5);
+          c.lineTo(sx + 3.5, cy - 3);
+        } else {
+          c.moveTo(sx - 3, cy - 3);
+          c.lineTo(sx + 3, cy + 3);
+          c.moveTo(sx + 3, cy - 3);
+          c.lineTo(sx - 3, cy + 3);
+        }
         c.stroke();
       }
     });
-    // pazienza
+    // pazienza del camionista (barra arrotondata)
     if (t.state === "wait") {
       const k = clamp(1 - t.t / t.patience, 0, 1);
       const bx = t.bedL + off;
       const w = t.bedR - t.bedL;
-      c.fillStyle = "rgba(15,23,42,.55)";
-      c.fillRect(bx, by - 62, w, 7);
-      c.fillStyle = k < 0.25 ? "#ef4444" : k < 0.5 ? "#f59e0b" : "#22c55e";
-      c.fillRect(bx + 1, by - 61, (w - 2) * k, 5);
+      const y = by - 66;
+      c.fillStyle = "rgba(2,6,23,.6)";
+      c.beginPath();
+      if (c.roundRect) c.roundRect(bx, y, w, 8, 4);
+      else c.rect(bx, y, w, 8);
+      c.fill();
+      const col = k < 0.25 ? ["#f87171", "#dc2626"] : k < 0.5 ? ["#fcd34d", "#f59e0b"] : ["#86efac", "#16a34a"];
+      const g = c.createLinearGradient(0, y, 0, y + 8);
+      g.addColorStop(0, col[0]);
+      g.addColorStop(1, col[1]);
+      c.fillStyle = g;
+      c.beginPath();
+      if (c.roundRect) c.roundRect(bx + 1.5, y + 1.5, Math.max(0, (w - 3) * k), 5, 2.5);
+      else c.rect(bx + 1.5, y + 1.5, Math.max(0, (w - 3) * k), 5);
+      c.fill();
     }
   }
 
   drawItem(c, o, x, base) {
-    const w = o.w;
-    const h = o.h;
-    const l = x - w / 2;
-    const t = base - h;
-    c.save();
-    if (o.kind === "cassa") {
-      c.fillStyle = "#b45309";
-      c.fillRect(l, t, w, h);
-      c.fillStyle = "#d97706";
-      for (let i = 0; i < 3; i++) c.fillRect(l + 2, t + 2 + i * (h / 3), w - 4, h / 3 - 3);
-      c.strokeStyle = "#78350f";
-      c.lineWidth = 2;
-      c.beginPath();
-      c.moveTo(l + 2, t + 2);
-      c.lineTo(l + w - 2, t + h - 2);
-      c.stroke();
-      c.strokeRect(l, t, w, h);
-    } else if (o.kind === "bobina") {
-      const r = h / 2;
-      c.fillStyle = "#94a3b8";
-      c.beginPath();
-      c.arc(x, t + r, r, 0, Math.PI * 2);
-      c.fill();
-      c.strokeStyle = "#64748b";
-      c.lineWidth = 1;
-      for (let i = 1; i < 4; i++) {
-        c.beginPath();
-        c.arc(x, t + r, r - i * 3.5, 0, Math.PI * 2);
-        c.stroke();
-      }
-      c.fillStyle = "#334155";
-      c.beginPath();
-      c.arc(x, t + r, 5, 0, Math.PI * 2);
-      c.fill();
-    } else if (o.kind === "motore") {
-      c.fillStyle = "#2563eb";
-      c.beginPath();
-      c.roundRect ? c.roundRect(l, t + 2, w - 6, h - 2, 4) : c.rect(l, t + 2, w - 6, h - 2);
-      c.fill();
-      c.fillStyle = "#1e40af";
-      for (let i = 0; i < 5; i++) c.fillRect(l + 4 + i * 6, t + 4, 2, h - 6);
-      c.fillStyle = "#9ca3af";
-      c.fillRect(l + w - 6, t + h / 2 - 2, 6, 4);
-      c.fillStyle = "#1e3a8a";
-      c.fillRect(l + 2, base - 3, w - 8, 3);
-    } else if (o.kind === "fusto") {
-      c.fillStyle = "#dc2626";
-      c.beginPath();
-      c.roundRect ? c.roundRect(l, t, w, h, 3) : c.rect(l, t, w, h);
-      c.fill();
-      c.fillStyle = "#991b1b";
-      c.fillRect(l, t + h * 0.3, w, 2);
-      c.fillRect(l, t + h * 0.65, w, 2);
-      c.fillStyle = "rgba(255,255,255,.25)";
-      c.fillRect(l + 3, t + 2, 3, h - 4);
-    } else if (o.kind === "vetro") {
-      // cassa a giorno con lastra di vetro e scritta FRAGILE
-      c.fillStyle = "#a16207";
-      c.fillRect(l, t, 3, h);
-      c.fillRect(l + w - 3, t, 3, h);
-      c.fillRect(l, base - 3, w, 3);
-      c.fillStyle = "rgba(186,230,253,.85)";
-      c.fillRect(l + 3, t + 2, w - 6, h - 5);
-      c.strokeStyle = "rgba(255,255,255,.9)";
-      c.lineWidth = 1.5;
-      c.beginPath();
-      c.moveTo(l + 8, t + 6);
-      c.lineTo(l + 16, t + h - 8);
-      c.moveTo(l + 14, t + 5);
-      c.lineTo(l + 19, t + 12);
-      c.stroke();
-      c.fillStyle = "#dc2626";
-      c.font = "900 7px system-ui, sans-serif";
-      c.textAlign = "center";
-      c.fillText("FRAGILE", x, t + h - 6);
-    } else {
-      c.fillStyle = "#475569";
-      c.fillRect(l, t, w, 3);
-      c.fillRect(l, base - 3, w, 3);
-      c.fillStyle = "#64748b";
-      c.fillRect(l + 2, t + 3, w - 4, h - 6);
-      c.fillStyle = "#334155";
-      c.fillRect(x - 1, t + 3, 2, h - 6);
-    }
-    if (o.dmg) {
-      c.strokeStyle = "rgba(15,23,42,.8)";
-      c.lineWidth = 1.2;
-      c.beginPath();
-      c.moveTo(l + w * 0.3, t);
-      c.lineTo(l + w * 0.42, t + h * 0.4);
-      c.lineTo(l + w * 0.32, t + h * 0.6);
-      c.stroke();
-    }
-    c.restore();
+    paintItem(c, o, x, base);
   }
 
   // dallo schermo alle coordinate del gioco
