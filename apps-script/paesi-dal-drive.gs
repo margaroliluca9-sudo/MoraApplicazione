@@ -54,21 +54,25 @@ function aggiornaPaesi() {
 }
 
 // ---------- Drive ----------
-function trovaCartella_(percorso) {
-  var it = DriveApp.getFoldersByName(percorso[0]);
+// cerca le cartelle per nome senza badare a spazi e maiuscole («Verifiche » = «verifiche»)
+function stessoNome_(a, b) {
+  return String(a || "").trim().toLowerCase() === String(b || "").trim().toLowerCase();
+}
+function sottocartella_(cur, nome) {
+  var it = cur.getFolders();
   while (it.hasNext()) {
     var f = it.next();
-    var ok = true;
-    var cur = f;
-    for (var i = 1; i < percorso.length; i++) {
-      var sub = cur.getFoldersByName(percorso[i]);
-      if (!sub.hasNext()) {
-        ok = false;
-        break;
-      }
-      cur = sub.next();
-    }
-    if (ok) return cur;
+    if (stessoNome_(f.getName(), nome)) return f;
+  }
+  return null;
+}
+function trovaCartella_(percorso) {
+  var it = DriveApp.searchFolders("title contains '" + percorso[0].replace(/'/g, "\\'") + "' and trashed = false");
+  while (it.hasNext()) {
+    var cur = it.next();
+    if (!stessoNome_(cur.getName(), percorso[0])) continue;
+    for (var i = 1; i < percorso.length && cur; i++) cur = sottocartella_(cur, percorso[i]);
+    if (cur) return cur;
   }
   throw new Error("Non trovo la cartella " + percorso.join(" / ") + " nel Drive.");
 }
