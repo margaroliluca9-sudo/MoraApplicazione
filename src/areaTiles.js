@@ -6,7 +6,6 @@ export const AREA_TILES = [
   { id: "print", label: "Stampa interventi", sub: "Tuoi e dei colleghi" },
   { id: "calendar", label: "Calendario", sub: "Impegni e giorni con interventi" },
   { id: "notes", label: "Note", sub: "Testo, elenchi, foto" },
-  { id: "noteScan", label: "Scansiona foglio (nelle Note)", sub: "Foto del foglio letta dall'intelligenza artificiale" },
   { id: "reminders", label: "Promemoria e contatti", sub: "Con avviso sul telefono" },
   { id: "van", label: "Magazzino del furgone", sub: "Solo chi ha un furgone assegnato" },
   { id: "hours", label: "Le mie ore", sub: "Poi ognuno la accende nelle sue Impostazioni" },
