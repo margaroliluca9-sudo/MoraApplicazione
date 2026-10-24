@@ -128,7 +128,7 @@ const handler = async (req, res) => {
     body: String(body.text || "").slice(0, 300),
     tag: String(body.tag || "chat").slice(0, 64),
     // solo indirizzi interni dell'app che aprono una conversazione
-    url: /^\/\?chat=[A-Za-z0-9%._~:|-]{1,160}$/.test(String(body.url || "")) ? body.url : "/?chat=group",
+    url: /^\/(\?chat=[A-Za-z0-9%._~:|-]{1,160})?$/.test(String(body.url || "")) ? body.url : "/?chat=group",
   });
   const results = await Promise.all(subs.map((s) => sendOne(s, payload)));
   res.status(200).json({

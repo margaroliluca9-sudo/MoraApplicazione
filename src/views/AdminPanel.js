@@ -38,6 +38,7 @@ import { PRO_INPUT, getButtonPrimaryClass, getProPanelClass } from "../ui";
 import { AdminTab } from "../components/AdminTab";
 import { CompanyAdmin } from "../components/CompanyAdmin";
 import { BackupCard } from "../components/BackupCard";
+import { ExportCard } from "../components/ExportCard";
 import { ErrorsCard } from "../components/ErrorsCard";
 import { ReadsCard } from "../components/ReadsCard";
 import { BioCard } from "../components/BioCard";
@@ -1338,6 +1339,7 @@ export const AdminPanel = ({
             <Activity className="w-5 h-5 text-blue-500" /> Stato Sistema
           </h4>
           <BackupCard color={layoutConfig.themeColor} />
+          <ExportCard color={layoutConfig.themeColor} customers={customers} machines={machines} />
           <ReadsCard color={layoutConfig.themeColor} />
           <ErrorsCard color={layoutConfig.themeColor} />
           <BioCard color={layoutConfig.themeColor} />

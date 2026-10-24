@@ -184,3 +184,51 @@ html.dark .to-blue-100, html.dark .to-red-100, html.dark .to-green-100, html.dar
 html.dark .border-blue-100, html.dark .border-red-100, html.dark .border-green-100 { border-color: #223049; }
 html.dark .bg-slate-200 { background-color: #1f2a3d; }
 html.dark .mora-theme-btn { background: #121b2c; }
+
+/* TASTI GRANDI «con i guanti» (Nuovo rapporto): campi, scritte e pulsanti più grandi e distanziati */
+.mora-gloves input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]),
+.mora-gloves select {
+  min-height: 62px !important;
+  font-size: 20px !important;
+}
+.mora-gloves textarea {
+  font-size: 20px !important;
+  min-height: 150px;
+}
+.mora-gloves button {
+  min-height: 54px;
+  min-width: 54px;
+}
+.mora-gloves button svg {
+  width: 26px;
+  height: 26px;
+}
+.mora-gloves label {
+  font-size: 16px !important;
+}
+.mora-gloves input[type="checkbox"],
+.mora-gloves input[type="radio"] {
+  width: 30px;
+  height: 30px;
+}
+.mora-gloves [data-form-group] {
+  padding: 1.4rem !important;
+}
+.mora-gloves [data-form-group] > * + * {
+  margin-top: 1.5rem !important;
+}
+.mora-gloves .gap-2 {
+  gap: 0.9rem;
+}
+.mora-gloves [data-section="save-bar"] button {
+  min-height: 68px;
+  font-size: 20px;
+}
+.mora-gloves [data-section="report-head"] button {
+  min-height: 44px;
+  min-width: 0;
+}
+.mora-gloves [data-section="report-head"] button svg {
+  width: 20px;
+  height: 20px;
+}

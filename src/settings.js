@@ -9,7 +9,7 @@ import { chatDoc, subId, myEndpoint, key as techKey } from "./chat";
 const KEY = "mora_personal_settings";
 const ASKED = "mora_notify_asked_v1"; // domanda "attivi le notifiche?" già fatta su questo telefono
 
-export const DEFAULT_SETTINGS = { chat: true, reminders: true, splash: true, showOnline: true, hours: false, heroAnim: true, vibrate: true };
+export const DEFAULT_SETTINGS = { chat: true, reminders: true, splash: true, showOnline: true, hours: false, heroAnim: true, vibrate: true, gloves: false };
 
 export const getSettings = () => {
   try {
@@ -53,7 +53,7 @@ export const setSetting = (k, v) => {
 // Le notifiche accese/spente restano del singolo telefono (il permesso è del telefono);
 // tutto il resto (quali notifiche, animazione, farsi vedere online, Le mie ore e il suo orario) segue il tecnico.
 export const SETTINGS_COLL = "personal_settings";
-const SYNC_KEYS = ["chat", "reminders", "splash", "showOnline", "hours", "heroAnim", "vibrate"];
+const SYNC_KEYS = ["chat", "reminders", "splash", "showOnline", "hours", "heroAnim", "vibrate", "gloves"];
 const EXTRA = { hoursStd: "mora_hours_std", hoursSince: "mora_hours_since" };
 let OWNER = "";
 export const settingsDocId = (me) => techKey(me).replace(/[^a-z0-9_-]/gi, "_");

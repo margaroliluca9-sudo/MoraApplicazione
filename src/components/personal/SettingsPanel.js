@@ -1,6 +1,6 @@
 // La mia area → ⚙ Impostazioni: le scelte personali (valgono per questo telefono)
 import React, { useEffect, useState } from "react";
-import { Bell, BellOff, Loader2, MessageCircle, CalendarClock, Sparkles, Users, Send, Timer, Sun, Vibrate } from "lucide-react";
+import { Bell, BellOff, Loader2, MessageCircle, CalendarClock, Sparkles, Users, Send, Timer, Sun, Vibrate, Hand } from "lucide-react";
 import { PanelHeader } from "./PersonalUi";
 import { getPushState, enablePush, disablePush } from "../../chat";
 import { getSettings, setSetting, syncNotifyKinds, testNotification, markAsked } from "../../settings";
@@ -123,6 +123,9 @@ export const SettingsPanel = ({ me, color = "blue", onBack, onClose, hoursAllowe
           </Row>
           <Row icon={Vibrate} title="Vibrazione al salvataggio" sub="Il telefono vibra quando il rapporto è salvato (due colpetti) o se c'è un errore (uno lungo). Su iPhone non vibra">
             <Switch id="vibrate" label="Vibrazione al salvataggio" on={st.vibrate !== false} onChange={(v) => change("vibrate", v)} />
+          </Row>
+          <Row icon={Hand} title="Tasti grandi (con i guanti)" sub="Nel Nuovo rapporto campi, scritte e pulsanti più grandi e più distanziati. Si accende anche dal tasto «Guanti» in cima al rapporto">
+            <Switch id="gloves" label="Tasti grandi" on={st.gloves === true} onChange={(v) => change("gloves", v)} />
           </Row>
           <Row icon={Users} title="Farmi vedere tra i «Tecnici online»" sub="Se lo spegni i colleghi non ti vedono collegato (l'admin sì)">
             <Switch id="showOnline" label="Farmi vedere online" on={st.showOnline !== false} onChange={(v) => change("showOnline", v)} />

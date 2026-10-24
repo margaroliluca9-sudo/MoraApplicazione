@@ -23,6 +23,7 @@ import {
   Wrench,
   ClipboardList,
   Check,
+  Hand,
 } from "lucide-react";
 import {
   collection,
@@ -74,7 +75,8 @@ import { vanOf, applyReport, findUsedParts, itemsOf } from "../van";
 import { showVanUsage } from "../components/VanHost";
 import { loadDraft, saveDraft, clearDraft, draftWhen } from "../reportHelpers";
 import { printIntervention } from "../components/PrintLogButton";
-import { buzzSaved, buzzError } from "../settings";
+import { buzzSaved, buzzError, getSettings, setSetting } from "../settings";
+import { notifyColleagues, colleaguesOf } from "../team";
 
 export const NewEntryForm = ({
   user,
@@ -148,6 +150,13 @@ export const NewEntryForm = ({
     return () => clearTimeout(t);
   }, [formData, practice, pendingDraft, savedLog]);
   const [formError, setFormError] = useState("");
+  // TASTI GRANDI «con i guanti»: campi e pulsanti più grandi (La mia area → ⚙ Impostazioni, o il tasto 🖐 qui in alto)
+  const [gloves, setGloves] = useState(() => getSettings().gloves === true);
+  useEffect(() => {
+    const on = (ev) => setGloves(!!(ev.detail && ev.detail.gloves === true));
+    window.addEventListener("mora-settings", on);
+    return () => window.removeEventListener("mora-settings", on);
+  }, []);
 
   const color = layoutConfig?.themeColor || "blue";
 
@@ -510,6 +519,9 @@ export const NewEntryForm = ({
           })
           .catch((err) => console.error("Magazzino furgone:", err));
       }
+
+      // INTERVENTO IN DUE: avviso i colleghi messi nel rapporto (se non c'è rete pazienza)
+      notifyColleagues({ ...logData, technician: formData.technician }).catch((err) => console.error("Avviso colleghi:", err));
 
       // riepilogo invece di andare subito allo Storico
       setSavedLog({ ...logData, id: logRef && logRef.id });
@@ -996,7 +1008,8 @@ export const NewEntryForm = ({
     <div
       className={`overflow-clip animate-in slide-in-from-bottom-6 duration-500 ${getProPanelClass(
         color
-      )}`}
+      )}${gloves ? " mora-gloves" : ""}`}
+      data-gloves={gloves ? "1" : "0"}
     >
       <div className={`px-6 pt-5 pb-4 bg-gradient-to-br from-${color}-600 to-${color}-800 text-white`} data-section="report-head">
         <div className="flex justify-between items-start gap-3">
@@ -1006,8 +1019,20 @@ export const NewEntryForm = ({
               {[formData.technician, formData.customer, formData.machineId && "gru " + formData.machineId].filter(Boolean).join(" · ") || "Compila le schede qui sotto"}
             </p>
           </div>
-          <div className="bg-white/15 p-2.5 rounded-2xl shrink-0">
-            <HardHat className="w-6 h-6" />
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              data-action="gloves"
+              aria-pressed={gloves}
+              title={gloves ? "Tasti grandi accesi: tocca per tornare normale" : "Tasti grandi (con i guanti)"}
+              onClick={() => setSetting("gloves", !gloves)}
+              className={`mora-gloves-btn h-11 px-3 rounded-2xl flex items-center gap-1.5 text-sm font-black transition-colors ${gloves ? "bg-white text-slate-800" : "bg-white/15 text-white"}`}
+            >
+              <Hand className="w-5 h-5" /> {gloves ? "Grandi" : "Guanti"}
+            </button>
+            <div className="bg-white/15 p-2.5 rounded-2xl">
+              <HardHat className="w-6 h-6" />
+            </div>
           </div>
         </div>
         {!savedLog && (
@@ -1058,6 +1083,11 @@ export const NewEntryForm = ({
               <p className="text-sm font-semibold text-slate-500 truncate">
                 {savedLog.customer} · gru {savedLog.machineId || "-"} · {savedLog.dateString}
               </p>
+              {colleaguesOf(savedLog).length > 0 && (
+                <p className="text-sm font-bold text-emerald-700" data-section="team-notified">
+                  Avviso mandato a {savedLog.additionalTechnicians.join(", ")} (se ha le notifiche accese)
+                </p>
+              )}
             </div>
           </div>
           <button type="button" data-action="same-customer" onClick={() => {
