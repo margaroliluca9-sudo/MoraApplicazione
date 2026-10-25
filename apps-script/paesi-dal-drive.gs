@@ -44,7 +44,7 @@ var CONFIG = {
 function installa() {
   ScriptApp.getProjectTriggers().forEach(function (t) {
     var h = t.getHandlerFunction();
-    if (h === "aggiornaPaesi" || h === "aggiorna") ScriptApp.deleteTrigger(t);
+    if (h === "aggiornaPaesi" || h === "aggiorna" || h === "controlla") ScriptApp.deleteTrigger(t); // «controlla»: vecchio controllo del tasto, tolto
   });
   ScriptApp.newTrigger("aggiorna").timeBased().everyDays(1).atHour(10).create();
   aggiorna();
