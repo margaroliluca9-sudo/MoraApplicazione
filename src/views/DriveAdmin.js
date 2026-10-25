@@ -18,6 +18,7 @@ import { DrivePlacesStatus } from "../components/DrivePlacesStatus";
 import { loadFolders, resetFolders } from "../components/DriveFolderPicker";
 import { clearDriveCache } from "../components/DriveCraneInfo";
 import { CheckCard } from "../components/DriveCheck";
+import { hookOf } from "../fieldChecks";
 import { DriveCustomerModal } from "../components/modals/DriveCustomerModal";
 
 // cartella principale di ogni cliente (quella in cima, non le sottocartelle) e quante sottocartelle ha
@@ -113,15 +114,67 @@ const BulkChecks = ({ checks, onRowsSaved, color }) => {
 };
 
 // PROVA «Compila verifica»: chi la vede in La mia area (settings/layout.fieldCheckTechs)
+// indirizzo «App web» del programma del Drive: con questo l'app lo chiama subito e la nota è nel foglio in pochi secondi
+const HookField = ({ layoutConfig = {}, color }) => {
+  const saved = String(layoutConfig.fieldCheckHook || "");
+  const [v, setV] = useState(saved);
+  const [busy, setBusy] = useState(false);
+  const ok = hookOf({ fieldCheckHook: v }) || !v.trim();
+  const save = async () => {
+    setBusy(true);
+    try {
+      await setDoc(doc(db, "artifacts", appId, "public", "data", "settings", "layout"), { fieldCheckHook: v.trim() }, { merge: true });
+    } catch (e) {
+      console.error(e);
+      alert("Salvataggio non riuscito: " + describeError(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <div className="mt-3 space-y-1.5" data-section="field-hook">
+      <p className="text-xs font-bold text-teal-900">Scrivere subito (senza aspettare 5 minuti): indirizzo «App web» del programma del Drive</p>
+      <div className="flex gap-2">
+        <input
+          className="flex-1 min-w-0 h-10 px-3 rounded-xl border border-slate-300 bg-white text-xs"
+          placeholder="https://script.google.com/macros/s/…/exec"
+          value={v}
+          onChange={(e) => setV(e.target.value)}
+          data-field-hook
+        />
+        <button type="button" disabled={busy || !ok || v.trim() === saved} onClick={save} data-action="field-hook-save" className={`h-10 px-3 rounded-xl bg-${color}-600 text-white text-xs font-bold disabled:opacity-40`}>
+          Salva
+        </button>
+      </div>
+      {!ok && <p className="text-xs font-bold text-red-700">Non sembra l'indirizzo giusto: deve finire con «/exec».</p>}
+      <p className="text-[11px] text-teal-900/80">{saved ? "Collegato: le note vanno nel foglio in pochi secondi." : "Vuoto: le note vanno nel foglio entro 5 minuti. Come averlo: Guida → Area admin → «Scrivere subito»."}</p>
+    </div>
+  );
+};
+
 const FieldChecksAdmin = ({ technicians = [], layoutConfig = {}, color }) => {
   const list = (Array.isArray(layoutConfig.fieldCheckTechs) ? layoutConfig.fieldCheckTechs : []).map((x) => String(x).trim().toLowerCase());
   const [busy, setBusy] = useState("");
+  // prova già accesa prima di questa versione: dico al programma del Drive di cercare le verifiche nuove (una volta)
+  const on = list.length > 0;
+  useEffect(() => {
+    if (!on) return;
+    try {
+      if (localStorage.getItem("autoVerifiche1") === "1") return;
+      localStorage.setItem("autoVerifiche1", "1");
+    } catch (e) {
+      // senza memoria del browser lo riscrivo: non fa danni
+    }
+    setDoc(doc(db, "artifacts", appId, "public", "data", "settings", "drive_places"), { autoVerifiche: true }, { merge: true }).catch(() => {});
+  }, [on]);
   const toggle = async (name) => {
     const k = String(name).trim().toLowerCase();
     const next = list.includes(k) ? list.filter((x) => x !== k) : [...list, k];
     setBusy(k);
     try {
       await setDoc(doc(db, "artifacts", appId, "public", "data", "settings", "layout"), { fieldCheckTechs: next }, { merge: true });
+      // con almeno un tecnico il programma del Drive cerca da solo le verifiche nuove («Verifiche da eseguire»)
+      await setDoc(doc(db, "artifacts", appId, "public", "data", "settings", "drive_places"), { autoVerifiche: next.length > 0 }, { merge: true });
     } catch (e) {
       console.error(e);
       alert("Salvataggio non riuscito: " + describeError(e));
@@ -135,8 +188,9 @@ const FieldChecksAdmin = ({ technicians = [], layoutConfig = {}, color }) => {
         Prova: compila verifica dall'app {list.length ? `(${list.length} ${list.length === 1 ? "tecnico" : "tecnici"})` : "(spenta)"}
       </summary>
       <p className="text-xs text-teal-900/80 mt-2 leading-snug">
-        Chi è spuntato vede in La mia area «Compila verifica»: sceglie il cliente, il programma del Drive prepara il suo foglio di verifica (scelto dal periodo nel nome, es. «T10.26», non dalla data di modifica; il tecnico può sceglierne un altro) e quello che il tecnico scrive (fune/catena, esito, note) finisce nel foglio sul Drive, colonna «Note» (se manca la aggiunge). Se il foglio è un Word o un Excel il programma ne fa da solo una copia Google nella stessa cartella («nome (Google)») e scrive lì: l'originale non lo tocca.
+        Chi è spuntato vede in La mia area «Compila verifica». In «Verifiche da eseguire» trova già pronte le verifiche appena caricate nel Drive (trimestrale o annuale di questo mese o del mese prima, dal nome: es. «T10.26»); le altre le cerca per cliente. Un tocco sull'esito e la gru è salvata: il testo finisce nel foglio sul Drive, colonna «Note» (se manca la aggiunge). Se il foglio è un Word o un Excel, alla prima nota il programma ne fa una copia Google nella stessa cartella («nome (Google)») e scrive lì: l'originale non lo tocca. Chi vuole continua a compilare sul Drive come prima.
       </p>
+      <HookField layoutConfig={layoutConfig} color={color} />
       <div className="flex flex-wrap gap-2 mt-2">
         {technicians.map((t) => {
           const on = list.includes(String(t.name).trim().toLowerCase());

@@ -43,8 +43,34 @@ export const composeText = ({ elemento, esito, note }) => {
 // avviso al programma del Drive: c'è qualcosa da fare (lo guarda ogni 5 minuti)
 const bump = (extra = {}) => setDoc(placesRef(), { compila: new Date().toISOString(), ...extra }, { merge: true });
 
+// indirizzo «App web» del programma del Drive (Admin → Drive): se c'è lo chiamo subito e scrive in pochi secondi.
+// Non mando dati: gli dico solo «guarda la coda adesso». Se non risponde, ci pensa comunque il giro ogni 5 minuti.
+export const hookOf = (layoutConfig) => {
+  const u = String((layoutConfig && layoutConfig.fieldCheckHook) || "").trim();
+  return /^https:\/\/script\.google\.com\/macros\/s\/[\w-]+\/exec$/.test(u) ? u : "";
+};
+export const pokeDrive = (hook, body = {}) => {
+  if (!hook || typeof fetch !== "function") return;
+  try {
+    fetch(hook, { method: "POST", mode: "no-cors", body: JSON.stringify(body) }).catch(() => {});
+  } catch (e) {
+    // niente: resta il giro ogni 5 minuti
+  }
+};
+
 // fileId: il tecnico ha scelto lui il file dall'elenco (altrimenti il programma sceglie dal nome)
-export const requestPrep = (customerId, fileId = "") => bump({ prep: { [customerId]: new Date().toISOString() + (fileId ? `|${fileId}` : "") } });
+export const requestPrep = async (customerId, fileId = "", hook = "") => {
+  const quando = new Date().toISOString() + (fileId ? `|${fileId}` : "");
+  await bump({ prep: { [customerId]: quando } });
+  pokeDrive(hook, { prep: customerId, quando });
+};
+
+// periodo come numero 202610 (ottobre 2026); quelle preparate da sole restano in elenco fino al mese dopo
+const ym = (d) => d.getFullYear() * 100 + d.getMonth() + 1;
+export const checkVisible = (c, now = new Date()) => {
+  if (!c || c.scelto !== "auto" || !Number(c.periodo)) return true;
+  return Number(c.periodo) >= ym(new Date(now.getFullYear(), now.getMonth() - 1, 1));
+};
 
 // «T10.26» → «trimestrale di ottobre 2026», «A04.26» → «annuale di aprile 2026»
 const MESI = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre"];
@@ -63,7 +89,7 @@ export const altFilesOf = (check) => {
   }
 };
 
-export const saveEntry = async ({ check, row, elemento, esito, note, me }) => {
+export const saveEntry = async ({ check, row, elemento, esito, note, me, hook = "" }) => {
   const testo = composeText({ elemento, esito, note });
   await setDoc(doc(base("field_entries"), entryId(check.fileId, row.k)), {
     fileId: check.fileId,
@@ -79,6 +105,7 @@ export const saveEntry = async ({ check, row, elemento, esito, note, me }) => {
     errore: "",
   });
   await bump();
+  pokeDrive(hook);
   return testo;
 };
 

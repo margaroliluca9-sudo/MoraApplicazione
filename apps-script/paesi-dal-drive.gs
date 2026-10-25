@@ -76,6 +76,14 @@ function controlla() {
       Logger.log("Compila: %s", e);
     }
   }
+  // «Compila verifica»: le verifiche appena caricate nel Drive vanno da sole in «Verifiche da eseguire»
+  if (valore_(f.autoVerifiche) === true) {
+    try {
+      cercaNuove_(token);
+    } catch (e) {
+      Logger.log("Verifiche nuove: %s", e);
+    }
+  }
   var req = valore_(f.request);
   var fatto = valore_(f.requestDone);
   if (!req || (fatto && fatto >= req)) return;
@@ -98,6 +106,35 @@ function chiaveSicura_(k) {
 }
 
 function compila_(token, prep) {
+  var cache = CacheService.getScriptCache();
+  for (var t = 0; t < 20 && cache.get("compilaInCorso"); t++) Utilities.sleep(1500);
+  cache.put("compilaInCorso", "1", 120);
+  try {
+    compilaDentro_(token, prep);
+  } finally {
+    cache.remove("compilaInCorso");
+  }
+}
+
+// l'app mi chiama direttamente (App web) appena il tecnico salva: scrivo subito invece che entro 5 minuti.
+// Chiunque abbia l'indirizzo può solo farmi fare il lavoro che c'è già in coda: niente dati entrano da qui.
+function doPost(e) {
+  var body = {};
+  try {
+    body = JSON.parse((e && e.postData && e.postData.contents) || "{}");
+  } catch (x) {
+    body = {};
+  }
+  var prep = {};
+  if (body.prep && body.quando) prep[String(body.prep)] = String(body.quando);
+  compila_(accedi_(), prep);
+  return ContentService.createTextOutput("ok");
+}
+function doGet() {
+  return ContentService.createTextOutput("Programma del Drive Mora: collegato");
+}
+
+function compilaDentro_(token, prep) {
   var fatti = JSON.parse(PropertiesService.getScriptProperties().getProperty("prepFatti") || "{}");
   var nuovi = {};
   Object.keys(prep || {}).forEach(function (cid) {
@@ -164,13 +201,14 @@ function preparaFoglio_(token, cid, voluto) {
       cand.push(c);
     });
   });
-  // il Word/Excel già trasformato in copia «(Google)»: in elenco tengo solo la copia
-  var copie = {};
+  // Word/Excel con la sua copia «(Google)» (fatta quando ho scritto le note): in elenco tengo solo l'originale,
+  // quando scrivo uso la copia
+  var originali = {};
   cand.forEach(function (c) {
-    if (c.google) copie[c.f.getName().replace(/ \(Google\)$/, "")] = true;
+    if (!c.google) originali[c.f.getName().replace(/\.(docx|xlsx)$/i, "")] = true;
   });
   cand = cand.filter(function (c) {
-    return c.google || !copie[c.f.getName().replace(/\.(docx|xlsx)$/i, "")];
+    return !c.google || !originali[c.f.getName().replace(/ \(Google\)$/, "")];
   });
   cand.sort(ordineVerifiche_);
   var file = null;
@@ -187,36 +225,93 @@ function preparaFoglio_(token, cid, voluto) {
     return { id: c.f.getId(), n: c.f.getName(), p: c.periodo, d: c.f.getDateCreated().toISOString() };
   });
   if (!file) throw new Error("Nessun foglio di verifica nella cartella");
-  // file Word o Excel: ne faccio una copia come Documento/Foglio Google nella stessa cartella
-  // (l'originale resta com'è) e l'app compila quella: nei Word e negli Excel il programma non può scrivere
-  if (file.getMimeType() === DOCX) file = comeDocumentoGoogle_(file, MimeType.GOOGLE_DOCS);
-  else if (file.getMimeType() === XLSX) file = comeDocumentoGoogle_(file, MimeType.GOOGLE_SHEETS);
+  preparaFile_(token, file, { cid: cid, nome: cliente.name || "", cartella: nomeCartella, altri: altri, scelto: voluto ? "tecnico" : "nome" });
+}
+
+// legge il foglio (anche Word o Excel: solo lettura) e lo mette in field_checks per l'app
+function preparaFile_(token, file, o) {
   var mime = file.getMimeType();
   var foglio = leggiFoglio_(file);
   var righe = estraiGru(foglio.tabelle).map(function (g, i) {
     return { k: CHIAVE_RIGA(g, i), fab: g.fab, interno: g.interno, tipo: g.tipo, portata: g.portata, zona: g.zona, prima: g.stato };
   });
-  var scrivibile = mime === MimeType.GOOGLE_DOCS || mime === MimeType.GOOGLE_SHEETS;
-  scriviTutto_(token, [
-    aggiornaDoc_("field_checks/" + file.getId(), {
-      customerId: cid,
-      customerName: cliente.name || "",
-      fileId: file.getId(),
-      fileName: file.getName(),
-      fileUrl: file.getUrl(),
-      originale: originale,
-      scelto: voluto ? "tecnico" : "nome",
-      altri: JSON.stringify(altri),
-      cartella: nomeCartella,
-      tipoFile: mime === MimeType.GOOGLE_SHEETS ? "foglio" : mime === MimeType.GOOGLE_DOCS ? "documento" : "word",
-      scrivibile: scrivibile,
-      righe: JSON.stringify(righe),
-      aggiornato: file.getLastUpdated().toISOString(),
-      preparedAt: new Date().toISOString(),
-      open: true,
-    }),
-    aggiornaDoc_("field_prep/" + chiaveSicura_(cid), { fileId: file.getId(), errore: "", altri: JSON.stringify(altri), at: new Date().toISOString() }),
-  ]);
+  var tipo = mime === MimeType.GOOGLE_SHEETS ? "foglio" : mime === MimeType.GOOGLE_DOCS ? "documento" : mime === XLSX ? "excel" : "word";
+  var dati = {
+    customerId: o.cid,
+    customerName: o.nome,
+    fileId: file.getId(),
+    fileName: file.getName(),
+    fileUrl: file.getUrl(),
+    originale: file.getId(),
+    scelto: o.scelto,
+    periodo: periodoVerifica_(file.getName()),
+    cartella: o.cartella || "",
+    tipoFile: tipo,
+    scrivibile: true,
+    righe: JSON.stringify(righe),
+    aggiornato: file.getLastUpdated().toISOString(),
+    preparedAt: new Date().toISOString(),
+    open: true,
+  };
+  if (o.altri) dati.altri = JSON.stringify(o.altri);
+  var w = [aggiornaDoc_("field_checks/" + file.getId(), dati)];
+  if (o.scelto !== "auto") w.push(aggiornaDoc_("field_prep/" + chiaveSicura_(o.cid), { fileId: file.getId(), errore: "", altri: JSON.stringify(o.altri || []), at: new Date().toISOString() }));
+  scriviTutto_(token, w);
+}
+
+// VERIFICHE DA ESEGUIRE: ogni 5 minuti cerco nel Drive i fogli di verifica nuovi o cambiati con il periodo di questo
+// mese o del mese prima nel nome (es. «T10.26» a ottobre o novembre 2026), in una cartella abbinata a un cliente,
+// e li preparo da soli: il tecnico li trova già pronti. Ognuno lo preparo una volta sola.
+function cercaNuove_(token) {
+  var props = PropertiesService.getScriptProperties();
+  var adesso = new Date();
+  var questo = adesso.getFullYear() * 100 + adesso.getMonth() + 1;
+  var prima = adesso.getMonth() === 0 ? (adesso.getFullYear() - 1) * 100 + 12 : questo - 1;
+  var da = props.getProperty("autoDa") || new Date(adesso.getFullYear(), adesso.getMonth() - 1, 1).toISOString();
+  var fatti = JSON.parse(props.getProperty("autoFatti") || "{}");
+  var q =
+    'modifiedDate > "' + da.slice(0, 19) + '" and trashed = false and (mimeType = "' + MimeType.GOOGLE_DOCS + '" or mimeType = "' + MimeType.GOOGLE_SHEETS + '" or mimeType = "' + DOCX + '" or mimeType = "' + XLSX + '")';
+  var it = DriveApp.searchFiles(q);
+  var nuovi = [];
+  while (it.hasNext() && nuovi.length < 30) {
+    var f = it.next();
+    var n = f.getName();
+    var per = periodoVerifica_(n);
+    if (fatti[f.getId()] || (per !== questo && per !== prima) || SALTA.test(n) || / \(Google\)$/.test(n)) continue;
+    nuovi.push(f);
+  }
+  props.setProperty("autoDa", new Date(adesso.getTime() - 60000).toISOString());
+  if (!nuovi.length) return;
+  var elenco = [];
+  try {
+    elenco = JSON.parse((leggiDoc_(token, "settings/drive_folders") || {}).list || "[]");
+  } catch (e) {
+    elenco = [];
+  }
+  var perId = {};
+  elenco.forEach(function (v) {
+    perId[v.id] = v;
+  });
+  var nomi = {};
+  nuovi.forEach(function (f) {
+    var ps = f.getParents();
+    var v = ps.hasNext() ? perId[ps.next().getId()] : null;
+    var cid = v ? v.c || (v.p && perId[v.p] ? perId[v.p].c : "") : "";
+    fatti[f.getId()] = adesso.toISOString().slice(0, 10);
+    if (!cid) return; // cartella non abbinata a un cliente
+    try {
+      if (!(cid in nomi)) nomi[cid] = (leggiDoc_(token, "customers/" + cid) || {}).name || "";
+      preparaFile_(token, f, { cid: cid, nome: nomi[cid], cartella: v.n, scelto: "auto" });
+    } catch (e) {
+      Logger.log("Prepara %s: %s", f.getName(), e);
+    }
+  });
+  // tengo a mente solo gli ultimi 2 mesi
+  var limite = new Date(adesso.getTime() - 62 * 86400000).toISOString().slice(0, 10);
+  Object.keys(fatti).forEach(function (k) {
+    if (fatti[k] < limite) delete fatti[k];
+  });
+  props.setProperty("autoFatti", JSON.stringify(fatti));
 }
 
 // periodo scritto nel nome: «T10.26», «A 04/26», «T3-27» → 202610, 202604, 202703 (0 se non c'è)
@@ -308,6 +403,8 @@ function scriviNote_(token) {
     var esito = {};
     try {
       esito = scriviNelFile_(fileId, lista);
+      // era un Word/Excel: all'app dico dove sono finite le note
+      if (scrittoIn_) scritture.push(aggiornaDoc_("field_checks/" + fileId, { scrittoUrl: scrittoIn_.url, scrittoNome: scrittoIn_.nome }));
     } catch (e) {
       lista.forEach(function (x) {
         esito[x.id] = "Errore: " + String((e && e.message) || e).slice(0, 200);
@@ -325,6 +422,15 @@ function scriviNote_(token) {
 function scriviNelFile_(fileId, lista) {
   var file = DriveApp.getFileById(fileId);
   var mime = file.getMimeType();
+  // Word o Excel: nei file Office non posso scrivere. Ne faccio (una volta sola) una copia Google nella stessa
+  // cartella, «nome (Google)», e scrivo lì; l'originale resta com'è
+  scrittoIn_ = null;
+  if (mime === DOCX || mime === XLSX) {
+    file = comeDocumentoGoogle_(file, mime === DOCX ? MimeType.GOOGLE_DOCS : MimeType.GOOGLE_SHEETS);
+    fileId = file.getId();
+    mime = file.getMimeType();
+    scrittoIn_ = { url: file.getUrl(), nome: file.getName() };
+  }
   var errori = {};
   var trova = function (gru, k) {
     for (var i = 0; i < gru.length; i++) if (CHIAVE_RIGA(gru[i], i) === k) return gru[i];
@@ -406,10 +512,11 @@ function scriviNelFile_(fileId, lista) {
     return errori;
   }
   lista.forEach(function (x) {
-    errori[x.id] = "File Word: va caricato come Documento Google per poterci scrivere";
+    errori[x.id] = "Questo tipo di file non lo so scrivere";
   });
   return errori;
 }
+var scrittoIn_ = null;
 
 /** Dimentica cosa ha già letto: il prossimo giro rilegge tutte le cartelle. */
 function ricomincia() {

@@ -31,7 +31,7 @@ import {
 import { ChatModal } from "../components/modals/ChatModal";
 import { unreadTotal } from "../chat";
 import { PersonalAreaModal } from "../components/modals/PersonalAreaModal";
-import { fieldChecksAllowed } from "../fieldChecks";
+import { fieldChecksAllowed, hookOf } from "../fieldChecks";
 import { HomeHero } from "../components/HomeHero";
 import { todayItems, monthNumbers, relDay, isoFromLogDate } from "../personal";
 import { HomeGrid } from "../components/HomeGrid";
@@ -567,6 +567,7 @@ export const DashboardView = ({
           chatUnread={unread}
           technicians={technicians}
           fieldChecksOn={fieldChecksAllowed(layoutConfig, currentTechName)}
+          fieldCheckHook={hookOf(layoutConfig)}
           customers={customers}
           chatEnabled={chatEnabled}
           myMonthCount={myMonthCount}

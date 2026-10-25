@@ -64,6 +64,7 @@ export const PersonalAreaModal = ({
   areaTiles = null,
   inline = false, // tablet/computer: dentro la sua scheda invece che in una finestra sopra la Home
   fieldChecksOn = false, // PROVA «Compila verifica» (solo i tecnici abilitati dall'admin)
+  fieldCheckHook = "", // indirizzo «App web» del programma del Drive: scrive subito
   customers = [],
 }) => {
   // parti accese o spente dall'admin
@@ -118,7 +119,7 @@ export const PersonalAreaModal = ({
     body = <PartsPanel me={me} logs={logs} color={color} onBack={back} onClose={onClose} onOpenMachine={onOpenMachine} />;
   else if (panel === "settings") body = <SettingsPanel me={me} color={color} onBack={back} onClose={onClose} hoursAllowed={on("hours")} />;
   else if (panel === "fieldchecks" && fieldChecksOn)
-    body = <FieldChecksPanel me={me} customers={customers} color={color} onBack={back} onClose={onClose} />;
+    body = <FieldChecksPanel me={me} customers={customers} color={color} hook={fieldCheckHook} onBack={back} onClose={onClose} />;
   else if (panel === "notes" && on("notes")) body = <NotesPanel me={me} notes={notes} color={color} onBack={back} onClose={onClose} />;
   else if (panel === "reminders" && on("reminders"))
     body = <RemindersPanel me={me} reminders={reminders} contacts={contacts} color={color} onBack={back} onClose={onClose} />;
