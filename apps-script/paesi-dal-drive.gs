@@ -30,6 +30,7 @@
  *   1. Apri https://script.google.com con l'account che vede la cartella Clienti → il progetto (o «Nuovo progetto»).
  *   2. Cancella tutto e incolla questo file. Salva (icona del dischetto).
  *   3. In alto scegli la funzione «installa» e premi «Esegui» (Google chiede i permessi: «Consenti»).
+ *   4. (Per «Compila verifica» con file Word o Excel) A sinistra «Servizi» → + → «Drive API» → Aggiungi.
  *   Fatto: aggiorna subito e poi ogni mattina alle 10. In Admin → Drive c'è anche «Aggiorna adesso»: parte entro 5 minuti. L'esito si vede nell'app in Admin → Drive.
  *   (Per rileggere tutto da capo: esegui «ricomincia».)
  */
@@ -360,6 +361,18 @@ function comeDocumentoGoogle_(file, tipo) {
       if (g.getMimeType() === tipo && g.getDateCreated() >= file.getLastUpdated()) return g;
     }
   }
+  // 1) servizio «Drive API» aggiunto nel progetto (Servizi → +): è il modo sicuro, Google lo attiva da solo
+  if (typeof Drive !== "undefined" && Drive.Files) {
+    var c;
+    try {
+      c = Drive.Files.copy({ name: nome, mimeType: tipo, parents: cartella ? [cartella.getId()] : undefined }, file.getId(), { supportsAllDrives: true });
+    } catch (e3) {
+      // versione 2 del servizio
+      c = Drive.Files.copy({ title: nome, mimeType: tipo, parents: cartella ? [{ id: cartella.getId() }] : undefined }, file.getId(), { convert: true, supportsAllDrives: true });
+    }
+    return DriveApp.getFileById(c.id);
+  }
+  // 2) senza servizio: chiamata diretta (funziona solo se nel progetto Google la «Drive API» è già attiva)
   var r = UrlFetchApp.fetch("https://www.googleapis.com/drive/v3/files/" + file.getId() + "/copy?supportsAllDrives=true", {
     method: "post",
     contentType: "application/json",
@@ -367,7 +380,18 @@ function comeDocumentoGoogle_(file, tipo) {
     payload: JSON.stringify({ name: nome, mimeType: tipo, parents: cartella ? [cartella.getId()] : undefined }),
     muteHttpExceptions: true,
   });
-  if (r.getResponseCode() !== 200) throw new Error("Non riesco a trasformare il file in formato Google (" + r.getResponseCode() + ")");
+  if (r.getResponseCode() !== 200) {
+    var msg = "";
+    try {
+      msg = JSON.parse(r.getContentText()).error.message || "";
+    } catch (e4) {
+      msg = "";
+    }
+    Logger.log("Copia Google di %s: %s %s", file.getName(), r.getResponseCode(), msg);
+    if (r.getResponseCode() === 403 && /has not been used|disabled|not enabled/i.test(msg))
+      throw new Error("Per i Word/Excel serve un passaggio in Google Script: a sinistra «Servizi» → + → «Drive API» → Aggiungi. Poi riprova da solo entro 5 minuti.");
+    throw new Error("Non riesco a fare la copia Google del " + (tipo === MimeType.GOOGLE_DOCS ? "Word" : "Excel") + " (" + r.getResponseCode() + (msg ? ": " + msg.slice(0, 120) : "") + ")");
+  }
   return DriveApp.getFileById(JSON.parse(r.getContentText()).id);
 }
 
