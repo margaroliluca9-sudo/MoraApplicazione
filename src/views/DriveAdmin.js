@@ -6,13 +6,13 @@
 // I clienti «Solo interventi» non hanno cartella nel Drive (non facciamo le verifiche) e non sono un problema.
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { collection, doc } from "firebase/firestore";
-import { updateDoc } from "../tracked";
+import { updateDoc, writeBatch } from "../tracked";
 import { Folder, Search, ChevronRight, MapPin, Wrench, HelpCircle, Check, X, Loader2 } from "lucide-react";
 import { db, appId } from "../firebase";
 import { loadDaily } from "../dailyCache";
 import { getProPanelClass } from "../ui";
 import { placeOf, normName } from "../places";
-import { describeError } from "../utils";
+import { describeError, getSafeMatricola } from "../utils";
 import { reviewCustomer } from "../driveCranes";
 import { DrivePlacesStatus } from "../components/DrivePlacesStatus";
 import { loadFolders, resetFolders } from "../components/DriveFolderPicker";
@@ -55,6 +55,61 @@ const loadAllRows = (force = false) => {
       });
   }
   return rowsCache;
+};
+
+// «Conferma tutto»: per non rispondere a una gru alla volta. Prima tocco: chiede conferma; secondo: salva.
+const BulkChecks = ({ checks, onRowsSaved, color }) => {
+  const [ask, setAsk] = useState("");
+  const [busy, setBusy] = useState("");
+  const doubts = checks.filter((x) => x.kind === "doubt");
+  const sugg = checks.filter((x) => x.kind === "suggestion");
+  if (!doubts.length && !sugg.length) return null;
+  const run = async (kind) => {
+    if (ask !== kind) {
+      setAsk(kind);
+      return;
+    }
+    setBusy(kind);
+    setAsk("");
+    const list = (kind === "doubt" ? doubts : sugg).map((x) => ({
+      row: x.d.row,
+      data: kind === "doubt" ? { okFor: x.d.m.id } : { linkTo: getSafeMatricola(x.d.m), okFor: x.d.m.id },
+    }));
+    try {
+      for (let i = 0; i < list.length; i += 400) {
+        const b = writeBatch(db);
+        list.slice(i, i + 400).forEach(({ row, data }) => b.update(doc(db, "artifacts", appId, "public", "data", "drive_cranes", row.id), data));
+        await b.commit();
+      }
+      clearDriveCache();
+      onRowsSaved(list.map(({ row, data }) => ({ ...row, ...data })));
+    } catch (e) {
+      console.error(e);
+      alert("Salvataggio non riuscito: " + describeError(e));
+    } finally {
+      setBusy("");
+    }
+  };
+  const btn = "h-10 px-4 rounded-full text-sm font-bold flex items-center gap-2 disabled:opacity-50";
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white p-3 space-y-2" data-section="bulk-checks">
+      <p className="text-xs text-slate-600">Se a colpo d'occhio vanno bene, conferma tutto insieme invece di una gru alla volta.</p>
+      <div className="flex flex-wrap gap-2">
+        {doubts.length > 0 && (
+          <button type="button" disabled={!!busy} onClick={() => run("doubt")} data-action="bulk-doubts" className={`${btn} ${ask === "doubt" ? "bg-amber-500 text-white" : "bg-emerald-600 text-white"}`}>
+            {busy === "doubt" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+            {ask === "doubt" ? `Sicuro? Tocca ancora per confermarne ${doubts.length}` : `Sono tutte giuste (${doubts.length})`}
+          </button>
+        )}
+        {sugg.length > 0 && (
+          <button type="button" disabled={!!busy} onClick={() => run("suggestion")} data-action="bulk-suggestions" className={`${btn} ${ask === "suggestion" ? "bg-amber-500 text-white" : `bg-${color}-600 text-white`}`}>
+            {busy === "suggestion" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+            {ask === "suggestion" ? `Sicuro? Tocca ancora per abbinarne ${sugg.length}` : `Accetta tutti i «Forse è…» (${sugg.length})`}
+          </button>
+        )}
+      </div>
+    </div>
+  );
 };
 
 const FolderCheck = ({ customer, folder, onOpen }) => {
@@ -130,6 +185,14 @@ export const DriveAdmin = ({ customers = [], machines = [], color = "blue" }) =>
     loadAllRows(true).then((l) => setRows(l));
   }, []);
 
+  const onRowsSaved = (list) => {
+    const by = Object.fromEntries(list.map((r) => [r.id, r]));
+    setRows((p) => {
+      const next = (p || []).map((x) => by[x.id] || x);
+      rowsCache = Promise.resolve(next);
+      return next;
+    });
+  };
   const onRowSaved = (nr) => {
     setRows((p) => {
       const next = (p || []).map((x) => (x.id === nr.id ? nr : x));
@@ -220,6 +283,8 @@ export const DriveAdmin = ({ customers = [], machines = [], color = "blue" }) =>
             Niente da controllare: clienti e gru sono abbinati bene.
           </p>
         ) : (
+          <>
+          <BulkChecks checks={checks} onRowsSaved={onRowsSaved} color={color} />
           <div className="space-y-2 max-h-[640px] overflow-y-auto">
             {checks.slice(0, 40).map((x) =>
               x.kind === "folder" ? (
@@ -230,6 +295,7 @@ export const DriveAdmin = ({ customers = [], machines = [], color = "blue" }) =>
             )}
             {checks.length > 40 && <p className="text-xs text-slate-500">…e altri {checks.length - 40}: man mano che rispondi compaiono.</p>}
           </div>
+          </>
         )}
       </section>
 

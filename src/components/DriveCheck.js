@@ -78,7 +78,7 @@ export const CheckCard = ({ kind, item, customerName, onSaved, onOpenCustomer, c
         <div className="min-w-0 flex-1">
           {customerName && <p className="text-[11px] font-bold text-slate-500">{customerName}</p>}
           <p className="text-sm font-bold text-slate-800">
-            {kind === "suggestion" ? `Sul Drive c'è la gru ${row.fab || "?"}, nell'app non trovo lo stesso numero. Forse è la ${getSafeMatricola(m)}?` : `La gru ${row.fab || "?"} del Drive è finita sulla ${getSafeMatricola(m)} dell'app: è giusto?`}
+            {kind === "suggestion" ? `Sul Drive c'è la gru ${row.fab || row.interno || "?"}, nell'app non trovo lo stesso numero. Forse è la ${getSafeMatricola(m)}?` : `La gru ${row.fab || row.interno || "?"} del Drive è finita sulla ${getSafeMatricola(m)} dell'app: è giusto?`}
           </p>
           <p className="text-xs text-amber-800" data-check-why>
             {kind === "suggestion" ? item.why : item.reasons.join(" · ")}

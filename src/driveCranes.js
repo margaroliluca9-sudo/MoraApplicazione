@@ -169,8 +169,8 @@ export const reviewCustomer = (rows, machines) => {
         if (reasons.length) doubts.push({ row, m: x.m, reasons });
         return;
       }
-      if (x.how === "interno") reasons.push("abbinata col numero interno, non col numero di fabbrica");
-      reasons.push(...diffOf(row, x.m));
+      // stesso numero di fabbrica: è lei, non chiedo niente (anche se tipo o portata sono scritti diversi)
+      if (x.how !== "fabbrica") reasons.push(...diffOf(row, x.m));
       if (reasons.length) doubts.push({ row, m: x.m, reasons });
       return;
     }
