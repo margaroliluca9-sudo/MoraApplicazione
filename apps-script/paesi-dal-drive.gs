@@ -28,7 +28,7 @@
  *   1. Apri https://script.google.com con l'account che vede la cartella Clienti → il progetto (o «Nuovo progetto»).
  *   2. Cancella tutto e incolla questo file. Salva (icona del dischetto).
  *   3. In alto scegli la funzione «installa» e premi «Esegui» (Google chiede i permessi: «Consenti»).
- *   Fatto: aggiorna subito e poi ogni mattina alle 10. L'esito si vede nell'app in Admin → Drive.
+ *   Fatto: aggiorna subito e poi ogni mattina alle 10. In Admin → Drive c'è anche «Aggiorna adesso»: parte entro 5 minuti. L'esito si vede nell'app in Admin → Drive.
  *   (Per rileggere tutto da capo: esegui «ricomincia».)
  */
 
@@ -40,13 +40,33 @@ var CONFIG = {
   minuti: 4, // Google ferma i programmi dopo 6 minuti: mi fermo prima e riprendo il giorno dopo
 };
 
-/** Da eseguire una volta: crea l'appuntamento di ogni mattina e aggiorna subito. */
+/** Da eseguire una volta: crea l'appuntamento di ogni mattina (e il controllo del tasto nell'app) e aggiorna subito. */
 function installa() {
   ScriptApp.getProjectTriggers().forEach(function (t) {
     var h = t.getHandlerFunction();
-    if (h === "aggiornaPaesi" || h === "aggiorna") ScriptApp.deleteTrigger(t);
+    if (h === "aggiornaPaesi" || h === "aggiorna" || h === "controlla") ScriptApp.deleteTrigger(t);
   });
   ScriptApp.newTrigger("aggiorna").timeBased().everyDays(1).atHour(10).create();
+  ScriptApp.newTrigger("controlla").timeBased().everyMinutes(5).create();
+  aggiorna();
+}
+
+/**
+ * Ogni 5 minuti: qualcuno ha premuto «Aggiorna adesso» in Admin → Drive? Allora faccio il giro subito.
+ * (L'app scrive l'ora della richiesta in settings/drive_places.request; io segno requestDone per non ripeterlo.)
+ */
+function controlla() {
+  var token = accedi_();
+  var r = UrlFetchApp.fetch("https://firestore.googleapis.com/v1/" + radice_() + "/" + CONFIG.dati + "/settings/drive_places", {
+    headers: { Authorization: "Bearer " + token },
+    muteHttpExceptions: true,
+  });
+  if (r.getResponseCode() !== 200) return;
+  var f = JSON.parse(r.getContentText()).fields || {};
+  var req = valore_(f.request);
+  var fatto = valore_(f.requestDone);
+  if (!req || (fatto && fatto >= req)) return;
+  scriviTutto_(token, [aggiornaDoc_("settings/drive_places", { requestDone: req })]);
   aggiorna();
 }
 
@@ -66,6 +86,9 @@ function aggiornaPaesi() {
 
 /** Il lavoro di ogni mattina. Se si ferma per un errore lo scrive nell'app (Admin → Drive, riquadro rosso). */
 function aggiorna() {
+  // un giro alla volta (il giro del mattino e il tasto nell'app non si sovrappongono)
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(2000)) return;
   try {
     giro_();
   } catch (e) {
@@ -75,6 +98,8 @@ function aggiorna() {
       Logger.log("Non riesco nemmeno a scrivere l'errore: %s", e2);
     }
     throw e;
+  } finally {
+    lock.releaseLock();
   }
 }
 
