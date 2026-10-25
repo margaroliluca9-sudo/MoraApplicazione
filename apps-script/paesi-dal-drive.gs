@@ -22,7 +22,7 @@
  *   1. Apri https://script.google.com con l'account che vede la cartella Clienti → il progetto (o «Nuovo progetto»).
  *   2. Cancella tutto e incolla questo file. Salva (icona del dischetto).
  *   3. In alto scegli la funzione «installa» e premi «Esegui» (Google chiede i permessi: «Consenti»).
- *   Fatto: aggiorna subito e poi ogni mattina alle 6. L'esito si vede nell'app in Admin → Drive.
+ *   Fatto: aggiorna subito e poi ogni mattina alle 10. L'esito si vede nell'app in Admin → Drive.
  *   (Per rileggere tutto da capo: esegui «ricomincia».)
  */
 
@@ -40,7 +40,7 @@ function installa() {
     var h = t.getHandlerFunction();
     if (h === "aggiornaPaesi" || h === "aggiorna") ScriptApp.deleteTrigger(t);
   });
-  ScriptApp.newTrigger("aggiorna").timeBased().everyDays(1).atHour(6).create();
+  ScriptApp.newTrigger("aggiorna").timeBased().everyDays(1).atHour(10).create();
   aggiorna();
 }
 

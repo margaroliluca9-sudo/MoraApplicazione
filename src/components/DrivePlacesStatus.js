@@ -33,19 +33,26 @@ export const driveHealth = (info, now = Date.now()) => {
     problems = [];
   }
   const errAfter = info.lastError && info.lastErrorAt && new Date(info.lastErrorAt) > new Date(info.lastRun);
+  if (errAfter && /429|quota|RESOURCE_EXHAUSTED/i.test(info.lastError))
+    return {
+      tone: "amber",
+      title: "Si è fermato: letture del database finite",
+      text: `${driveWhen(info.lastErrorAt)}: Firebase non ha risposto perché le letture gratuite del giorno erano già finite. Riprova da solo domattina alle 10; se vuoi subito, in Google Script premi Esegui su «aggiorna».`,
+      problems,
+    };
   if (errAfter) return { tone: "red", title: "L'ultimo giro si è fermato con un errore", text: `${driveWhen(info.lastErrorAt)}: ${info.lastError}`, problems };
   const h = hoursSince(info.lastRun, now);
   if (h > 30)
     return {
       tone: "red",
       title: `Non gira da ${h > 48 ? Math.floor(h / 24) + " giorni" : "più di un giorno"}`,
-      text: "Dovrebbe girare ogni mattina alle 6. Apri Google Script e premi Esegui su «installa».",
+      text: "Dovrebbe girare ogni mattina alle 10. Apri Google Script e premi Esegui su «installa».",
       problems,
     };
-  if (info.finito === "no") return { tone: "amber", title: "Ha letto solo una parte delle cartelle", text: "Il resto lo legge da solo domattina alle 6: non devi fare niente.", problems };
+  if (info.finito === "no") return { tone: "amber", title: "Ha letto solo una parte delle cartelle", text: "Il resto lo legge da solo domattina alle 10: non devi fare niente.", problems };
   const n = Number(info.errori) || problems.length;
   if (n > 0) return { tone: "amber", title: `Fatto, ma ${n === 1 ? "una cartella non l'ha letta" : n + " cartelle non le ha lette"}`, text: "Guarda qui sotto quali: di solito è un foglio rovinato o scritto in modo diverso.", problems };
-  return { tone: "emerald", title: "Tutto a posto", text: "Il programma del Drive gira ogni mattina alle 6.", problems };
+  return { tone: "emerald", title: "Tutto a posto", text: "Il programma del Drive gira ogni mattina alle 10.", problems };
 };
 
 const TONES = {
