@@ -270,6 +270,8 @@ const cleanPresence = async (now) => {
   await cleanTrash(now - TRASH_KEEP).catch(() => 0);
   // errori arrivati dai telefoni (Area admin → System): tengo 60 giorni
   await cleanOld("app_errors", "when", now - ERR_KEEP).catch(() => 0);
+  // biglietti delle modifiche (sync.js): servono ai telefoni per una settimana, ne tengo 9 giorni
+  await cleanOld("changes", "at", now - 9 * 24 * 3600 * 1000).catch(() => 0);
   return n;
 };
 

@@ -1,7 +1,8 @@
 // AREA ADMIN → System: errori arrivati dai telefoni (vedi errorLog.js).
 // Si leggono solo quando tocchi «Mostra» (al massimo 40, così il database non si consuma).
 import React, { useState } from "react";
-import { collection, limit, orderBy, query, writeBatch, doc } from "firebase/firestore";
+import { collection, limit, orderBy, query, doc } from "firebase/firestore";
+import { writeBatch } from "../tracked";
 import { getDocs } from "../metered";
 import { Bug, Loader2, ChevronDown, Trash2, CheckCircle2 } from "lucide-react";
 import { db, appId } from "../firebase";

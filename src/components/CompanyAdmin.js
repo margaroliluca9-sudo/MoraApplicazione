@@ -5,7 +5,8 @@
 //  - chiusure aziendali (Le mie ore e promemoria delle ore)
 // Tutto in settings/azienda (vedi company.js).
 import React, { useEffect, useState } from "react";
-import { doc, setDoc } from "firebase/firestore";
+import { doc } from "firebase/firestore";
+import { setDoc } from "../tracked";
 import { Building2, KeyRound, Megaphone, CalendarOff, Trash2, Plus, Check } from "lucide-react";
 import { db, appId } from "../firebase";
 import { COMPANY_DEFAULT, COMPANY_FIELDS, companySettings, onCompanyChange, activeNotices, closureOf } from "../company";

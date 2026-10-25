@@ -2,7 +2,8 @@
 // CLIENTE (o RAGIONE SOCIALE), PAESE e/o INDIRIZZO. L'app abbina i nomi ai clienti che ci sono già
 // e mostra l'elenco: spunti quelli da salvare e tocchi «Salva». Niente viene scritto prima.
 import React, { useMemo, useState } from "react";
-import { doc, writeBatch } from "firebase/firestore";
+import { doc } from "firebase/firestore";
+import { writeBatch } from "../../tracked";
 import { X, Upload, Loader2, MapPin, Check } from "lucide-react";
 import { db, appId } from "../../firebase";
 import { readSpreadsheet } from "../../xlsxRead";

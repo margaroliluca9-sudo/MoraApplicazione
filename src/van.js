@@ -6,7 +6,8 @@
 // Chi non ha furgone: nessuna domanda, nessuno scarico, tutto come prima.
 // Scarico automatico: quando si salva un rapporto, la descrizione viene letta e i pezzi
 // montati ("sostituito contattore", "cambiati 2 fusibili 10A") vengono tolti dal furgone.
-import { addDoc, deleteDoc, setDoc, updateDoc, increment, serverTimestamp } from "firebase/firestore";
+import { increment, serverTimestamp } from "firebase/firestore";
+import { addDoc, deleteDoc, setDoc, updateDoc } from "./tracked";
 import { chatRef, chatDoc, key } from "./chat";
 
 export const VAN = { vans: "vans", items: "van_items", moves: "van_moves" };

@@ -2,7 +2,8 @@
 // (app_errors), così in Area admin → System si vede cosa è successo anche se nessuno lo segnala.
 // Pochi documenti: al massimo 5 per apertura e 15 al giorno per telefono, gli errori uguali una volta sola.
 // Il server (api/reminders.js) cancella le note più vecchie di 60 giorni.
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import { collection, serverTimestamp } from "firebase/firestore";
+import { addDoc } from "./tracked";
 import { db, appId } from "./firebase";
 
 export const ERRORS_COLL = "app_errors";

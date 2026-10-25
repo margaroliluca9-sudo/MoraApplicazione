@@ -2,7 +2,8 @@
 // per le gru abbinate in modo dubbio (e per i clienti abbinati a una cartella con un nome diverso).
 // «È giusta» non lo chiede più · «Non è giusta» la stacca · «Modifica» apre il cliente.
 import React, { useState } from "react";
-import { doc, updateDoc } from "firebase/firestore";
+import { doc } from "firebase/firestore";
+import { updateDoc } from "../tracked";
 import { Check, X, Pencil, Loader2, HelpCircle } from "lucide-react";
 import { db, appId } from "../firebase";
 import { describeError, getSafeMatricola, formatCapacity } from "../utils";

@@ -4,7 +4,7 @@
 //      colors: { id: "blue"|... }, search: true|false, compact: true|false,
 //      look: { preset, themeColor, mode, fontFamily, fontScale, radiusStyle, density } }   (aspetto dell'app)
 // Senza preferenze salvate la Home è quella standard decisa dall'admin.
-import { setDoc } from "firebase/firestore";
+import { setDoc } from "./tracked";
 import { chatDoc, key } from "./chat";
 
 export const HOME_PREFS = "home_prefs";

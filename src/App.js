@@ -15,7 +15,8 @@ import {
   Folder,
 } from "lucide-react";
 import { signInAnonymously, onAuthStateChanged } from "firebase/auth";
-import { collection, addDoc, serverTimestamp, Timestamp, orderBy, limit, documentId, getDocsFromCache, doc, setDoc, deleteDoc, query, where } from "firebase/firestore";
+import { collection, serverTimestamp, Timestamp, orderBy, limit, documentId, getDocsFromCache, doc, query, where } from "firebase/firestore";
+import { addDoc, setDoc, deleteDoc } from "./tracked";
 import { onSnapshot, getDocsFromServer, startReadsMeter, setReadsOwner, readsToday, FREE_READS } from "./metered";
 import { loadReadsDay } from "./components/ReadsCard";
 import { auth, db, appId } from "./firebase";
@@ -44,7 +45,7 @@ import { AdminLoginModal } from "./components/AdminLoginModal";
 import { PhotoViewerModal } from "./components/PhotoViewerModal";
 import { withPhotoRefs, movePhotosOut, prefetchRecent } from "./logPhotos";
 import { applyCompany, activeNotices } from "./company";
-import { windowStart, recentQuery, loadOlder, reloadOlderFromCache, prepareWindow } from "./logsWindow";
+import { startSync, recentLogsQuery } from "./sync";
 import { PdfHost } from "./components/PdfHost";
 import { UserMenu } from "./components/UserMenu";
 import { installGestures } from "./gestures";
@@ -557,22 +558,9 @@ export default function App() {
       }
     );
 
-    const unsubCust = watch(
-      collection(db, "artifacts", appId, "public", "data", "customers"),
-      (s) =>
-        setCustomers(
-          s.docs
-            .map((d) => ({ id: d.id, ...d.data() }))
-            .sort((a, b) => a.name.localeCompare(b.name))
-        )
-    );
     const unsubTech = watch(
       collection(db, "artifacts", appId, "public", "data", "technicians"),
       (s) => setTechnicians(s.docs.map((d) => ({ id: d.id, ...d.data() })))
-    );
-    const unsubMach = watch(
-      collection(db, "artifacts", appId, "public", "data", "machines"),
-      (s) => setMachines(s.docs.map((d) => ({ id: d.id, ...d.data() })))
     );
     const unsubTypes = watch(
       collection(db, "artifacts", appId, "public", "data", "machine_types"),
@@ -593,9 +581,7 @@ export default function App() {
       unsubVans();
       unsubVanItems();
       unsubLayout();
-      unsubCust();
       unsubTech();
-      unsubMach();
       unsubTypes();
       unsubActiveUsers();
     };
@@ -615,14 +601,13 @@ export default function App() {
     );
   }, [user, syncEpoch]);
 
-  // INTERVENTI (logsWindow.js): finché non è acceso il sistema "anni" li scarico tutti in diretta;
-  // dopo, in diretta solo dal 1° gennaio dell'anno scorso e i più vecchi dalla copia sul telefono.
-  const logsWindowed = layoutConfig.logsWindowed === true;
+  // INTERVENTI, CLIENTI E GRU (sync.js): si parte dalla copia sul telefono e dal server arriva solo quello
+  // che è cambiato (prima ogni apertura rileggeva tutto: ~1.400 letture). Gli interventi degli ultimi
+  // 3 giorni sono anche in diretta: rapporti nuovi subito e quelli non ancora inviati senza rete.
   const recentRef = useRef([]);
   const olderRef = useRef([]);
   useEffect(() => {
     if (!user) return undefined;
-    const start = logsWindowed ? windowStart() : 0;
     const parseDate = (ds) => {
       if (!ds) return 0;
       const parts = ds.split("/");
@@ -647,41 +632,44 @@ export default function App() {
       );
     };
     olderRef.current = [];
-    const unsub = watch(
-      logsWindowed ? recentQuery(start) : collection(db, "artifacts", appId, "public", "data", "maintenance_logs"),
-      { includeMetadataChanges: true },
-      (s) => {
-        const server = !!(s.metadata && s.metadata.fromCache === false);
-        // dati arrivati dal server (non dalla copia sul telefono): segno l'ora
-        if (server) markSynced();
-        // interventi salvati sul telefono ma non ancora arrivati al server
-        const pending = s.docs.filter((d) => d.metadata && d.metadata.hasPendingWrites).length;
-        setPendingCount(pending);
-        recentRef.current = s.docs.map((d) => ({ id: d.id, ...d.data() }));
-        rawLogsRef.current = { list: rawLogsRef.current.list, server, pending, windowed: logsWindowed };
-        publish();
-        setLoading(false);
+    recentRef.current = [];
+    let gotAll = false;
+    let gotRecent = false;
+    const unsubRecent = watch(recentLogsQuery(3), { includeMetadataChanges: true }, (s) => {
+      const server = !!(s.metadata && s.metadata.fromCache === false);
+      if (server) markSynced();
+      // interventi salvati sul telefono ma non ancora arrivati al server
+      setPendingCount(s.docs.filter((d) => d.metadata && d.metadata.hasPendingWrites).length);
+      recentRef.current = s.docs.map((d) => ({ id: d.id, ...d.data() }));
+      rawLogsRef.current = { list: rawLogsRef.current.list, server: rawLogsRef.current.server || server, pending: 0, windowed: true };
+      gotRecent = true;
+      publish();
+      if (gotAll) setLoading(false);
+    });
+    const stopSync = startSync(
+      {
+        customers: (rows) => setCustomers(rows.slice().sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")))),
+        machines: (rows) => setMachines(rows),
+        maintenance_logs: (rows, meta) => {
+          olderRef.current = rows;
+          if (meta && meta.server) rawLogsRef.current = { ...rawLogsRef.current, server: true };
+          gotAll = true;
+          publish();
+          if (gotRecent || rows.length) setLoading(false);
+        },
+      },
+      {
+        onServer: markSynced,
+        onError: () => {
+          if (!SYNC.fail) SYNC.fail = Date.now();
+        },
       }
     );
-    if (!logsWindowed) return () => unsub();
-    const setOlder = (list) => {
-      olderRef.current = list;
-      publish();
-    };
-    loadOlder(start, setOlder);
-    // modifiche fatte da questo telefono a interventi vecchi: le rileggo dalla copia
-    const onChanged = () => reloadOlderFromCache(start, setOlder);
-    const onVisible = () => {
-      if (!document.hidden) loadOlder(start, setOlder);
-    };
-    window.addEventListener("mora-logs-changed", onChanged);
-    document.addEventListener("visibilitychange", onVisible);
     return () => {
-      unsub();
-      window.removeEventListener("mora-logs-changed", onChanged);
-      document.removeEventListener("visibilitychange", onVisible);
+      unsubRecent();
+      stopSync();
     };
-  }, [user, logsWindowed, syncEpoch]);
+  }, [user, syncEpoch]);
 
   // CHAT: messaggi (le foto sono a parte) e fin dove ha letto ognuno.
   // Solo se l'admin l'ha attivata (Impostazioni > Design > Chat tra tecnici).
@@ -733,24 +721,11 @@ export default function App() {
   // FOTO DEI RAPPORTI A PARTE (logPhotos.js):
   // - l'admin, quando entra, sposta piano piano le foto dei rapporti vecchi fuori dal rapporto
   // - in sottofondo tengo sul telefono le foto dei rapporti recenti (si vedono anche senza rete)
-  const photoJobs = useRef({ moving: false, prefetched: false, preparing: false, prepared: false });
+  const photoJobs = useRef({ moving: false, prefetched: false });
   useEffect(() => {
     const { list, server } = rawLogsRef.current;
     if (!user || !server || !list.length) return undefined;
     const jobs = photoJobs.current;
-    // sistema "anni" degli interventi: lo prepara l'admin (una volta sola, poi vale per tutti)
-    const meta = rawLogsRef.current;
-    if (isAdminAuthenticated && !meta.windowed && !meta.pending && !jobs.preparing && !jobs.prepared) {
-      jobs.preparing = true;
-      prepareWindow(list)
-        .then((r) => {
-          if (r === "on") jobs.prepared = true;
-        })
-        .catch(() => {})
-        .then(() => {
-          jobs.preparing = false;
-        });
-    }
     if (isAdminAuthenticated && !jobs.moving) {
       jobs.moving = true;
       movePhotosOut(list, 5)

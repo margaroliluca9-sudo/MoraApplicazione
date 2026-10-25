@@ -26,14 +26,8 @@ import {
   Check,
   Hand,
 } from "lucide-react";
-import {
-  collection,
-  addDoc,
-  doc,
-  updateDoc,
-  writeBatch,
-  Timestamp,
-} from "firebase/firestore";
+import { collection, doc, Timestamp } from "firebase/firestore";
+import { addDoc, updateDoc, writeBatch } from "../tracked";
 import { newLogId, putPhotos } from "../logPhotos";
 import { TicketTwins } from "../components/TicketTwins";
 import { db, appId } from "../firebase";

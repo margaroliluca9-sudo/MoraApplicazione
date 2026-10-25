@@ -5,7 +5,8 @@
 //  - elenco dei clienti: da quale cartella arrivano i dati; toccando un cliente si corregge tutto.
 // I clienti «Solo interventi» non hanno cartella nel Drive (non facciamo le verifiche) e non sono un problema.
 import React, { useEffect, useMemo, useState } from "react";
-import { collection, doc, updateDoc } from "firebase/firestore";
+import { collection, doc } from "firebase/firestore";
+import { updateDoc } from "../tracked";
 import { Folder, Search, ChevronRight, MapPin, Wrench, HelpCircle, Check, X, Loader2 } from "lucide-react";
 import { db, appId } from "../firebase";
 import { getDocs } from "../metered";

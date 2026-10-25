@@ -3,7 +3,7 @@
 //    le scelte "quali" stanno anche sull'iscrizione del telefono (push_subscriptions) così il server le rispetta
 //  - animazione all'avvio sì/no; cielo animato in cima alla Home sì/no
 //  - farmi vedere tra i «Tecnici online» sì/no
-import { setDoc } from "firebase/firestore";
+import { setDoc } from "./tracked";
 import { chatDoc, subId, myEndpoint, key as techKey } from "./chat";
 
 const KEY = "mora_personal_settings";

@@ -6,7 +6,8 @@
 //  .../public/data/push_subscriptions  telefoni iscritti alle notifiche
 // Conversazioni: "group" (tutti) oppure "dm:anna|marco" (nomi in minuscolo, in ordine).
 // Le notifiche le spedisce il "postino" /api/notify (cartella api/, gira su Vercel).
-import { collection, doc, addDoc, setDoc, deleteDoc, serverTimestamp } from "firebase/firestore";
+import { collection, doc, serverTimestamp } from "firebase/firestore";
+import { addDoc, setDoc, deleteDoc } from "./tracked";
 import { getDocs } from "./metered";
 import { db, appId } from "./firebase";
 

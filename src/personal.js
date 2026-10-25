@@ -5,7 +5,8 @@
 //  .../public/data/personal_contacts   contatti rapidi { owner, name, role, phone }
 // "owner" = nome del tecnico in minuscolo. L'app carica solo i documenti del tecnico collegato.
 // Le notifiche dei promemoria/impegni le manda /api/reminders (chiamato ogni 5 minuti).
-import { addDoc, deleteDoc, setDoc, serverTimestamp } from "firebase/firestore";
+import { serverTimestamp } from "firebase/firestore";
+import { addDoc, deleteDoc, setDoc } from "./tracked";
 import { chatRef, chatDoc, key } from "./chat";
 
 export const PERSONAL = {

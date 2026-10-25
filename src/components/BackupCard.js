@@ -1,5 +1,5 @@
 // AREA ADMIN → System: copia di sicurezza completa del database.
-// Si fa da sola ogni domenica notte; qui si vede com'è andata l'ultima e si può farne una subito
+// Si fa da sola ogni domenica mattina; qui si vede com'è andata l'ultima e si può farne una subito
 // (chiede la password admin). Le copie si scaricano da GitHub (Actions → Copia di sicurezza).
 import React, { useCallback, useEffect, useState } from "react";
 import { ShieldCheck, ShieldAlert, Loader2, ExternalLink, Play } from "lucide-react";
@@ -69,7 +69,7 @@ export const BackupCard = ({ color = "blue" }) => {
         </div>
         <div className="min-w-0 flex-1">
           <h5 className="font-black text-slate-800">Copia di sicurezza</h5>
-          <p className="text-sm text-slate-500 leading-snug">Tutto il database, cifrato con la password di GitHub. Si fa da sola ogni domenica notte.</p>
+          <p className="text-sm text-slate-500 leading-snug">Tutto il database, cifrato con la password di GitHub. Si fa da sola ogni domenica mattina.</p>
         </div>
       </div>
       {!info ? (

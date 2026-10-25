@@ -10,7 +10,8 @@ import {
   Wrench,
   Pencil,
 } from "lucide-react";
-import { doc, updateDoc, writeBatch } from "firebase/firestore";
+import { doc } from "firebase/firestore";
+import { updateDoc, writeBatch } from "../../tracked";
 import { diffLog, withEdit } from "../../logHistory";
 import { isPhotoRef, putPhotos, resolvePhotos } from "../../logPhotos";
 import { PhotoMarkup } from "./PhotoMarkup";

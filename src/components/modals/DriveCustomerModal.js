@@ -2,7 +2,8 @@
 // lette dall'ultimo foglio di verifica. Le gru si possono correggere, abbinare a mano a una gru dell'app o
 // nascondere: il programma del Drive non tocca mai le correzioni (scrive solo i suoi campi).
 import React, { useMemo, useState } from "react";
-import { doc, updateDoc } from "firebase/firestore";
+import { doc } from "firebase/firestore";
+import { updateDoc } from "../../tracked";
 import { X, Folder, MapPin, ExternalLink, Pencil, EyeOff, Eye, RotateCcw, Check, Loader2, Factory, Wrench } from "lucide-react";
 import { db, appId } from "../../firebase";
 import { describeError, getSafeMatricola } from "../../utils";

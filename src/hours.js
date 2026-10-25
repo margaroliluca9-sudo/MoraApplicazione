@@ -4,7 +4,7 @@
 //         "permesso" minutes = ore di permesso
 //         "ferie" | "malattia" | "festa"  giorno intero (minutes ignorato)
 // Un documento per giorno (id = owner_data). Le vede solo il tecnico.
-import { setDoc, deleteDoc } from "firebase/firestore";
+import { setDoc, deleteDoc } from "./tracked";
 import { chatDoc, key } from "./chat";
 import { MONTHS, parseIso, isoOf } from "./personal";
 import { easterOf } from "./season";

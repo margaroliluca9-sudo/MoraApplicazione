@@ -22,7 +22,8 @@ import {
   Download,
   MapPin,
 } from "lucide-react";
-import { collection, serverTimestamp, Timestamp, doc, setDoc, deleteDoc, updateDoc, query, orderBy, limit, writeBatch, where } from "firebase/firestore";
+import { collection, serverTimestamp, Timestamp, doc, query, orderBy, limit, where } from "firebase/firestore";
+import { setDoc, deleteDoc, updateDoc, writeBatch } from "../tracked";
 import { onSnapshot, getDocs } from "../metered";
 import { trashLog } from "../trash";
 import { TrashView } from "../components/TrashView";
@@ -107,6 +108,7 @@ export const AdminPanel = ({
     };
   }, []);
 
+  // doppioni da non riproporre: una volta sola quando apri Admin (prima si rileggevano a ogni cambio di scheda)
   useEffect(() => {
     const unsubIgnored = onSnapshot(
       collection(db, "artifacts", appId, "public", "data", "ignored_conflicts"),
@@ -114,6 +116,10 @@ export const AdminPanel = ({
         setIgnoredConflicts(snap.docs.map((d) => d.id));
       }
     );
+    return () => unsubIgnored();
+  }, []);
+
+  useEffect(() => {
     if (view === "diagnostics") {
       const unsubLogs = onSnapshot(
         query(
@@ -168,10 +174,9 @@ export const AdminPanel = ({
       return () => {
         unsubLogs();
         unsubActive();
-        unsubIgnored();
       };
     }
-    return () => unsubIgnored();
+    return undefined;
   }, [view]);
 
   const processedCustomers = useMemo(() => {

@@ -1,11 +1,12 @@
-# Ogni domenica notte salva una copia cifrata di tutto il database (rapporti, clienti, gru, ...).
+# Ogni domenica mattina (9:30 d'inverno, 10:30 d'estate: appena Firebase ha rimesso a zero le letture
+# del giorno, così non trova mai il limite già finito) salva una copia cifrata di tutto il database (rapporti, clienti, gru, ...).
 # La copia si trova in Actions → "Copia di sicurezza" → esecuzione → Artifacts, e resta 90 giorni.
 # Serve il segreto BACKUP_PASSWORD (Settings → Secrets and variables → Actions): senza, non salva nulla.
 # Per rimetterla: istruzioni in .github/scripts/restore.js
 name: Copia di sicurezza
 on:
   schedule:
-    - cron: "30 1 * * 0"
+    - cron: "30 8 * * 0"
   workflow_dispatch:
 permissions:
   contents: read
