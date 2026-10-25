@@ -9,6 +9,9 @@
  * Nell'app la gru si riconosce dal numero di fabbrica (campo Matricola/Campata) e la sua scheda mostra
  * «Dall'ultima verifica». Ogni giorno apre solo le cartelle con un foglio nuovo o cambiato.
  *
+ * Fogli letti: documenti Google e Word e anche fogli di calcolo (Google Fogli ed Excel) se il nome sembra una
+ * verifica (es. «Cliente T10/26 Excel»). Del foglio prende la tabella delle gru come dai documenti.
+ *
  * Sottocartelle: se dentro la cartella di un cliente ci sono altre cartelle (es. uno per stabilimento) con i loro
  * fogli di verifica, legge anche quelle (fino a due livelli) e le dà allo stesso cliente.
  *
@@ -323,13 +326,20 @@ function trovaCartella_(percorso) {
 }
 
 var DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+var XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+// il foglio di verifica più recente della cartella: documenti (Google Docs o Word) e anche fogli di calcolo
+// (Google Fogli o Excel), ma questi solo se il nome sembra una verifica (es. «T10/26», «A04.26», «verifica»):
+// così un «Foglio senza titolo» qualsiasi non prende il posto della verifica vera.
+var NOME_VERIFICA = /(^|[^A-Z0-9])[TA] ?\d{1,2} ?[.\/\\-] ?\d{2}([^0-9]|$)|VERIFIC/i;
 function ultimoFoglio_(cart) {
   var files = cart.getFiles();
   var best = null;
   while (files.hasNext()) {
     var f = files.next();
     var m = f.getMimeType();
-    if (m !== MimeType.GOOGLE_DOCS && m !== DOCX) continue;
+    var doc = m === MimeType.GOOGLE_DOCS || m === DOCX;
+    var calc = (m === MimeType.GOOGLE_SHEETS || m === XLSX) && NOME_VERIFICA.test(f.getName());
+    if (!doc && !calc) continue;
     if (!best || f.getLastUpdated() > best.getLastUpdated()) best = f;
   }
   return best;
@@ -349,7 +359,24 @@ function xmlTesto_(s) {
 
 // { testo: "…intestazione…", tabelle: [ [ ["TIPO","PORTATA",…], [...] ], … ] }
 function leggiFoglio_(file) {
-  if (file.getMimeType() === MimeType.GOOGLE_DOCS) {
+  var mime = file.getMimeType();
+  if (mime === MimeType.GOOGLE_SHEETS) {
+    var tab = SpreadsheetApp.openById(file.getId())
+      .getSheets()
+      .map(function (sh) {
+        return sh.getDataRange().getDisplayValues().map(function (r) {
+          return r.map(function (x) {
+            return String(x).replace(/\s+/g, " ").trim();
+          });
+        });
+      });
+    return { testo: testoDaTabelle_(tab), tabelle: tab };
+  }
+  if (mime === XLSX) {
+    var tx = tabelleXlsx_(file.getBlob());
+    return { testo: testoDaTabelle_(tx), tabelle: tx };
+  }
+  if (mime === MimeType.GOOGLE_DOCS) {
     var body = DocumentApp.openById(file.getId()).getBody();
     var tabelle = body.getTables().map(function (t) {
       var righe = [];
@@ -370,6 +397,69 @@ function leggiFoglio_(file) {
     return { testo: xmlTesto_(xml.replace(/<\/w:p>/g, "\n")).slice(0, 3000), tabelle: tabelleDocx(xml) };
   }
   return { testo: "", tabelle: [] };
+}
+
+// le prime righe dei fogli come testo (per cercare cliente e paese come nell'intestazione dei documenti)
+function testoDaTabelle_(tab) {
+  var righe = [];
+  (tab || []).forEach(function (t) {
+    t.slice(0, 12).forEach(function (r) {
+      var x = r.filter(String).join(" ");
+      if (x) righe.push(x);
+    });
+  });
+  return righe.join("\n").slice(0, 3000);
+}
+
+// file Excel (.xlsx): è uno zip con i testi in sharedStrings.xml e un file per foglio
+function tabelleXlsx_(blob) {
+  var parti = Utilities.unzip(blob.setContentType("application/zip"));
+  var file = {};
+  parti.forEach(function (p) {
+    file[p.getName()] = p;
+  });
+  var condivisi = [];
+  if (file["xl/sharedStrings.xml"]) {
+    (file["xl/sharedStrings.xml"].getDataAsString("UTF-8").match(/<si>[\s\S]*?<\/si>/g) || []).forEach(function (si) {
+      condivisi.push(xmlTesto_((si.match(/<t[^>]*>[\s\S]*?<\/t>/g) || []).join("")));
+    });
+  }
+  var nomi = Object.keys(file)
+    .filter(function (n) {
+      return /^xl\/worksheets\/sheet\d+\.xml$/.test(n);
+    })
+    .sort(function (a, b) {
+      return parseInt(a.replace(/\D/g, ""), 10) - parseInt(b.replace(/\D/g, ""), 10);
+    });
+  return nomi.map(function (n) {
+    return righeXlsx(file[n].getDataAsString("UTF-8"), condivisi);
+  });
+}
+function righeXlsx(xml, condivisi) {
+  var col = function (ref) {
+    var l = String(ref || "").replace(/[0-9]/g, "");
+    var k = 0;
+    for (var i = 0; i < l.length; i++) k = k * 26 + (l.charCodeAt(i) - 64);
+    return k - 1;
+  };
+  return (String(xml).match(/<row\b[^>]*>[\s\S]*?<\/row>/g) || []).map(function (row) {
+    var out = [];
+    var prossima = 0;
+    (row.match(/<c\b[^>]*?(?:\/>|>[\s\S]*?<\/c>)/g) || []).forEach(function (c) {
+      var ref = (c.match(/\br="([A-Z]+\d+)"/) || [])[1];
+      var i = ref ? col(ref) : prossima;
+      prossima = i + 1;
+      var tipo = (c.match(/\bt="(\w+)"/) || [])[1];
+      var v = (c.match(/<v>([\s\S]*?)<\/v>/) || [])[1];
+      var val = "";
+      if (tipo === "s") val = condivisi[Number(v)] || "";
+      else if (tipo === "inlineStr") val = xmlTesto_((c.match(/<t[^>]*>[\s\S]*?<\/t>/g) || []).join(""));
+      else if (v != null) val = xmlTesto_(v);
+      out[i] = String(val).replace(/\s+/g, " ").trim();
+    });
+    for (var j = 0; j < out.length; j++) if (out[j] == null) out[j] = "";
+    return out;
+  });
 }
 
 function tabelleDocx(xml) {
@@ -407,7 +497,7 @@ function estraiGru(tabelle) {
     var h = -1;
     for (var r = 0; r < righe.length && r < 4; r++) {
       var joined = righe[r].join(" | ").toUpperCase();
-      if (/PORTATA/.test(joined) && /(FABBRICA|TIPO|MATRICOLA|DESCRIZIONE)/.test(joined)) {
+      if (/PORTATA/.test(joined) && /(FABBRICA|TIPO|MATRICOLA|DESCRIZIONE|(^|\| )N\.? ?F\.?( |\||$)|(^|\| )N[.°] )/.test(joined)) {
         h = r;
         break;
       }
@@ -420,11 +510,17 @@ function estraiGru(tabelle) {
       for (var i = 0; i < head.length; i++) if (re.test(head[i]) && !(not && not.test(head[i]))) return i;
       return -1;
     };
-    var iFab = idx(/FABBRICA/);
+    // «N. FABBRICA», «N.F. MORA»…
+    var iFab = idx(/FABBRICA|^N\.? ?F\.?( |$)|^N° ?F\b/);
     var iMatr = idx(/ENPI|ISPESL|INAIL/);
     if (iFab < 0) iFab = idx(/^MATRICOLA$|^N\.? ?MATRICOLA$/); // es. «DEN. INTERNA | DESCRIZIONE | MATRICOLA | PORTATA»
     var iInt = idx(/INTERN|RIF/);
+    // numero del cliente (es. «N. NOMECLIENTE»): una colonna «N. …» che non è il numero di fabbrica né la matricola
+    if (iInt < 0) iInt = idx(/^(N\.|N°|NUM(ERO)?\.?) ?[A-Z]/, /FABBRICA|MATRICOLA|ENPI|ISPESL|INAIL|^N\.? ?F\.?( |$)/);
     var iTipo = idx(/TIPO|DESCRIZIONE/, /PARANCO/);
+    // fogli di calcolo con la prima colonna senza titolo («Colonna 1»): è il tipo di gru
+    if (iTipo < 0 && /^(COLONNA ?1|)$/.test(head[0] || "") && iFab !== 0 && iInt !== 0) iTipo = 0;
+    var iNote = idx(/^NOTE|STATO|ESITO|OSSERVAZ/);
     var iPort = idx(/PORTATA/);
     var iPar = idx(/PARANCO/);
     var iAnno = idx(/ANNO/);
@@ -438,11 +534,13 @@ function estraiGru(tabelle) {
       var interno = get(iInt);
       var tipo = get(iTipo);
       if (!fabKey(fab) && !interno) continue;
-      var stato = "";
-      c.forEach(function (x, j) {
-        if (j === iTipo || j === iPar) return;
-        if (STATO_RE.test(x) && x.length > stato.length) stato = x;
-      });
+      // com'è la fune o la catena: la colonna «Note» / «Stato» se c'è, altrimenti la cella più lunga che ne parla
+      var stato = get(iNote);
+      if (!stato)
+        c.forEach(function (x, j) {
+          if (j === iTipo || j === iPar) return;
+          if (STATO_RE.test(x) && x.length > stato.length) stato = x;
+        });
       out.push({
         fab: fab.slice(0, 80),
         fabKey: fabKey(fab),
@@ -643,4 +741,4 @@ function scriviTutto_(token, scritture) {
 }
 
 // per le prove fuori da Google (node)
-if (typeof module !== "undefined") module.exports = { estrai: estrai, normName: normName, abbinaUno: abbinaUno_, estraiGru: estraiGru, tabelleDocx: tabelleDocx, fabKey: fabKey, etichettaFoglio: etichettaFoglio_ };
+if (typeof module !== "undefined") module.exports = { righeXlsx: righeXlsx, NOME_VERIFICA: NOME_VERIFICA, estrai: estrai, normName: normName, abbinaUno: abbinaUno_, estraiGru: estraiGru, tabelleDocx: tabelleDocx, fabKey: fabKey, etichettaFoglio: etichettaFoglio_ };

@@ -45,15 +45,15 @@ export const sameMat = (a, b) => {
 };
 
 // linkTo = "-": «non è nessuna gru dell'app» (deciso in Admin → Drive)
+// il numero del cliente (es. «1 OFF», «52 R») si confronta anche scritto pari pari, senza spazi e punti
+const rawKey = (s) => String(s || "").toUpperCase().replace(/[.\s]/g, "");
+const sameInterno = (row, mat) => !!row.internoKey && (row.internoKey === fabKey(mat) || row.internoKey === rawKey(mat));
 const autoMatch = (row, mat) => {
   const k = fabKey(mat);
-  if (!k) return false;
-  return (!!row.fabKey && row.fabKey === k) || (!row.fabKey && !!row.internoKey && row.internoKey === k);
+  if (row.fabKey) return !!k && row.fabKey === k;
+  return sameInterno(row, mat);
 };
-const autoMatchInterno = (row, mat) => {
-  const k = fabKey(mat);
-  return !!k && !!row.fabKey && !!row.internoKey && row.internoKey === k;
-};
+const autoMatchInterno = (row, mat) => !!row.fabKey && sameInterno(row, mat);
 
 // la riga del Drive che corrisponde a questa gru (o null), già con le correzioni
 export const findDriveCrane = (rows, matricola, customerName) => {
