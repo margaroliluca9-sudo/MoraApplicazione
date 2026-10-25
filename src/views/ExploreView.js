@@ -6,11 +6,13 @@ import {
   ChevronRight,
   Users,
   Camera,
+  Printer,
 } from "lucide-react";
 import { getTechsString, formatCapacity, getSafeMatricola } from "../utils";
 import { PRO_INPUT, getProPanelClass } from "../ui";
 import { PrintLogButton } from "../components/PrintLogButton";
 import { placeOf } from "../places";
+import { printCustomer } from "../components/PrintCustomer";
 
 export const ExploreView = React.memo(
   ({ customers, machines, logs, color = "blue", onOpenPhotos }) => {
@@ -111,6 +113,16 @@ export const ExploreView = React.memo(
 
                 {isCustExpanded && (
                   <div className="bg-white border-t border-slate-100">
+                    <div className="px-4 pt-3 pb-1 flex justify-end">
+                      <button
+                        type="button"
+                        onClick={() => printCustomer({ customerName: c.name, customers, machines, logs })}
+                        data-action="print-customer"
+                        className="h-9 px-3 rounded-full border border-slate-200 bg-white text-slate-700 text-xs font-bold flex items-center gap-1.5"
+                      >
+                        <Printer className="w-4 h-4" /> Stampa scheda cliente
+                      </button>
+                    </div>
                     {myMachines.length === 0 && (
                       <div className="p-4 text-xs text-slate-400 italic text-center">
                         Nessuna gru registrata.

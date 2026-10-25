@@ -591,28 +591,55 @@ export const buildHoursPdf = async ({ me, from, to, days = [], std = 480, today 
 };
 
 // Elenco gru di un cliente (colonna Note vuota da compilare a penna)
-export const buildCustomerMachinesPdf = async ({ customerName, machines = [], today }) => {
-  const flow = await createFlow({ title: "ELENCO GRU", subtitle: `Stampato il ${today}`, docTitle: `Elenco gru ${customerName}` });
+// SCHEDA DEL CLIENTE (Esplora e scheda cliente → «Stampa»): paese e indirizzo, poi tutte le sue gru con
+// i dati del Drive (paranco, matricola INAIL, anno) quando ci sono, quanti interventi e l'ultimo.
+// machines: [{ ...gru, _drive: riga del Drive o null }], logs: interventi di questo cliente
+export const buildCustomerMachinesPdf = async ({ customerName, customer = null, machines = [], logs = [], today }) => {
+  const printed = today || new Date().toLocaleDateString("it-IT");
+  const flow = await createFlow({ title: "SCHEDA CLIENTE", subtitle: `Stampato il ${printed}`, docTitle: `Scheda cliente ${customerName}` });
   const sorted = [...machines].sort((a, b) => byName(getSafeMatricola(a), getSafeMatricola(b)));
-  flow.meta([`Cliente: ${customerName}`, `Gru: ${sorted.length}`]);
+  flow.meta([`Gru: ${sorted.length}`, `Interventi: ${logs.length}`]);
+  flow.details([
+    ["Cliente", customerName],
+    ["Paese", (customer && customer.city) || ""],
+    ["Indirizzo", (customer && customer.address) || ""],
+  ]);
+  // interventi per gru (stessa matricola, senza badare a maiuscole)
+  const key = (x) => String(x || "").trim().toUpperCase();
+  const per = {};
+  logs.forEach((l) => {
+    const k = key(l.machineId);
+    (per[k] = per[k] || []).push(l);
+  });
+  const lastOf = (list) => list.slice().sort((a, b) => dateKey(b.dateString) - dateKey(a.dateString))[0];
+  flow.heading("Gru");
   if (!sorted.length) flow.paragraph("Nessuna gru registrata per questo cliente.", { color: C.light });
   else
     flow.table({
       columns: [
-        { label: "#", w: 0.06 },
-        { label: "Matricola", w: 0.22 },
-        { label: "Tipo", w: 0.22 },
-        { label: "Portata", w: 0.14 },
-        { label: "Note", w: 0.36 },
+        { label: "Matricola", w: 0.17 },
+        { label: "Tipo e portata", w: 0.22 },
+        { label: "Paranco", w: 0.17 },
+        { label: "Matricola INAIL e anno", w: 0.22 },
+        { label: "Interventi", w: 0.22 },
       ],
       minRowH: 16,
-      rows: sorted.map((m, i) => [
-        { t: String(i + 1) },
-        [{ t: getSafeMatricola(m) || "-", b: true, c: C.ink }],
-        { t: m.type || "-" },
-        { t: m.capacity ? formatCapacity(m.capacity) : "-" },
-        "",
-      ]),
+      rows: sorted.map((m) => {
+        const dr = m._drive || {};
+        const mine = per[key(getSafeMatricola(m))] || [];
+        const last = mine.length ? lastOf(mine) : null;
+        const tipo = m.type || dr.tipo || "";
+        const portata = m.capacity && m.capacity !== "N.D." ? formatCapacity(m.capacity) : dr.portata ? `${dr.portata} kg` : "";
+        return [
+          [{ t: getSafeMatricola(m) || "-", b: true, c: C.ink }, dr.fab && key(dr.fab).replace(/\s/g, "") !== key(getSafeMatricola(m)).replace(/\s/g, "") ? { t: `N. fabbrica ${dr.fab}`, c: C.grey, s: 7.5, gap: 1 } : null].filter(Boolean),
+          [{ t: tipo || "-" }, portata ? { t: portata, c: C.grey, s: 8, gap: 1 } : null].filter(Boolean),
+          { t: dr.paranco || "-" },
+          [{ t: dr.matricola || "-" }, dr.anno ? { t: `anno ${dr.anno}`, c: C.grey, s: 8, gap: 1 } : null].filter(Boolean),
+          mine.length
+            ? [{ t: `${mine.length} ${mine.length === 1 ? "intervento" : "interventi"}`, b: true, c: C.ink }, { t: `ultimo ${last.dateString || "-"}`, c: C.grey, s: 8, gap: 1 }]
+            : { t: "nessuno", c: C.light },
+        ];
+      }),
     });
   return flow.finish("Documento generato dall'app Assistenza Mora.");
 };

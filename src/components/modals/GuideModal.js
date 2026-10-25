@@ -327,6 +327,7 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
       points: [
         "«Per cliente»: sfoglia i clienti, apri le loro gru e leggi gli interventi di ogni gru, con foto e stampa.",
         "«Elenco gru e interventi» (era il Database): tutti i clienti, le gru e gli interventi in elenco, con ricerca veloce.",
+        "Stampa scheda cliente: aprendo un cliente in Esplora (o la sua scheda) c'è «Stampa scheda cliente»: un PDF con nome, paese e indirizzo e tutte le sue gru, con tipo e portata, paranco, matricola INAIL e anno (presi dal Drive quando ci sono) e quanti interventi ha avuto ogni gru con la data dell'ultimo.",
       ],
     },
     {

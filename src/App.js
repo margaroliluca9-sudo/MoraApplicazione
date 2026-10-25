@@ -1389,6 +1389,7 @@ export default function App() {
           customerName={viewingCustomerDetail}
           customers={customers}
           machines={machines}
+          logs={logs}
           onClose={() => setViewingCustomerDetail(null)}
           onOpenMachine={openMachineDetail}
           themeColor={color}

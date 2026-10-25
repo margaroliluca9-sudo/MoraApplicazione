@@ -8,14 +8,14 @@ import {
 } from "lucide-react";
 import { formatCapacity, getSafeMatricola } from "../../utils";
 import { getProPanelClass } from "../../ui";
-import { buildCustomerMachinesPdf, pdfFileName } from "../../pdf";
-import { openPdf } from "../PdfHost";
+import { printCustomer } from "../PrintCustomer";
 import { placeOf, mapsUrl } from "../../places";
 
 export const CustomerDetailModal = ({
   customerName,
   customers = [],
   machines,
+  logs = [],
   onClose,
   onOpenMachine,
   themeColor,
@@ -61,23 +61,14 @@ export const CustomerDetailModal = ({
           </div>
           <div className="flex items-center gap-2 shrink-0">
             <button
-              onClick={() =>
-                openPdf(
-                  () =>
-                    buildCustomerMachinesPdf({
-                      customerName,
-                      machines: customerMachines,
-                      today: new Date().toLocaleDateString("it-IT"),
-                    }),
-                  pdfFileName("Elenco gru", customerName)
-                )
-              }
+              onClick={() => printCustomer({ customerName, customers, machines, logs })}
+              data-action="print-customer"
               className="flex items-center gap-2 bg-white px-3 py-2 rounded-lg border border-slate-300 shadow-sm text-slate-600 hover:bg-slate-100 active:scale-95 transition-all"
-              aria-label="Stampa elenco gru"
+              aria-label="Stampa scheda cliente"
             >
               <Printer className="w-4 h-4" />
-              <span className="font-bold text-[10px] uppercase tracking-wider hidden sm:inline">
-                Stampa elenco gru
+              <span className="font-bold text-[10px] uppercase tracking-wider">
+                Stampa
               </span>
             </button>
             <button
