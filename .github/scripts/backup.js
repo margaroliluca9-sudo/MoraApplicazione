@@ -36,7 +36,7 @@ const call = async (url, opts = {}, retry = true) => {
 // Non salvo active_users (chi è online adesso: si rifà da solo) e read_stats (solo conteggi): costano letture e non servono.
 const COLLECTIONS = [
   "maintenance_logs", "log_photos", "deleted_logs", "customers", "machines", "machine_types", "technicians", "settings",
-  "drive_cranes", "chat_messages", "chat_photos", "chat_reads", "push_subscriptions", "access_logs",
+  "drive_cranes", "field_checks", "field_entries", "chat_messages", "chat_photos", "chat_reads", "push_subscriptions", "access_logs",
   "ignored_conflicts", "home_prefs", "personal_settings", "personal_events", "personal_notes",
   "personal_reminders", "personal_contacts", "personal_hours", "hours_reminders",
   "vans", "van_items", "van_moves", "game_scores",

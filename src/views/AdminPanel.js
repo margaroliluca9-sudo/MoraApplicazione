@@ -638,7 +638,7 @@ export const AdminPanel = ({
         </div>
       )}
       {view === "company" && <CompanyAdmin color={layoutConfig.themeColor} />}
-      {view === "drive" && <DriveAdmin customers={customers} machines={machines} color={layoutConfig.themeColor} />}
+      {view === "drive" && <DriveAdmin customers={customers} machines={machines} technicians={technicians} layoutConfig={layoutConfig} color={layoutConfig.themeColor} />}
       {view === "trash" && <TrashView color={layoutConfig.themeColor} />}
       {view === "vans" && (
         <VanAdmin

@@ -65,11 +65,262 @@ function controlla() {
   });
   if (r.getResponseCode() !== 200) return;
   var f = JSON.parse(r.getContentText()).fields || {};
+  // «Compila verifica» (prova): fogli da preparare e note da scrivere nel Drive
+  var comp = valore_(f.compila);
+  var compFatto = valore_(f.compilaDone);
+  if (comp && !(compFatto && compFatto >= comp)) {
+    scriviTutto_(token, [aggiornaDoc_("settings/drive_places", { compilaDone: comp })]);
+    try {
+      compila_(token, valore_(f.prep) || {});
+    } catch (e) {
+      Logger.log("Compila: %s", e);
+    }
+  }
   var req = valore_(f.request);
   var fatto = valore_(f.requestDone);
   if (!req || (fatto && fatto >= req)) return;
   scriviTutto_(token, [aggiornaDoc_("settings/drive_places", { requestDone: req })]);
   aggiorna();
+}
+
+// =====================================================================================================
+// COMPILA VERIFICA DALL'APP (PROVA). Il tecnico in cantiere compila la verifica nell'app; io scrivo le sue
+// note nel foglio della verifica nel Drive (colonna «Note»; se non c'è la aggiungo), così l'ufficio la vede.
+// Tocco SOLO il foglio della verifica scelta e solo la colonna delle note, nelle righe compilate.
+//  - field_checks/<id file>: il foglio preparato per l'app (righe delle gru), lo scrivo io quando l'app lo chiede
+//  - field_entries/<id file>__<riga>: quello che ha scritto il tecnico; dopo averlo scritto nel Drive segno written
+// =====================================================================================================
+var CHIAVE_RIGA = function (g, i) {
+  return g.fabKey ? "F" + g.fabKey : g.internoKey ? "I" + g.internoKey : "R" + i;
+};
+function chiaveSicura_(k) {
+  return String(k).replace(/[^A-Za-z0-9_-]/g, "_");
+}
+
+function compila_(token, prep) {
+  var fatti = JSON.parse(PropertiesService.getScriptProperties().getProperty("prepFatti") || "{}");
+  var nuovi = {};
+  Object.keys(prep || {}).forEach(function (cid) {
+    var quando = String(prep[cid] || "");
+    if (!quando || (fatti[cid] && fatti[cid] >= quando)) return;
+    try {
+      preparaFoglio_(token, cid);
+    } catch (e) {
+      Logger.log("Prepara %s: %s", cid, e);
+      scriviTutto_(token, [aggiornaDoc_("field_prep/" + chiaveSicura_(cid), { errore: String((e && e.message) || e).slice(0, 300), at: new Date().toISOString() })]);
+    }
+    nuovi[cid] = quando;
+  });
+  if (Object.keys(nuovi).length) {
+    Object.keys(nuovi).forEach(function (k) {
+      fatti[k] = nuovi[k];
+    });
+    PropertiesService.getScriptProperties().setProperty("prepFatti", JSON.stringify(fatti));
+  }
+  scriviNote_(token);
+}
+
+// leggo un documento dal database (REST)
+function leggiDoc_(token, percorso) {
+  var r = UrlFetchApp.fetch("https://firestore.googleapis.com/v1/" + radice_() + "/" + CONFIG.dati + "/" + percorso, {
+    headers: { Authorization: "Bearer " + token },
+    muteHttpExceptions: true,
+  });
+  if (r.getResponseCode() !== 200) return null;
+  var f = JSON.parse(r.getContentText()).fields || {};
+  var o = {};
+  Object.keys(f).forEach(function (k) {
+    o[k] = valore_(f[k]);
+  });
+  return o;
+}
+
+// il foglio di verifica più recente del cliente (cartella scelta, altrimenti quelle abbinate) → field_checks
+function preparaFoglio_(token, cid) {
+  var cliente = leggiDoc_(token, "customers/" + cid) || {};
+  var cartelle = [];
+  if (cliente.driveFolderId) cartelle.push(cliente.driveFolderId);
+  var elenco = [];
+  try {
+    elenco = JSON.parse((leggiDoc_(token, "settings/drive_folders") || {}).list || "[]");
+  } catch (e) {
+    elenco = [];
+  }
+  elenco.forEach(function (v) {
+    if (v.c === cid && cartelle.indexOf(v.id) < 0) cartelle.push(v.id);
+  });
+  if (!cartelle.length) throw new Error("Nessuna cartella del Drive per questo cliente");
+  var file = null;
+  var nomeCartella = "";
+  cartelle.forEach(function (id) {
+    var f = ultimoFoglio_(DriveApp.getFolderById(id));
+    if (f && (!file || f.getLastUpdated() > file.getLastUpdated())) {
+      file = f;
+      var v = elenco.filter(function (x) {
+        return x.id === id;
+      })[0];
+      nomeCartella = v ? v.n : "";
+    }
+  });
+  if (!file) throw new Error("Nessun foglio di verifica nella cartella");
+  var mime = file.getMimeType();
+  var foglio = leggiFoglio_(file);
+  var righe = estraiGru(foglio.tabelle).map(function (g, i) {
+    return { k: CHIAVE_RIGA(g, i), fab: g.fab, interno: g.interno, tipo: g.tipo, portata: g.portata, zona: g.zona, prima: g.stato };
+  });
+  var scrivibile = mime === MimeType.GOOGLE_DOCS || mime === MimeType.GOOGLE_SHEETS;
+  scriviTutto_(token, [
+    aggiornaDoc_("field_checks/" + file.getId(), {
+      customerId: cid,
+      customerName: cliente.name || "",
+      fileId: file.getId(),
+      fileName: file.getName(),
+      fileUrl: file.getUrl(),
+      cartella: nomeCartella,
+      tipoFile: mime === MimeType.GOOGLE_SHEETS ? "foglio" : mime === MimeType.GOOGLE_DOCS ? "documento" : "word",
+      scrivibile: scrivibile,
+      righe: JSON.stringify(righe),
+      aggiornato: file.getLastUpdated().toISOString(),
+      preparedAt: new Date().toISOString(),
+      open: true,
+    }),
+    aggiornaDoc_("field_prep/" + chiaveSicura_(cid), { fileId: file.getId(), errore: "", at: new Date().toISOString() }),
+  ]);
+}
+
+// le note scritte nell'app e non ancora nel Drive
+function scriviNote_(token) {
+  var rows = JSON.parse(
+    UrlFetchApp.fetch("https://firestore.googleapis.com/v1/" + radice_() + "/" + CONFIG.dati + ":runQuery", {
+      method: "post",
+      contentType: "application/json",
+      headers: { Authorization: "Bearer " + token },
+      payload: JSON.stringify({
+        structuredQuery: {
+          from: [{ collectionId: "field_entries" }],
+          where: { fieldFilter: { field: { fieldPath: "written" }, op: "EQUAL", value: { booleanValue: false } } },
+          limit: 300,
+        },
+      }),
+    }).getContentText()
+  );
+  var perFile = {};
+  (rows || []).forEach(function (x) {
+    if (!x.document) return;
+    var f = x.document.fields || {};
+    var e = { id: x.document.name.split("/").pop() };
+    Object.keys(f).forEach(function (k) {
+      e[k] = valore_(f[k]);
+    });
+    (perFile[e.fileId] = perFile[e.fileId] || []).push(e);
+  });
+  var scritture = [];
+  Object.keys(perFile).forEach(function (fileId) {
+    var lista = perFile[fileId];
+    var esito = {};
+    try {
+      esito = scriviNelFile_(fileId, lista);
+    } catch (e) {
+      lista.forEach(function (x) {
+        esito[x.id] = "Errore: " + String((e && e.message) || e).slice(0, 200);
+      });
+    }
+    lista.forEach(function (x) {
+      var err = esito[x.id] || "";
+      scritture.push(aggiornaDoc_("field_entries/" + x.id, { written: !err, writtenAt: err ? "" : new Date().toISOString(), errore: err, writtenText: err ? "" : x.testo }));
+    });
+  });
+  scriviTutto_(token, scritture);
+}
+
+// scrive le note nel documento o nel foglio Google; restituisce { idNota: "errore" } per quelle non scritte
+function scriviNelFile_(fileId, lista) {
+  var file = DriveApp.getFileById(fileId);
+  var mime = file.getMimeType();
+  var errori = {};
+  var trova = function (gru, k) {
+    for (var i = 0; i < gru.length; i++) if (CHIAVE_RIGA(gru[i], i) === k) return gru[i];
+    return null;
+  };
+  if (mime === MimeType.GOOGLE_DOCS) {
+    var doc = DocumentApp.openById(fileId);
+    var tabs = doc.getBody().getTables();
+    var testoTab = tabs.map(function (tb) {
+      var righe = [];
+      for (var r = 0; r < tb.getNumRows(); r++) {
+        var row = tb.getRow(r);
+        var celle = [];
+        for (var c = 0; c < row.getNumCells(); c++) celle.push(row.getCell(c).getText().replace(/\s+/g, " ").trim());
+        righe.push(celle);
+      }
+      return righe;
+    });
+    var gru = estraiGru(testoTab);
+    var colNote = {}; // tabella → colonna delle note (aggiunta se manca)
+    lista.forEach(function (x) {
+      var g = trova(gru, x.k);
+      if (!g) {
+        errori[x.id] = "Riga non trovata nel documento (il foglio è cambiato?)";
+        return;
+      }
+      var tb = tabs[g._t];
+      if (!(g._t in colNote)) {
+        if (g._note >= 0) colNote[g._t] = g._note;
+        else {
+          // manca la colonna «Note»: la aggiungo in fondo a tutte le righe della tabella
+          var n = 0;
+          for (var r = 0; r < tb.getNumRows(); r++) n = Math.max(n, tb.getRow(r).getNumCells());
+          for (var r2 = 0; r2 < tb.getNumRows(); r2++) {
+            var row2 = tb.getRow(r2);
+            while (row2.getNumCells() < n) row2.appendTableCell("");
+            row2.appendTableCell(r2 === g._h ? "Note" : "");
+          }
+          colNote[g._t] = n;
+        }
+      }
+      var row = tb.getRow(g._r);
+      while (row.getNumCells() <= colNote[g._t]) row.appendTableCell("");
+      row.getCell(colNote[g._t]).setText(String(x.testo || ""));
+    });
+    doc.saveAndClose();
+    return errori;
+  }
+  if (mime === MimeType.GOOGLE_SHEETS) {
+    var ss = SpreadsheetApp.openById(fileId);
+    var fogli = ss.getSheets();
+    var tabS = fogli.map(function (sh) {
+      return sh.getDataRange().getDisplayValues().map(function (r) {
+        return r.map(function (v) {
+          return String(v).replace(/\s+/g, " ").trim();
+        });
+      });
+    });
+    var gruS = estraiGru(tabS);
+    var colS = {};
+    lista.forEach(function (x) {
+      var g = trova(gruS, x.k);
+      if (!g) {
+        errori[x.id] = "Riga non trovata nel foglio (il foglio è cambiato?)";
+        return;
+      }
+      var sh = fogli[g._t];
+      if (!(g._t in colS)) {
+        if (g._note >= 0) colS[g._t] = g._note;
+        else {
+          var c0 = sh.getLastColumn(); // prima colonna libera
+          sh.getRange(g._h + 1, c0 + 1).setValue("Note");
+          colS[g._t] = c0;
+        }
+      }
+      sh.getRange(g._r + 1, colS[g._t] + 1).setValue(String(x.testo || ""));
+    });
+    SpreadsheetApp.flush();
+    return errori;
+  }
+  lista.forEach(function (x) {
+    errori[x.id] = "File Word: va caricato come Documento Google per poterci scrivere";
+  });
+  return errori;
 }
 
 /** Dimentica cosa ha già letto: il prossimo giro rilegge tutte le cartelle. */
@@ -524,7 +775,7 @@ var STATO_RE = /(fune|funi|catena|catene|idone|sostitu|controllo|fuori servizio|
 
 function estraiGru(tabelle) {
   var out = [];
-  (tabelle || []).forEach(function (righe) {
+  (tabelle || []).forEach(function (righe, ti) {
     var h = -1;
     for (var r = 0; r < righe.length && r < 4; r++) {
       var joined = righe[r].join(" | ").toUpperCase();
@@ -555,6 +806,7 @@ function estraiGru(tabelle) {
     var iPort = idx(/PORTATA/);
     var iPar = idx(/PARANCO/);
     var iAnno = idx(/ANNO/);
+    var iZona = idx(/ZONA|REPARTO|UBICAZ|POSIZIONE/);
     for (var k = h + 1; k < righe.length; k++) {
       var c = righe[k];
       if (!c || c.length < 2 || !c.join("").trim()) continue;
@@ -583,6 +835,12 @@ function estraiGru(tabelle) {
         matricola: get(iMatr).slice(0, 60),
         anno: get(iAnno).slice(0, 40),
         stato: stato.slice(0, 500),
+        zona: get(iZona).slice(0, 80),
+        // dove si trova nel foglio (serve per scriverci dentro dall'app: «Compila verifica»)
+        _t: ti,
+        _r: k,
+        _h: h,
+        _note: iNote,
       });
     }
   });
@@ -715,8 +973,17 @@ function accedi_() {
 
 function valore_(v) {
   if (!v) return "";
+  if ("mapValue" in v) {
+    var o = {};
+    var mf = v.mapValue.fields || {};
+    Object.keys(mf).forEach(function (k) {
+      o[k] = valore_(mf[k]);
+    });
+    return o;
+  }
   if ("stringValue" in v) return v.stringValue;
   if ("integerValue" in v) return Number(v.integerValue);
+  if ("doubleValue" in v) return Number(v.doubleValue);
   if ("booleanValue" in v) return v.booleanValue;
   return "";
 }
@@ -739,7 +1006,15 @@ function leggiClienti_(token) {
 function campi_(o) {
   var f = {};
   Object.keys(o).forEach(function (k) {
-    f[k] = typeof o[k] === "number" ? { integerValue: String(o[k]) } : { stringValue: String(o[k] == null ? "" : o[k]) };
+    var v = o[k];
+    f[k] =
+      typeof v === "number"
+        ? Number.isInteger(v)
+          ? { integerValue: String(v) }
+          : { doubleValue: v }
+        : typeof v === "boolean"
+        ? { booleanValue: v }
+        : { stringValue: String(v == null ? "" : v) };
   });
   return f;
 }
@@ -772,4 +1047,4 @@ function scriviTutto_(token, scritture) {
 }
 
 // per le prove fuori da Google (node)
-if (typeof module !== "undefined") module.exports = { righeXlsx: righeXlsx, NOME_VERIFICA: NOME_VERIFICA, estrai: estrai, normName: normName, abbinaUno: abbinaUno_, estraiGru: estraiGru, tabelleDocx: tabelleDocx, fabKey: fabKey, etichettaFoglio: etichettaFoglio_ };
+if (typeof module !== "undefined") module.exports = { CHIAVE_RIGA: CHIAVE_RIGA, righeXlsx: righeXlsx, NOME_VERIFICA: NOME_VERIFICA, estrai: estrai, normName: normName, abbinaUno: abbinaUno_, estraiGru: estraiGru, tabelleDocx: tabelleDocx, fabKey: fabKey, etichettaFoglio: etichettaFoglio_ };

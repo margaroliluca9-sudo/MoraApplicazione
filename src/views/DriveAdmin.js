@@ -6,7 +6,7 @@
 // I clienti «Solo interventi» non hanno cartella nel Drive (non facciamo le verifiche) e non sono un problema.
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { collection, doc } from "firebase/firestore";
-import { updateDoc, writeBatch } from "../tracked";
+import { updateDoc, writeBatch, setDoc } from "../tracked";
 import { Folder, Search, ChevronRight, MapPin, Wrench, HelpCircle, Check, X, Loader2 } from "lucide-react";
 import { db, appId } from "../firebase";
 import { loadDaily } from "../dailyCache";
@@ -112,6 +112,53 @@ const BulkChecks = ({ checks, onRowsSaved, color }) => {
   );
 };
 
+// PROVA «Compila verifica»: chi la vede in La mia area (settings/layout.fieldCheckTechs)
+const FieldChecksAdmin = ({ technicians = [], layoutConfig = {}, color }) => {
+  const list = (Array.isArray(layoutConfig.fieldCheckTechs) ? layoutConfig.fieldCheckTechs : []).map((x) => String(x).trim().toLowerCase());
+  const [busy, setBusy] = useState("");
+  const toggle = async (name) => {
+    const k = String(name).trim().toLowerCase();
+    const next = list.includes(k) ? list.filter((x) => x !== k) : [...list, k];
+    setBusy(k);
+    try {
+      await setDoc(doc(db, "artifacts", appId, "public", "data", "settings", "layout"), { fieldCheckTechs: next }, { merge: true });
+    } catch (e) {
+      console.error(e);
+      alert("Salvataggio non riuscito: " + describeError(e));
+    } finally {
+      setBusy("");
+    }
+  };
+  return (
+    <details className="rounded-2xl border border-teal-200 bg-teal-50/60 p-3" data-section="field-checks-admin">
+      <summary className="cursor-pointer font-black text-sm text-teal-900">
+        Prova: compila verifica dall'app {list.length ? `(${list.length} ${list.length === 1 ? "tecnico" : "tecnici"})` : "(spenta)"}
+      </summary>
+      <p className="text-xs text-teal-900/80 mt-2 leading-snug">
+        Chi è spuntato vede in La mia area «Compila verifica»: sceglie il cliente, il programma del Drive prepara il suo ultimo foglio di verifica e quello che il tecnico scrive (fune/catena, esito, note) finisce nel foglio sul Drive, colonna «Note» (se manca la aggiunge). Solo Documenti e Fogli Google, non Word.
+      </p>
+      <div className="flex flex-wrap gap-2 mt-2">
+        {technicians.map((t) => {
+          const on = list.includes(String(t.name).trim().toLowerCase());
+          return (
+            <button
+              key={t.id}
+              type="button"
+              disabled={!!busy}
+              onClick={() => toggle(t.name)}
+              data-field-tech={t.name}
+              aria-pressed={on}
+              className={`h-9 px-3 rounded-full text-xs font-bold flex items-center gap-1 ${on ? `bg-${color}-600 text-white` : "bg-white border border-slate-200 text-slate-700"}`}
+            >
+              {on && <Check className="w-3.5 h-3.5" />} {t.name}
+            </button>
+          );
+        })}
+      </div>
+    </details>
+  );
+};
+
 const FolderCheck = ({ customer, folder, onOpen }) => {
   const [busy, setBusy] = useState("");
   const act = async (what, data) => {
@@ -155,7 +202,7 @@ const FolderCheck = ({ customer, folder, onOpen }) => {
   );
 };
 
-export const DriveAdmin = ({ customers = [], machines = [], color = "blue" }) => {
+export const DriveAdmin = ({ customers = [], machines = [], technicians = [], layoutConfig = {}, color = "blue" }) => {
   const [folders, setFolders] = useState([]);
   const [rows, setRows] = useState(null);
   const [q, setQ] = useState("");
@@ -269,6 +316,7 @@ export const DriveAdmin = ({ customers = [], machines = [], color = "blue" }) =>
         </p>
       </div>
       <DrivePlacesStatus onRun={onRun} />
+      <FieldChecksAdmin technicians={technicians} layoutConfig={layoutConfig} color={color} />
 
       <section className="space-y-2" data-section="drive-checks">
         <h5 className="font-black text-sm text-slate-800 flex items-center gap-2">
