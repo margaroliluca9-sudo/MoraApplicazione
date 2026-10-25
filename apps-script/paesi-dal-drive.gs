@@ -28,7 +28,7 @@
  *   1. Apri https://script.google.com con l'account che vede la cartella Clienti → il progetto (o «Nuovo progetto»).
  *   2. Cancella tutto e incolla questo file. Salva (icona del dischetto).
  *   3. In alto scegli la funzione «installa» e premi «Esegui» (Google chiede i permessi: «Consenti»).
- *   Fatto: aggiorna subito e poi ogni mattina alle 10. In Admin → Drive c'è anche «Aggiorna adesso»: parte entro 5 minuti. L'esito si vede nell'app in Admin → Drive.
+ *   Fatto: aggiorna subito e poi ogni mattina alle 10. In Admin → Drive c'è anche «Aggiorna adesso»: parte entro 2 ore. L'esito si vede nell'app in Admin → Drive.
  *   (Per rileggere tutto da capo: esegui «ricomincia».)
  */
 
@@ -47,12 +47,12 @@ function installa() {
     if (h === "aggiornaPaesi" || h === "aggiorna" || h === "controlla") ScriptApp.deleteTrigger(t);
   });
   ScriptApp.newTrigger("aggiorna").timeBased().everyDays(1).atHour(10).create();
-  ScriptApp.newTrigger("controlla").timeBased().everyMinutes(5).create();
+  ScriptApp.newTrigger("controlla").timeBased().everyHours(2).create();
   aggiorna();
 }
 
 /**
- * Ogni 5 minuti: qualcuno ha premuto «Aggiorna adesso» in Admin → Drive? Allora faccio il giro subito.
+ * Ogni 2 ore: qualcuno ha premuto «Aggiorna adesso» in Admin → Drive? Allora faccio il giro subito.
  * (L'app scrive l'ora della richiesta in settings/drive_places.request; io segno requestDone per non ripeterlo.)
  */
 function controlla() {
