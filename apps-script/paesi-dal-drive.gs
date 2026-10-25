@@ -386,16 +386,15 @@ function xmlTesto_(s) {
 function leggiFoglio_(file) {
   var mime = file.getMimeType();
   if (mime === MimeType.GOOGLE_SHEETS) {
-    var tab = SpreadsheetApp.openById(file.getId())
-      .getSheets()
-      .map(function (sh) {
-        return sh.getDataRange().getDisplayValues().map(function (r) {
-          return r.map(function (x) {
-            return String(x).replace(/\s+/g, " ").trim();
-          });
-        });
-      });
-    return { testo: testoDaTabelle_(tab), tabelle: tab };
+    // Google Foglio: lo scarico come Excel con il permesso del Drive che il programma ha già
+    // (così non serve dare a Google un permesso in più per i Fogli)
+    var r = UrlFetchApp.fetch("https://docs.google.com/spreadsheets/d/" + file.getId() + "/export?format=xlsx", {
+      headers: { Authorization: "Bearer " + ScriptApp.getOAuthToken() },
+      muteHttpExceptions: true,
+    });
+    if (r.getResponseCode() !== 200) throw new Error("Non riesco a scaricare il foglio (" + r.getResponseCode() + ")");
+    var tg = tabelleXlsx_(r.getBlob());
+    return { testo: testoDaTabelle_(tg), tabelle: tg };
   }
   if (mime === XLSX) {
     var tx = tabelleXlsx_(file.getBlob());
