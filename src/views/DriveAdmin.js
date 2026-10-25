@@ -9,7 +9,7 @@ import { collection, doc } from "firebase/firestore";
 import { updateDoc } from "../tracked";
 import { Folder, Search, ChevronRight, MapPin, Wrench, HelpCircle, Check, X, Loader2 } from "lucide-react";
 import { db, appId } from "../firebase";
-import { getDocs } from "../metered";
+import { loadDaily } from "../dailyCache";
 import { getProPanelClass } from "../ui";
 import { placeOf, normName } from "../places";
 import { describeError } from "../utils";
@@ -27,12 +27,11 @@ export const placeSourceLabel = (c) => {
   return "";
 };
 
-// tutte le gru lette dal Drive: una lettura sola finché l'app resta aperta
+// tutte le gru lette dal Drive: dalla copia sul telefono, dal server al massimo una volta al giorno
 let rowsCache = null;
 const loadAllRows = () => {
   if (!rowsCache) {
-    rowsCache = getDocs(collection(db, "artifacts", appId, "public", "data", "drive_cranes"))
-      .then((s) => s.docs.map((d) => ({ id: d.id, ...d.data() })))
+    rowsCache = loadDaily("drive_cranes", collection(db, "artifacts", appId, "public", "data", "drive_cranes"))
       .catch((e) => {
         console.error(e);
         rowsCache = null;

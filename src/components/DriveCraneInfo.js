@@ -4,7 +4,7 @@ import React, { useEffect, useState } from "react";
 import { collection, query, where } from "firebase/firestore";
 import { FileText } from "lucide-react";
 import { db, appId } from "../firebase";
-import { getDocs } from "../metered";
+import { loadDaily } from "../dailyCache";
 import { findDriveCrane, statoTone } from "../driveCranes";
 
 // una sola lettura per cliente finché l'app resta aperta
@@ -12,8 +12,7 @@ const cache = {};
 export const loadRows = (customerName) => {
   const k = String(customerName || "");
   if (!cache[k]) {
-    cache[k] = getDocs(query(collection(db, "artifacts", appId, "public", "data", "drive_cranes"), where("customerName", "==", k)))
-      .then((s) => s.docs.map((d) => ({ id: d.id, ...d.data() })))
+    cache[k] = loadDaily("drive_cranes:" + k, query(collection(db, "artifacts", appId, "public", "data", "drive_cranes"), where("customerName", "==", k)))
       .catch((e) => {
         console.error(e);
         delete cache[k];
