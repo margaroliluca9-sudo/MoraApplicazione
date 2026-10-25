@@ -5,7 +5,7 @@
 // 3. entro 5 minuti il programma lo scrive nel foglio sul Drive (colonna «Note»), dove lo vede l'ufficio.
 import React, { useEffect, useMemo, useState } from "react";
 import { onSnapshot } from "../../metered";
-import { FileText, Search, Check, Loader2, CloudOff, AlertTriangle, ExternalLink, ChevronRight, CloudUpload, RefreshCw } from "lucide-react";
+import { FileText, Search, Check, Loader2, CloudOff, AlertTriangle, ExternalLink, ChevronRight, UploadCloud, RefreshCw } from "lucide-react";
 import { PanelHeader, INPUT, Empty } from "./PersonalUi";
 import { openChecksQuery, entriesQuery, prepRef, requestPrep, saveEntry, rowsOf, ESITI, ELEMENTI, guessElement, composeText, closeCheck, periodLabel, altFilesOf } from "../../fieldChecks";
 import { describeError } from "../../utils";
@@ -50,7 +50,7 @@ const RowCard = ({ check, row, entry, me, color }) => {
         )}
         {state === "wait" && (
           <span className="text-[11px] font-bold text-amber-700 flex items-center gap-1 shrink-0" data-field-state="wait">
-            <CloudUpload className="w-3.5 h-3.5" /> in invio
+            <UploadCloud className="w-3.5 h-3.5" /> in invio
           </span>
         )}
         {state === "err" && (
