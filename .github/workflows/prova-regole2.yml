@@ -1,0 +1,23 @@
+name: Prova regole 2
+on:
+  push:
+    branches: [prova-regole2]
+permissions:
+  contents: read
+jobs:
+  prova:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: |
+          cat > p.js <<'JS'
+          const K="AIzaSyCQ3VhCtvxIP2cxtdSgMzYXaTg4E1zPlZE";
+          const B="https://firestore.googleapis.com/v1/projects/mora-app-36607/databases/(default)/documents/artifacts/mora-maintenance-v1/public/data/changes/__prova";
+          (async()=>{const t=(await (await fetch("https://identitytoolkit.googleapis.com/v1/accounts:signUp?key="+K,{method:"POST",headers:{"Content-Type":"application/json"},body:"{\"returnSecureToken\":true}"})).json()).idToken;
+          const h={"Content-Type":"application/json",Authorization:"Bearer "+t};
+          const w=await fetch(B,{method:"PATCH",headers:h,body:JSON.stringify({fields:{c:{stringValue:"prova"}}})});
+          const wt=await w.text();
+          const d=await fetch(B,{method:"DELETE",headers:h});
+          console.log("::notice::scrivi "+w.status+" "+wt.slice(0,120).replace(/\s+/g," ")+" cancella "+d.status);})();
+          JS
+          node p.js
