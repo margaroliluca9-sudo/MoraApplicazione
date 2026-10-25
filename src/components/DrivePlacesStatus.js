@@ -89,7 +89,7 @@ export const DrivePlacesStatus = ({ onRun }) => {
   useEffect(() => {
     load();
   }, [load]);
-  // in attesa del giro chiesto col tasto: ricontrollo ogni 10 minuti (una lettura) finché non ha finito
+  // in attesa del giro chiesto col tasto: ricontrollo ogni minuto (una lettura) finché non ha finito
   const pending = requestPending(info);
   useEffect(() => {
     if (!pending) return undefined;
@@ -97,7 +97,7 @@ export const DrivePlacesStatus = ({ onRun }) => {
       load().then((d) => {
         if (d && !requestPending(d) && onRun) onRun(d);
       });
-    }, 600000);
+    }, 60000);
     return () => clearInterval(t);
   }, [pending, load, onRun]);
 
@@ -166,9 +166,9 @@ export const DrivePlacesStatus = ({ onRun }) => {
         </button>
         {pending && (
           <p className="text-xs" data-drive-request>
-            {Date.now() - new Date(info.request).getTime() >  3 * 3600000
+            {Date.now() - new Date(info.request).getTime() > 15 * 60000
               ? "Il programma del Drive non ha ancora risposto: hai incollato l'ultima versione e premuto Esegui su «installa»? Senza, il tasto non funziona."
-              : `Richiesto ${driveWhen(info.request)}: il programma del Drive lo vede entro 2 ore (controlla ogni 2 ore) e qui si aggiorna da solo.`}
+              : `Richiesto ${driveWhen(info.request)}: il programma del Drive parte entro 5 minuti e qui si aggiorna da solo.`}
           </p>
         )}
         {err && <p className="text-xs font-bold text-red-700">{err}</p>}
