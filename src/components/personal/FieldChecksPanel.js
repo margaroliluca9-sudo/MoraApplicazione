@@ -1,12 +1,13 @@
 // LA MIA AREA → «Compila verifica» (PROVA): compilare in cantiere il foglio della trimestrale/annuale.
-// 1. scegli il cliente: il programma del Drive prepara il suo ultimo foglio di verifica (entro 5 minuti)
+// 1. scegli il cliente: il programma del Drive prepara il suo foglio di verifica (entro 5 minuti), scelto dal
+//    periodo nel nome («T10.26»), non dalla data di modifica; «Non è questo?» per sceglierne un altro
 // 2. per ogni gru: Fune/Catena, esito e note → «Salva»
 // 3. entro 5 minuti il programma lo scrive nel foglio sul Drive (colonna «Note»), dove lo vede l'ufficio.
 import React, { useEffect, useMemo, useState } from "react";
 import { onSnapshot } from "../../metered";
-import { FileText, Search, Check, Loader2, CloudOff, AlertTriangle, ExternalLink, ChevronRight, CloudUpload } from "lucide-react";
+import { FileText, Search, Check, Loader2, CloudOff, AlertTriangle, ExternalLink, ChevronRight, CloudUpload, RefreshCw } from "lucide-react";
 import { PanelHeader, INPUT, Empty } from "./PersonalUi";
-import { openChecksQuery, entriesQuery, prepRef, requestPrep, saveEntry, rowsOf, ESITI, ELEMENTI, guessElement, composeText, closeCheck } from "../../fieldChecks";
+import { openChecksQuery, entriesQuery, prepRef, requestPrep, saveEntry, rowsOf, ESITI, ELEMENTI, guessElement, composeText, closeCheck, periodLabel, altFilesOf } from "../../fieldChecks";
 import { describeError } from "../../utils";
 
 const when = (iso) => {
@@ -103,7 +104,46 @@ const RowCard = ({ check, row, entry, me, color }) => {
   );
 };
 
-const CheckView = ({ check, me, color, onBack, onClose }) => {
+// quale file ha scelto il programma e perché; «Non è questo?» → elenco degli altri fogli della cartella
+const WhichFile = ({ check, color, onRepick }) => {
+  const [show, setShow] = useState(false);
+  const per = periodLabel(check.fileName);
+  const others = altFilesOf(check).filter((a) => a.id !== check.fileId && a.id !== check.originale);
+  return (
+    <div className="rounded-2xl bg-white border-2 border-slate-300 p-3 space-y-2" data-field-which>
+      <p className="text-xs text-slate-500">Stai compilando</p>
+      <p className="font-black text-slate-800 break-words" data-field-file>
+        {check.fileName}
+      </p>
+      <p className="text-xs text-slate-600">
+        {check.scelto === "tecnico"
+          ? "L'hai scelto tu dall'elenco."
+          : per
+            ? `Scelto dal nome: è la ${per}, la più recente nella cartella.`
+            : "Nella cartella non c'è nessun foglio con il periodo nel nome (es. «T10.26»): ho preso l'ultimo caricato. Controlla che sia quello giusto."}
+      </p>
+      {others.length > 0 && (
+        <button type="button" onClick={() => setShow(!show)} data-action="field-other" className={`text-xs font-bold text-${color}-700 flex items-center gap-1`}>
+          <RefreshCw className="w-3.5 h-3.5" /> Non è questo? Scegli un altro foglio
+        </button>
+      )}
+      {show && (
+        <ul className="divide-y divide-slate-100 border border-slate-200 rounded-xl" data-field-others>
+          {others.map((a) => (
+            <li key={a.id}>
+              <button type="button" onClick={() => onRepick(check, a)} className="w-full text-left p-2.5" data-field-alt={a.n}>
+                <span className="block text-sm font-bold text-slate-800 break-words">{a.n}</span>
+                <span className="block text-xs text-slate-500">{[periodLabel(a.n), `caricato ${when(a.d)}`].filter(Boolean).join(" · ")}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+};
+
+const CheckView = ({ check, me, color, onBack, onClose, onRepick }) => {
   const [entries, setEntries] = useState({});
   const [q, setQ] = useState("");
   const [filter, setFilter] = useState("todo");
@@ -135,6 +175,7 @@ const CheckView = ({ check, me, color, onBack, onClose }) => {
     <div className="flex flex-col h-full" data-section="field-check">
       <PanelHeader title={check.customerName || "Verifica"} sub={`${check.fileName} · ${done}/${rows.length} gru`} onBack={onBack} onClose={onClose} color={color} />
       <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50">
+        <WhichFile check={check} color={color} onRepick={onRepick} />
         {!check.scrivibile && (
           <p className="rounded-2xl bg-amber-50 border border-amber-200 p-3 text-sm text-amber-900" data-field-word>
             <AlertTriangle className="inline w-4 h-4 -mt-0.5 mr-1" />
@@ -203,8 +244,20 @@ export const FieldChecksPanel = ({ me, customers = [], color = "blue", onBack, o
     if (!asked) return undefined;
     return onSnapshot(prepRef(asked.id), (s) => setPrep(s.exists() ? s.data() : null), () => {});
   }, [asked]);
+  // il tecnico sceglie un altro foglio: tolgo questo dall'elenco e chiedo di preparare quello
+  const repick = async (check, alt) => {
+    setOpen(null);
+    setAsked({ id: check.customerId, name: check.customerName, at: new Date().toISOString() });
+    setPrep(null);
+    try {
+      await closeCheck(check);
+      await requestPrep(check.customerId, alt.id);
+    } catch (e) {
+      setPrep({ errore: "Richiesta non riuscita: " + describeError(e), at: new Date().toISOString() });
+    }
+  };
   const current = open && checks ? checks.find((c) => c.id === open) : null;
-  if (current) return <CheckView check={current} me={me} color={color} onBack={() => setOpen(null)} onClose={onClose} />;
+  if (current) return <CheckView check={current} me={me} color={color} onBack={() => setOpen(null)} onClose={onClose} onRepick={repick} />;
 
   const t = q.trim().toUpperCase();
   const found = t.length >= 2 ? customers.filter((c) => String(c.name || "").toUpperCase().includes(t)).slice(0, 8) : [];

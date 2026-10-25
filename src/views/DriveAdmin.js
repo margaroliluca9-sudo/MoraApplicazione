@@ -135,7 +135,7 @@ const FieldChecksAdmin = ({ technicians = [], layoutConfig = {}, color }) => {
         Prova: compila verifica dall'app {list.length ? `(${list.length} ${list.length === 1 ? "tecnico" : "tecnici"})` : "(spenta)"}
       </summary>
       <p className="text-xs text-teal-900/80 mt-2 leading-snug">
-        Chi è spuntato vede in La mia area «Compila verifica»: sceglie il cliente, il programma del Drive prepara il suo ultimo foglio di verifica e quello che il tecnico scrive (fune/catena, esito, note) finisce nel foglio sul Drive, colonna «Note» (se manca la aggiunge). Se il foglio è un Word o un Excel il programma ne fa da solo una copia Google nella stessa cartella («nome (Google)») e scrive lì: l'originale non lo tocca.
+        Chi è spuntato vede in La mia area «Compila verifica»: sceglie il cliente, il programma del Drive prepara il suo foglio di verifica (scelto dal periodo nel nome, es. «T10.26», non dalla data di modifica; il tecnico può sceglierne un altro) e quello che il tecnico scrive (fune/catena, esito, note) finisce nel foglio sul Drive, colonna «Note» (se manca la aggiunge). Se il foglio è un Word o un Excel il programma ne fa da solo una copia Google nella stessa cartella («nome (Google)») e scrive lì: l'originale non lo tocca.
       </p>
       <div className="flex flex-wrap gap-2 mt-2">
         {technicians.map((t) => {

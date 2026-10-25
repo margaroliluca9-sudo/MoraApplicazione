@@ -104,7 +104,8 @@ function compila_(token, prep) {
     var quando = String(prep[cid] || "");
     if (!quando || (fatti[cid] && fatti[cid] >= quando)) return;
     try {
-      preparaFoglio_(token, cid);
+      // «quando|idFile»: il tecnico ha scelto lui il file dall'elenco
+      preparaFoglio_(token, cid, quando.split("|")[1] || "");
     } catch (e) {
       Logger.log("Prepara %s: %s", cid, e);
       scriviTutto_(token, [aggiornaDoc_("field_prep/" + chiaveSicura_(cid), { errore: String((e && e.message) || e).slice(0, 300), at: new Date().toISOString() })]);
@@ -136,7 +137,7 @@ function leggiDoc_(token, percorso) {
 }
 
 // il foglio di verifica più recente del cliente (cartella scelta, altrimenti quelle abbinate) → field_checks
-function preparaFoglio_(token, cid) {
+function preparaFoglio_(token, cid, voluto) {
   var cliente = leggiDoc_(token, "customers/" + cid) || {};
   var cartelle = [];
   if (cliente.driveFolderId) cartelle.push(cliente.driveFolderId);
@@ -150,17 +151,40 @@ function preparaFoglio_(token, cid) {
     if (v.c === cid && cartelle.indexOf(v.id) < 0) cartelle.push(v.id);
   });
   if (!cartelle.length) throw new Error("Nessuna cartella del Drive per questo cliente");
-  var file = null;
-  var nomeCartella = "";
+  // scelgo dal NOME (periodo della verifica, es. «T10.26» = ottobre 2026), MAI dalla data di modifica:
+  // aprire o correggere la verifica vecchia per guardarla non deve farla diventare quella da compilare
+  var cand = [];
+  var nomi = {};
   cartelle.forEach(function (id) {
-    var f = ultimoFoglio_(DriveApp.getFolderById(id));
-    if (f && (!file || f.getLastUpdated() > file.getLastUpdated())) {
-      file = f;
-      var v = elenco.filter(function (x) {
-        return x.id === id;
-      })[0];
-      nomeCartella = v ? v.n : "";
+    var v = elenco.filter(function (x) {
+      return x.id === id;
+    })[0];
+    candidatiVerifica_(DriveApp.getFolderById(id)).forEach(function (c) {
+      nomi[c.f.getId()] = v ? v.n : "";
+      cand.push(c);
+    });
+  });
+  // il Word/Excel già trasformato in copia «(Google)»: in elenco tengo solo la copia
+  var copie = {};
+  cand.forEach(function (c) {
+    if (c.google) copie[c.f.getName().replace(/ \(Google\)$/, "")] = true;
+  });
+  cand = cand.filter(function (c) {
+    return c.google || !copie[c.f.getName().replace(/\.(docx|xlsx)$/i, "")];
+  });
+  cand.sort(ordineVerifiche_);
+  var file = null;
+  if (voluto) {
+    try {
+      file = DriveApp.getFileById(voluto);
+    } catch (e) {
+      throw new Error("Il file scelto non c'è più nel Drive");
     }
+  } else if (cand.length) file = cand[0].f;
+  var nomeCartella = file ? nomi[file.getId()] || "" : "";
+  var originale = file ? file.getId() : "";
+  var altri = cand.slice(0, 8).map(function (c) {
+    return { id: c.f.getId(), n: c.f.getName(), p: c.periodo, d: c.f.getDateCreated().toISOString() };
   });
   if (!file) throw new Error("Nessun foglio di verifica nella cartella");
   // file Word o Excel: ne faccio una copia come Documento/Foglio Google nella stessa cartella
@@ -180,6 +204,9 @@ function preparaFoglio_(token, cid) {
       fileId: file.getId(),
       fileName: file.getName(),
       fileUrl: file.getUrl(),
+      originale: originale,
+      scelto: voluto ? "tecnico" : "nome",
+      altri: JSON.stringify(altri),
       cartella: nomeCartella,
       tipoFile: mime === MimeType.GOOGLE_SHEETS ? "foglio" : mime === MimeType.GOOGLE_DOCS ? "documento" : "word",
       scrivibile: scrivibile,
@@ -188,8 +215,40 @@ function preparaFoglio_(token, cid) {
       preparedAt: new Date().toISOString(),
       open: true,
     }),
-    aggiornaDoc_("field_prep/" + chiaveSicura_(cid), { fileId: file.getId(), errore: "", at: new Date().toISOString() }),
+    aggiornaDoc_("field_prep/" + chiaveSicura_(cid), { fileId: file.getId(), errore: "", altri: JSON.stringify(altri), at: new Date().toISOString() }),
   ]);
+}
+
+// periodo scritto nel nome: «T10.26», «A 04/26», «T3-27» → 202610, 202604, 202703 (0 se non c'è)
+function periodoVerifica_(nome) {
+  var m = String(nome || "").match(/(?:^|[^A-Z0-9])[TA] ?(\d{1,2}) ?[.\/\\-] ?(\d{2})(?:[^0-9]|$)/i);
+  if (!m) return 0;
+  var mese = Number(m[1]);
+  if (mese < 1 || mese > 12) return 0;
+  return (2000 + Number(m[2])) * 100 + mese;
+}
+
+// tutti i fogli che possono essere una verifica, in una cartella
+function candidatiVerifica_(cart) {
+  var out = [];
+  var files = cart.getFiles();
+  while (files.hasNext()) {
+    var f = files.next();
+    var m = f.getMimeType();
+    var doc = m === MimeType.GOOGLE_DOCS || m === DOCX;
+    var calc = (m === MimeType.GOOGLE_SHEETS || m === XLSX) && NOME_VERIFICA.test(f.getName());
+    if ((!doc && !calc) || SALTA.test(f.getName())) continue;
+    out.push({ f: f, periodo: periodoVerifica_(f.getName()), google: /\(Google\)$/.test(f.getName()) });
+  }
+  return out;
+}
+
+// prima il periodo più recente scritto nel nome; a parità la copia «(Google)», poi il caricato per ultimo
+// (data di caricamento, non di modifica). Senza periodo nel nome vanno in fondo.
+function ordineVerifiche_(a, b) {
+  if (a.periodo !== b.periodo) return b.periodo - a.periodo;
+  if (a.google !== b.google) return a.google ? -1 : 1;
+  return b.f.getDateCreated() - a.f.getDateCreated();
 }
 
 // copia di un Word (o Excel) come Documento (o Foglio) Google, conversione automatica del Drive, nella stessa cartella

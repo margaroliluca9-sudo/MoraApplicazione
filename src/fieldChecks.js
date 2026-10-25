@@ -43,7 +43,25 @@ export const composeText = ({ elemento, esito, note }) => {
 // avviso al programma del Drive: c'è qualcosa da fare (lo guarda ogni 5 minuti)
 const bump = (extra = {}) => setDoc(placesRef(), { compila: new Date().toISOString(), ...extra }, { merge: true });
 
-export const requestPrep = (customerId) => bump({ prep: { [customerId]: new Date().toISOString() } });
+// fileId: il tecnico ha scelto lui il file dall'elenco (altrimenti il programma sceglie dal nome)
+export const requestPrep = (customerId, fileId = "") => bump({ prep: { [customerId]: new Date().toISOString() + (fileId ? `|${fileId}` : "") } });
+
+// «T10.26» → «trimestrale di ottobre 2026», «A04.26» → «annuale di aprile 2026»
+const MESI = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto", "settembre", "ottobre", "novembre", "dicembre"];
+export const periodLabel = (name) => {
+  const m = String(name || "").match(/(?:^|[^A-Z0-9])([TA]) ?(\d{1,2}) ?[./\\-] ?(\d{2})(?:[^0-9]|$)/i);
+  if (!m || Number(m[2]) < 1 || Number(m[2]) > 12) return "";
+  return `${m[1].toUpperCase() === "A" ? "annuale" : "trimestrale"} di ${MESI[Number(m[2]) - 1]} 20${m[3]}`;
+};
+
+export const altFilesOf = (check) => {
+  try {
+    const r = JSON.parse((check && check.altri) || "[]");
+    return Array.isArray(r) ? r : [];
+  } catch (e) {
+    return [];
+  }
+};
 
 export const saveEntry = async ({ check, row, elemento, esito, note, me }) => {
   const testo = composeText({ elemento, esito, note });
