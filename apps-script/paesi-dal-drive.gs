@@ -9,6 +9,8 @@
  * Nell'app la gru si riconosce dal numero di fabbrica (campo Matricola/Campata) e la sua scheda mostra
  * «Dall'ultima verifica». Ogni giorno apre solo le cartelle con un foglio nuovo o cambiato.
  *
+ * Non apre le cartelle e i fogli dei sottoganci (nome con «sottoganci», «imbracature» o «brache»): lì non ci sono gru.
+ *
  * Fogli letti: documenti Google e Word e anche fogli di calcolo (Google Fogli ed Excel) se il nome sembra una
  * verifica (es. «Cliente T10/26 Excel»). Del foglio prende la tabella delle gru come dai documenti.
  *
@@ -181,6 +183,9 @@ function giro_() {
     }
     return clienteDiCima[id];
   };
+  unita = unita.filter(function (u) {
+    return !SALTA.test(u.nome);
+  });
   unita.forEach(function (u) {
     var cart = u.f;
     var voce = { id: cart.getId(), n: u.nome, c: "" };
@@ -355,6 +360,8 @@ var XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
 // il foglio di verifica più recente della cartella: documenti (Google Docs o Word) e anche fogli di calcolo
 // (Google Fogli o Excel), ma questi solo se il nome sembra una verifica (es. «T10/26», «A04.26», «verifica»):
 // così un «Foglio senza titolo» qualsiasi non prende il posto della verifica vera.
+// cartelle e fogli da non aprire: lì non ci sono gru (es. i sottoganci: ganci, brache, catene di imbracatura)
+var SALTA = /SOTTOGAN|IMBRACAT|BRACHE/i;
 var NOME_VERIFICA = /(^|[^A-Z0-9])[TA] ?\d{1,2} ?[.\/\\-] ?\d{2}([^0-9]|$)|VERIFIC/i;
 function ultimoFoglio_(cart) {
   var files = cart.getFiles();
@@ -364,7 +371,7 @@ function ultimoFoglio_(cart) {
     var m = f.getMimeType();
     var doc = m === MimeType.GOOGLE_DOCS || m === DOCX;
     var calc = (m === MimeType.GOOGLE_SHEETS || m === XLSX) && NOME_VERIFICA.test(f.getName());
-    if (!doc && !calc) continue;
+    if ((!doc && !calc) || SALTA.test(f.getName())) continue;
     if (!best || f.getLastUpdated() > best.getLastUpdated()) best = f;
   }
   return best;
