@@ -138,7 +138,12 @@ const CheckView = ({ check, me, color, onBack, onClose }) => {
         {!check.scrivibile && (
           <p className="rounded-2xl bg-amber-50 border border-amber-200 p-3 text-sm text-amber-900" data-field-word>
             <AlertTriangle className="inline w-4 h-4 -mt-0.5 mr-1" />
-            Questo foglio è un file Word: puoi compilarlo qui, ma il programma non può scriverci dentro. Chiedi all'ufficio di caricarlo come Documento Google e preparalo di nuovo.
+            Questo foglio è un Word o un Excel preparato con la versione vecchia del programma del Drive: così non ci può scrivere. Torna indietro e premi di nuovo «Prepara il foglio»: il programma ne fa da solo una copia Google e la compili quella.
+          </p>
+        )}
+        {check.scrivibile && /\(Google\)$/.test(check.fileName || "") && (
+          <p className="rounded-2xl bg-blue-50 border border-blue-200 p-3 text-xs text-blue-900" data-field-converted>
+            Il foglio originale era un Word o un Excel: il programma ne ha fatto una copia Google nella stessa cartella («{check.fileName}») e scrive lì. L'originale resta com'era.
           </p>
         )}
         <p className="text-xs text-slate-500">
@@ -269,7 +274,7 @@ export const FieldChecksPanel = ({ me, customers = [], color = "blue", onBack, o
                       {!c.scrivibile && (
                         <span className="block text-xs font-bold text-amber-700">
                           <CloudOff className="inline w-3.5 h-3.5 -mt-0.5 mr-1" />
-                          file Word: il programma non può scriverci
+                          da preparare di nuovo (Word/Excel)
                         </span>
                       )}
                     </span>

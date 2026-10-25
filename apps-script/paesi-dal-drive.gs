@@ -163,6 +163,10 @@ function preparaFoglio_(token, cid) {
     }
   });
   if (!file) throw new Error("Nessun foglio di verifica nella cartella");
+  // file Word o Excel: ne faccio una copia come Documento/Foglio Google nella stessa cartella
+  // (l'originale resta com'è) e l'app compila quella: nei Word e negli Excel il programma non può scrivere
+  if (file.getMimeType() === DOCX) file = comeDocumentoGoogle_(file, MimeType.GOOGLE_DOCS);
+  else if (file.getMimeType() === XLSX) file = comeDocumentoGoogle_(file, MimeType.GOOGLE_SHEETS);
   var mime = file.getMimeType();
   var foglio = leggiFoglio_(file);
   var righe = estraiGru(foglio.tabelle).map(function (g, i) {
@@ -186,6 +190,31 @@ function preparaFoglio_(token, cid) {
     }),
     aggiornaDoc_("field_prep/" + chiaveSicura_(cid), { fileId: file.getId(), errore: "", at: new Date().toISOString() }),
   ]);
+}
+
+// copia di un Word (o Excel) come Documento (o Foglio) Google, conversione automatica del Drive, nella stessa cartella
+function comeDocumentoGoogle_(file, tipo) {
+  tipo = tipo || MimeType.GOOGLE_DOCS;
+  var nome = file.getName().replace(/\.(docx|xlsx)$/i, "") + " (Google)";
+  var cartelle = file.getParents();
+  var cartella = cartelle.hasNext() ? cartelle.next() : null;
+  // già convertito dopo l'ultima modifica del Word? uso quello
+  if (cartella) {
+    var it = cartella.getFilesByName(nome);
+    while (it.hasNext()) {
+      var g = it.next();
+      if (g.getMimeType() === tipo && g.getDateCreated() >= file.getLastUpdated()) return g;
+    }
+  }
+  var r = UrlFetchApp.fetch("https://www.googleapis.com/drive/v3/files/" + file.getId() + "/copy?supportsAllDrives=true", {
+    method: "post",
+    contentType: "application/json",
+    headers: { Authorization: "Bearer " + ScriptApp.getOAuthToken() },
+    payload: JSON.stringify({ name: nome, mimeType: tipo, parents: cartella ? [cartella.getId()] : undefined }),
+    muteHttpExceptions: true,
+  });
+  if (r.getResponseCode() !== 200) throw new Error("Non riesco a trasformare il file in formato Google (" + r.getResponseCode() + ")");
+  return DriveApp.getFileById(JSON.parse(r.getContentText()).id);
 }
 
 // le note scritte nell'app e non ancora nel Drive
