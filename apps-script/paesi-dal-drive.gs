@@ -9,6 +9,9 @@
  * Nell'app la gru si riconosce dal numero di fabbrica (campo Matricola/Campata) e la sua scheda mostra
  * «Dall'ultima verifica». Ogni giorno apre solo le cartelle con un foglio nuovo o cambiato.
  *
+ * Sottocartelle: se dentro la cartella di un cliente ci sono altre cartelle (es. uno per stabilimento) con i loro
+ * fogli di verifica, legge anche quelle (fino a due livelli) e le dà allo stesso cliente.
+ *
  * Cliente ↔ cartella: di solito li abbina dal nome. Se il nome è diverso, nell'app in Admin → Drive → il cliente
  * → «Cartella nel Drive» scegli tu la cartella giusta: dal giorno dopo vale quella. Sempre in Admin → Drive si vede
  * da quale cartella e foglio arriva ogni dato e si possono correggere paese e gru (le correzioni non le tocco mai).
@@ -113,10 +116,51 @@ function giro_() {
   cartelle.sort(function (a, b) {
     return a.getName().localeCompare(b.getName());
   });
-  cartelle.forEach(function (cart) {
-    var voce = { id: cart.getId(), n: cart.getName().trim(), c: "" };
+  // ogni cartella cliente e anche le sue sottocartelle (es. un cliente con più stabilimenti, ognuno con i suoi
+  // fogli di verifica): le sottocartelle sono del cliente della cartella sopra, se nell'app non scegli diversamente
+  var unita = [];
+  var sotto = function (f) {
+    var out = [];
+    var it2 = f.getFolders();
+    while (it2.hasNext()) out.push(it2.next());
+    return out.sort(function (a, b) {
+      return a.getName().localeCompare(b.getName());
+    });
+  };
+  cartelle.forEach(function (t) {
+    unita.push({ f: t, nome: t.getName().trim(), top: null });
+    try {
+      sotto(t).forEach(function (s1) {
+        unita.push({ f: s1, nome: t.getName().trim() + " › " + s1.getName().trim(), top: t, su: t });
+        sotto(s1).forEach(function (s2) {
+          unita.push({ f: s2, nome: t.getName().trim() + " › " + s1.getName().trim() + " › " + s2.getName().trim(), top: t, su: s1 });
+        });
+      });
+    } catch (e) {
+      Logger.log("Sottocartelle di %s: %s", t.getName(), e);
+    }
+  });
+  var clienteDiCima = {}; // cartella in cima → cliente
+  var cimaDi = function (t) {
+    var id = t.getId();
+    if (!(id in clienteDiCima)) {
+      var c = scelte[id] || null;
+      if (!c) {
+        var pr = visto(id);
+        if (pr && pr.c && perId[pr.c] && !perId[pr.c].driveFolderId && !perId[pr.c].driveNone) c = perId[pr.c];
+      }
+      clienteDiCima[id] = c || abbinaUno_([t.getName()], custs);
+    }
+    return clienteDiCima[id];
+  };
+  unita.forEach(function (u) {
+    var cart = u.f;
+    var voce = { id: cart.getId(), n: u.nome, c: "" };
+    if (u.top) voce.p = u.top.getId();
     elenco.push(voce);
-    var scelto = scelte[voce.id];
+    var cima = u.top ? cimaDi(u.top) : null;
+    // scelta fatta nell'app: per questa cartella, oppure per quella appena sopra, oppure per quella in cima
+    var scelto = scelte[voce.id] || (u.su ? scelte[u.su.getId()] : null) || (u.top ? scelte[voce.p] : null);
     var prima = visto(voce.id) || {};
     if (scelto) voce.c = scelto.id;
     else if (prima.c && perId[prima.c] && !perId[prima.c].driveFolderId) voce.c = prima.c;
@@ -128,15 +172,23 @@ function giro_() {
     conti.cartelle++;
     try {
       var file = ultimoFoglio_(cart);
-      if (!file) return;
+      if (!file) {
+        // cartella senza fogli (es. ha solo le sottocartelle degli stabilimenti): mostro lo stesso di chi è
+        if (!u.top && !voce.c) {
+          var cm = cimaDi(cart);
+          if (cm) voce.c = cm.id;
+        }
+        return;
+      }
       // la chiave cambia se cambia il foglio o se nell'app scegli un altro cliente per questa cartella
-      var chiave = file.getId() + "|" + file.getLastUpdated().getTime() + "|" + (scelto ? scelto.id : "");
+      var chiave = file.getId() + "|" + file.getLastUpdated().getTime() + "|" + (scelto ? scelto.id : "") + (cima ? "|" + cima.id : "");
       // già letto e abbinato: salto. Non abbinato: riprovo solo se nell'app sono cambiati i clienti
       if (prima.k === chiave && ((prima.c && voce.c) || (!prima.c && prima.n === clienti.length))) return;
       conti.lette++;
       var foglio = leggiFoglio_(file);
       var info = estrai(foglio.testo);
-      var cliente = scelto || abbinaUno_([cart.getName(), info.cliente].filter(String), custs);
+      var cliente = scelto || cima || abbinaUno_([cart.getName(), info.cliente].filter(String), custs);
+      if (!u.top && cliente) clienteDiCima[voce.id] = cliente;
       var dove = { placeFolder: voce.n, placeSheet: file.getName(), placeSheetUrl: file.getUrl() };
       var ora = { k: chiave, c: cliente ? cliente.id : "", n: clienti.length, g: [] };
       voce.c = ora.c;
@@ -146,7 +198,8 @@ function giro_() {
         if (info.city || info.address) {
           var libero = !String(cliente.city || "").trim() && !String(cliente.address || "").trim();
           var cambia = cliente.city !== info.city || (cliente.address || "") !== info.address;
-          if (libero || cliente.placeSource === "drive") {
+          // da una sottocartella solo se il cliente non ha ancora il paese (di solito vale quello della cartella in cima)
+          if (libero || (cliente.placeSource === "drive" && !u.top)) {
             if (cambia) conti.clientiAggiornati++;
             if (cambia || cliente.placeSheet !== dove.placeSheet || cliente.placeFolder !== dove.placeFolder) {
               scritture.push(
@@ -159,13 +212,16 @@ function giro_() {
                   placeSheetUrl: dove.placeSheetUrl,
                 })
               );
+              cliente.city = info.city; // così le altre cartelle dello stesso cliente non lo riscrivono
+              cliente.address = info.address;
+              cliente.placeSource = "drive";
             }
           }
         }
         // gru del foglio (le correzioni fatte nell'app restano: qui scrivo solo i campi del Drive)
         var etichetta = etichettaFoglio_(file.getName());
         estraiGru(foglio.tabelle).forEach(function (g, i) {
-          var id = (cliente.id + "_" + (g.fabKey || (g.internoKey ? "INT" + g.internoKey : "R" + i))).replace(/[^A-Za-z0-9_-]/g, "_");
+          var id = (cliente.id + "_" + (u.top ? voce.id.slice(-6) + "_" : "") + (g.fabKey || (g.internoKey ? "INT" + g.internoKey : "R" + i))).replace(/[^A-Za-z0-9_-]/g, "_");
           if (ora.g.indexOf(id) >= 0) return;
           ora.g.push(id);
           scritture.push(
@@ -200,8 +256,8 @@ function giro_() {
       });
       nuoviVisti["v_" + voce.id] = JSON.stringify(ora);
     } catch (e) {
-      Logger.log("Salto %s: %s", cart.getName(), e);
-      conti.errori.push(cart.getName().trim() + ": " + String((e && e.message) || e).slice(0, 120));
+      Logger.log("Salto %s: %s", voce.n, e);
+      conti.errori.push(voce.n + ": " + String((e && e.message) || e).slice(0, 120));
     }
   });
   var falliti = scriviTutto_(token, scritture);

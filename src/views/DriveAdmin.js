@@ -19,6 +19,21 @@ import { loadFolders } from "../components/DriveFolderPicker";
 import { CheckCard } from "../components/DriveCheck";
 import { DriveCustomerModal } from "../components/modals/DriveCustomerModal";
 
+// cartella principale di ogni cliente (quella in cima, non le sottocartelle) e quante sottocartelle ha
+export const folderIndex = (folders = []) => {
+  const byCust = {};
+  const subs = {};
+  folders.forEach((f) => {
+    if (!f.c) return;
+    if (f.p) subs[f.c] = (subs[f.c] || 0) + 1;
+    if (!byCust[f.c] || (byCust[f.c].p && !f.p)) byCust[f.c] = f;
+  });
+  Object.keys(subs).forEach((c) => {
+    if (byCust[c] && byCust[c].p) subs[c] -= 1;
+  });
+  return { byCust, subs };
+};
+
 export const placeSourceLabel = (c) => {
   if (!c || !placeOf(c)) return "";
   if (c.placeSource === "drive") return "dal Drive";
@@ -117,25 +132,20 @@ export const DriveAdmin = ({ customers = [], machines = [], color = "blue" }) =>
 
   // cartella di ogni cliente: quella scelta a mano, altrimenti quella che il programma ha trovato dal nome
   const folderOf = useMemo(() => {
-    const byCust = {};
-    folders.forEach((f) => {
-      if (f.c) byCust[f.c] = f;
-    });
+    const { byCust, subs } = folderIndex(folders);
     return (c) => {
       if (c.driveNone) return null;
-      if (c.driveFolderId) return { id: c.driveFolderId, name: c.driveFolderName || "", how: "scelta da te" };
+      const more = subs[c.id] ? ` + ${subs[c.id]} ${subs[c.id] === 1 ? "sottocartella" : "sottocartelle"}` : "";
+      if (c.driveFolderId) return { id: c.driveFolderId, name: (c.driveFolderName || "") + more, how: "scelta da te" };
       const f = byCust[c.id];
-      return f ? { id: f.id, name: f.n, how: "dal nome" } : null;
+      return f ? { id: f.id, name: f.n + more, how: "dal nome" } : null;
     };
   }, [folders]);
 
   // ---- da controllare ----
   const checks = useMemo(() => {
     const out = [];
-    const byCust = {};
-    folders.forEach((f) => {
-      if (f.c) byCust[f.c] = f;
-    });
+    const { byCust } = folderIndex(folders);
     customers.forEach((c) => {
       if (c.driveNone || c.driveFolderId) return;
       const f = byCust[c.id];

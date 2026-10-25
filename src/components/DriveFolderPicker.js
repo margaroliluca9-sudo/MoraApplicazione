@@ -40,7 +40,10 @@ export const DriveFolderPicker = ({ customerId, value, onChange, label = true })
       alive = false;
     };
   }, []);
-  const auto = useMemo(() => (folders || []).find((f) => f.c === customerId), [folders, customerId]);
+  const auto = useMemo(() => {
+    const mine = (folders || []).filter((f) => f.c === customerId);
+    return mine.find((f) => !f.p) || mine[0];
+  }, [folders, customerId]);
   const list = useMemo(() => {
     const t = q.trim().toUpperCase();
     return (folders || []).filter((f) => !t || String(f.n).toUpperCase().includes(t)).slice(0, 60);
