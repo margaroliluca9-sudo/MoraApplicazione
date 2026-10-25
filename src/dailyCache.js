@@ -25,7 +25,6 @@ const stamp = (k) => {
 const rowsOf = (snap) => snap.docs.map((d) => ({ id: d.id, ...d.data() }));
 
 export const loadDaily = async (key, ref, maxAge = DAY) => {
-  // maxAge 0 = dal server adesso
   let cached = null;
   try {
     cached = rowsOf(await getDocsFromCache(ref));

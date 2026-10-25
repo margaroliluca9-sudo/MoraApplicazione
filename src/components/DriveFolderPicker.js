@@ -8,9 +8,6 @@ import { db, appId } from "../firebase";
 import { getDoc } from "../metered";
 
 let cache = null;
-export const resetFolders = () => {
-  cache = null;
-};
 export const loadFolders = () => {
   if (!cache) {
     cache = getDoc(doc(db, "artifacts", appId, "public", "data", "settings", "drive_folders"))

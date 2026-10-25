@@ -4,7 +4,7 @@
 //    abbinate in modo dubbio (tipo o portata diversi, numero interno, numero quasi uguale…)
 //  - elenco dei clienti: da quale cartella arrivano i dati; toccando un cliente si corregge tutto.
 // I clienti «Solo interventi» non hanno cartella nel Drive (non facciamo le verifiche) e non sono un problema.
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { collection, doc } from "firebase/firestore";
 import { updateDoc } from "../tracked";
 import { Folder, Search, ChevronRight, MapPin, Wrench, HelpCircle, Check, X, Loader2 } from "lucide-react";
@@ -15,8 +15,7 @@ import { placeOf, normName } from "../places";
 import { describeError } from "../utils";
 import { reviewCustomer } from "../driveCranes";
 import { DrivePlacesStatus } from "../components/DrivePlacesStatus";
-import { loadFolders, resetFolders } from "../components/DriveFolderPicker";
-import { clearDriveCache } from "../components/DriveCraneInfo";
+import { loadFolders } from "../components/DriveFolderPicker";
 import { CheckCard } from "../components/DriveCheck";
 import { DriveCustomerModal } from "../components/modals/DriveCustomerModal";
 
@@ -45,9 +44,9 @@ export const placeSourceLabel = (c) => {
 
 // tutte le gru lette dal Drive: dalla copia sul telefono, dal server al massimo una volta al giorno
 let rowsCache = null;
-const loadAllRows = (force = false) => {
-  if (!rowsCache || force) {
-    rowsCache = loadDaily("drive_cranes", collection(db, "artifacts", appId, "public", "data", "drive_cranes"), force ? 0 : undefined)
+const loadAllRows = () => {
+  if (!rowsCache) {
+    rowsCache = loadDaily("drive_cranes", collection(db, "artifacts", appId, "public", "data", "drive_cranes"))
       .catch((e) => {
         console.error(e);
         rowsCache = null;
@@ -121,13 +120,6 @@ export const DriveAdmin = ({ customers = [], machines = [], color = "blue" }) =>
     return () => {
       alive = false;
     };
-  }, []);
-  // finito il giro chiesto con «Aggiorna adesso»: rileggo gru e cartelle dal server
-  const onRun = useCallback(() => {
-    resetFolders();
-    clearDriveCache();
-    setReload((r) => r + 1);
-    loadAllRows(true).then((l) => setRows(l));
   }, []);
 
   const onRowSaved = (nr) => {
@@ -205,7 +197,7 @@ export const DriveAdmin = ({ customers = [], machines = [], color = "blue" }) =>
           Ogni mattina il programma legge l'ultimo foglio di verifica di ogni cliente in Clienti / Verifiche. Qui vedi se è andato bene, cosa c'è da controllare e da quale cartella arrivano i dati di ogni cliente.
         </p>
       </div>
-      <DrivePlacesStatus onRun={onRun} />
+      <DrivePlacesStatus />
 
       <section className="space-y-2" data-section="drive-checks">
         <h5 className="font-black text-sm text-slate-800 flex items-center gap-2">

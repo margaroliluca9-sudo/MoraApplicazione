@@ -2,12 +2,11 @@
 // Lui a ogni giro scrive l'esito in settings/drive_places; qui lo traduco in un semaforo:
 //   verde = tutto a posto · giallo = ha finito solo una parte o ha saltato qualche cartella ·
 //   rosso = si è fermato con un errore o non gira da più di un giorno · grigio = mai partito.
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { doc } from "firebase/firestore";
-import { CheckCircle2, AlertTriangle, XCircle, Clock, RefreshCw, Loader2 } from "lucide-react";
+import { CheckCircle2, AlertTriangle, XCircle, Clock } from "lucide-react";
 import { db, appId } from "../firebase";
-import { getDocFromServer } from "../metered";
-import { setDoc } from "../tracked";
+import { getDoc } from "../metered";
 
 export const driveWhen = (iso) => {
   const d = new Date(iso);
@@ -63,58 +62,17 @@ const TONES = {
   slate: ["bg-slate-50 border-slate-200 text-slate-700", Clock, "text-slate-500"],
 };
 
-const placesRef = () => doc(db, "artifacts", appId, "public", "data", "settings", "drive_places");
-// richiesta «Aggiorna adesso» non ancora fatta dal programma
-export const requestPending = (info) => !!(info && info.request && (!info.lastRun || info.lastRun < info.request) && (!info.lastErrorAt || info.lastErrorAt < info.request));
-
-// onRun: chiamata quando il programma ha finito un giro chiesto col tasto (per ricaricare le gru)
-export const DrivePlacesStatus = ({ onRun }) => {
+export const DrivePlacesStatus = () => {
   const [info, setInfo] = useState(undefined); // undefined = sto guardando, null = mai partito
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState("");
-  const load = useCallback(
-    () =>
-      getDocFromServer(placesRef())
-        .then((s) => {
-          const d = s.exists() ? s.data() : null;
-          setInfo(d);
-          return d;
-        })
-        .catch(() => {
-          setInfo((p) => (p === undefined ? null : p));
-          return null;
-        }),
-    []
-  );
   useEffect(() => {
-    load();
-  }, [load]);
-  // in attesa del giro chiesto col tasto: ricontrollo ogni minuto (una lettura) finché non ha finito
-  const pending = requestPending(info);
-  useEffect(() => {
-    if (!pending) return undefined;
-    const t = setInterval(() => {
-      load().then((d) => {
-        if (d && !requestPending(d) && onRun) onRun(d);
-      });
-    }, 60000);
-    return () => clearInterval(t);
-  }, [pending, load, onRun]);
-
-  const ask = async () => {
-    setBusy(true);
-    setErr("");
-    const request = new Date().toISOString();
-    try {
-      await setDoc(placesRef(), { request }, { merge: true });
-      setInfo((p) => ({ ...(p || {}), request }));
-    } catch (e) {
-      console.error(e);
-      setErr("Richiesta non riuscita: controlla la rete e riprova.");
-    } finally {
-      setBusy(false);
-    }
-  };
+    let alive = true;
+    getDoc(doc(db, "artifacts", appId, "public", "data", "settings", "drive_places"))
+      .then((s) => alive && setInfo(s.exists() ? s.data() : null))
+      .catch(() => alive && setInfo(null));
+    return () => {
+      alive = false;
+    };
+  }, []);
   if (info === undefined) return null;
   const hs = driveHealth(info);
   const [cls, Icon, iconCls] = TONES[hs.tone];
@@ -154,25 +112,6 @@ export const DrivePlacesStatus = ({ onRun }) => {
           ))}
         </div>
       )}
-      <div className="pt-1 space-y-1">
-        <button
-          type="button"
-          onClick={ask}
-          disabled={busy || pending}
-          data-action="drive-refresh"
-          className="h-10 px-4 rounded-full bg-white border border-slate-300 text-slate-800 text-sm font-bold flex items-center gap-2 disabled:opacity-60"
-        >
-          {busy || pending ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />} {pending ? "Aggiornamento richiesto…" : "Aggiorna adesso"}
-        </button>
-        {pending && (
-          <p className="text-xs" data-drive-request>
-            {Date.now() - new Date(info.request).getTime() > 15 * 60000
-              ? "Il programma del Drive non ha ancora risposto: hai incollato l'ultima versione e premuto Esegui su «installa»? Senza, il tasto non funziona."
-              : `Richiesto ${driveWhen(info.request)}: il programma del Drive parte entro 5 minuti e qui si aggiorna da solo.`}
-          </p>
-        )}
-        {err && <p className="text-xs font-bold text-red-700">{err}</p>}
-      </div>
       {hs.problems.length > 0 && (
         <details className="text-xs" data-drive-problems>
           <summary className="cursor-pointer font-bold">Cosa non è andato ({hs.problems.length})</summary>
