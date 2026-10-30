@@ -8,7 +8,7 @@ import { Bug, Loader2, ChevronDown, Trash2, CheckCircle2 } from "lucide-react";
 import { db, appId } from "../firebase";
 import { ERRORS_COLL } from "../errorLog";
 
-const SCREENS = { dashboard: "Home", new: "Nuovo rapporto", history: "Storico", office: "Ufficio", database: "Database", explore: "Esplora", admin: "Admin" };
+const SCREENS = { dashboard: "Home", new: "Nuovo rapporto", history: "Storico", office: "Ufficio", database: "Database", explore: "Esplora", map: "Mappa", admin: "Admin" };
 const KINDS = { schermata: "Schermata bloccata", promessa: "Operazione non riuscita", errore: "Errore", segnalazione: "Segnalazione" };
 const ref = () => collection(db, "artifacts", appId, "public", "data", ERRORS_COLL);
 const ms = (r) => (r.when && r.when.seconds ? r.when.seconds * 1000 : Number(r.at) || 0);
