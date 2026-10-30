@@ -1,8 +1,7 @@
 // LA MIA AREA: Oggi, Calendario, Note, Chat, Promemoria e contatti, Magazzino (solo con furgone), numeri del mese.
 // Ogni tecnico vede solo le sue cose.
 import React, { useEffect, useMemo, useState } from "react";
-import { X, CalendarDays, StickyNote, MessageSquare, Bell, Truck, ClipboardList, Printer, WifiOff, Settings, Timer, Wrench, ChevronRight, ClipboardCheck } from "lucide-react";
-import { FieldChecksPanel } from "../personal/FieldChecksPanel";
+import { X, CalendarDays, StickyNote, MessageSquare, Bell, Truck, ClipboardList, Printer, WifiOff, Settings, Timer, Wrench, ChevronRight } from "lucide-react";
 import { HoursPanel } from "../personal/HoursPanel";
 import { getSettings } from "../../settings";
 import { fmtMin, monthSummary, getStd, withDefaults, getSince } from "../../hours";
@@ -63,9 +62,6 @@ export const PersonalAreaModal = ({
   initialPanel = null,
   areaTiles = null,
   inline = false, // tablet/computer: dentro la sua scheda invece che in una finestra sopra la Home
-  fieldChecksOn = false, // PROVA «Compila verifica» (solo i tecnici abilitati dall'admin)
-  fieldCheckHook = "", // indirizzo «App web» del programma del Drive: scrive subito
-  customers = [],
 }) => {
   // parti accese o spente dall'admin
   const on = (id) => areaOn({ areaTiles }, id);
@@ -118,8 +114,6 @@ export const PersonalAreaModal = ({
   else if (panel === "parts" && on("parts"))
     body = <PartsPanel me={me} logs={logs} color={color} onBack={back} onClose={onClose} onOpenMachine={onOpenMachine} />;
   else if (panel === "settings") body = <SettingsPanel me={me} color={color} onBack={back} onClose={onClose} hoursAllowed={on("hours")} />;
-  else if (panel === "fieldchecks" && fieldChecksOn)
-    body = <FieldChecksPanel me={me} customers={customers} color={color} hook={fieldCheckHook} onBack={back} onClose={onClose} />;
   else if (panel === "notes" && on("notes")) body = <NotesPanel me={me} notes={notes} color={color} onBack={back} onClose={onClose} />;
   else if (panel === "reminders" && on("reminders"))
     body = <RemindersPanel me={me} reminders={reminders} contacts={contacts} color={color} onBack={back} onClose={onClose} />;
@@ -197,8 +191,6 @@ export const PersonalAreaModal = ({
 
           <section className="grid grid-cols-2 gap-3">
             {[
-              fieldChecksOn && <Tile key="fieldchecks" id="fieldchecks" icon={ClipboardCheck} label="Compila verifica" tone="bg-teal-50 text-teal-700" onClick={() => setPanel("fieldchecks")}
-                sub="Prova · scrive nel foglio sul Drive" />,
               on("mine") && <Tile key="mine" id="mine" icon={ClipboardList} label="I miei interventi" tone="bg-slate-100 text-slate-700" onClick={onOpenMine}
                 sub={myMonthCount === 1 ? "1 questo mese" : `${myMonthCount} questo mese`} />,
               on("print") && <Tile key="print" id="print" icon={Printer} label="Stampa interventi" tone="bg-green-50 text-green-700" onClick={() => setPanel("print")}
