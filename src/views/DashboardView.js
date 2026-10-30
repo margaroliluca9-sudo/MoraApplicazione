@@ -14,7 +14,6 @@ import {
   Briefcase,
   Database,
   Folder,
-  Map as MapIcon,
   UserCircle,
   CalendarDays,
   BarChart3,
@@ -132,7 +131,6 @@ export const DashboardView = ({
     else if (to === "practice") setShowPractice(true);
     else if (to === "history") onNavigate("history");
     else if (to === "explore") onNavigate("explore");
-    else if (to === "map") onNavigate("map");
     else if (to === "chat") {
       setChatConv(null);
       setShowChat(true);
@@ -207,7 +205,6 @@ export const DashboardView = ({
   let order = layoutConfig?.dashboardOrder || [
     "new",
     "explore",
-    "map",
     "history",
     "database",
     "office",
@@ -269,13 +266,6 @@ export const DashboardView = ({
       icon: Folder,
       desc: "Clienti, gru e interventi",
       action: () => onNavigate("explore"),
-    },
-    map: {
-      id: "map",
-      label: "Mappa",
-      icon: MapIcon,
-      desc: "Dove sono i clienti",
-      action: () => onNavigate("map"),
     },
     history: {
       id: "history",
@@ -394,10 +384,10 @@ export const DashboardView = ({
     items[id] = widgets[id];
   });
   const available = isOffice
-    ? ["history", "explore", "map"]
+    ? ["history", "explore"]
     : Object.keys(items).filter((id) => id !== "mine" && id !== "chat" && (id !== "area" || currentTechName));
   const home = isOffice
-    ? resolveHome(["history", "explore", "map"], { order: ["history", "explore", "map"], sizes: { history: "l", explore: "l", map: "l" } }, available)
+    ? resolveHome(["history", "explore"], { order: ["history", "explore"], sizes: { history: "l", explore: "l" } }, available)
     : resolveHome(order, prefs, available);
   if (isOffice) items.history = { ...items.history, label: "Interventi", desc: "Tutti gli interventi, con la stampa" };
 
