@@ -328,7 +328,7 @@ export const HistoryView = ({
                             <Camera className="w-3.5 h-3.5" /> {log.photos.length} foto
                           </button>
                         )}
-                        {editsOf(log).length > 0 && (
+                        {isAdmin && editsOf(log).length > 0 && (
                           <button
                             type="button"
                             onClick={(e) => {
@@ -537,7 +537,7 @@ export const HistoryView = ({
                     <td className="px-4 py-4 text-xs text-slate-600 italic break-words whitespace-pre-wrap align-top border-r border-slate-100 overflow-hidden">
                       "{log.description}"
                       <RopeInfo log={log} />
-                      {editsOf(log).length > 0 && (
+                      {isAdmin && editsOf(log).length > 0 && (
                         <button type="button" onClick={() => setShowEdits(log)} data-action="log-edits" className="mt-1 not-italic text-[11px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md inline-flex items-center gap-1">
                           <PenLine className="w-3 h-3" /> Modificato {editsOf(log).length === 1 ? "1 volta" : `${editsOf(log).length} volte`}
                         </button>

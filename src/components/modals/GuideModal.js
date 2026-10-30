@@ -282,7 +282,7 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
         "Sotto la ricerca: «Tutti», «I miei» (solo quelli dove c'eri tu) e «Con foto».",
         "Tocca «Gru …» su un intervento per aprire la scheda di quella gru.",
         "Fune e catena sostituite sono indicate sotto la descrizione.",
-        "Modificare o eliminare: entro 3 minuti dal salvataggio lo puoi fare tu (matita e cestino), dopo compare un lucchetto e serve la password admin. Se un rapporto è stato modificato compare «Modificato 2 volte»: toccalo per vedere chi l'ha cambiato, quando e cosa (prima → dopo). Un rapporto eliminato non si perde: va nel cestino e l'admin lo può recuperare per 30 giorni (Area admin → Cestino).",
+        "Modificare o eliminare: entro 3 minuti dal salvataggio lo puoi fare tu (matita e cestino), dopo compare un lucchetto e serve la password admin. Se un rapporto è stato modificato, chi è entrato come admin vede «Modificato 2 volte» (gli altri no): toccalo per vedere chi l'ha cambiato, quando e cosa (prima → dopo). Un rapporto eliminato non si perde: va nel cestino e l'admin lo può recuperare per 30 giorni (Area admin → Cestino).",
       ],
     },
     {
@@ -418,7 +418,7 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
         "Si apre dalla tua area: gruppo con tutti i tecnici o chat private.",
         "Puoi mandare foto e fissare un messaggio importante in alto.",
         "Vocali: con la casella vuota a destra c'è il microfono. Toccalo e parla (la prima volta il telefono chiede il permesso del microfono: «Consenti»), tocca ■ per fermare (si ferma da solo a 2 minuti), riascoltalo se vuoi e tocca Invia; il cestino lo butta. Chi lo riceve tocca ▶ per ascoltarlo.",
-        "Modificare o eliminare: tocca un tuo messaggio e compaiono «Modifica» ed «Elimina». Modifica: il testo torna nella casella, lo correggi e tocchi Invia (sul messaggio resta scritto «modificato»). Elimina lo toglie per tutti, con la foto o il vocale.",
+        "Modificare o eliminare: tocca un tuo messaggio e compaiono «Modifica» ed «Elimina». Modifica: il testo torna nella casella, lo correggi e tocchi Invia (la scritta «modificato» sul messaggio la vede solo chi è entrato come admin). Elimina lo toglie per tutti, con la foto o il vocale.",
         "«Letto da…» mostra chi l'ha letto.",
       ],
     },

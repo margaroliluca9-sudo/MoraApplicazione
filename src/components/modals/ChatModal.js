@@ -594,7 +594,7 @@ export const ChatModal = ({
                           {m.audioId && <VoicePlayer id={m.audioId} dur={m.audioDur} mine={mine} color={color} />}
                           {m.text && <p className="text-sm whitespace-pre-wrap break-words">{m.text}</p>}
                           <div className={`text-[10px] mt-0.5 text-right ${mine ? "text-white/80" : "text-slate-400"}`}>
-                            {m.editedAt && <span data-edited>modificato · </span>}
+                            {m.editedAt && isAdmin && <span data-edited>modificato · </span>}
                             {timeOf(m)}
                           </div>
                         </div>
