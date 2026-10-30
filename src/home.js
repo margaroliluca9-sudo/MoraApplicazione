@@ -33,7 +33,7 @@ export const defaultSize = (id) => (id === "new" || isWidget(id) ? "l" : "m");
 
 // --- ASPETTO PERSONALE (vale solo per il tecnico, sopra le scelte dell'admin) ---
 export const LOOK_KEYS = ["themeColor", "mode", "fontFamily", "fontScale", "radiusStyle", "density"];
-export const THEME_COLORS = ["blue", "red", "green", "purple", "orange", "slate"];
+export const THEME_COLORS = ["blue", "indigo", "teal", "green", "red", "rose", "orange", "amber", "purple", "slate"];
 export const MODES = [
   { id: "auto", label: "Automatico" },
   { id: "light", label: "Chiaro" },

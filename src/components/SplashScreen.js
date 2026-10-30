@@ -4,7 +4,9 @@ import { greetingOf } from "../season";
 // Schermata di avvio: un carroponte solleva la cassa "MORA", accanto una gru a bandiera.
 // Dura circa 2,4 secondi. Con "Riduci movimento" attivo mostra subito l'immagine finale.
 // Cambia da sola col periodo dell'anno (season.js): Natale (regalo, neve, lucine),
-// Pasqua (uovo, prato, fiori), Estate (sole, pallone), Halloween (zucca, pipistrelli).
+// Pasqua (uovo, prato, fiori), Estate (sole, pallone), Halloween (zucca, pipistrelli),
+// San Valentino (cuori che salgono, scatola a cuore), Carnevale (coriandoli, stelle filanti, maschera),
+// Festa della Repubblica (Frecce Tricolori, tricolore), Autunno (foglie che cadono).
 const SPLASH_CSS = `
 .mora-splash {
   --k: .85;
@@ -80,6 +82,29 @@ const SPLASH_CSS = `
 .mora-splash .bat.b2 { animation-delay: -1.6s; animation-duration: 3.8s; }
 .mora-splash .petal { transform-origin: center; animation: ms-bob 1.6s ease-in-out infinite alternate; }
 @keyframes ms-snow  { from { transform: translateY(0); } to { transform: translateY(110vh); } }
+/* San Valentino, Carnevale, Repubblica, Autunno */
+.mora-splash.s-sanvalentino { --s-bg: #2a0f1d; --s-grid: rgba(244, 114, 182, 0.07); --s-accent: #f43f5e; --s-text: #ffe4ec; --s-muted: #f9a8c4; }
+.mora-splash.s-sanvalentino.light { --s-bg: #fff1f4; --s-text: #4c0519; --s-muted: #be6280; --s-accent: #e11d48; }
+.mora-splash.s-carnevale { --s-bg: #1b1240; --s-grid: rgba(250, 204, 21, 0.07); --s-accent: #a855f7; }
+.mora-splash.s-carnevale.light { --s-bg: #faf5ff; --s-accent: #9333ea; }
+.mora-splash.s-repubblica { --s-bg: #0c1a2e; --s-accent: #16a34a; }
+.mora-splash.s-repubblica.light { --s-bg: #f4f9ff; --s-accent: #15803d; }
+.mora-splash.s-autunno { --s-bg: #1f150c; --s-grid: rgba(234, 88, 12, 0.07); --s-text: #fdecd8; --s-muted: #c9976a; --s-accent: #ea580c; --s-steel: #a8977f; --s-steel-dark: #2e2216; }
+.mora-splash.s-autunno.light { --s-bg: #fdf6ec; --s-text: #431407; --s-muted: #9a6b44; --s-accent: #c2410c; --s-steel: #6b5a45; --s-steel-dark: #eadcc8; }
+.mora-splash .fall { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.mora-splash .fall i { position: absolute; top: -20px; display: block; animation: ms-fall linear infinite; }
+.mora-splash .fall.up i { top: auto; bottom: -24px; animation-name: ms-up; }
+.mora-splash .fall .heart { width: 14px; height: 14px; background: #f43f5e; transform: rotate(45deg); border-radius: 2px 0 2px 0; opacity: .85; }
+.mora-splash .fall .heart::before, .mora-splash .fall .heart::after { content: ""; position: absolute; width: 14px; height: 14px; border-radius: 50%; background: inherit; }
+.mora-splash .fall .heart::before { left: -7px; top: 0; } .mora-splash .fall .heart::after { left: 0; top: -7px; }
+.mora-splash .fall .leaf { width: 14px; height: 9px; border-radius: 0 100% 0 100%; }
+.mora-splash .streamer { stroke-dasharray: 240; animation: ms-draw2 1.4s .3s ease-out both; }
+.mora-splash .frecce path { stroke-dasharray: 420; animation: ms-draw2 1.8s .2s cubic-bezier(.3,0,.2,1) both; }
+.mora-splash .frecce .jet { animation: ms-fly 1.8s .2s cubic-bezier(.3,0,.2,1) both; }
+@keyframes ms-fall  { 0% { transform: translate(0, 0) rotate(0); } 50% { transform: translate(18px, 55vh) rotate(200deg); } 100% { transform: translate(-10px, 112vh) rotate(380deg); } }
+@keyframes ms-up    { 0% { transform: translate(0, 0) rotate(45deg); opacity: 0; } 10% { opacity: .9; } 100% { transform: translate(14px, -112vh) rotate(45deg); opacity: 0; } }
+@keyframes ms-draw2 { from { stroke-dashoffset: 420; } to { stroke-dashoffset: 0; } }
+@keyframes ms-fly   { from { transform: translateX(-330px); opacity: 0; } 10% { opacity: 1; } to { transform: translateX(0); opacity: 1; } }
 @keyframes ms-blink { from { opacity: .35; } to { opacity: 1; } }
 @keyframes ms-spin  { to { transform: rotate(360deg); } }
 @keyframes ms-bat   { 0% { transform: translate(0, 0); } 50% { transform: translate(-26px, 8px); } 100% { transform: translate(0, 0); } }
@@ -125,6 +150,48 @@ const Load = ({ season }) => {
         <text x="180" y="227" textAnchor="middle" fontFamily={LABEL_FONT} fontWeight="800" fontSize="9" letterSpacing="1.5" fill="#831843">MORA</text>
       </g>
     );
+  if (season === "sanvalentino")
+    return (
+      <g>
+        <path d="M180 199 L168 208 M180 199 L192 208" stroke={S.steel} strokeWidth="1.2" />
+        <path d="M180 240 C150 222 150 204 166 204 C174 204 178 209 180 213 C182 209 186 204 194 204 C210 204 210 222 180 240Z" fill="#e11d48" stroke="#881337" strokeWidth="1.4" />
+        <text x="180" y="225" textAnchor="middle" fontFamily={LABEL_FONT} fontWeight="800" fontSize="9" letterSpacing="1.2" fill="#fff">MORA</text>
+      </g>
+    );
+  if (season === "carnevale")
+    return (
+      <g>
+        {slings}
+        <rect x="152" y="206" width="56" height="34" rx="2" fill="#7c3aed" stroke="#4c1d95" strokeWidth="1.5" />
+        {[0, 1, 2, 3, 4, 5, 6].map((i) => (
+          <rect key={i} x={152 + i * 8} y="206" width="4" height="34" fill={["#facc15", "#22c55e", "#f43f5e", "#38bdf8"][i % 4]} opacity=".85" />
+        ))}
+        <path d="M162 214 q8 -6 18 0 q10 -6 18 0 q-2 9 -9 9 q-5 0 -9 -4 q-4 4 -9 4 q-7 0 -9 -9z" fill="#111827" />
+        <text x="180" y="236" textAnchor="middle" fontFamily={LABEL_FONT} fontWeight="800" fontSize="9" letterSpacing="1.2" fill="#fff">MORA</text>
+      </g>
+    );
+  if (season === "repubblica")
+    return (
+      <g>
+        {slings}
+        <rect x="152" y="206" width="19" height="34" fill="#16a34a" />
+        <rect x="171" y="206" width="18" height="34" fill="#f8fafc" />
+        <rect x="189" y="206" width="19" height="34" fill="#dc2626" />
+        <rect x="152" y="206" width="56" height="34" rx="2" fill="none" stroke="#334155" strokeWidth="1.5" />
+        <text x="180" y="227" textAnchor="middle" fontFamily={LABEL_FONT} fontWeight="800" fontSize="10" letterSpacing="1.5" fill="#0f172a">MORA</text>
+      </g>
+    );
+  if (season === "autunno")
+    return (
+      <g>
+        {slings}
+        <rect x="152" y="206" width="56" height="34" rx="2" fill="#92400e" stroke="#451a03" strokeWidth="1.5" />
+        <line x1="152" y1="217" x2="208" y2="217" stroke="#451a03" strokeWidth="1" />
+        <text x="180" y="233" textAnchor="middle" fontFamily={LABEL_FONT} fontWeight="800" fontSize="12" letterSpacing="2" fill="#fde68a">MORA</text>
+        <path d="M200 206 q8 -10 14 -4 q-2 8 -14 4z" fill="#f59e0b" />
+        <path d="M158 206 q-6 -9 -12 -3 q3 7 12 3z" fill="#dc2626" />
+      </g>
+    );
   if (season === "halloween")
     return (
       <g>
@@ -168,6 +235,22 @@ const JibCharm = ({ season }) => {
         <path d="M125.5 173.5 v13" stroke="#facc15" strokeWidth="2" />
       </g>
     );
+  if (season === "sanvalentino") return <path d="M125.5 187 C118 182 118 175 122 175 C124 175 125 176.5 125.5 177.5 C126 176.5 127 175 129 175 C133 175 133 182 125.5 187Z" fill="#f43f5e" />;
+  if (season === "carnevale")
+    return (
+      <g>
+        <path d="M119 177 q3 -3 6.5 0 q3.5 -3 6.5 0 q-1 5 -4 5 q-2 0 -2.5 -2 q-.5 2 -2.5 2 q-3 0 -4 -5z" fill="#a855f7" stroke="#facc15" strokeWidth=".8" />
+      </g>
+    );
+  if (season === "repubblica")
+    return (
+      <g>
+        <rect x="121" y="174" width="3" height="8" fill="#16a34a" />
+        <rect x="124" y="174" width="3" height="8" fill="#f8fafc" />
+        <rect x="127" y="174" width="3" height="8" fill="#dc2626" />
+      </g>
+    );
+  if (season === "autunno") return <path d="M125.5 186 q-7 -5 -4 -11 q4 1 4 4 q0 -3 4 -4 q3 6 -4 11z" fill="#ea580c" />;
   if (season === "halloween")
     return (
       <g>
@@ -194,6 +277,47 @@ const LABELS = {
   pasqua: "su un prato fiorito un carroponte solleva un uovo di Pasqua",
   estate: "sotto il sole un carroponte solleva una cassa, la gru a bandiera regge un pallone",
   halloween: "di notte un carroponte solleva una zucca, volano i pipistrelli",
+  sanvalentino: "salgono i cuori, il carroponte solleva una scatola a forma di cuore",
+  carnevale: "cadono i coriandoli, il carroponte solleva una cassa a strisce con la maschera",
+  repubblica: "passano le Frecce Tricolori, il carroponte solleva una cassa tricolore",
+  autunno: "cadono le foglie, il carroponte solleva una cassa di legno",
+};
+
+// coriandoli, cuori, foglie (posizioni fisse, sempre uguali)
+const BITS = Array.from({ length: 30 }, (_, i) => ({
+  left: (i * 41) % 100,
+  dur: 3.5 + ((i * 13) % 5),
+  delay: -((i * 7) % 8),
+  k: i % 5,
+}));
+const CONFETTI = ["#f43f5e", "#facc15", "#22c55e", "#38bdf8", "#a855f7"];
+const LEAVES = ["#ea580c", "#d97706", "#b91c1c", "#ca8a04", "#9a3412"];
+const Falling = ({ season }) => {
+  if (season === "carnevale")
+    return (
+      <div className="fall" aria-hidden="true">
+        {BITS.map((b, i) => (
+          <i key={i} style={{ left: b.left + "%", width: 6 + (b.k % 3) * 2, height: 9, background: CONFETTI[b.k], animationDuration: b.dur + "s", animationDelay: b.delay + "s", borderRadius: b.k % 2 ? "50%" : 1 }} />
+        ))}
+      </div>
+    );
+  if (season === "autunno")
+    return (
+      <div className="fall" aria-hidden="true">
+        {BITS.slice(0, 18).map((b, i) => (
+          <i key={i} className="leaf" style={{ left: b.left + "%", background: LEAVES[b.k], animationDuration: b.dur + 2 + "s", animationDelay: b.delay + "s" }} />
+        ))}
+      </div>
+    );
+  if (season === "sanvalentino")
+    return (
+      <div className="fall up" aria-hidden="true">
+        {BITS.slice(0, 14).map((b, i) => (
+          <i key={i} className="heart" style={{ left: b.left + "%", animationDuration: b.dur + 1 + "s", animationDelay: b.delay + "s", transform: `scale(${0.6 + (b.k % 3) * 0.25})` }} />
+        ))}
+      </div>
+    );
+  return null;
 };
 
 // neve (posizioni fisse: niente casualità, sempre uguale)
@@ -212,6 +336,7 @@ export const SplashScreen = ({ dark = true, title = "Assistenza Mora", season = 
     data-season={season}
   >
     <style>{SPLASH_CSS}</style>
+    <Falling season={season} />
     {season === "natale" && (
       <div className="snow" aria-hidden="true">
         {FLAKES.map((f, i) => (
@@ -235,6 +360,23 @@ export const SplashScreen = ({ dark = true, title = "Assistenza Mora", season = 
             ))}
           </g>
           <circle cx="318" cy="22" r="14" fill="#fbbf24" />
+        </g>
+      )}
+      {season === "repubblica" && (
+        <g className="frecce">
+          {[["#16a34a", 8], ["#f8fafc", 16], ["#dc2626", 24]].map(([c, y]) => (
+            <path key={c} d={`M10 ${y + 10} Q 170 ${y - 14} 340 ${y}`} fill="none" stroke={c} strokeWidth="5" strokeLinecap="round" opacity=".9" />
+          ))}
+          {[8, 16, 24].map((y) => (
+            <path key={y} className="jet" d={`M340 ${y} l-9 -2.5 l2 2.5 l-2 2.5z`} fill="#1e3a8a" />
+          ))}
+        </g>
+      )}
+      {season === "carnevale" && (
+        <g>
+          {[["#facc15", "M20 30 q20 -20 40 0 t40 0 t40 0"], ["#38bdf8", "M220 18 q20 20 40 0 t40 0 t40 0"], ["#f43f5e", "M120 6 q15 15 30 0 t30 0 t30 0"]].map(([c, d]) => (
+            <path key={c} className="streamer" d={d} fill="none" stroke={c} strokeWidth="2.4" strokeLinecap="round" />
+          ))}
         </g>
       )}
       {season === "halloween" && (

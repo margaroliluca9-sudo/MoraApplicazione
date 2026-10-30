@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { AREA_TILES, areaOn } from "../areaTiles";
+import { AppNameField, ThemeColors, SeasonGallery } from "../components/DesignExtras";
 import {
   User,
   Trash2,
@@ -656,21 +657,10 @@ export const AdminPanel = ({
             layoutConfig.themeColor
           )}`}
         >
-          <h3 className="font-black text-slate-800 mb-4">Tema</h3>
-          <div className="flex gap-2 mb-6">
-            {["blue", "red", "green", "purple", "orange", "slate"].map((c) => (
-              <button
-                key={c}
-                onClick={() =>
-                  onUpdateLayout({ ...layoutConfig, themeColor: c })
-                }
-                className={`w-8 h-8 rounded-full bg-${c}-500 border-2 ${
-                  layoutConfig.themeColor === c
-                    ? "border-black scale-110"
-                    : "border-transparent"
-                }`}
-              ></button>
-            ))}
+          <h3 className="font-black text-slate-800 mb-4">Aspetto dell'app</h3>
+          <div className="space-y-5 mb-6">
+            <AppNameField layoutConfig={layoutConfig} onUpdateLayout={onUpdateLayout} color={layoutConfig.themeColor} />
+            <ThemeColors layoutConfig={layoutConfig} onUpdateLayout={onUpdateLayout} />
           </div>
           <p className="text-[10px] font-bold text-slate-400 uppercase mb-4">
             Le scelte di questa pagina valgono per tutti i telefoni.
@@ -817,38 +807,7 @@ export const AdminPanel = ({
               </button>
             </div>
 
-            <div
-              className="flex items-center justify-between gap-3 p-3 rounded-xl border border-slate-200 bg-slate-50"
-              data-section="season-toggle"
-            >
-              <div>
-                <span className="text-xs font-bold text-slate-700 block">
-                  Animazione delle feste
-                </span>
-                <span className="text-[10px] text-slate-500">
-                  {layoutConfig.seasonalSplash === false
-                    ? "Spenta: sempre l'animazione classica"
-                    : "Natale, Pasqua, estate e Halloween cambiano da soli"}
-                </span>
-              </div>
-              <button
-                type="button"
-                aria-pressed={layoutConfig.seasonalSplash !== false}
-                onClick={() =>
-                  onUpdateLayout({
-                    ...layoutConfig,
-                    seasonalSplash: layoutConfig.seasonalSplash === false,
-                  })
-                }
-                className={`px-4 py-2 rounded-full font-bold text-sm shrink-0 ${
-                  layoutConfig.seasonalSplash === false
-                    ? "bg-white border border-slate-300 text-slate-600"
-                    : `bg-${layoutConfig.themeColor}-600 text-white`
-                }`}
-              >
-                {layoutConfig.seasonalSplash === false ? "Attiva" : "Disattiva"}
-              </button>
-            </div>
+            <SeasonGallery layoutConfig={layoutConfig} onUpdateLayout={onUpdateLayout} color={layoutConfig.themeColor} />
 
             <div className="flex items-center justify-between gap-3 p-3 rounded-xl border border-slate-200 bg-slate-50">
               <div>
@@ -924,19 +883,6 @@ export const AdminPanel = ({
             </button>
           </div>
 
-          <button
-            onClick={() =>
-              onUpdateLayout({
-                ...layoutConfig,
-                appTitle:
-                  prompt("Nuovo Titolo:", layoutConfig.appTitle) ||
-                  layoutConfig.appTitle,
-              })
-            }
-            className={`w-full py-3 bg-slate-800 text-white rounded-xl font-bold text-xs`}
-          >
-            Cambia Titolo App
-          </button>
         </div>
       )}
 

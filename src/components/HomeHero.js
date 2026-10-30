@@ -95,7 +95,7 @@ const reducedMotion = () => {
   }
 };
 
-export const HomeHero = ({ me = "", logs = [], todayCount = 0, now = new Date(), force = [] }) => {
+export const HomeHero = ({ me = "", logs = [], todayCount = 0, now = new Date(), force = [], season: seasonProp = "" }) => {
   const box = useRef(null);
   const canvas = useRef(null);
   const world = useRef(null);
@@ -113,7 +113,7 @@ export const HomeHero = ({ me = "", logs = [], todayCount = 0, now = new Date(),
   const hour = now.getHours();
   const month = now.getMonth();
   const weekend = now.getDay() === 0 || now.getDay() === 6;
-  const season = seasonOf(now);
+  const season = seasonProp || seasonOf(now); // Admin → Design può sceglierne una fissa o mostrarla in anteprima
   const yearCount = useMemo(() => myYearCount(logs, me, now), [logs, me, now]);
   const party = isMilestone(yearCount) || force.includes("traguardo");
   const facts = useMemo(() => factsOf(logs, me, now), [logs, me, now]);

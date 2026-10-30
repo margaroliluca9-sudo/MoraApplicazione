@@ -33,6 +33,7 @@ import { ChatModal } from "../components/modals/ChatModal";
 import { unreadTotal } from "../chat";
 import { PersonalAreaModal } from "../components/modals/PersonalAreaModal";
 import { HomeHero } from "../components/HomeHero";
+import { seasonNow } from "../components/DesignExtras";
 import { todayItems, monthNumbers, relDay, isoFromLogDate } from "../personal";
 import { HomeGrid } from "../components/HomeGrid";
 import { lazyNamed } from "../lazy";
@@ -611,7 +612,7 @@ export const DashboardView = ({
         results={searchResults}
         searchBox={
           <div className="space-y-4">
-            {!searching && <HomeHero me={currentTechName} logs={logs} todayCount={isOffice ? 0 : todayCount} now={heroNow()} force={heroForce()} />}
+            {!searching && <HomeHero me={currentTechName} logs={logs} todayCount={isOffice ? 0 : todayCount} now={heroNow()} force={heroForce()} season={seasonNow(layoutConfig || {}, heroNow())} />}
             {searchBox}
           </div>
         }

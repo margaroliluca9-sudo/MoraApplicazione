@@ -4,7 +4,7 @@ import { Check, ChevronDown, RotateCcw } from "lucide-react";
 import { PRESETS, THEME_COLORS, MODES } from "../home";
 import { FONT_OPTIONS, FONT_SCALE_OPTIONS, RADIUS_OPTIONS, DENSITY_OPTIONS } from "../appearance";
 
-const COLOR_LABEL = { blue: "Blu", red: "Rosso", green: "Verde", purple: "Viola", orange: "Arancio", slate: "Grigio" };
+const COLOR_LABEL = { blue: "Blu", indigo: "Indaco", teal: "Petrolio", green: "Verde", red: "Rosso", rose: "Rosa", orange: "Arancio", amber: "Ambra", purple: "Viola", slate: "Grigio" };
 const FONT_CSS = {
   barlow: '"Barlow Condensed", "Barlow", sans-serif',
   inter: '"Inter", sans-serif',

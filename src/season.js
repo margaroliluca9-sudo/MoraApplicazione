@@ -1,10 +1,27 @@
-// Periodo dell'anno per l'animazione di avvio (cambia da sola):
-//  natale     1 dicembre – 6 gennaio (Buon Natale / Buon anno)
-//  pasqua     dalla Domenica delle Palme a Pasquetta
-//  estate     21 giugno – 10 settembre (Ferragosto il 15 agosto)
-//  halloween  25 ottobre – 2 novembre
-//  normale    il resto dell'anno
-export const SEASONS = ["normale", "natale", "pasqua", "estate", "halloween"];
+// Periodo dell'anno per l'animazione di avvio e il cielo della Home (cambia da sola):
+//  natale        1 dicembre – 6 gennaio (Buon Natale / Buon anno)
+//  sanvalentino  13 – 14 febbraio (cuori)
+//  carnevale     dal Giovedì grasso al Martedì grasso (coriandoli e stelle filanti)
+//  pasqua        dalla Domenica delle Palme a Pasquetta
+//  repubblica    1 – 2 giugno (Frecce Tricolori)
+//  estate        21 giugno – 10 settembre (Ferragosto il 15 agosto)
+//  autunno       22 settembre – 24 ottobre (foglie che cadono)
+//  halloween     25 ottobre – 2 novembre
+//  normale       il resto dell'anno
+export const SEASONS = ["normale", "natale", "sanvalentino", "carnevale", "pasqua", "repubblica", "estate", "autunno", "halloween"];
+
+// nome e date, per l'elenco in Admin → Design
+export const SEASON_INFO = {
+  normale: { label: "Classica", when: "Tutto il resto dell'anno" },
+  natale: { label: "Natale", when: "1 dicembre – 6 gennaio" },
+  sanvalentino: { label: "San Valentino", when: "13 – 14 febbraio" },
+  carnevale: { label: "Carnevale", when: "Dal Giovedì al Martedì grasso" },
+  pasqua: { label: "Pasqua", when: "Dalle Palme a Pasquetta" },
+  repubblica: { label: "Festa della Repubblica", when: "1 – 2 giugno" },
+  estate: { label: "Estate", when: "21 giugno – 10 settembre" },
+  autunno: { label: "Autunno", when: "22 settembre – 24 ottobre" },
+  halloween: { label: "Halloween", when: "25 ottobre – 2 novembre" },
+};
 
 // Pasqua (calendario gregoriano, algoritmo di Meeus/Jones/Butcher)
 export const easterOf = (year) => {
@@ -33,12 +50,21 @@ export const seasonOf = (now = new Date()) => {
   if (x >= 1201 || x <= 106) return "natale";
   const easter = easterOf(now.getFullYear());
   const t = dayOnly(now).getTime();
+  // Carnevale: Martedì grasso = 47 giorni prima di Pasqua, Giovedì grasso 5 giorni prima
+  const fatTue = new Date(easter);
+  fatTue.setDate(easter.getDate() - 47);
+  const fatThu = new Date(fatTue);
+  fatThu.setDate(fatTue.getDate() - 5);
+  if (t >= fatThu.getTime() && t <= fatTue.getTime()) return "carnevale";
+  if (x >= 213 && x <= 214) return "sanvalentino";
   const from = new Date(easter);
   from.setDate(easter.getDate() - 7);
   const to = new Date(easter);
   to.setDate(easter.getDate() + 1);
   if (t >= from.getTime() && t <= to.getTime()) return "pasqua";
+  if (x >= 601 && x <= 602) return "repubblica";
   if (x >= 621 && x <= 910) return "estate";
+  if (x >= 922 && x <= 1024) return "autunno";
   if (x >= 1025 && x <= 1102) return "halloween";
   return "normale";
 };
@@ -50,5 +76,9 @@ export const greetingOf = (season, now = new Date()) => {
   if (season === "pasqua") return "Buona Pasqua!";
   if (season === "estate") return x === 815 ? "Buon Ferragosto!" : "Buona estate!";
   if (season === "halloween") return "Buon Halloween!";
+  if (season === "sanvalentino") return "Buon San Valentino!";
+  if (season === "carnevale") return "Buon Carnevale!";
+  if (season === "repubblica") return "Buona Festa della Repubblica!";
+  if (season === "autunno") return "Buon autunno!";
   return "Gru e carroponti";
 };

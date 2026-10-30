@@ -26,7 +26,8 @@ import { getSafeMatricola } from "./utils";
 import { PRO_BUTTON_SECONDARY } from "./ui";
 import { GlobalLoginScreen } from "./components/GlobalLoginScreen";
 import { SplashScreen } from "./components/SplashScreen";
-import { SEASONS, seasonOf } from "./season";
+import { SEASONS } from "./season";
+import { seasonNow } from "./components/DesignExtras";
 import { CraneMark } from "./components/CraneMark";
 import {
   THEME_MODES,
@@ -99,7 +100,7 @@ const splashSeason = (cfg) => {
   } catch (e) {
     // niente
   }
-  return cfg.seasonalSplash === false ? "normale" : seasonOf();
+  return seasonNow(cfg); // automatica, fissa (Admin → Design) o spenta
 };
 
 // ASCOLTO DEL DATABASE CON RIPRESA DA SOLA: se un collegamento si interrompe per un errore

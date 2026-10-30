@@ -292,8 +292,11 @@ export class HeroWorld {
     this.queue = force.filter((k) => EVENTS[k]);
     this.ambient = [];
     if (season === "halloween") this.ambient.push(bats());
+    if (season === "autunno") this.ambient.push(fallingLeaves());
+    if (season === "sanvalentino") this.ambient.push(risingHearts());
+    if (season === "repubblica") this.ambient.push(frecceTricolori());
     if (summer) this.ambient.push(fireflies());
-    this.confetti = party ? 0.1 : -1;
+    this.confetti = party || season === "carnevale" ? 0.1 : -1; // traguardi e Carnevale: coriandoli
     this.tone = null;
     this.toneT = 0;
   }
@@ -865,7 +868,7 @@ export class HeroWorld {
       c.rotate(l.r);
       c.fillStyle = rgba(l.c);
       c.beginPath();
-      c.ellipse(0, 0, 2.6, 1.3, 0, 0, Math.PI * 2);
+      c.ellipse(0, 0, 3.6, 1.8, 0, 0, Math.PI * 2);
       c.fill();
       c.restore();
     }
@@ -2273,6 +2276,104 @@ function bats() {
       c.lineTo(zx + 2.2, GROUND - 2.6);
       c.lineTo(zx, GROUND - 1.4);
       c.fill();
+    },
+  };
+}
+// foglie che cadono (autunno)
+function fallingLeaves() {
+  const COL = ["#ea580c", "#d97706", "#b91c1c", "#ca8a04"];
+  const f = Array.from({ length: 12 }, (_, i) => ({ x: rnd(0, VW), y: rnd(-30, GROUND), v: rnd(9, 16), p: rnd(0, 6), c: COL[i % 4] }));
+  let t = 0;
+  return {
+    layer: "front",
+    update(dt) {
+      t += dt;
+      f.forEach((k) => {
+        k.y += k.v * dt;
+        k.x += Math.sin(t * 1.2 + k.p) * 12 * dt;
+        if (k.y > GROUND - 1) {
+          k.y = rnd(-30, -6);
+          k.x = rnd(0, VW);
+        }
+      });
+    },
+    draw(c) {
+      for (const k of f) {
+        c.save();
+        c.translate(k.x, k.y);
+        c.rotate(Math.sin(t * 2 + k.p) * 1.2);
+        c.fillStyle = k.c;
+        c.beginPath();
+        c.ellipse(0, 0, 3.6, 1.8, 0, 0, Math.PI * 2);
+        c.fill();
+        c.restore();
+      }
+    },
+  };
+}
+// cuori che salgono (San Valentino)
+function risingHearts() {
+  const f = Array.from({ length: 9 }, () => ({ x: rnd(10, VW - 10), y: rnd(20, GROUND), v: rnd(6, 11), p: rnd(0, 6), s: rnd(2.2, 3.4) }));
+  let t = 0;
+  return {
+    layer: "front",
+    update(dt) {
+      t += dt;
+      f.forEach((k) => {
+        k.y -= k.v * dt;
+        k.x += Math.sin(t + k.p) * 5 * dt;
+        if (k.y < -6) {
+          k.y = GROUND - 2;
+          k.x = rnd(10, VW - 10);
+        }
+      });
+    },
+    draw(c) {
+      for (const k of f) {
+        const a = Math.min(1, (GROUND - k.y) / 30) * Math.min(1, (k.y + 6) / 30);
+        c.fillStyle = `rgba(244,63,94,${0.85 * a})`;
+        const s = k.s;
+        c.beginPath();
+        c.moveTo(k.x, k.y + s * 1.6);
+        c.bezierCurveTo(k.x - s * 2.2, k.y + s * 0.2, k.x - s, k.y - s * 1.3, k.x, k.y - s * 0.3);
+        c.bezierCurveTo(k.x + s, k.y - s * 1.3, k.x + s * 2.2, k.y + s * 0.2, k.x, k.y + s * 1.6);
+        c.fill();
+      }
+    },
+  };
+}
+// Frecce Tricolori (Festa della Repubblica): ogni tanto passano lasciando le scie verde, bianca e rossa
+function frecceTricolori() {
+  let t = -1.5;
+  const DUR = 7;
+  return {
+    layer: "sky",
+    update(dt) {
+      t += dt;
+      if (t > DUR + 6) t = -1;
+    },
+    draw(c) {
+      if (t < 0) return;
+      const head = Math.min(1, t / DUR) * (VW + 80) - 40;
+      const fade = t > DUR ? Math.max(0, 1 - (t - DUR) / 5) : 1;
+      [["22,163,74", 30], ["248,250,252", 35], ["220,38,38", 40]].forEach(([rgb, y]) => {
+        c.strokeStyle = `rgba(${rgb},${0.8 * fade})`;
+        c.lineWidth = 3;
+        c.lineCap = "round";
+        c.beginPath();
+        c.moveTo(-40, y + 8);
+        c.quadraticCurveTo(head / 2, y - 6, head, y);
+        c.stroke();
+        if (t <= DUR) {
+          c.fillStyle = "#1e3a8a";
+          c.beginPath();
+          c.moveTo(head + 5, y);
+          c.lineTo(head - 3, y - 2);
+          c.lineTo(head - 1.5, y);
+          c.lineTo(head - 3, y + 2);
+          c.fill();
+        }
+      });
     },
   };
 }
