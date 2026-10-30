@@ -48,7 +48,6 @@ import {
   removeMessage,
   previewOf,
   durLabel,
-  voiceSupported,
   startVoice,
   VOICE_MAX,
 } from "../../chat";
@@ -718,7 +717,7 @@ export const ChatModal = ({
                   aria-label="Testo del messaggio"
                   className="flex-1 px-3 py-2.5 rounded-2xl border border-slate-200 bg-slate-50 text-sm text-slate-800 outline-none resize-none"
                 />
-                {!text.trim() && !photo && !voice && !editing && voiceSupported() ? (
+                {!text.trim() && !photo && !voice && !editing ? (
                   <button
                     type="button"
                     onClick={recStart}

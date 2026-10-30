@@ -4,7 +4,7 @@
 // trascini col dito per spostarti, + / − o due dita per lo zoom; i clienti vicini si raggruppano in un pallino
 // col numero (toccalo per avvicinarti). Tocca un cliente: nome, paese, gru, «Vedi le gru» e «Portami qui».
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Plus, Minus, Maximize2, Navigation, Factory, X, MapPin } from "lucide-react";
+import { Plus, Minus, Maximize2, Navigation, Factory, X, MapPin, LocateFixed } from "lucide-react";
 import { placeOf } from "../places";
 
 const TILE = 256;
@@ -52,6 +52,17 @@ export const fitView = (pts, w, h) => {
   return { lat: c.lat, lng: c.lng, z: Math.min(z, 14) };
 };
 
+// distanza in km tra due punti (in linea d'aria)
+export const kmBetween = (a, b) => {
+  const R = 6371;
+  const r = (d) => (d * Math.PI) / 180;
+  const dLat = r(b.lat - a.lat);
+  const dLng = r(b.lng - a.lng);
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(r(a.lat)) * Math.cos(r(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+};
+const kmLabel = (k) => (k < 1 ? `${Math.round(k * 1000)} m` : k < 10 ? `${k.toFixed(1).replace(".", ",")} km` : `${Math.round(k)} km`);
+
 export const CustomersMap = ({ customers = [], machines = [], color = "blue", onShowMachines }) => {
   const box = useRef(null);
   const [size, setSize] = useState({ w: 0, h: 0 });
@@ -59,6 +70,26 @@ export const CustomersMap = ({ customers = [], machines = [], color = "blue", on
   const [sel, setSel] = useState(null);
   const drag = useRef(null);
   const pointers = useRef(new Map());
+  // LA MIA POSIZIONE (GPS del telefono): pallino blu; aprendo la mappa ci si mette sopra
+  const [me, setMe] = useState(null); // { lat, lng, acc }
+  const [gps, setGps] = useState("asking"); // asking | on | denied | none
+  const centeredOnMe = useRef(false);
+  const touched = useRef(false); // l'utente ha già spostato la mappa: non lo sposto più io
+  useEffect(() => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      setGps("none");
+      return undefined;
+    }
+    const id = navigator.geolocation.watchPosition(
+      (p) => {
+        setMe({ lat: p.coords.latitude, lng: p.coords.longitude, acc: p.coords.accuracy || 0 });
+        setGps("on");
+      },
+      (err) => setGps(err && err.code === 1 ? "denied" : "none"),
+      { enableHighAccuracy: true, maximumAge: 15000, timeout: 20000 }
+    );
+    return () => navigator.geolocation.clearWatch(id);
+  }, []);
 
   const pts = useMemo(
     () =>
@@ -96,10 +127,22 @@ export const CustomersMap = ({ customers = [], machines = [], color = "blue", on
   const lastKey = useRef("");
   useEffect(() => {
     if (!size.w || !size.h || lastKey.current === ptsKey) return;
+    const first = !lastKey.current;
     lastKey.current = ptsKey;
-    setView(fitView(pts, size.w, size.h));
     setSel(null);
+    // aprendo la mappa con il GPS già pronto resto su di me; cercando un cliente inquadro i risultati
+    if (first && centeredOnMe.current) return;
+    setView(fitView(pts, size.w, size.h));
   }, [ptsKey, pts, size.w, size.h]);
+  // appena arriva la mia posizione (la prima volta): la mappa si mette su di me, coi clienti qui intorno
+  useEffect(() => {
+    if (!me || centeredOnMe.current || touched.current || !size.w) return;
+    centeredOnMe.current = true;
+    setView({ lat: me.lat, lng: me.lng, z: 11 });
+  }, [me, size.w]);
+  const goMe = () => {
+    if (me) setView({ lat: me.lat, lng: me.lng, z: Math.max(z, 13) });
+  };
 
   const v = view || ITALY;
   const z = v.z;
@@ -121,6 +164,7 @@ export const CustomersMap = ({ customers = [], machines = [], color = "blue", on
   // ---- dito / mouse ----
   const onDown = (e) => {
     if (e.target.closest && e.target.closest("[data-map-ui]")) return;
+    touched.current = true;
     pointers.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
     try {
       e.currentTarget.setPointerCapture(e.pointerId);
@@ -285,12 +329,30 @@ export const CustomersMap = ({ customers = [], machines = [], color = "blue", on
           );
         })}
 
+        {me &&
+          (() => {
+            const q = project(me.lat, me.lng, z);
+            const x = q.x - left;
+            const y = q.y - top;
+            // cerchio della precisione (in pixel a questo zoom)
+            const mPerPx = (156543.03392 * Math.cos((me.lat * Math.PI) / 180)) / 2 ** z;
+            const r = Math.min(400, Math.max(0, (me.acc || 0) / mPerPx));
+            return (
+              <div className="absolute pointer-events-none" style={{ left: x, top: y, zIndex: 18 }} data-map-me>
+                {r > 14 && <span className="absolute rounded-full bg-blue-500/15 border border-blue-500/30" style={{ width: r * 2, height: r * 2, left: -r, top: -r }} />}
+                <span className="absolute w-5 h-5 -left-2.5 -top-2.5 rounded-full bg-blue-600 border-[3px] border-white shadow-md" />
+              </div>
+            );
+          })()}
+
         <div className="absolute right-2 top-2 flex flex-col gap-1.5" data-map-ui style={{ zIndex: 30 }}>
           {[
             [Plus, "Avvicina", () => zoomAt(1), "zoom-in"],
             [Minus, "Allontana", () => zoomAt(-1), "zoom-out"],
             [Maximize2, "Tutti i clienti", fit, "fit"],
-          ].map(([Ic, label, fn, id]) => (
+          ]
+            .concat(gps === "on" ? [[LocateFixed, "La mia posizione", goMe, "me"]] : [])
+            .map(([Ic, label, fn, id]) => (
             <button key={id} type="button" aria-label={label} title={label} onClick={fn} data-map-btn={id} className="w-10 h-10 rounded-xl bg-white/95 shadow border border-slate-200 text-slate-700 flex items-center justify-center">
               <Ic className="w-5 h-5" />
             </button>
@@ -311,6 +373,7 @@ export const CustomersMap = ({ customers = [], machines = [], color = "blue", on
                 {placeOf(sel) && <p className="text-xs text-slate-600 mt-0.5">{placeOf(sel)}</p>}
                 <p className="text-xs text-slate-500 mt-0.5">
                   {gruOf[sel.name] || 0} gru
+                  {me && Number.isFinite(Number(sel.lat)) ? ` · a ${kmLabel(kmBetween(me, { lat: Number(sel.lat), lng: Number(sel.lng) }))} da te` : ""}
                   {sel.geoApprox ? " · posizione del paese (senza via)" : ""}
                 </p>
               </div>
@@ -341,6 +404,11 @@ export const CustomersMap = ({ customers = [], machines = [], color = "blue", on
         {pts.length} {pts.length === 1 ? "cliente" : "clienti"} sulla mappa
         {missing > 0 ? ` · ${missing} senza posizione (manca paese o indirizzo, oppure il programma del Drive non l'ha ancora cercata)` : ""}
       </p>
+      {gps === "denied" && (
+        <p className="text-xs font-bold text-amber-700 px-1" data-map-gps-off>
+          La tua posizione non si vede: il telefono non dà il permesso. iPhone: Impostazioni → Privacy → Localizzazione → Safari (o l'app) → «Mentre usi l'app». Android: tieni premuta l'icona dell'app → Info app → Autorizzazioni → Posizione.
+        </p>
+      )}
     </div>
   );
 };
