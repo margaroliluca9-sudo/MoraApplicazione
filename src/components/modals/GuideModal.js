@@ -346,6 +346,8 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
       title: "La mia area",
       points: [
         "È personale: le tue cose non le vede nessun altro.",
+        "Il mio profilo (tocca la tua foto o iniziale in cima, oppure «Il mio profilo» in fondo): metti la tua foto (facoltativa: la vedono i colleghi in chat e in alto nell'app), il cognome e l'email della ditta. Il nome per entrare lo cambia l'admin.",
+        "La mia password: sempre in Il mio profilo puoi metterti una password solo tua (almeno 6 caratteri): da quel momento entri con quella e non più con la password aziendale. Se la dimentichi, l'admin in Staff tocca «Pass. sua ✕» accanto al tuo nome e torni alla password aziendale.",
         "Oggi: impegni e promemoria del giorno.",
         "I miei interventi: quelli di questo mese o tutti.",
         "Stampa interventi: scegli e stampa insieme i rapporti tuoi e dei colleghi.",
@@ -387,7 +389,7 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
         "Mentre la guardi il tempo cambia da solo (sole, nuvole, pioggia, temporale, arcobaleno, nebbia, vento, neve d'inverno) e passa qualcuno: camion da caricare o scaricare, muletto, aerei, elicottero, uccelli, mongolfiere, un gatto sulla trave; di notte stelle cadenti, fuochi d'artificio… e ogni tanto qualcosa di molto strano.",
         "La gru lavora da sola: sposta casse, bobine e travi e carica i camion, con il carico che dondola come uno vero.",
         "Puoi guidarla tu: trascina il dito sul cielo per spostare il carrello; tocca e il gancio scende, aggancia (o sgancia) e risale.",
-        "Un segreto: tocca il cielo 5 volte di fila e si apre il gioco del carroponte. Si gioca con i tasti come un Game Boy: ◀ ▶ spostano il carrello, B lo ferma, tieni premuto A (o ▼) per calare il gancio, START mette in pausa e SELECT accende o spegne i suoni (si può anche trascinare il dito sul capannone; tenendo premuto un tasto su iPhone non compare più il menu «Copia / Traduci»): carica sui camion i pezzi che chiedono, appoggiandoli piano («Perfetto!»). Si parte facile, con una freccia verde che indica cosa prendere e dove metterlo; ogni 2 camion si passa di livello e diventa più difficile (più pezzi, meno tempo, vento, gancio che dondola di più, vetro fragile che se lo sbatti si rompe). Hai 3 vite e ogni 3 livelli ne guadagni una; c'è il tasto pausa e la classifica tra i tecnici. In «Il tuo carroponte» scegli il colore della trave (i colori si sbloccano col tuo record: 100, 250, 500, 800, 1200 e 2000 punti) e scrivi il tuo nome sulla trave; il colore si vede anche accanto al tuo nome in classifica.",
+        "Un segreto: tocca il cielo 5 volte di fila e si apre il gioco del carroponte. Si gioca con i tasti come un Game Boy: ◀ ▶ spostano il carrello, B lo ferma, tieni premuto A (o ▼) per calare il gancio, START mette in pausa e SELECT accende o spegne i suoni (si può anche trascinare il dito sul capannone; tenendo premuto un tasto su iPhone non compare più il menu «Copia / Traduci»): carica sui camion i pezzi che chiedono, appoggiandoli piano («Perfetto!»). Si parte facile, con una freccia verde che indica cosa prendere e dove metterlo; ogni 2 camion si passa di livello e diventa più difficile (più pezzi, meno tempo, vento, gancio che dondola di più, vetro fragile che se lo sbatti si rompe). Hai 3 vite e ogni 3 livelli ne guadagni una; c'è il tasto pausa e la classifica tra i tecnici. In «Il tuo carroponte» scegli il colore della trave (i colori si sbloccano col tuo record: 100, 250, 500, 800, 1200 e 2000 punti) e scrivi il tuo nome sulla trave; il colore si vede anche accanto al tuo nome in classifica. Il gioco si ricorda il livello più alto che hai raggiunto, anche su un altro telefono: all'inizio scegli «Continua dal livello N» oppure «Ricomincia dal livello 1».",
         "Durante l'anno: lucine a Natale, pipistrelli e zucca ad Halloween, lucciole d'estate. Ogni 50 interventi nell'anno arrivano i coriandoli.",
         "Se preferisci un'immagine ferma: La mia area → ⚙ Impostazioni → «Cielo animato in Home».",
       ],
@@ -415,7 +417,9 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
       points: [
         "Si apre dalla tua area: gruppo con tutti i tecnici o chat private.",
         "Puoi mandare foto e fissare un messaggio importante in alto.",
-        "«Letto da…» mostra chi l'ha letto. Ognuno può cancellare i suoi messaggi.",
+        "Vocali: con la casella vuota a destra c'è il microfono. Toccalo e parla (la prima volta il telefono chiede il permesso del microfono: «Consenti»), tocca ■ per fermare (si ferma da solo a 2 minuti), riascoltalo se vuoi e tocca Invia; il cestino lo butta. Chi lo riceve tocca ▶ per ascoltarlo.",
+        "Modificare o eliminare: tocca un tuo messaggio e compaiono «Modifica» ed «Elimina». Modifica: il testo torna nella casella, lo correggi e tocchi Invia (sul messaggio resta scritto «modificato»). Elimina lo toglie per tutti, con la foto o il vocale.",
+        "«Letto da…» mostra chi l'ha letto.",
       ],
     },
     {
@@ -447,7 +451,7 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
       icon: UserCircle,
       title: "Esci e impostazioni su tutti i telefoni",
       points: [
-        "In alto a destra il cerchio con la tua iniziale: toccandolo vedi chi è collegato e «Esci» (vale per tutti, anche per l'ufficio). Per rientrare servono di nuovo nome e password.",
+        "In alto a destra il cerchio con la tua foto (o la tua iniziale): toccandolo vedi chi è collegato e «Esci» (vale per tutti, anche per l'ufficio). Per rientrare servono di nuovo nome e password.",
         "Le tue impostazioni (quali notifiche, animazioni, Le mie ore e il tuo orario normale, farti vedere online) ti seguono su tutti i telefoni dove entri con il tuo nome. Solo «Notifiche accese» resta del singolo telefono, perché il permesso lo dà il telefono.",
         "Su iPhone con l'app installata la barra in alto (ora e batteria) è del colore dell'app.",
       ],
@@ -490,7 +494,7 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
         "Persone → Modifiche: l'elenco di tutte le modifiche e le eliminazioni degli interventi, dalla più recente. Per ognuna: chi, quando, su quale intervento (cliente, gru, data, N. assistenza, chi l'aveva fatto), cosa è cambiato (prima → dopo) e dopo quanto dal salvataggio: «nei primi 3 minuti» (il tecnico da solo) o «con la password admin» (dopo). Filtri per tecnico, modifiche/eliminazioni e tempo. Sulle eliminazioni «Recupera dal Cestino».",
         "Le schede sono in 4 gruppi: «Persone» (Staff: i tecnici; Modifiche: chi ha modificato o eliminato un intervento), «Clienti e gru» (Clienti, Gru, Tipi, Drive), «Azienda» (Azienda con avvisi, chiusure e password, Furgoni, Design) e «Sistema» (System con backup, Excel, letture e schermo TV, Cestino). Tocchi il gruppo e sotto compaiono le sue schede; l'app si ricorda l'ultima che hai aperto.",
         "Design: colori, carattere, grandezza delle lettere, animazione di avvio, chat tra tecnici sì/no, messaggi da «Tecnici online» sì/no. «La mia area: cosa vedono i tecnici»: accendi o spegni per tutti Oggi, I miei interventi, Stampa, Calendario, Note, Promemoria, Magazzino, Le mie ore, Cosa ho cambiato e i numeri del mese (i dati restano salvati).",
-        "Staff: tecnici e password. Tipi, Clienti, Gru: anagrafiche e unione.",
+        "Staff: tecnici e password. Chi si è messo una password sua (Il mio profilo) ha accanto «Pass. sua ✕»: toccalo per togliergliela se l'ha dimenticata (torna a entrare con la password aziendale). Tipi, Clienti, Gru: anagrafiche e unione.",
         "Paese e indirizzo dei clienti: Clienti → matita per scriverli a mano, oppure «Importa paesi» per prenderli da un file Excel o CSV (colonne CLIENTE o RAGIONE SOCIALE, PAESE, INDIRIZZO). L'app abbina i nomi ai clienti che ci sono già e ti mostra l'elenco: spunti quelli da salvare (di base solo quelli che non hanno ancora il paese) e tocchi «Salva». Il paese compare sotto il nome in Esplora, nel Nuovo rapporto e nella scheda del cliente (con «Mappa» per aprirlo su Google Maps); in Esplora puoi anche cercare per paese.",
         "Paesi dal Drive in automatico: un programmino installato una volta nel Google Drive (file apps-script/paesi-dal-drive.gs, istruzioni in cima al file) ogni mattina alle 10 apre l'ultimo foglio di verifica di ogni cliente in Clienti / Verifiche (solo quelli nuovi o cambiati). Dall'intestazione aggiorna paese e indirizzo: riempie solo i clienti senza paese o quelli che aveva già aggiornato lui, quello che scrivi a mano o importi da file non viene mai toccato. Dalla tabella prende le gru: stato di fune o catena, tipo, portata, paranco, matricola INAIL e anno, che si vedono nella scheda della gru («Dall'ultima verifica»). In Admin → Drive vedi la data dell'ultimo giro, quanti clienti e quante gru.",
         "«Aggiorna adesso» (nel riquadro del Drive in Admin → Drive): chiede al programma di Google di fare subito un giro, senza aspettare le 10 di mattina e senza aprire Google Script. Il programma controlla ogni 5 minuti, quindi parte entro 5 minuti; il riquadro si aggiorna da solo quando ha finito. Serve aver incollato l'ultima versione del programma e premuto Esegui su «installa» una volta.",

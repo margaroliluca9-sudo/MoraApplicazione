@@ -3,8 +3,9 @@
 import React, { useEffect, useRef, useState } from "react";
 import { LogOut, MessageSquareWarning } from "lucide-react";
 import { ReportProblemModal } from "./modals/ReportProblemModal";
+import { Avatar } from "./Avatar";
 
-export const UserMenu = ({ name, role = "Tecnico", color = "blue", onLogout }) => {
+export const UserMenu = ({ name, tech = null, role = "Tecnico", color = "blue", onLogout }) => {
   const [open, setOpen] = useState(false);
   const [ask, setAsk] = useState(false);
   const [report, setReport] = useState(false);
@@ -28,9 +29,9 @@ export const UserMenu = ({ name, role = "Tecnico", color = "blue", onLogout }) =
         data-action="user-menu"
         aria-label={`${name}: menu utente`}
         onClick={() => setOpen(!open)}
-        className={`w-9 h-9 min-[401px]:w-10 min-[401px]:h-10 rounded-full bg-${color}-600 text-white font-black flex items-center justify-center shadow-sm`}
+        className="rounded-full shadow-sm"
       >
-        {String(name).charAt(0).toUpperCase()}
+        <Avatar tech={tech} name={name} className="w-9 h-9 min-[401px]:w-10 min-[401px]:h-10" color={color} />
       </button>
       {open && (
         <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl border border-slate-200 shadow-xl p-3 z-[120] space-y-2" data-section="user-menu">

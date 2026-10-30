@@ -2,12 +2,13 @@
 // notifiche sui telefoni.
 //  .../public/data/chat_messages       messaggi { conv, text, author, authorKey, photoId, pinned, createdAt, at }
 //  .../public/data/chat_photos         foto dei messaggi (caricate solo quando servono)
+//  .../public/data/chat_audio          vocali { conv, data (audio in base64), mime, dur } (caricati quando li ascolti)
 //  .../public/data/chat_reads          fin dove ha letto ognuno { conv, user, at }
 //  .../public/data/push_subscriptions  telefoni iscritti alle notifiche
 // Conversazioni: "group" (tutti) oppure "dm:anna|marco" (nomi in minuscolo, in ordine).
 // Le notifiche le spedisce il "postino" /api/notify (cartella api/, gira su Vercel).
 import { collection, doc, serverTimestamp } from "firebase/firestore";
-import { addDoc, setDoc, deleteDoc } from "./tracked";
+import { addDoc, setDoc, deleteDoc, updateDoc } from "./tracked";
 import { getDocs } from "./metered";
 import { db, appId } from "./firebase";
 
@@ -102,12 +103,17 @@ export const shortWhen = (m, now = new Date()) => {
   return `${d.getDate()}/${d.getMonth() + 1}`;
 };
 
-// invio di un messaggio (la foto va in un documento a parte)
-export const sendMessage = async ({ conv, text, photo, author, via }) => {
+// invio di un messaggio (la foto e il vocale vanno in un documento a parte)
+export const sendMessage = async ({ conv, text, photo, audio, author, via }) => {
   let photoId = null;
   if (photo) {
     const p = await addDoc(chatRef("chat_photos"), { conv, data: photo, createdAt: serverTimestamp() });
     photoId = p.id;
+  }
+  let audioId = null;
+  if (audio && audio.data) {
+    const a = await addDoc(chatRef("chat_audio"), { conv, data: audio.data, mime: audio.mime || "", dur: Math.round(audio.dur || 0), createdAt: serverTimestamp() });
+    audioId = a.id;
   }
   const data = {
     conv,
@@ -119,9 +125,88 @@ export const sendMessage = async ({ conv, text, photo, author, via }) => {
     createdAt: serverTimestamp(),
     at: Date.now(),
   };
+  if (audioId) {
+    data.audioId = audioId;
+    data.audioDur = Math.round(audio.dur || 0);
+  }
   if (via) data.via = via; // "online" = scritto dal menu Tecnici online
   const ref = await addDoc(chatRef("chat_messages"), data);
   return { ...data, id: ref.id };
+};
+
+// modifica del testo di un mio messaggio (resta scritto «modificato»)
+export const editMessage = (m, text) => updateDoc(chatDoc("chat_messages", m.id), { text: String(text || "").trim(), editedAt: Date.now() });
+
+// eliminazione: messaggio + foto + vocale
+export const removeMessage = async (m) => {
+  await deleteDoc(chatDoc("chat_messages", m.id));
+  if (m.photoId) deleteDoc(chatDoc("chat_photos", m.photoId)).catch(() => {});
+  if (m.audioId) deleteDoc(chatDoc("chat_audio", m.audioId)).catch(() => {});
+};
+
+// «0:07», «1:25»
+export const durLabel = (s) => {
+  const n = Math.max(0, Math.round(Number(s) || 0));
+  return `${Math.floor(n / 60)}:${String(n % 60).padStart(2, "0")}`;
+};
+// anteprima nell'elenco e nelle notifiche
+export const previewOf = (m) => (m.text ? m.text : m.audioId ? `🎤 Vocale ${durLabel(m.audioDur)}` : m.photoId ? "Foto" : "");
+
+// =====================================================================
+// VOCALI: registrazione col microfono del telefono. Prima scelta audio/mp4 (si sente su iPhone e Android),
+// altrimenti quello che il telefono sa fare. Al massimo 2 minuti, qualità «voce» (pesa poco).
+// =====================================================================
+export const VOICE_MAX = 120;
+export const voiceSupported = () => typeof window !== "undefined" && !!window.MediaRecorder && !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia);
+const pickMime = () => {
+  const list = ["audio/mp4;codecs=mp4a.40.2", "audio/mp4", "audio/aac", "audio/webm;codecs=opus", "audio/webm", "audio/ogg;codecs=opus"];
+  try {
+    return list.find((t) => window.MediaRecorder.isTypeSupported && window.MediaRecorder.isTypeSupported(t)) || "";
+  } catch (e) {
+    return "";
+  }
+};
+const toDataUrl = (blob) =>
+  new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = () => reject(r.error);
+    r.readAsDataURL(blob);
+  });
+// avvia la registrazione; restituisce { stop(): Promise<{data,mime,dur}>, cancel() }
+export const startVoice = async () => {
+  if (!voiceSupported()) throw new Error("Questo telefono non può registrare vocali dall'app.");
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  const mime = pickMime();
+  const rec = new window.MediaRecorder(stream, mime ? { mimeType: mime, audioBitsPerSecond: 32000 } : { audioBitsPerSecond: 32000 });
+  const chunks = [];
+  const t0 = Date.now();
+  rec.ondataavailable = (e) => e.data && e.data.size && chunks.push(e.data);
+  const done = new Promise((resolve) => {
+    rec.onstop = () => resolve();
+  });
+  rec.start(1000);
+  const close = () => stream.getTracks().forEach((t) => t.stop());
+  return {
+    startedAt: t0,
+    stop: async () => {
+      if (rec.state !== "inactive") rec.stop();
+      await done;
+      close();
+      const type = rec.mimeType || mime || "audio/mp4";
+      const blob = new Blob(chunks, { type });
+      if (blob.size > 700000) throw new Error("Vocale troppo lungo: massimo 2 minuti.");
+      return { data: await toDataUrl(blob), mime: type, dur: Math.min(VOICE_MAX, (Date.now() - t0) / 1000) };
+    },
+    cancel: () => {
+      try {
+        if (rec.state !== "inactive") rec.stop();
+      } catch (e) {
+        // niente
+      }
+      close();
+    },
+  };
 };
 
 // =====================================================================
@@ -248,7 +333,7 @@ export const myEndpoint = async () => {
 // testo della notifica
 export const notificationFor = (m) => ({
   title: m.conv === GROUP ? `Gruppo tecnici · ${m.author}` : `${m.author} (privato)`,
-  text: m.text ? m.text + (m.photoId ? " (foto)" : "") : m.photoId ? "Ha mandato una foto" : "",
+  text: m.text ? m.text + (m.photoId ? " (foto)" : "") : m.audioId ? `Messaggio vocale (${durLabel(m.audioDur)})` : m.photoId ? "Ha mandato una foto" : "",
   tag: "chat-" + m.conv,
   url: (m.via === "online" ? "/?online=" : "/?chat=") + encodeURIComponent(m.conv),
 });

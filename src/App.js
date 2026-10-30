@@ -48,6 +48,7 @@ import { applyCompany, activeNotices } from "./company";
 import { startSync, recentLogsQuery } from "./sync";
 import { PdfHost } from "./components/PdfHost";
 import { UserMenu } from "./components/UserMenu";
+import { techOf } from "./profile";
 import { installGestures } from "./gestures";
 import { Sidebar, TabStrip, TAB_INFO } from "./components/DesktopShell";
 import { refreshPush, getPushState, key as techKey, chatDoc } from "./chat";
@@ -1135,7 +1136,7 @@ export default function App() {
                 }}
               />
             )}
-            <UserMenu name={currentTechName} role={isOffice ? "Ufficio" : isAdminAuthenticated ? "Tecnico · admin" : "Tecnico"} color={color} onLogout={handleLogout} />
+            <UserMenu name={currentTechName} tech={techOf(technicians, currentTechName)} role={isOffice ? "Ufficio" : isAdminAuthenticated ? "Tecnico · admin" : "Tecnico"} color={color} onLogout={handleLogout} />
             <button
               type="button"
               onClick={cycleTheme}

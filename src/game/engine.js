@@ -498,6 +498,14 @@ export class CraneEngine {
     if (t.state === "wait") t.waitT = t.t;
   }
 
+  // partire da un livello già raggiunto («Continua dal livello N»)
+  startAt(n) {
+    const st = Math.max(1, Math.min(99, Math.floor(Number(n) || 1)));
+    this.stage = st;
+    this.stageTrucks = 0;
+    this.rules = stageRules(st);
+  }
+
   nextStage() {
     this.stage += 1;
     this.stageTrucks = 0;

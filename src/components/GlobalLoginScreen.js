@@ -8,6 +8,7 @@ import {
 import { CraneMark } from "./CraneMark";
 import { LoginSky } from "./LoginSky";
 import { isAdminPassword, isStaffPassword } from "../passwords";
+import { loginOk } from "../profile";
 
 // --- SCHERMATA LOGIN GLOBALE ---
 export const GlobalLoginScreen = ({ technicians, onUnlock, color = "blue" }) => {
@@ -30,22 +31,18 @@ export const GlobalLoginScreen = ({ technicians, onUnlock, color = "blue" }) => 
       return;
     }
 
-    if (isStaffPassword(password)) {
-      const matchedTech = technicians.find(
-        (t) => t.name.toLowerCase() === cleanName.toLowerCase()
-      );
-
-      if (matchedTech) {
-        onUnlock(matchedTech.name);
-      } else {
-        setError(
-          "Nome non autorizzato. Chiedi all'amministratore di aggiungerti all'elenco dello Staff."
-        );
-      }
+    // password aziendale dei tecnici, oppure quella personale per chi se l'è messa (Il mio profilo)
+    const matchedTech = technicians.find((t) => String(t.name || "").toLowerCase() === cleanName.toLowerCase());
+    if (matchedTech && loginOk(matchedTech, password)) {
+      onUnlock(matchedTech.name);
+      return;
+    }
+    if (!matchedTech) {
+      setError(isStaffPassword(password) ? "Nome non autorizzato. Chiedi all'amministratore di aggiungerti all'elenco dello Staff." : "Password errata.");
       return;
     }
 
-    setError("Password errata.");
+    setError(matchedTech.passHash ? "Password errata. Hai una password tua (Il mio profilo): se l'hai dimenticata chiedi all'admin di togliertela." : "Password errata.");
   };
 
   return (
@@ -89,7 +86,7 @@ export const GlobalLoginScreen = ({ technicians, onUnlock, color = "blue" }) => 
 
           <div className="space-y-1">
             <label className="text-sm font-bold text-slate-600 ml-1">
-              Password aziendale
+              Password
             </label>
             <div className="relative">
               <input

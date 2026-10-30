@@ -165,7 +165,7 @@ export const OnlineMenu = ({
                   const other = otherOf(m.conv, me);
                   return row(
                     displayName(other, technicians),
-                    `${m.authorKey === meKey ? "Tu: " : ""}${m.text || "foto"}`,
+                    `${m.authorKey === meKey ? "Tu: " : ""}${m.text || (m.audioId ? "🎤 vocale" : "foto")}`,
                     other,
                     null
                   );
@@ -209,7 +209,7 @@ export const OnlineMenu = ({
                         mine ? `bg-${color}-600 text-white rounded-br-md` : "bg-white border border-slate-200 text-slate-800 rounded-bl-md"
                       }`}
                     >
-                      {m.text || "📷 foto"}
+                      {m.text || (m.audioId ? "🎤 vocale (aprilo nella Chat)" : "📷 foto")}
                       <span className={`block text-[10px] mt-0.5 text-right ${mine ? "text-white/70" : "text-slate-400"}`}>{timeOf(m)}</span>
                     </div>
                   </div>

@@ -16,6 +16,9 @@ import { PrintPanel } from "../personal/PrintPanel";
 import { PartsPanel } from "../personal/PartsPanel";
 import { myChanges, partLabel } from "../../myParts";
 import { areaOn } from "../../areaTiles";
+import { ProfilePanel } from "../personal/ProfilePanel";
+import { Avatar } from "../Avatar";
+import { techOf } from "../../profile";
 
 const Tile = ({ id, icon: Icon, label, sub, tone, onClick, badge, alert, wide }) => (
   <button
@@ -113,6 +116,7 @@ export const PersonalAreaModal = ({
     body = <HoursPanel me={me} hours={hours} reminder={hoursReminder} color={color} onBack={back} onClose={onClose} />;
   else if (panel === "parts" && on("parts"))
     body = <PartsPanel me={me} logs={logs} color={color} onBack={back} onClose={onClose} onOpenMachine={onOpenMachine} />;
+  else if (panel === "profile") body = <ProfilePanel me={me} technicians={technicians} color={color} onBack={back} onClose={onClose} />;
   else if (panel === "settings") body = <SettingsPanel me={me} color={color} onBack={back} onClose={onClose} hoursAllowed={on("hours")} />;
   else if (panel === "notes" && on("notes")) body = <NotesPanel me={me} notes={notes} color={color} onBack={back} onClose={onClose} />;
   else if (panel === "reminders" && on("reminders"))
@@ -134,9 +138,9 @@ export const PersonalAreaModal = ({
     body = (
       <div className="flex flex-col h-full" data-section="area-home">
         <div className={`px-4 py-4 bg-white border-b border-slate-200 border-t-4 border-t-${color}-600 flex items-center gap-3 shrink-0`}>
-          <span className={`w-11 h-11 rounded-2xl bg-${color}-600 text-white font-black text-lg flex items-center justify-center`}>
-            {String(me || "?").charAt(0).toUpperCase()}
-          </span>
+          <button type="button" onClick={() => setPanel("profile")} aria-label="Il mio profilo" data-action="area-profile" className="shrink-0">
+            <Avatar tech={techOf(technicians, me)} name={me} className="w-11 h-11" textClass="text-lg" color={color} />
+          </button>
           <div className="flex-1 min-w-0">
             <h3 className="font-black text-slate-800 text-xl leading-tight">La mia area</h3>
             <p className="text-sm font-semibold text-slate-500 truncate">
@@ -226,6 +230,14 @@ export const PersonalAreaModal = ({
             </button>
           </section>
           )}
+          <button type="button" onClick={() => setPanel("profile")} data-area-tile="profile" className="w-full text-left bg-white rounded-3xl border border-slate-200 p-4 flex items-center gap-3 active:scale-[0.99] transition-transform">
+            <Avatar tech={techOf(technicians, me)} name={me} className="w-10 h-10" color={color} />
+            <span className="flex-1 min-w-0">
+              <span className="block font-black text-slate-800 text-base">Il mio profilo</span>
+              <span className="block text-sm font-semibold text-slate-500 truncate">Foto, cognome, email, password</span>
+            </span>
+            <ChevronRight className="w-5 h-5 text-slate-400 shrink-0" />
+          </button>
           {on("parts") && (
           <button type="button" onClick={() => setPanel("parts")} data-area-tile="parts" className="w-full text-left bg-white rounded-3xl border border-slate-200 p-4 flex items-center gap-3 active:scale-[0.99] transition-transform">
             <span className="w-10 h-10 rounded-xl flex items-center justify-center bg-teal-50 text-teal-700 shrink-0">

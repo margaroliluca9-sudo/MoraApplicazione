@@ -14,8 +14,13 @@ import {
   BellOff,
   Loader2,
   Image as ImageIcon,
+  Mic,
+  Square,
+  Play,
+  Pause,
+  Pencil,
 } from "lucide-react";
-import { updateDoc, deleteDoc } from "../../tracked";
+import { updateDoc } from "../../tracked";
 import { getDoc } from "../../metered";
 import { compressImage, describeError } from "../../utils";
 import {
@@ -39,7 +44,85 @@ import {
   getPushState,
   enablePush,
   disablePush,
+  editMessage,
+  removeMessage,
+  previewOf,
+  durLabel,
+  voiceSupported,
+  startVoice,
+  VOICE_MAX,
 } from "../../chat";
+import { Avatar } from "../Avatar";
+import { techOf } from "../../profile";
+
+// vocale: scaricato solo quando lo ascolti (poi tenuto in memoria)
+const audioCache = {};
+export const VoicePlayer = ({ id, src: given, dur, mine, color = "blue" }) => {
+  const [state, setState] = useState("idle"); // idle | loading | play | pause | error
+  const [pos, setPos] = useState(0);
+  const el = useRef(null);
+  useEffect(
+    () => () => {
+      if (el.current) el.current.pause();
+    },
+    []
+  );
+  const toggle = async (e) => {
+    e.stopPropagation();
+    if (state === "play") {
+      el.current.pause();
+      return;
+    }
+    if (!el.current) {
+      let src = given || audioCache[id];
+      if (!src) {
+        setState("loading");
+        try {
+          const s = await getDoc(chatDoc("chat_audio", id));
+          src = s.exists() ? (s.data() || {}).data : null;
+        } catch (err) {
+          src = null;
+        }
+        if (!src) return setState("error");
+        audioCache[id] = src;
+      }
+      const a = new Audio(src);
+      a.ontimeupdate = () => setPos(a.currentTime);
+      a.onplay = () => setState("play");
+      a.onpause = () => setState("pause");
+      a.onended = () => {
+        setState("idle");
+        setPos(0);
+      };
+      a.onerror = () => setState("error");
+      el.current = a;
+    }
+    el.current.play().catch(() => setState("error"));
+  };
+  const total = Math.max(1, Number(dur) || 1);
+  const pct = Math.min(100, (pos / total) * 100);
+  if (state === "error") return <div className="text-[11px] italic opacity-80 py-1">Vocale non disponibile su questo telefono</div>;
+  return (
+    <div className="flex items-center gap-2 min-w-[170px] py-0.5" data-voice>
+      <button
+        type="button"
+        onClick={toggle}
+        aria-label={state === "play" ? "Pausa" : "Ascolta il vocale"}
+        className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${mine ? `bg-white text-${color}-700` : `bg-${color}-600 text-white`}`}
+      >
+        {state === "loading" ? <Loader2 className="w-4 h-4 animate-spin" /> : state === "play" ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
+      </button>
+      <div className="flex-1">
+        <div className={`h-1.5 rounded-full ${mine ? "bg-white/40" : "bg-slate-200"}`}>
+          <div className={`h-1.5 rounded-full ${mine ? "bg-white" : `bg-${color}-600`}`} style={{ width: `${pct}%` }} />
+        </div>
+        <div className={`text-[10px] mt-1 font-bold ${mine ? "text-white/80" : "text-slate-500"}`}>
+          <Mic className="inline w-3 h-3 -mt-0.5" /> {durLabel(state === "idle" ? total : pos)}
+        </div>
+      </div>
+    </div>
+  );
+};
 
 // foto di un messaggio: caricata solo quando il fumetto compare (e poi tenuta in memoria)
 const photoCache = {};
@@ -181,6 +264,10 @@ export const ChatModal = ({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [selected, setSelected] = useState(null);
+  const [editing, setEditing] = useState(null); // messaggio che sto modificando
+  const [rec, setRec] = useState(null); // registrazione in corso
+  const [recSecs, setRecSecs] = useState(0);
+  const [voice, setVoice] = useState(null); // vocale registrato da mandare { data, mime, dur }
   const fileRef = useRef(null);
   const endRef = useRef(null);
 
@@ -240,13 +327,29 @@ export const ChatModal = ({
   };
 
   const send = async () => {
-    if (!conv || busy || (!text.trim() && !photo)) return;
+    if (!conv || busy) return;
+    if (editing) {
+      if (!text.trim() && !editing.photoId) return;
+      setBusy(true);
+      setError("");
+      try {
+        await editMessage(editing, text);
+        setEditing(null);
+        setText("");
+      } catch (err) {
+        setError("Non modificato: " + describeError(err));
+      }
+      setBusy(false);
+      return;
+    }
+    if (!text.trim() && !photo && !voice) return;
     setBusy(true);
     setError("");
     try {
-      const m = await sendMessage({ conv, text, photo, author: techName });
+      const m = await sendMessage({ conv, text, photo, audio: voice, author: techName });
       setText("");
       setPhoto(null);
+      setVoice(null);
       notifyChat(m).catch(() => {});
     } catch (err) {
       setError("Messaggio non inviato: " + describeError(err));
@@ -254,12 +357,67 @@ export const ChatModal = ({
     setBusy(false);
   };
 
-  const remove = async (m) => {
-    if (!window.confirm("Eliminare questo messaggio?")) return;
+  // VOCALI: tocchi il microfono, parli, tocchi ■ (si ferma da solo a 2 minuti), poi Invia
+  const recStart = async () => {
+    setError("");
     try {
-      await deleteDoc(chatDoc("chat_messages", m.id));
-      if (m.photoId) deleteDoc(chatDoc("chat_photos", m.photoId)).catch(() => {});
+      const r = await startVoice();
+      setRec(r);
+      setRecSecs(0);
+    } catch (err) {
+      setError(/denied|permission|NotAllowed/i.test(String(err && (err.name || err.message))) ? "Microfono non permesso: attivalo dalle impostazioni del telefono per questa app." : "Non riesco a registrare: " + describeError(err));
+    }
+  };
+  const recStop = async () => {
+    const r = rec;
+    setRec(null);
+    if (!r) return;
+    try {
+      const v = await r.stop();
+      if (v.dur < 1) return setError("Vocale troppo corto.");
+      setVoice(v);
+    } catch (err) {
+      setError(describeError(err));
+    }
+  };
+  const recCancel = () => {
+    if (rec) rec.cancel();
+    setRec(null);
+  };
+  useEffect(() => {
+    if (!rec) return undefined;
+    const t = setInterval(() => setRecSecs(Math.floor((Date.now() - rec.startedAt) / 1000)), 250);
+    return () => clearInterval(t);
+  }, [rec]);
+  useEffect(() => {
+    if (rec && recSecs >= VOICE_MAX) recStop();
+  });
+  // chiudendo la chat la registrazione si ferma
+  useEffect(
+    () => () => {
+      if (rec) rec.cancel();
+    },
+    [rec]
+  );
+
+  const startEdit = (m) => {
+    setEditing(m);
+    setText(m.text || "");
+    setPhoto(null);
+    setVoice(null);
+    setSelected(null);
+  };
+  const cancelEdit = () => {
+    setEditing(null);
+    setText("");
+  };
+
+  const remove = async (m) => {
+    if (!window.confirm("Eliminare questo messaggio per tutti?")) return;
+    try {
+      await removeMessage(m);
       setSelected(null);
+      if (editing && editing.id === m.id) cancelEdit();
     } catch (err) {
       setError("Non eliminato: " + describeError(err));
     }
@@ -330,6 +488,9 @@ export const ChatModal = ({
                 onClick={() => setConv(c)}
                 className="w-full text-left px-4 py-3 flex items-center gap-3 border-b border-slate-100 hover:bg-slate-50"
               >
+                {c !== GROUP && techOf(technicians, convTitle(c, techName, technicians)) && techOf(technicians, convTitle(c, techName, technicians)).photoAt ? (
+                  <Avatar tech={techOf(technicians, convTitle(c, techName, technicians))} className="w-11 h-11" color={color} />
+                ) : (
                 <div
                   className={`w-11 h-11 rounded-full flex items-center justify-center shrink-0 ${
                     c === GROUP ? `bg-${color}-600 text-white` : "bg-slate-100 text-slate-500"
@@ -337,6 +498,7 @@ export const ChatModal = ({
                 >
                   {c === GROUP ? <Users className="w-5 h-5" /> : <User className="w-5 h-5" />}
                 </div>
+                )}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
                     <span className="font-black text-sm text-slate-800 truncate">
@@ -347,7 +509,7 @@ export const ChatModal = ({
                   <div className="flex items-center justify-between gap-2">
                     <span className="text-xs text-slate-500 truncate">
                       {last
-                        ? `${last.authorKey === me ? "Tu" : last.author}: ${last.text || "Foto"}`
+                        ? `${last.authorKey === me ? "Tu" : last.author}: ${previewOf(last)}`
                         : c === GROUP
                         ? "Scrivi a tutti i tecnici"
                         : "Nessun messaggio"}
@@ -378,7 +540,7 @@ export const ChatModal = ({
                 <Pin className="w-4 h-4 text-amber-700 shrink-0 mt-0.5" />
                 <div className="flex-1 min-w-0 text-xs text-amber-900">
                   <span className="font-black">{pinned.author}: </span>
-                  <span className="break-words">{pinned.text || "Foto"}</span>
+                  <span className="break-words">{previewOf(pinned)}</span>
                 </div>
                 <button
                   type="button"
@@ -391,9 +553,13 @@ export const ChatModal = ({
               </div>
             )}
             <div className="flex-1 overflow-y-auto custom-scrollbar bg-slate-100 px-3 py-3 space-y-1.5" data-section="chat-thread">
-              {thread.length === 0 && (
+              {thread.length === 0 ? (
                 <p className="text-sm text-slate-400 italic text-center py-10">
                   Nessun messaggio. Scrivi il primo!
+                </p>
+              ) : (
+                <p className="text-[10px] font-bold text-slate-400 text-center pb-1" data-chat-hint>
+                  Tocca un tuo messaggio per modificarlo o eliminarlo
                 </p>
               )}
               {thread.map((m, i) => {
@@ -425,8 +591,10 @@ export const ChatModal = ({
                             <div className={`text-[11px] font-black text-${color}-700 mb-0.5`}>{m.author}</div>
                           )}
                           {m.photoId && <ChatPhoto id={m.photoId} onOpen={onOpenPhotos} />}
+                          {m.audioId && <VoicePlayer id={m.audioId} dur={m.audioDur} mine={mine} color={color} />}
                           {m.text && <p className="text-sm whitespace-pre-wrap break-words">{m.text}</p>}
                           <div className={`text-[10px] mt-0.5 text-right ${mine ? "text-white/80" : "text-slate-400"}`}>
+                            {m.editedAt && <span data-edited>modificato · </span>}
                             {timeOf(m)}
                           </div>
                         </div>
@@ -451,8 +619,19 @@ export const ChatModal = ({
                               {m.pinned ? <PinOff className="w-3.5 h-3.5" /> : <Pin className="w-3.5 h-3.5" />}
                               {m.pinned ? "Togli dall'alto" : "Fissa in alto"}
                             </button>
+                            {mine && !m.audioId && (
+                              <button
+                                type="button"
+                                onClick={() => startEdit(m)}
+                                data-action="msg-edit"
+                                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white border border-slate-200 text-[11px] font-bold text-slate-700 shadow-sm"
+                              >
+                                <Pencil className="w-3.5 h-3.5" /> Modifica
+                              </button>
+                            )}
                             {canDelete && (
                               <button
+                                data-action="msg-delete"
                                 type="button"
                                 onClick={() => remove(m)}
                                 className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-white border border-red-200 text-[11px] font-bold text-red-600 shadow-sm"
@@ -475,6 +654,25 @@ export const ChatModal = ({
               {error && (
                 <p className="text-xs font-bold text-red-600 bg-red-50 border border-red-200 rounded-xl p-2">{error}</p>
               )}
+              {editing && (
+                <div className="flex items-center gap-2 text-xs font-bold text-slate-600 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2" data-chat-editing>
+                  <Pencil className="w-3.5 h-3.5 shrink-0" />
+                  <span className="flex-1 truncate">Modifichi il messaggio: «{editing.text || "Foto"}»</span>
+                  <button type="button" onClick={cancelEdit} className="underline text-slate-500 shrink-0" data-action="edit-cancel">
+                    Annulla
+                  </button>
+                </div>
+              )}
+              {voice && (
+                <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-2xl px-3 py-1.5" data-chat-voice-ready>
+                  <div className="flex-1">
+                    <VoicePlayer src={voice.data} dur={voice.dur} color={color} />
+                  </div>
+                  <button type="button" onClick={() => setVoice(null)} aria-label="Elimina il vocale" className="p-2 rounded-full text-red-600" data-action="voice-discard">
+                    <Trash2 className="w-5 h-5" />
+                  </button>
+                </div>
+              )}
               {photo && (
                 <div className="relative w-fit">
                   <img src={photo} alt="Foto da inviare" className="h-20 rounded-xl border border-slate-200" />
@@ -488,6 +686,19 @@ export const ChatModal = ({
                   </button>
                 </div>
               )}
+              {rec ? (
+                <div className="flex items-center gap-2" data-chat-recording>
+                  <button type="button" onClick={recCancel} className="px-3 py-2.5 rounded-full bg-slate-100 text-slate-600 text-xs font-bold shrink-0" data-action="voice-cancel">
+                    Annulla
+                  </button>
+                  <div className="flex-1 flex items-center justify-center gap-2 text-sm font-black text-red-600">
+                    <span className="w-2.5 h-2.5 rounded-full bg-red-600 animate-pulse" /> Sto registrando {durLabel(recSecs)}
+                  </div>
+                  <button type="button" onClick={recStop} aria-label="Ferma" className="p-2.5 rounded-full bg-red-600 text-white shrink-0" data-action="voice-stop">
+                    <Square className="w-5 h-5" />
+                  </button>
+                </div>
+              ) : (
               <div className="flex items-end gap-2">
                 <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={pickPhoto} aria-label="Scegli foto" />
                 <button
@@ -507,16 +718,30 @@ export const ChatModal = ({
                   aria-label="Testo del messaggio"
                   className="flex-1 px-3 py-2.5 rounded-2xl border border-slate-200 bg-slate-50 text-sm text-slate-800 outline-none resize-none"
                 />
-                <button
-                  type="button"
-                  onClick={send}
-                  disabled={busy || (!text.trim() && !photo)}
-                  aria-label="Invia"
-                  className={`p-2.5 rounded-full bg-${color}-600 text-white shrink-0 disabled:opacity-40 active:scale-95 transition-transform`}
-                >
-                  {busy ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
-                </button>
+                {!text.trim() && !photo && !voice && !editing && voiceSupported() ? (
+                  <button
+                    type="button"
+                    onClick={recStart}
+                    aria-label="Registra un vocale"
+                    data-action="voice-rec"
+                    className={`p-2.5 rounded-full bg-${color}-600 text-white shrink-0 active:scale-95 transition-transform`}
+                  >
+                    <Mic className="w-5 h-5" />
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={send}
+                    disabled={busy || (editing ? !text.trim() && !editing.photoId : !text.trim() && !photo && !voice)}
+                    aria-label={editing ? "Salva la modifica" : "Invia"}
+                    data-action="chat-send"
+                    className={`p-2.5 rounded-full bg-${color}-600 text-white shrink-0 disabled:opacity-40 active:scale-95 transition-transform`}
+                  >
+                    {busy ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
+                  </button>
+                )}
               </div>
+              )}
             </div>
           </>
         )}

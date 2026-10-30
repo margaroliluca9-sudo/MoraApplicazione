@@ -22,7 +22,7 @@ import {
   Download,
   MapPin,
 } from "lucide-react";
-import { collection, serverTimestamp, Timestamp, doc, query, orderBy, limit, where } from "firebase/firestore";
+import { collection, deleteField, serverTimestamp, Timestamp, doc, query, orderBy, limit, where } from "firebase/firestore";
 import { setDoc, deleteDoc, updateDoc, writeBatch } from "../tracked";
 import { onSnapshot, getDocs } from "../metered";
 import { trashLog } from "../trash";
@@ -1049,6 +1049,20 @@ export const AdminPanel = ({
                           );
                         })}
                       </div>
+                    )}
+                    {view === "techs" && i.passHash && (
+                      <button
+                        type="button"
+                        data-action="clear-pass"
+                        title="Ha una password personale: toccalo per toglierla (torna a valere la password aziendale)"
+                        onClick={() =>
+                          window.confirm(`${i.name} ha una password personale. Toglierla? Tornerà a entrare con la password aziendale dei tecnici.`) &&
+                          updateDoc(doc(db, "artifacts", appId, "public", "data", "technicians", i.id), { passHash: deleteField() }).catch((e) => alert("Non tolta: " + describeError(e)))
+                        }
+                        className="px-2 py-1.5 rounded-lg border border-amber-200 bg-amber-50 text-amber-800 text-[10px] font-black uppercase shrink-0"
+                      >
+                        Pass. sua ✕
+                      </button>
                     )}
                     <button
                       onClick={() =>

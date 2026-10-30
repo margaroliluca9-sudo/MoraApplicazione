@@ -7,7 +7,7 @@ import React, { useCallback, useEffect, useRef, useState } from "react";
 import { X, Trophy, RotateCcw, Heart, Volume2, VolumeX, Medal, Pause, Play, Lock, Paintbrush } from "lucide-react";
 import { CraneEngine, stageNews, TRUCKS_PER_STAGE } from "../game/engine";
 import { play, soundOn, setSoundOn } from "../game/sound";
-import { topScores, saveScore } from "../game/scores";
+import { topScores, saveScore, myStage } from "../game/scores";
 import { LOOKS, lookById, unlocked, readLook, saveLook, cleanName } from "../game/looks";
 
 const REC = "mora_crane_game_record";
@@ -83,6 +83,20 @@ export const CraneGame = ({ onClose, me = "" }) => {
   const [custom, setCustom] = useState(false);
   const phaseRef = useRef(phase);
   phaseRef.current = phase;
+  const fromStage = useRef(1); // livello da cui parte la partita
+
+  // il livello raggiunto è salvato anche online: vale su tutti i telefoni del tecnico
+  useEffect(() => {
+    if (!me) return;
+    myStage(me)
+      .then((s) => {
+        if (s > readStage()) {
+          saveStage(s);
+          setBestStage(s);
+        }
+      })
+      .catch(() => {});
+  }, [me]);
 
   const loadBoard = useCallback(() => {
     setBoardLoading(true);
@@ -167,6 +181,7 @@ export const CraneGame = ({ onClose, me = "" }) => {
     });
     const lk = readLook();
     e.setLook(lk.id, lk.name);
+    if (fromStage.current > 1) e.startAt(fromStage.current);
     eng.current = e;
     if (window.__moraTest) window.__crane = e; // solo per le prove automatiche
     let raf = 0;
@@ -239,8 +254,8 @@ export const CraneGame = ({ onClose, me = "" }) => {
       saveRec(result.score);
       setRecord(result.score);
     }
-    if (me && result.score > 0) {
-      saveScore(me, result.score, readLook().id)
+    if (me && (result.score > 0 || (result.stage || 1) > 1)) {
+      saveScore(me, result.score, readLook().id, result.stage || 1)
         .catch(() => false)
         .then(loadBoard);
     } else loadBoard();
@@ -359,7 +374,9 @@ export const CraneGame = ({ onClose, me = "" }) => {
     if (eng.current) eng.current.setLook(next.id, next.name);
   };
 
-  const start = () => {
+  const start = (from = 1) => {
+    const st = Math.max(1, Number(from) || 1);
+    fromStage.current = st;
     // iPhone: se il campo del nome era ancora attivo, tenendo premuto comparivano «Copia / Incolla»
     try {
       if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
@@ -371,13 +388,13 @@ export const CraneGame = ({ onClose, me = "" }) => {
     setScore(0);
     setLives(3);
     setLevel(0);
-    setStage(1);
+    setStage(st);
     setResult(null);
     setHold(false);
     setTip(true);
     setRound((r) => r + 1);
     setPhase("play");
-    setBanner({ stage: 1, news: stageNews(1), life: false, id: Date.now() });
+    setBanner({ stage: st, news: stageNews(st), life: false, id: Date.now() });
     play("start");
   };
   const pause = () => {
@@ -614,9 +631,20 @@ export const CraneGame = ({ onClose, me = "" }) => {
               <Board rows={board} me={me} loading={boardLoading} />
               {record > 0 && <p className="text-xs font-bold text-amber-700">Il tuo record su questo telefono: {record} punti{bestStage > 1 ? ` · livello ${bestStage}` : ""}</p>}
             </div>
-            <button type="button" onClick={start} data-action="game-start" className="w-full h-12 rounded-full bg-amber-500 text-white font-black text-lg">
-              Gioca
-            </button>
+            {bestStage > 1 ? (
+              <div className="space-y-2">
+                <button type="button" onClick={() => start(bestStage)} data-action="game-continue" className="w-full h-12 rounded-full bg-amber-500 text-white font-black text-lg">
+                  Continua dal livello {bestStage}
+                </button>
+                <button type="button" onClick={() => start(1)} data-action="game-start" className="w-full h-11 rounded-full bg-slate-100 text-slate-700 font-bold">
+                  Ricomincia dal livello 1
+                </button>
+              </div>
+            ) : (
+              <button type="button" onClick={() => start(1)} data-action="game-start" className="w-full h-12 rounded-full bg-amber-500 text-white font-black text-lg">
+                Gioca
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -646,12 +674,17 @@ export const CraneGame = ({ onClose, me = "" }) => {
               <p className="text-xs font-black text-slate-500 flex items-center justify-center gap-1"><Medal className="w-4 h-4" /> CLASSIFICA</p>
               <Board rows={board} me={me} loading={boardLoading} />
             </div>
+            {Math.max(bestStage, result.stage || 1) > 1 && (
+              <button type="button" onClick={() => start(Math.max(bestStage, result.stage || 1))} data-action="game-continue" className="w-full h-12 rounded-full bg-amber-500 text-white font-black">
+                Continua dal livello {Math.max(bestStage, result.stage || 1)}
+              </button>
+            )}
             <div className="flex gap-3">
               <button type="button" onClick={onClose} className="flex-1 h-12 rounded-full bg-slate-100 text-slate-700 font-bold">
                 Esci
               </button>
-              <button type="button" onClick={start} data-action="game-again" className="flex-1 h-12 rounded-full bg-amber-500 text-white font-black flex items-center justify-center gap-2">
-                <RotateCcw className="w-4 h-4" /> Rigioca
+              <button type="button" onClick={() => start(1)} data-action="game-again" className={`flex-1 h-12 rounded-full font-black flex items-center justify-center gap-2 ${Math.max(bestStage, result.stage || 1) > 1 ? "bg-slate-100 text-slate-700" : "bg-amber-500 text-white"}`}>
+                <RotateCcw className="w-4 h-4" /> {Math.max(bestStage, result.stage || 1) > 1 ? "Dal livello 1" : "Rigioca"}
               </button>
             </div>
           </div>
