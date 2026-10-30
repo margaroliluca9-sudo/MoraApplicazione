@@ -224,7 +224,7 @@ export const CustomersMap = ({ customers = [], machines = [], color = "blue", on
       <div
         ref={box}
         className="relative flex-1 min-h-[320px] rounded-2xl overflow-hidden border border-slate-200 bg-slate-200 select-none"
-        style={{ touchAction: "none" }}
+        style={{ touchAction: "none", height: "max(320px, calc(100dvh - 300px))" }}
         onPointerDown={onDown}
         onPointerMove={onMove}
         onPointerUp={onUp}
