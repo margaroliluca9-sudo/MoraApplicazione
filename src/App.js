@@ -35,7 +35,7 @@ import {
   getThemeMode,
   saveThemeMode,
   isDarkMode,
-  applyTheme,
+  applyTheme, setStatusColor,
   onSystemThemeChange,
 } from "./theme";
 import { applyAppearance, getCachedLayout, cacheLayout } from "./appearance";
@@ -244,6 +244,7 @@ export default function App() {
   }, [layoutConfig, look]);
   useEffect(() => {
     applyAppearance(viewConfig);
+    setStatusColor(viewConfig.themeColor); // striscia in alto del colore dell'app
   }, [viewConfig]);
   useEffect(() => {
     cacheLayout(layoutConfig);

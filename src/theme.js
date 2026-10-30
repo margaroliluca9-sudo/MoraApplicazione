@@ -38,15 +38,27 @@ export const isDarkMode = (mode) => {
   return !!(q && q.matches);
 };
 
+// colore della striscia in alto (ora e batteria) = colore dell'app (Admin → Design o «Il mio aspetto»)
+const STATUS_HEX = { blue: "#2563eb", indigo: "#4f46e5", teal: "#0d9488", green: "#16a34a", red: "#dc2626", rose: "#e11d48", orange: "#ea580c", amber: "#d97706", purple: "#9333ea", slate: "#475569" };
+let statusColor = "blue";
+const paintStatus = () => {
+  const hex = STATUS_HEX[statusColor] || STATUS_HEX.blue;
+  const meta = document.querySelector('meta[name="theme-color"]');
+  if (meta) meta.setAttribute("content", hex);
+  document.documentElement.style.setProperty("--mora-status", hex);
+};
+export const setStatusColor = (color) => {
+  statusColor = color || "blue";
+  paintStatus();
+};
+
 // Applica il tema alla pagina e restituisce true se è scuro
 export const applyTheme = (mode) => {
   const dark = isDarkMode(mode);
   const root = document.documentElement;
   root.classList.toggle("dark", dark);
   root.style.colorScheme = dark ? "dark" : "light";
-  const meta = document.querySelector('meta[name="theme-color"]');
-  if (meta) meta.setAttribute("content", dark ? "#0b1220" : "#1d4ed8");
-  root.style.setProperty("--mora-status", dark ? "#0b1220" : "#1d4ed8");
+  paintStatus(); // anche col tema scuro la striscia in alto resta del colore dell'app
   return dark;
 };
 

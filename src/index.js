@@ -10,12 +10,13 @@ import "./tailwind.css";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { UpdateBanner } from "./components/UpdateBanner";
 import { installErrorLog } from "./errorLog";
-import { applyTheme, getThemeMode } from "./theme";
+import { applyTheme, getThemeMode, setStatusColor } from "./theme";
 import { applyAppearance, getCachedLayout } from "./appearance";
 
 // tema e opzioni grafiche applicati subito, prima del primo disegno
 applyTheme(getThemeMode());
 applyAppearance(getCachedLayout());
+setStatusColor(getCachedLayout().themeColor);
 
 // copia dell'app sul telefono: così si apre anche senza rete (vedi public/sw.js)
 if (
