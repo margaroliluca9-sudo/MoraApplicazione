@@ -4,6 +4,8 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { X, User, ArrowLeft, Send, MessageCircle } from "lucide-react";
+import { Avatar } from "./Avatar";
+import { techOf } from "../profile";
 import {
   dmId,
   key,
@@ -93,12 +95,18 @@ export const OnlineMenu = ({
   };
 
   const unreadWith = (other) => unreadIn(messages, reads, dmId(me, other), me);
+  // foto del collega (Il mio profilo) o, se non l'ha messa, l'omino come prima
+  const photoOf = (k) => {
+    const t = techOf(technicians, k);
+    return t && t.photoAt ? t : null;
+  };
   const row = (name, sub, other, extra) => {
     const n = canWrite ? unreadWith(other) : 0;
+    const ph = photoOf(other);
     return (
       <div key={other} className="flex items-center gap-3 p-2 rounded-xl hover:bg-slate-50" data-online-user={other}>
-        <div className="relative w-9 h-9 bg-green-100 rounded-full flex items-center justify-center text-green-700 shrink-0">
-          <User className="w-4 h-4" />
+        <div className={`relative w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${ph ? "" : "bg-green-100 text-green-700"}`}>
+          {ph ? <Avatar tech={ph} className="w-9 h-9" /> : <User className="w-4 h-4" />}
           {extra}
         </div>
         <div className="flex-1 min-w-0">
@@ -146,9 +154,13 @@ export const OnlineMenu = ({
           <div className="overflow-y-auto p-2 space-y-1">
             {meOnline && (
               <div className="flex items-center gap-3 p-2">
-                <div className="w-9 h-9 bg-slate-100 rounded-full flex items-center justify-center text-slate-500 shrink-0">
-                  <User className="w-4 h-4" />
-                </div>
+                {photoOf(meKey) ? (
+                  <Avatar tech={photoOf(meKey)} className="w-9 h-9" />
+                ) : (
+                  <div className="w-9 h-9 bg-slate-100 rounded-full flex items-center justify-center text-slate-500 shrink-0">
+                    <User className="w-4 h-4" />
+                  </div>
+                )}
                 <div className="text-sm font-bold text-slate-500">Tu ({me})</div>
               </div>
             )}
@@ -183,6 +195,7 @@ export const OnlineMenu = ({
             <button type="button" onClick={() => setConv(null)} aria-label="Indietro" data-action="online-back" className="p-2 hover:bg-slate-200 rounded-full">
               <ArrowLeft className="w-4 h-4 text-slate-600" />
             </button>
+            {photoOf(otherOf(conv, me)) && <Avatar tech={photoOf(otherOf(conv, me))} className="w-8 h-8" />}
             <div className="flex-1 min-w-0">
               <div className="text-sm font-black text-slate-800 truncate">{displayName(otherOf(conv, me), technicians)}</div>
               <div className="text-[11px] text-slate-500">
