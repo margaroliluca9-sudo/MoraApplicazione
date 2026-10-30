@@ -21,6 +21,9 @@
  * → «Cartella nel Drive» scegli tu la cartella giusta: dal giorno dopo vale quella. Sempre in Admin → Drive si vede
  * da quale cartella e foglio arriva ogni dato e si possono correggere paese e gru (le correzioni non le tocco mai).
  *
+ * Posizione sulla mappa: per i clienti con paese o indirizzo cerca le coordinate su Google Maps (solo se sono
+ * nuovi o cambiati) e le scrive nel cliente: in Esplora → Mappa compaiono tutti i clienti.
+ *
  * I clienti segnati «Solo interventi» nell'app (niente verifiche, quindi niente cartella) non li abbino mai.
  *
  * Paese e indirizzo: aggiorna solo i clienti senza paese o quelli che aveva già aggiornato lui
@@ -293,6 +296,38 @@ function giro_() {
       conti.errori.push(voce.n + ": " + String((e && e.message) || e).slice(0, 120));
     }
   });
+  // posizione sulla mappa (Esplora → Mappa): cerco su Google Maps i clienti con paese/indirizzo nuovi o cambiati
+  conti.posizioni = 0;
+  var geo = Maps.newGeocoder().setRegion("it").setLanguage("it");
+  clienti.some(function (c) {
+    if (Date.now() - inizio > (CONFIG.minuti + 1) * 60000 || conti.posizioni >= 300) return true;
+    var q = [c.address, c.city].map(function (x) {
+      return String(x || "").trim();
+    }).filter(String);
+    if (!q.length) return false;
+    var chiaveGeo = q.join(", ");
+    if (c.geoKey === chiaveGeo) return false;
+    conti.posizioni++;
+    try {
+      var r = geo.geocode(chiaveGeo + ", Italia");
+      var g = r && r.status === "OK" && r.results && r.results[0];
+      if (g) {
+        scritture.push(
+          aggiornaDoc_("customers/" + c.id, {
+            lat: g.geometry.location.lat,
+            lng: g.geometry.location.lng,
+            geoKey: chiaveGeo,
+            geoApprox: !String(c.address || "").trim() || g.geometry.location_type === "APPROXIMATE",
+          })
+        );
+      } else {
+        scritture.push(aggiornaDoc_("customers/" + c.id, { geoKey: chiaveGeo, geoNone: true }));
+      }
+    } catch (e) {
+      Logger.log("Posizione di %s non trovata: %s", c.name, e);
+    }
+    return false;
+  });
   var falliti = scriviTutto_(token, scritture);
   if (falliti) conti.errori.push("Database: " + falliti + " scritture non riuscite");
   if (Object.keys(nuoviVisti).length) props.setProperties(nuoviVisti);
@@ -317,11 +352,12 @@ function giro_() {
         return v.c;
       }).length,
       gruTotali: gruTotali,
+      posizioni: conti.posizioni,
       errori: conti.errori.length,
       erroriLista: JSON.stringify(conti.errori.slice(0, 15)),
       durata: Math.round((Date.now() - inizio) / 1000),
       lastError: "",
-      versione: 5,
+      versione: 6,
     }),
     aggiornaDoc_("settings/drive_folders", { list: JSON.stringify(elenco), updatedAt: new Date().toISOString() }),
   ]);
@@ -717,6 +753,7 @@ function valore_(v) {
   if (!v) return "";
   if ("stringValue" in v) return v.stringValue;
   if ("integerValue" in v) return Number(v.integerValue);
+  if ("doubleValue" in v) return Number(v.doubleValue);
   if ("booleanValue" in v) return v.booleanValue;
   return "";
 }
@@ -729,7 +766,7 @@ function leggiClienti_(token) {
     var j = JSON.parse(UrlFetchApp.fetch(url, { headers: { Authorization: "Bearer " + token } }).getContentText());
     (j.documents || []).forEach(function (d) {
       var f = d.fields || {};
-      out.push({ id: d.name.split("/").pop(), name: valore_(f.name), city: valore_(f.city), address: valore_(f.address), placeSource: valore_(f.placeSource), placeFolder: valore_(f.placeFolder), placeSheet: valore_(f.placeSheet), driveFolderId: valore_(f.driveFolderId), driveNone: valore_(f.driveNone) === true });
+      out.push({ id: d.name.split("/").pop(), name: valore_(f.name), city: valore_(f.city), address: valore_(f.address), placeSource: valore_(f.placeSource), placeFolder: valore_(f.placeFolder), placeSheet: valore_(f.placeSheet), driveFolderId: valore_(f.driveFolderId), driveNone: valore_(f.driveNone) === true, geoKey: valore_(f.geoKey) });
     });
     pagina = j.nextPageToken || "";
   } while (pagina);
@@ -739,7 +776,15 @@ function leggiClienti_(token) {
 function campi_(o) {
   var f = {};
   Object.keys(o).forEach(function (k) {
-    f[k] = typeof o[k] === "number" ? { integerValue: String(o[k]) } : { stringValue: String(o[k] == null ? "" : o[k]) };
+    var v = o[k];
+    f[k] =
+      typeof v === "number"
+        ? Number.isInteger(v)
+          ? { integerValue: String(v) }
+          : { doubleValue: v }
+        : typeof v === "boolean"
+        ? { booleanValue: v }
+        : { stringValue: String(v == null ? "" : v) };
   });
   return f;
 }

@@ -4,7 +4,7 @@ export const DEFAULT_LAYOUT = {
   themeColor: "blue",
   borderRadius: "xl",
   appTitle: "Assistenza Mora",
-  dashboardOrder: ["new", "explore", "history", "database", "office", "admin"],
+  dashboardOrder: ["new", "explore", "map", "history", "database", "office", "admin"],
   formOrder: [
     "technician",
     "date",

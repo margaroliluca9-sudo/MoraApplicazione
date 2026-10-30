@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useCallback } from "react";
+import React, { useState, useMemo, useCallback, useEffect } from "react";
 import { fuzzyFilter } from "../fuzzy";
 import {
   Search,
@@ -15,10 +15,20 @@ import { placeOf } from "../places";
 import { printCustomer } from "../components/PrintCustomer";
 
 export const ExploreView = React.memo(
-  ({ customers, machines, logs, color = "blue", onOpenPhotos }) => {
+  ({ customers, machines, logs, color = "blue", onOpenPhotos, focus = null }) => {
     const [searchTerm, setSearchTerm] = useState("");
     const [expandedCustomer, setExpandedCustomer] = useState(null);
     const [expandedMachine, setExpandedMachine] = useState(null);
+    // arrivo dalla Mappa («Vedi le gru»): apro quel cliente e ci scorro
+    useEffect(() => {
+      if (!focus || !focus.name) return;
+      setExpandedCustomer(focus.name);
+      setExpandedMachine(null);
+      setTimeout(() => {
+        const el = document.querySelector(`[data-explore-customer="${CSS.escape(focus.name)}"]`);
+        if (el && el.scrollIntoView) el.scrollIntoView({ block: "start" });
+      }, 50);
+    }, [focus]);
 
     const filteredCustomers = useMemo(() => {
       if (!searchTerm) return customers;
@@ -67,6 +77,7 @@ export const ExploreView = React.memo(
           </div>
         </div>
 
+
         <div className="flex-1 overflow-y-auto space-y-2 custom-scrollbar pb-20">
           {filteredCustomers.map((c) => {
             const isCustExpanded = expandedCustomer === c.name;
@@ -77,6 +88,7 @@ export const ExploreView = React.memo(
             return (
               <div
                 key={c.id}
+                data-explore-customer={c.name}
                 className={`bg-white rounded-xl shadow-sm border transition-all duration-300 overflow-hidden ${
                   isCustExpanded
                     ? `border-${color}-500 ring-1 ring-${color}-200`

@@ -13,6 +13,7 @@ import {
   UploadCloud,
   Home,
   Folder,
+  Map as MapIcon,
 } from "lucide-react";
 import { signInAnonymously, onAuthStateChanged } from "firebase/auth";
 import { collection, serverTimestamp, Timestamp, orderBy, limit, documentId, getDocsFromCache, doc, query, where } from "firebase/firestore";
@@ -60,6 +61,7 @@ import { MachineHistoryModal } from "./components/modals/MachineHistoryModal";
 import { CustomerDetailModal } from "./components/modals/CustomerDetailModal";
 import { DashboardView } from "./views/DashboardView";
 import { ExploreView } from "./views/ExploreView";
+import { MapView } from "./views/MapView";
 // Esplora database, Ufficio e Admin si scaricano solo quando servono (vedi lazy.js)
 import { lazyNamed, preloadLazy } from "./lazy";
 import { installErrorLog, setErrorContext } from "./errorLog";
@@ -139,6 +141,7 @@ export default function App() {
 
   const [user, setUser] = useState(null);
   const [activeTab, setActiveTab] = useState("dashboard");
+  const [exploreFocus, setExploreFocus] = useState(null); // dalla Mappa: «Vedi le gru» di un cliente
   // schermo per la TV dell'ufficio (Ufficio → «Schermo TV», oppure indirizzo con ?tv=1)
   const [tvOpen, setTvOpen] = useState(() => {
     try {
@@ -256,7 +259,7 @@ export default function App() {
   const fieldTechs = useMemo(() => technicians.filter((t) => t.role !== "ufficio"), [technicians]);
   useEffect(() => rememberTechs(technicians), [technicians]); // per l'email dei tecnici nella stampa
   useEffect(() => {
-    if (isOffice && !["dashboard", "history", "explore"].includes(activeTab)) setActiveTab("dashboard");
+    if (isOffice && !["dashboard", "history", "explore", "map"].includes(activeTab)) setActiveTab("dashboard");
   }, [isOffice, activeTab]);
   const handlePreviewLook = (next, phase) => {
     if (phase === "start") modeBeforePreview.current = themeMode;
@@ -534,6 +537,11 @@ export default function App() {
             const idx = order.indexOf("new");
             if (idx !== -1) order.splice(idx + 1, 0, "explore");
             else order.unshift("explore");
+          }
+          // scheda Mappa: subito dopo Esplora
+          if (!order.includes("map")) {
+            order = [...order];
+            order.splice(order.indexOf("explore") + 1, 0, "map");
           }
           let fOrder = data.formOrder || DEFAULT_LAYOUT.formOrder;
           if (!fOrder.includes("ticketNumber")) {
@@ -1276,6 +1284,18 @@ export default function App() {
                 logs={logs}
                 color={color}
                 onOpenPhotos={setGlobalPhotoView}
+                focus={exploreFocus}
+              />
+            )}
+            {activeTab === "map" && (
+              <MapView
+                customers={customers}
+                machines={machines}
+                color={color}
+                onShowMachines={(name) => {
+                  setExploreFocus({ name, at: Date.now() });
+                  setActiveTab("explore");
+                }}
               />
             )}
             {activeTab === "history" && (
@@ -1422,6 +1442,13 @@ export default function App() {
                 label="Esplora"
                 active={activeTab === "explore"}
                 onClick={() => setActiveTab("explore")}
+                color={color}
+              />
+              <NavButton
+                icon={MapIcon}
+                label="Mappa"
+                active={activeTab === "map"}
+                onClick={() => setActiveTab("map")}
                 color={color}
               />
             </>
