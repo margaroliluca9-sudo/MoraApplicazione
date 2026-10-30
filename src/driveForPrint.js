@@ -7,7 +7,6 @@ import { getDocs } from "./metered";
 import { loadRows } from "./components/DriveCraneInfo";
 import { findDriveCrane } from "./driveCranes";
 import { placeOf } from "./places";
-import { emailsForLog } from "./profile";
 
 const placeCache = {};
 const placeFor = (name) => {
@@ -26,7 +25,6 @@ const placeFor = (name) => {
 
 export const withDriveInfo = async (log) => {
   if (!log) return log;
-  log = { ...log, _emails: emailsForLog(log) }; // email della ditta dei tecnici (Il mio profilo)
   try {
     const [rows, place] = await Promise.all([loadRows(log.customer), placeFor(log.customer)]);
     return { ...log, _drive: findDriveCrane(rows, log.machineId, log.customer), _place: place };

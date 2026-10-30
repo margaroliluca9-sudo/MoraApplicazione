@@ -49,7 +49,7 @@ import { applyCompany, activeNotices } from "./company";
 import { startSync, recentLogsQuery } from "./sync";
 import { PdfHost } from "./components/PdfHost";
 import { UserMenu } from "./components/UserMenu";
-import { techOf, rememberTechs } from "./profile";
+import { techOf } from "./profile";
 import { installGestures } from "./gestures";
 import { Sidebar, TabStrip, TAB_INFO } from "./components/DesktopShell";
 import { refreshPush, getPushState, key as techKey, chatDoc } from "./chat";
@@ -257,7 +257,6 @@ export default function App() {
   const isOffice = !!meTech && meTech.role === "ufficio";
   // chi fa i rapporti: solo i tecnici (quelli dell'ufficio non compaiono negli elenchi)
   const fieldTechs = useMemo(() => technicians.filter((t) => t.role !== "ufficio"), [technicians]);
-  useEffect(() => rememberTechs(technicians), [technicians]); // per l'email dei tecnici nella stampa
   useEffect(() => {
     if (isOffice && !["dashboard", "history", "explore", "map"].includes(activeTab)) setActiveTab("dashboard");
   }, [isOffice, activeTab]);
