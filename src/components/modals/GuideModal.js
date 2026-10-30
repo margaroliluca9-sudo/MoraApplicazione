@@ -317,7 +317,7 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
         "Cerca insieme clienti, gru e interventi: nome, matricola, N. assistenza, tecnico, data o parole della descrizione.",
         "Il N. assistenza riparte ogni anno: «5» trova i n. 5 di tutti gli anni (il più recente in cima), «5/2027» solo quello del 2027.",
         "Tocca un risultato per aprire la scheda della gru con tutto il suo storico.",
-        "Nella scheda della gru: in cima quanti interventi e l'ultimo; «Nuovo rapporto su questa gru» apre il modulo con cliente, gru, tipo e portata già scritti.",
+        "Nella scheda della gru: in cima quanti interventi e, in un riquadro, l'ultimo intervento (quando, chi e cosa è stato fatto); «Nuovo rapporto su questa gru» apre il modulo con cliente, gru, tipo e portata già scritti.",
       ],
     },
     {
@@ -346,7 +346,7 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
       title: "La mia area",
       points: [
         "È personale: le tue cose non le vede nessun altro.",
-        "Il mio profilo (tocca la tua foto o iniziale in cima, oppure «Il mio profilo» in fondo): metti la tua foto (facoltativa: la vedono i colleghi in chat, nello Storico accanto agli interventi che hai fatto e in alto nell'app), il cognome e l'email della ditta. Il nome per entrare lo cambia l'admin.",
+        "Il mio profilo (tocca la tua foto o iniziale in cima, oppure «Il mio profilo» in fondo): metti la tua foto (facoltativa: la vedono i colleghi in chat, nello Storico accanto agli interventi che hai fatto e in alto nell'app), il cognome e l'email della ditta (l'email esce anche sui rapporti stampati, accanto al tuo nome). Il nome per entrare lo cambia l'admin.",
         "La mia password: sempre in Il mio profilo puoi metterti una password solo tua (almeno 6 caratteri): da quel momento entri con quella e non più con la password aziendale. Se la dimentichi, l'admin in Staff tocca «Pass. sua ✕» accanto al tuo nome e torni alla password aziendale.",
         "Oggi: impegni e promemoria del giorno.",
         "I miei interventi: quelli di questo mese o tutti.",

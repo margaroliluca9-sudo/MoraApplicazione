@@ -94,9 +94,14 @@ export const MachineHistoryModal = ({
               ))}
             </div>
             {machineLogs[0] && (
-              <p className="text-xs font-semibold text-slate-500">
-                Ultimo intervento di <span className="text-slate-700">{getTechsString(machineLogs[0])}</span>
-              </p>
+              <div className={`rounded-2xl border border-${color}-200 bg-${color}-50/60 px-3 py-2.5 space-y-1`} data-section="machine-last">
+                <p className={`text-[11px] font-black uppercase tracking-wide text-${color}-700`}>Ultimo intervento</p>
+                <p className="text-sm font-bold text-slate-800">
+                  {machineLogs[0].dateString}
+                  <span className="font-semibold text-slate-500"> · {agoLabel(machineLogs[0].dateString)} · {getTechsString(machineLogs[0])}</span>
+                </p>
+                <p className="text-sm text-slate-700 leading-snug line-clamp-3 break-words whitespace-pre-wrap">{machineLogs[0].description || "—"}</p>
+              </div>
             )}
             {onNewReport && (
               <button

@@ -16,6 +16,18 @@ const techRef = (id) => doc(db, ...base, "technicians", id);
 
 export const techOf = (technicians, name) => (technicians || []).find((t) => pkey(t.name) === pkey(name)) || null;
 export const fullName = (t) => (t ? [t.name, t.surname].filter(Boolean).join(" ") : "");
+// elenco tecnici tenuto a mente (lo aggiorna App.js): serve alla stampa per l'email di chi ha fatto l'intervento
+let known = [];
+export const rememberTechs = (list) => {
+  known = Array.isArray(list) ? list : [];
+};
+// «marco@ditta.it» oppure, con più tecnici, «Marco: marco@ditta.it · Ale: ale@ditta.it» (solo chi l'ha messa)
+export const emailsForLog = (log, list = known) => {
+  const names = [log && log.technician, ...((log && log.additionalTechnicians) || [])].filter(Boolean);
+  const found = names.map((n) => [n, (techOf(list, n) || {}).email]).filter(([, e]) => e);
+  if (!found.length) return "";
+  return names.length === 1 ? found[0][1] : found.map(([n, e]) => `${n}: ${e}`).join(" · ");
+};
 export const validEmail = (v) => !v || /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(v).trim());
 
 // --- password per entrare ---

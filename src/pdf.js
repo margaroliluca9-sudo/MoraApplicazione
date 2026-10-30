@@ -407,6 +407,7 @@ export const buildInterventionPdf = async ({ log, today }) => {
   const dr = log._drive;
   flow.details([
     ["Tecnico/i", getTechsString(log)],
+    ["Email", log._emails || ""],
     ["Cliente", log.customer],
     ["Luogo", log._place || ""],
     ["Matricola gru", log.machineId],
