@@ -14,6 +14,8 @@ import {
   Lock,
 } from "lucide-react";
 import { isAdminPassword } from "../passwords";
+import { Avatar } from "../components/Avatar";
+import { techOf } from "../profile";
 import { getTechsString, formatCapacity } from "../utils";
 import { getProPanelClass } from "../ui";
 import { DeleteConfirmDialog } from "../components/DeleteConfirmDialog";
@@ -43,19 +45,24 @@ export const dayGroup = (dateString, now = new Date()) => {
 };
 const isRecent = (log) => !!(log && log.createdAt && Date.now() - log.createdAt.seconds * 1000 < 3 * 60 * 1000);
 
-// chi ha fatto l'intervento: cerchietti con l'iniziale e i nomi accanto
+// chi ha fatto l'intervento: cerchietti con la foto del tecnico (Il mio profilo) o, se non l'ha messa, l'iniziale
 const FACE_TONES = ["blue", "emerald", "amber", "purple", "rose", "teal"];
 const faceTone = (n) => FACE_TONES[[...String(n)].reduce((a, c) => a + c.charCodeAt(0), 0) % FACE_TONES.length];
-const TechFaces = ({ log }) => {
+const TechFaces = ({ log, technicians = [] }) => {
   const names = [log.technician, ...(log.additionalTechnicians || [])].filter(Boolean);
   return (
     <div className="flex items-center gap-2 min-w-0" data-tech-faces>
       <div className="flex -space-x-2 shrink-0">
-        {names.slice(0, 3).map((n) => (
-          <span key={n} className={`w-7 h-7 rounded-full ring-2 ring-white bg-${faceTone(n)}-100 text-${faceTone(n)}-700 text-xs font-black flex items-center justify-center`}>
-            {String(n).trim().charAt(0).toUpperCase()}
-          </span>
-        ))}
+        {names.slice(0, 3).map((n) => {
+          const t = techOf(technicians, n);
+          return t && t.photoAt ? (
+            <Avatar key={n} tech={t} name={n} className="w-7 h-7 ring-2 ring-white" />
+          ) : (
+            <span key={n} className={`w-7 h-7 rounded-full ring-2 ring-white bg-${faceTone(n)}-100 text-${faceTone(n)}-700 text-xs font-black flex items-center justify-center`}>
+              {String(n).trim().charAt(0).toUpperCase()}
+            </span>
+          );
+        })}
         {!names.length && <User className="w-4 h-4 text-slate-400" />}
       </div>
       <span className="text-sm font-semibold text-slate-600 truncate">{getTechsString(log)}</span>
@@ -346,7 +353,7 @@ export const HistoryView = ({
                     <p className="text-slate-700 text-sm leading-snug whitespace-pre-wrap break-words">{log.description}</p>
                     <RopeInfo log={log} />
                     <div className="flex justify-between items-center pt-2 border-t border-slate-100">
-                      <TechFaces log={log} color={color} />
+                      <TechFaces log={log} technicians={technicians} color={color} />
                       <div className="flex gap-1 shrink-0">
                         <button
                           onClick={() => printLog(log)}

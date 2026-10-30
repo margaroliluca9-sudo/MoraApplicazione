@@ -128,7 +128,7 @@ export const ProfilePanel = ({ me, technicians = [], color = "blue", onBack, onC
               </button>
             )}
           </div>
-          <p className="text-xs text-slate-500">Facoltativa. La vedono i colleghi in chat e in alto nell'app.</p>
+          <p className="text-xs text-slate-500">Facoltativa. La vedono i colleghi in chat, nello Storico e in alto nell'app.</p>
           <Msg m={photoMsg} />
         </section>
 
