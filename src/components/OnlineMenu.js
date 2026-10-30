@@ -3,7 +3,8 @@
 // ma funziona anche quando la chat completa in «La mia area» è spenta.
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { X, User, ArrowLeft, Send, MessageCircle } from "lucide-react";
+import { X, User, ArrowLeft, Send, MessageCircle, Mic, Square, Trash2 } from "lucide-react";
+import { VoicePlayer } from "./modals/ChatModal";
 import { Avatar } from "./Avatar";
 import { techOf } from "../profile";
 import {
@@ -20,6 +21,9 @@ import {
   dayLabel,
   msgTime,
   canSee,
+  startVoice,
+  durLabel,
+  VOICE_MAX,
 } from "../chat";
 
 const since = (u) => {
@@ -52,6 +56,11 @@ export const OnlineMenu = ({
   const [conv, setConv] = useState(startConv && canWrite ? startConv : null);
   const [text, setText] = useState("");
   const [sending, setSending] = useState(false);
+  // vocali (come nella Chat): tocchi il microfono, parli, ■, poi Invia
+  const [rec, setRec] = useState(null);
+  const [recSecs, setRecSecs] = useState(0);
+  const [voice, setVoice] = useState(null);
+  const [voiceErr, setVoiceErr] = useState("");
   const listRef = useRef(null);
   const meKey = key(me);
 
@@ -83,16 +92,55 @@ export const OnlineMenu = ({
   const send = async (e) => {
     e.preventDefault();
     const t = text.trim();
-    if (!t || !conv || sending) return;
+    if ((!t && !voice) || !conv || sending) return;
     setSending(true);
     try {
-      const m = await sendMessage({ conv, text: t, author: me, via: "online" });
+      const m = await sendMessage({ conv, text: t, audio: voice, author: me, via: "online" });
       setText("");
+      setVoice(null);
       notifyChat(m).catch(() => {});
+    } catch (err) {
+      setVoiceErr("Non inviato: controlla la rete e riprova.");
     } finally {
       setSending(false);
     }
   };
+  const recStart = async () => {
+    setVoiceErr("");
+    try {
+      const r = await startVoice();
+      setRec(r);
+      setRecSecs(0);
+    } catch (err) {
+      setVoiceErr(/denied|permission|NotAllowed/i.test(String(err && (err.name || err.message))) ? "Microfono non permesso: attivalo dalle impostazioni del telefono per questa app." : String((err && err.message) || "Non riesco a registrare."));
+    }
+  };
+  const recStop = async () => {
+    const r = rec;
+    setRec(null);
+    if (!r) return;
+    try {
+      const v = await r.stop();
+      if (v.dur < 1) return setVoiceErr("Vocale troppo corto.");
+      setVoice(v);
+    } catch (err) {
+      setVoiceErr(String((err && err.message) || "Vocale non riuscito."));
+    }
+  };
+  useEffect(() => {
+    if (!rec) return undefined;
+    const t = setInterval(() => setRecSecs(Math.floor((Date.now() - rec.startedAt) / 1000)), 250);
+    return () => clearInterval(t);
+  }, [rec]);
+  useEffect(() => {
+    if (rec && recSecs >= VOICE_MAX) recStop();
+  });
+  useEffect(
+    () => () => {
+      if (rec) rec.cancel();
+    },
+    [rec]
+  );
 
   const unreadWith = (other) => unreadIn(messages, reads, dmId(me, other), me);
   // foto del collega (Il mio profilo) o, se non l'ha messa, l'omino come prima
@@ -222,7 +270,8 @@ export const OnlineMenu = ({
                         mine ? `bg-${color}-600 text-white rounded-br-md` : "bg-white border border-slate-200 text-slate-800 rounded-bl-md"
                       }`}
                     >
-                      {m.text || (m.audioId ? "🎤 vocale (aprilo nella Chat)" : "📷 foto")}
+                      {m.audioId && <VoicePlayer id={m.audioId} dur={m.audioDur} mine={mine} color={color} />}
+                      {m.text || (m.audioId ? "" : "📷 foto")}
                       <span className={`block text-[10px] mt-0.5 text-right ${mine ? "text-white/70" : "text-slate-400"}`}>{timeOf(m)}</span>
                     </div>
                   </div>
@@ -230,6 +279,30 @@ export const OnlineMenu = ({
               );
             })}
           </div>
+          {voiceErr && <p className="px-3 pt-2 text-xs font-bold text-red-600 bg-white">{voiceErr}</p>}
+          {voice && (
+            <div className="px-2 pt-2 bg-white flex items-center gap-2" data-online-voice-ready>
+              <div className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-2">
+                <VoicePlayer src={voice.data} dur={voice.dur} color={color} />
+              </div>
+              <button type="button" onClick={() => setVoice(null)} aria-label="Elimina il vocale" className="p-2 text-red-600">
+                <Trash2 className="w-5 h-5" />
+              </button>
+            </div>
+          )}
+          {rec ? (
+            <div className="p-2 border-t border-slate-200 flex items-center gap-2 bg-white" data-online-recording>
+              <button type="button" onClick={() => { rec.cancel(); setRec(null); }} className="h-11 px-3 rounded-xl bg-slate-100 text-slate-600 text-xs font-bold">
+                Annulla
+              </button>
+              <div className="flex-1 flex items-center justify-center gap-2 text-sm font-black text-red-600">
+                <span className="w-2.5 h-2.5 rounded-full bg-red-600 animate-pulse" /> {durLabel(recSecs)}
+              </div>
+              <button type="button" onClick={recStop} aria-label="Ferma" data-action="online-voice-stop" className="h-11 w-11 rounded-xl bg-red-600 text-white flex items-center justify-center">
+                <Square className="w-5 h-5" />
+              </button>
+            </div>
+          ) : (
           <form onSubmit={send} className="p-2 border-t border-slate-200 flex gap-2 bg-white">
             <input
               value={text}
@@ -238,16 +311,23 @@ export const OnlineMenu = ({
               data-field="online-text"
               className="flex-1 min-w-0 h-11 px-3 rounded-xl border border-slate-300 bg-slate-50 text-sm"
             />
-            <button
-              type="submit"
-              disabled={!text.trim() || sending}
-              aria-label="Invia"
-              data-action="online-send"
-              className={`h-11 w-11 rounded-xl bg-${color}-600 text-white flex items-center justify-center disabled:opacity-40`}
-            >
-              <Send className="w-5 h-5" />
-            </button>
+            {!text.trim() && !voice ? (
+              <button type="button" onClick={recStart} aria-label="Registra un vocale" data-action="online-voice" className={`h-11 w-11 rounded-xl bg-${color}-600 text-white flex items-center justify-center`}>
+                <Mic className="w-5 h-5" />
+              </button>
+            ) : (
+              <button
+                type="submit"
+                disabled={sending}
+                aria-label="Invia"
+                data-action="online-send"
+                className={`h-11 w-11 rounded-xl bg-${color}-600 text-white flex items-center justify-center disabled:opacity-40`}
+              >
+                <Send className="w-5 h-5" />
+              </button>
+            )}
           </form>
+          )}
         </>
       )}
     </div>

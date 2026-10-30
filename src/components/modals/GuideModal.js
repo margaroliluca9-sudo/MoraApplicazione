@@ -306,6 +306,7 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
         "In alto a destra la pillola verde con il pallino e il numero dei colleghi online. Toccala per vedere chi è collegato adesso e da quanto.",
         "«Scrivi» apre una conversazione privata con quel collega; sotto, in «Messaggi recenti», ritrovi chi ti ha scritto anche se ora non è collegato.",
         "Il pallino rosso sulla scritta dice quanti messaggi devi leggere. Con le notifiche attive (La mia area → ⚙ Impostazioni) arriva anche sul telefono.",
+        "Vocali anche da qui: con la casella vuota a destra c'è il microfono (tocca, parla, ■, poi Invia); i vocali ricevuti si ascoltano toccando ▶.",
         "Sono gli stessi messaggi privati della Chat: se l'admin accende la Chat in «La mia area» li ritrovi anche lì. L'admin può spegnere i messaggi da Impostazioni → Design.",
       ],
     },
