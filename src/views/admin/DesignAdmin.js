@@ -4,6 +4,7 @@ import React from "react";
 import { AREA_TILES, areaOn } from "../../areaTiles";
 import { AppNameField, ThemeColors, SeasonGallery } from "../../components/DesignExtras";
 import { PRO_INPUT, getProPanelClass } from "../../ui";
+import { SwitchRow, Switch } from "../../components/Switch";
 import { FONT_OPTIONS, FONT_SCALE_OPTIONS, RADIUS_OPTIONS, DENSITY_OPTIONS, APPEARANCE_DEFAULTS } from "../../appearance";
 
 export const DesignAdmin = ({ layoutConfig, onUpdateLayout }) => (
@@ -96,103 +97,34 @@ export const DesignAdmin = ({ layoutConfig, onUpdateLayout }) => (
           );
         })}
 
-        <div
-          className="flex items-center justify-between gap-3 p-3 rounded-xl border border-slate-200 bg-slate-50"
-          data-section="chat-toggle"
-        >
-          <div>
-            <span className="text-xs font-bold text-slate-700 block">
-              Chat tra tecnici
-            </span>
-            <span className="text-[10px] text-slate-500">
-              {layoutConfig.chatEnabled === true
-                ? "Attiva: c'è nella «La mia area» di ogni tecnico"
-                : "Spenta: nessuno la vede (i messaggi restano salvati)"}
-            </span>
-          </div>
-          <button
-            type="button"
-            aria-pressed={layoutConfig.chatEnabled === true}
-            onClick={() =>
-              onUpdateLayout({
-                ...layoutConfig,
-                chatEnabled: layoutConfig.chatEnabled !== true,
-              })
-            }
-            className={`px-4 py-2 rounded-full font-bold text-sm shrink-0 ${
-              layoutConfig.chatEnabled === true
-                ? `bg-${layoutConfig.themeColor}-600 text-white`
-                : "bg-white border border-slate-300 text-slate-600"
-            }`}
-          >
-            {layoutConfig.chatEnabled === true ? "Disattiva" : "Attiva"}
-          </button>
-        </div>
+        <SwitchRow
+          section="chat-toggle"
+          id="chat"
+          title="Chat tra tecnici"
+          text={layoutConfig.chatEnabled === true ? "Accesa: c'è nella «La mia area» di ogni tecnico" : "Spenta: nessuno la vede (i messaggi restano salvati)"}
+          on={layoutConfig.chatEnabled === true}
+          onChange={(v) => onUpdateLayout({ ...layoutConfig, chatEnabled: v })}
+        />
 
-        <div
-          className="flex items-center justify-between gap-3 p-3 rounded-xl border border-slate-200 bg-slate-50"
-          data-section="online-toggle"
-        >
-          <div>
-            <span className="text-xs font-bold text-slate-700 block">
-              Messaggi da «Tecnici online»
-            </span>
-            <span className="text-[10px] text-slate-500">
-              {layoutConfig.onlineMessages !== false
-                ? "Attivi: toccando «tecnici online» in alto si vede chi è collegato e gli si scrive"
-                : "Spenti: si vede solo chi è online, senza messaggi"}
-            </span>
-          </div>
-          <button
-            type="button"
-            aria-pressed={layoutConfig.onlineMessages !== false}
-            onClick={() =>
-              onUpdateLayout({
-                ...layoutConfig,
-                onlineMessages: layoutConfig.onlineMessages === false,
-              })
-            }
-            className={`px-4 py-2 rounded-full font-bold text-sm shrink-0 ${
-              layoutConfig.onlineMessages !== false
-                ? `bg-${layoutConfig.themeColor}-600 text-white`
-                : "bg-white border border-slate-300 text-slate-600"
-            }`}
-          >
-            {layoutConfig.onlineMessages !== false ? "Disattiva" : "Attiva"}
-          </button>
-        </div>
+        <SwitchRow
+          section="online-toggle"
+          id="online"
+          title="Messaggi da «Tecnici online»"
+          text={layoutConfig.onlineMessages !== false ? "Accesi: toccando «tecnici online» in alto si vede chi è collegato e gli si scrive" : "Spenti: si vede solo chi è online, senza messaggi"}
+          on={layoutConfig.onlineMessages !== false}
+          onChange={(v) => onUpdateLayout({ ...layoutConfig, onlineMessages: v })}
+        />
 
         <SeasonGallery layoutConfig={layoutConfig} onUpdateLayout={onUpdateLayout} color={layoutConfig.themeColor} />
 
-        <div className="flex items-center justify-between gap-3 p-3 rounded-xl border border-slate-200 bg-slate-50">
-          <div>
-            <span className="text-xs font-bold text-slate-700 block">
-              Animazione di avvio
-            </span>
-            <span className="text-[10px] text-slate-500">
-              {layoutConfig.showSplash === false
-                ? "Disattivata: l'app si apre subito"
-                : "Carroponte e gru all'apertura (circa 2 secondi)"}
-            </span>
-          </div>
-          <button
-            type="button"
-            aria-pressed={layoutConfig.showSplash !== false}
-            onClick={() =>
-              onUpdateLayout({
-                ...layoutConfig,
-                showSplash: layoutConfig.showSplash === false,
-              })
-            }
-            className={`px-4 py-2 rounded-full font-bold text-sm shrink-0 ${
-              layoutConfig.showSplash === false
-                ? "bg-white border border-slate-300 text-slate-600"
-                : `bg-${layoutConfig.themeColor}-600 text-white`
-            }`}
-          >
-            {layoutConfig.showSplash === false ? "Attiva" : "Disattiva"}
-          </button>
-        </div>
+        <SwitchRow
+          section="splash-toggle"
+          id="splash"
+          title="Animazione di avvio"
+          text={layoutConfig.showSplash === false ? "Spenta: l'app si apre subito" : "Carroponte e gru all'apertura (circa 2 secondi)"}
+          on={layoutConfig.showSplash !== false}
+          onChange={(v) => onUpdateLayout({ ...layoutConfig, showSplash: v })}
+        />
 
         <div className="p-3 rounded-xl border border-slate-200 bg-slate-50 space-y-2" data-section="area-tiles-admin">
           <div>
@@ -207,21 +139,7 @@ export const DesignAdmin = ({ layoutConfig, onUpdateLayout }) => (
                   <span className={`text-xs font-bold block ${isOn ? "text-slate-700" : "text-slate-400 line-through"}`}>{t.label}</span>
                   <span className="text-[10px] text-slate-500">{t.sub}</span>
                 </div>
-                <button
-                  type="button"
-                  role="switch"
-                  aria-checked={isOn}
-                  aria-label={t.label}
-                  onClick={() =>
-                    onUpdateLayout({
-                      ...layoutConfig,
-                      areaTiles: { ...(layoutConfig.areaTiles || {}), [t.id]: !isOn },
-                    })
-                  }
-                  className={`relative w-12 h-7 rounded-full shrink-0 transition-colors ${isOn ? "bg-emerald-500" : "bg-slate-300"}`}
-                >
-                  <span className={`absolute top-1 w-5 h-5 rounded-full bg-white shadow transition-all ${isOn ? "left-6" : "left-1"}`} />
-                </button>
+                <Switch id={"area-" + t.id} label={t.label} on={isOn} onChange={() => onUpdateLayout({ ...layoutConfig, areaTiles: { ...(layoutConfig.areaTiles || {}), [t.id]: !isOn } })} />
               </div>
             );
           })}

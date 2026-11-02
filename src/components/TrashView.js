@@ -1,6 +1,7 @@
 // AREA ADMIN → Cestino: rapporti eliminati negli ultimi 30 giorni. «Recupera» li rimette com'erano.
 // Si leggono solo quando apri questa pagina (al massimo 100).
 import React, { useEffect, useState } from "react";
+import { CardsSkeleton } from "./Skeleton";
 import { Trash2, RotateCcw, Loader2, CheckCircle2 } from "lucide-react";
 import { listTrash, restoreLog, purgeLog, daysLeft, TRASH_DAYS } from "../trash";
 
@@ -62,7 +63,7 @@ export const TrashView = ({ color = "blue" }) => {
       </div>
       {msg && <p className="text-sm font-bold text-emerald-700 bg-emerald-50 rounded-xl p-3" data-trash-msg>{msg}</p>}
       {rows == null ? (
-        <p className="text-sm text-slate-400 flex items-center gap-2"><Loader2 className="w-4 h-4 animate-spin" /> Carico il cestino…</p>
+        <CardsSkeleton count={2} />
       ) : rows.length === 0 ? (
         <p className="text-sm font-bold text-slate-500 flex items-center gap-2" data-trash-empty><CheckCircle2 className="w-5 h-5 text-emerald-600" /> Il cestino è vuoto.</p>
       ) : (

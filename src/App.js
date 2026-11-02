@@ -12,6 +12,7 @@ import {
   WifiOff,
   UploadCloud,
   Home,
+  UserCircle,
   Folder,
   Map as MapIcon,
 } from "lucide-react";
@@ -1444,27 +1445,22 @@ export default function App() {
             </>
           ) : (
             <>
+              {/* Home · Storico · [Nuovo] · La mia area · Admin */}
+              <NavButton id="home" icon={Home} label="Home" active={activeTab === "dashboard"} onClick={() => setActiveTab("dashboard")} color={color} />
+              <NavButton id="history" icon={History} label="Storico" active={activeTab === "history"} onClick={() => setActiveTab("history")} color={color} />
+              <NavButton id="new" big icon={PlusCircle} label="Nuovo" active={activeTab === "new"} onClick={() => setActiveTab("new")} color={color} />
               <NavButton
-                icon={PlusCircle}
-                label="Nuovo"
-                active={activeTab === "new"}
-                onClick={() => setActiveTab("new")}
+                id="area"
+                icon={UserCircle}
+                label="Mia area"
+                active={false}
+                onClick={() => {
+                  setActiveTab("dashboard");
+                  setTimeout(() => window.dispatchEvent(new CustomEvent("mora-open-area", { detail: { panel: "home" } })), 60);
+                }}
                 color={color}
               />
-              <NavButton
-                icon={History}
-                label="Storico"
-                active={activeTab === "history"}
-                onClick={() => setActiveTab("history")}
-                color={color}
-              />
-              <NavButton
-                icon={Settings}
-                label="Admin"
-                active={activeTab === "admin"}
-                onClick={handleAdminAccess}
-                color={color}
-              />
+              <NavButton id="admin" icon={Settings} label="Admin" active={activeTab === "admin"} onClick={handleAdminAccess} color={color} />
             </>
           )}
         </nav>

@@ -9,6 +9,7 @@ import { CraneEngine, stageNews, TRUCKS_PER_STAGE } from "../game/engine";
 import { play, soundOn, setSoundOn } from "../game/sound";
 import { topScores, saveScore, myStage } from "../game/scores";
 import { LOOKS, lookById, unlocked, readLook, saveLook, cleanName } from "../game/looks";
+import { RowsSkeleton } from "./Skeleton";
 
 const REC = "mora_crane_game_record";
 const readRec = () => {
@@ -43,7 +44,7 @@ const saveStage = (n) => {
 };
 
 const Board = ({ rows, me, loading }) => {
-  if (loading) return <p className="text-sm text-slate-400">Carico la classifica…</p>;
+  if (loading) return <RowsSkeleton count={4} />;
   if (!rows || !rows.length) return <p className="text-sm text-slate-400">Ancora nessuno in classifica: comincia tu!</p>;
   const mine = String(me || "").trim().toLowerCase();
   return (

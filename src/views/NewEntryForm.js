@@ -1060,11 +1060,21 @@ export const NewEntryForm = ({
         </div>
         {!savedLog && (
           <div className="flex gap-1.5 mt-4" data-section="report-progress">
+            {/* tocca un passo: vai a quella parte del modulo */}
             {stepKeys.map((g) => (
-              <div key={g} className="flex-1 min-w-0">
+              <button
+                key={g}
+                type="button"
+                data-step={g}
+                onClick={() => {
+                  const el = document.querySelector(`[data-form-group="${g}"]`);
+                  if (el && el.scrollIntoView) el.scrollIntoView({ block: "start", behavior: "smooth" });
+                }}
+                className="flex-1 min-w-0 text-left"
+              >
                 <div className="h-1.5 rounded-full" style={{ backgroundColor: done[g] ? "#ffffff" : "rgba(255,255,255,.25)" }} />
-                <p className={`text-[10px] mora-keep-size font-bold mt-1 truncate ${done[g] ? "text-white" : "text-white/60"}`}>{GROUPS[g].title}</p>
-              </div>
+                <p className={`text-[10px] mora-keep-size font-bold mt-1 truncate ${done[g] ? "text-white" : "text-white/60"}`}>{done[g] ? "✓ " : ""}{GROUPS[g].title}</p>
+              </button>
             ))}
           </div>
         )}

@@ -232,3 +232,13 @@ html.dark .mora-theme-btn { background: #121b2c; }
   width: 20px;
   height: 20px;
 }
+
+/* ===== AREA ADMIN: scritte più grandi e normali (niente maiuscoletto minuscolo), ombre leggere come nel resto dell'app ===== */
+.mora-admin .text-\[10px\] { font-size: 12px; line-height: 1.35; }
+.mora-admin .text-\[9px\] { font-size: 11px; }
+.mora-admin .uppercase { text-transform: none; letter-spacing: 0.01em; }
+.mora-admin .shadow-xl { box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06), 0 10px 28px -14px rgba(15, 23, 42, 0.16); }
+.mora-admin h3 { font-size: 1.05rem; }
+
+/* passi del Nuovo rapporto: arrivando su una parte, il titolo non resta sotto la barra in alto */
+[data-form-group] { scroll-margin-top: 90px; }

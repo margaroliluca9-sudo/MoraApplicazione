@@ -189,3 +189,9 @@ html.dark .border-amber-200 { border-color: rgba(245, 158, 11, 0.4) }
 html.dark .hover\:border-amber-300:hover { border-color: rgba(251, 191, 36, 0.5) }
 html.dark .focus\:ring-amber-100:focus { --tw-ring-color: rgba(245, 158, 11, 0.35) }
 html.dark .ring-amber-200 { --tw-ring-color: rgba(245, 158, 11, 0.4) }
+
+/* avvisi leggibili anche di sera (riquadri verdi, rossi e blu) */
+html.dark .bg-emerald-100 { background-color: rgba(16, 185, 129, 0.2) }
+html.dark .text-emerald-800, html.dark .text-emerald-900 { color: #6ee7b7 }
+html.dark .text-red-900 { color: #fca5a5 }
+html.dark .text-blue-900 { color: #93c5fd }

@@ -5,7 +5,6 @@ import {
   Search,
   User,
   Trash2,
-  RefreshCw,
   Edit,
   Clock,
   Camera,
@@ -15,6 +14,7 @@ import {
 } from "lucide-react";
 import { isAdminPassword } from "../passwords";
 import { Avatar } from "../components/Avatar";
+import { CardsSkeleton } from "../components/Skeleton";
 import { techOf } from "../profile";
 import { getTechsString, formatCapacity } from "../utils";
 import { getProPanelClass } from "../ui";
@@ -213,8 +213,8 @@ export const HistoryView = ({
 
   if (loading)
     return (
-      <div className="py-20 text-center">
-        <RefreshCw className="animate-spin mx-auto text-slate-400" />
+      <div className="max-w-xl mx-auto pt-2">
+        <CardsSkeleton count={4} />
       </div>
     );
 

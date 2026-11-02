@@ -2,7 +2,7 @@ import React from "react";
 
 // --- COMPONENTI UI MINORI ---
 export const NavButton = React.memo(
-  ({ icon: Icon, label, active, onClick, desktop = false, color = "blue" }) => {
+  ({ icon: Icon, label, active, onClick, desktop = false, color = "blue", big = false, id }) => {
     if (desktop) {
       return (
         <button
@@ -17,14 +17,25 @@ export const NavButton = React.memo(
         </button>
       );
     }
+    // tasto grande al centro (Nuovo rapporto): tondo pieno, un po' più in alto della barra
+    if (big)
+      return (
+        <button onClick={onClick} data-nav={id} aria-current={active ? "page" : undefined} className="flex-1 flex flex-col items-center justify-end gap-1 transition-transform active:scale-95">
+          <span className={`-mt-6 w-14 h-14 rounded-full bg-${color}-600 text-white flex items-center justify-center shadow-lg shadow-${color}-600/30 ring-4 ring-white`}>
+            <Icon className="w-7 h-7" strokeWidth={2.4} />
+          </span>
+          <span className={`text-xs font-bold text-${color}-700`}>{label}</span>
+        </button>
+      );
     return (
       <button
         onClick={onClick}
+        data-nav={id}
         aria-current={active ? "page" : undefined}
         className="flex-1 flex flex-col items-center justify-center gap-1 py-1 transition-transform active:scale-95"
       >
         <span
-          className={`w-16 h-8 rounded-full flex items-center justify-center transition-colors duration-300 ${
+          className={`w-14 h-8 rounded-full flex items-center justify-center transition-colors duration-300 ${
             active ? `bg-${color}-100 text-${color}-700` : "text-slate-500"
           }`}
         >
