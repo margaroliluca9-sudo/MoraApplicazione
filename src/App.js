@@ -26,8 +26,7 @@ import { getSafeMatricola } from "./utils";
 import { PRO_BUTTON_SECONDARY } from "./ui";
 import { GlobalLoginScreen } from "./components/GlobalLoginScreen";
 import { SplashScreen } from "./components/SplashScreen";
-import { SEASONS } from "./season";
-import { seasonNow } from "./components/DesignExtras";
+import { readLastSync, syncWhen, focusSection, splashSeason } from "./appHelpers";
 import { CraneMark } from "./components/CraneMark";
 import {
   THEME_MODES,
@@ -73,36 +72,6 @@ const OfficeView = lazyNamed(() => import("./views/OfficeView"), "OfficeView");
 const AdminPanel = lazyNamed(() => import("./views/AdminPanel"), "AdminPanel");
 const TvScreen = lazyNamed(() => import("./components/TvScreen"), "TvScreen", <div className="fixed inset-0 z-[500] bg-slate-950" />);
 
-// SENZA RETE: "aggiornati oggi alle 8:42" / "ieri alle 17:10" / "il 16/10 alle 9:00"
-const readLastSync = () => {
-  try {
-    return Number(localStorage.getItem("mora_last_sync")) || 0;
-  } catch (e) {
-    return 0;
-  }
-};
-const syncWhen = (ms) => {
-  const d = new Date(ms);
-  const t = new Date();
-  const hm = `${d.getHours()}:${String(d.getMinutes()).padStart(2, "0")}`;
-  const day = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
-  const diff = Math.round((day(t) - day(d)) / 86400000);
-  if (diff === 0) return "oggi alle " + hm;
-  if (diff === 1) return "ieri alle " + hm;
-  return `il ${d.getDate()}/${d.getMonth() + 1} alle ${hm}`;
-};
-
-// animazione di avvio del periodo dell'anno (si può provare con "?stagione=natale")
-const splashSeason = (cfg) => {
-  try {
-    const forced = new URLSearchParams(window.location.search).get("stagione");
-    if (SEASONS.includes(forced)) return forced;
-  } catch (e) {
-    // niente
-  }
-  return seasonNow(cfg); // automatica, fissa (Admin → Design) o spenta
-};
-
 // ASCOLTO DEL DATABASE CON RIPRESA DA SOLA: se un collegamento si interrompe per un errore
 // (es. letture del giorno finite, permessi), l'app riprova da sola più tardi (2, 4, 8… fino a 10 minuti,
 // e subito quando torna la rete) senza doverla chiudere e riaprire.
@@ -141,7 +110,21 @@ export default function App() {
     themeMode === "dark" ? Moon : themeMode === "light" ? Sun : SunMoon;
 
   const [user, setUser] = useState(null);
-  const [activeTab, setActiveTab] = useState("dashboard");
+  // scheda iniziale: dalla notifica del riepilogo del mese si apre Ufficio («?tab=office&focus=riepilogo»)
+  const [activeTab, setActiveTab] = useState(() => {
+    try {
+      const q = new URLSearchParams(window.location.search);
+      const t = q.get("tab");
+      if (["office", "history", "explore", "map"].includes(t)) {
+        if (q.get("focus")) setTimeout(() => focusSection(q.get("focus")), 1500);
+        window.history.replaceState(null, "", window.location.pathname);
+        return t;
+      }
+    } catch (e) {
+      // niente
+    }
+    return "dashboard";
+  });
   const [exploreFocus, setExploreFocus] = useState(null); // dalla Mappa: «Vedi le gru» di un cliente
   // schermo per la TV dell'ufficio (Ufficio → «Schermo TV», oppure indirizzo con ?tv=1)
   const [tvOpen, setTvOpen] = useState(() => {
@@ -925,6 +908,12 @@ export default function App() {
         let panel = null;
         try {
           const q = new URL(e.data.url, window.location.origin).searchParams;
+          // notifica che apre una scheda (es. Ufficio per il riepilogo del mese)
+          if (q.get("tab")) {
+            setActiveTab(q.get("tab"));
+            if (q.get("focus")) setTimeout(() => focusSection(q.get("focus")), 400);
+            return;
+          }
           conv = q.get("chat") || "group";
           if (q.has("area")) panel = q.get("area") || "home";
           if (q.has("online")) panel = "online:" + q.get("online");

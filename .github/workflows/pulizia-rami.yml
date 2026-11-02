@@ -1,0 +1,28 @@
+# Pulizia dei rami vecchi: cancella da GitHub i rami già entrati nell'app (main).
+# Non tocca main, i rami in pausa («prova-compila-verifiche», «sicurezza») e quelli non ancora pubblicati.
+# Parte da sola quando questo file cambia; si può rilanciare da Actions → «Pulizia rami» → Run workflow.
+name: Pulizia rami
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [".github/workflows/pulizia-rami.yml"]
+permissions:
+  contents: write
+jobs:
+  pulizia:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Cancella i rami già uniti a main
+        run: |
+          KEEP=" main prova-compila-verifiche sicurezza "
+          n=0
+          for b in $(git branch -r --merged origin/main | grep -v HEAD | sed 's#^ *origin/##'); do
+            case "$KEEP" in *" $b "*) continue;; esac
+            echo "Cancello $b"
+            git push origin --delete "$b" && n=$((n+1))
+          done
+          echo "Rami cancellati: $n"

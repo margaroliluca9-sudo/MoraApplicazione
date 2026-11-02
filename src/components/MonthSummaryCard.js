@@ -35,7 +35,7 @@ export const MonthSummaryCard = ({ logs = [], color = "blue", now = new Date() }
   const download = () =>
     openPdf(() => buildMonthSummaryPdf({ logs: list, monthLabel: monthLabel(cur.y, cur.m), today }), pdfFileName("Riepilogo", MESI[cur.m], String(cur.y)));
   return (
-    <div className="p-5 bg-white rounded-2xl border border-slate-200 shadow-sm" data-section="month-summary">
+    <div className="p-5 bg-white rounded-2xl border border-slate-200 shadow-sm" data-section="month-summary" data-focus="riepilogo">
       <div className="flex items-start gap-3">
         <span className={`w-11 h-11 rounded-xl bg-${color}-50 text-${color}-600 flex items-center justify-center shrink-0`}>
           <FileText className="w-5 h-5" />

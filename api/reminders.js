@@ -305,7 +305,7 @@ const monthNotice = async (now) => {
     title: `Riepilogo di ${MESI[pm]} pronto`,
     body: `In Ufficio trovi il PDF di ${MESI[pm]} ${py}: interventi, tecnici, clienti e gru con più guasti.`,
     tag: `riepilogo-${key2}`,
-    url: "/",
+    url: "/?tab=office&focus=riepilogo",
   });
   const res = await Promise.all(subs.map((s) => send(s, payload)));
   return res.filter((st) => st >= 200 && st < 300).length;
