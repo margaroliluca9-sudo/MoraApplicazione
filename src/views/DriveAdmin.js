@@ -188,7 +188,7 @@ const FieldChecksAdmin = ({ technicians = [], layoutConfig = {}, color }) => {
         Prova: compila verifica dall'app {list.length ? `(${list.length} ${list.length === 1 ? "tecnico" : "tecnici"})` : "(spenta)"}
       </summary>
       <p className="text-xs text-teal-900/80 mt-2 leading-snug">
-        Chi è spuntato vede in La mia area «Compila verifica». In «Verifiche da eseguire» trova già pronte le verifiche appena caricate nel Drive (trimestrale o annuale di questo mese o del mese prima, dal nome: es. «T10.26»); le altre le cerca per cliente. Un tocco sull'esito e la gru è salvata: il testo finisce nel foglio sul Drive, colonna «Note» (se manca la aggiunge). Se il foglio è un Word o un Excel, alla prima nota il programma ne fa una copia Google nella stessa cartella («nome (Google)») e scrive lì: l'originale non lo tocca. Chi vuole continua a compilare sul Drive come prima.
+        Chi è spuntato vede in La mia area «Compila verifica». In «Verifiche da eseguire» trova già pronte le verifiche appena caricate nel Drive (trimestrale o annuale di questo mese o del mese prima, dal nome: es. «T10.26»); le altre le cerca per cliente. Un tocco sull'esito e la gru è salvata: il testo finisce nel foglio sul Drive, colonna «Note» (se manca la aggiunge). Anche se il foglio è un Word o un Excel le note vanno dentro lo stesso file caricato, senza copie né doppioni. Chi vuole continua a compilare sul Drive come prima.
       </p>
       <HookField layoutConfig={layoutConfig} color={color} />
       <div className="flex flex-wrap gap-2 mt-2">

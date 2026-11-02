@@ -147,9 +147,7 @@ const WhichFile = ({ check, color, onRepick }) => {
       </p>
       {office && (
         <p className="text-xs text-blue-900 bg-blue-50 rounded-xl p-2" data-field-converted>
-          {check.scrittoNome
-            ? `È un ${check.tipoFile === "word" ? "Word" : "Excel"}: le note sono nella copia Google «${check.scrittoNome}», nella stessa cartella. L'originale resta com'era.`
-            : `È un ${check.tipoFile === "word" ? "Word" : "Excel"}: alla prima nota il programma ne fa da solo una copia Google nella stessa cartella («… (Google)») e scrive lì. L'originale resta com'era.`}
+          È un {check.tipoFile === "word" ? "Word" : "Excel"}: le note vanno scritte dentro questo stesso file, senza fare copie. Il programma lo apre un attimo come file Google, scrive e lo rimette in {check.tipoFile === "word" ? "Word" : "Excel"}.
         </p>
       )}
       {others.length > 0 && onRepick && (

@@ -282,7 +282,7 @@ function cercaNuove_(token) {
     var f = it.next();
     var n = f.getName();
     var per = periodoVerifica_(n);
-    if (fatti[f.getId()] || (per !== questo && per !== prima) || SALTA.test(n) || / \(Google\)$/.test(n)) continue;
+    if (fatti[f.getId()] || (per !== questo && per !== prima) || SALTA.test(n) || / \(Google\)$/.test(n) || /temporaneo app/.test(n)) continue;
     nuovi.push(f);
   }
   props.setProperty("autoDa", new Date(adesso.getTime() - 60000).toISOString());
@@ -352,9 +352,9 @@ function ordineVerifiche_(a, b) {
 }
 
 // copia di un Word (o Excel) come Documento (o Foglio) Google, conversione automatica del Drive, nella stessa cartella
-function comeDocumentoGoogle_(file, tipo) {
+function comeDocumentoGoogle_(file, tipo, nomeVoluto) {
   tipo = tipo || MimeType.GOOGLE_DOCS;
-  var nome = file.getName().replace(/\.(docx|xlsx)$/i, "") + " (Google)";
+  var nome = nomeVoluto || file.getName().replace(/\.(docx|xlsx)$/i, "") + " (Google)";
   var cartelle = file.getParents();
   var cartella = cartelle.hasNext() ? cartelle.next() : null;
   // già convertito dopo l'ultima modifica del Word? uso quello
@@ -450,15 +450,81 @@ function scriviNote_(token) {
 function scriviNelFile_(fileId, lista) {
   var file = DriveApp.getFileById(fileId);
   var mime = file.getMimeType();
-  // Word o Excel: nei file Office non posso scrivere. Ne faccio (una volta sola) una copia Google nella stessa
-  // cartella, «nome (Google)», e scrivo lì; l'originale resta com'è
   scrittoIn_ = null;
+  // Word o Excel: scrivo nello STESSO file che avete caricato, senza doppioni. Google non sa scrivere dentro
+  // un Word: lo apro come Documento Google temporaneo, scrivo le note, lo rimetto in Word sopra l'originale
+  // (stesso file, stesso nome, stessa cartella) e butto il temporaneo.
   if (mime === DOCX || mime === XLSX) {
-    file = comeDocumentoGoogle_(file, mime === DOCX ? MimeType.GOOGLE_DOCS : MimeType.GOOGLE_SHEETS);
-    fileId = file.getId();
-    mime = file.getMimeType();
-    scrittoIn_ = { url: file.getUrl(), nome: file.getName() };
+    var tipo = mime === DOCX ? MimeType.GOOGLE_DOCS : MimeType.GOOGLE_SHEETS;
+    var temp = copiaTemporanea_(file, tipo);
+    var esito = {};
+    try {
+      esito = scriviGoogle_(temp.getId(), tipo, lista);
+      var scritte = lista.some(function (x) {
+        return !esito[x.id];
+      });
+      if (scritte) rimettiNellOriginale_(temp.getId(), tipo, file);
+    } finally {
+      try {
+        temp.setTrashed(true);
+      } catch (e) {
+        Logger.log("Temporaneo non buttato: %s", e);
+      }
+    }
+    return esito;
   }
+  return scriviGoogle_(fileId, mime, lista);
+}
+
+// copia temporanea in formato Google (nella stessa cartella, poi la butto)
+function copiaTemporanea_(file, tipo) {
+  var nome = file.getName().replace(/\.(docx|xlsx)$/i, "") + " (temporaneo app, si cancella da solo)";
+  var cartelle = file.getParents();
+  var cartella = cartelle.hasNext() ? cartelle.next() : null;
+  if (typeof Drive !== "undefined" && Drive.Files) {
+    var c;
+    try {
+      c = Drive.Files.copy({ name: nome, mimeType: tipo, parents: cartella ? [cartella.getId()] : undefined }, file.getId(), { supportsAllDrives: true });
+    } catch (e3) {
+      c = Drive.Files.copy({ title: nome, mimeType: tipo, parents: cartella ? [{ id: cartella.getId() }] : undefined }, file.getId(), { convert: true, supportsAllDrives: true });
+    }
+    return DriveApp.getFileById(c.id);
+  }
+  return comeDocumentoGoogle_(file, tipo, nome);
+}
+
+// il Documento/Foglio Google con le note torna Word/Excel e prende il posto del contenuto dell'originale
+function rimettiNellOriginale_(tempId, tipo, originale) {
+  var token = ScriptApp.getOAuthToken();
+  var url =
+    tipo === MimeType.GOOGLE_DOCS
+      ? "https://docs.google.com/document/d/" + tempId + "/export?format=docx"
+      : "https://docs.google.com/spreadsheets/d/" + tempId + "/export?format=xlsx";
+  var r = UrlFetchApp.fetch(url, { headers: { Authorization: "Bearer " + token }, muteHttpExceptions: true });
+  if (r.getResponseCode() !== 200) throw new Error("Non riesco a rifare il file Word/Excel (" + r.getResponseCode() + ")");
+  var blob = r.getBlob().setContentType(originale.getMimeType());
+  var up = UrlFetchApp.fetch("https://www.googleapis.com/upload/drive/v3/files/" + originale.getId() + "?uploadType=media&supportsAllDrives=true", {
+    method: "patch",
+    contentType: originale.getMimeType(),
+    payload: blob.getBytes(),
+    headers: { Authorization: "Bearer " + token },
+    muteHttpExceptions: true,
+  });
+  if (up.getResponseCode() !== 200) {
+    var msg = "";
+    try {
+      msg = JSON.parse(up.getContentText()).error.message || "";
+    } catch (e) {
+      msg = "";
+    }
+    if (up.getResponseCode() === 403 && /has not been used|disabled|not enabled/i.test(msg))
+      throw new Error("Per i Word/Excel serve un passaggio in Google Script: a sinistra «Servizi» → + → «Drive API» → Aggiungi.");
+    throw new Error("Non riesco a salvare il file originale (" + up.getResponseCode() + (msg ? ": " + msg.slice(0, 120) : "") + ")");
+  }
+}
+
+// scrive le note in un Documento o Foglio Google
+function scriviGoogle_(fileId, mime, lista) {
   var errori = {};
   var trova = function (gru, k) {
     for (var i = 0; i < gru.length; i++) if (CHIAVE_RIGA(gru[i], i) === k) return gru[i];
