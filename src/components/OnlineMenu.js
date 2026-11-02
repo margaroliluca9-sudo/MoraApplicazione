@@ -133,7 +133,7 @@ export const OnlineMenu = ({
     return () => clearInterval(t);
   }, [rec]);
   useEffect(() => {
-    if (rec && recSecs >= VOICE_MAX) recStop();
+    if (rec && recSecs >= (rec.max || VOICE_MAX)) recStop();
   });
   useEffect(
     () => () => {

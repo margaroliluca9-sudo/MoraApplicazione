@@ -419,7 +419,7 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
       points: [
         "Si apre dalla tua area: gruppo con tutti i tecnici o chat private.",
         "Puoi mandare foto e fissare un messaggio importante in alto.",
-        "Vocali: con la casella vuota a destra c'è il microfono. Toccalo e parla (la prima volta il telefono chiede il permesso del microfono: «Consenti»), tocca ■ per fermare (si ferma da solo a 2 minuti), riascoltalo se vuoi e tocca Invia; il cestino lo butta. Chi lo riceve tocca ▶ per ascoltarlo.",
+        "Vocali: con la casella vuota a destra c'è il microfono. Toccalo e parla (la prima volta il telefono chiede il permesso del microfono: «Consenti»), tocca ■ per fermare (si ferma da solo a 2 minuti), riascoltalo se vuoi e tocca Invia; il cestino lo butta. Chi lo riceve tocca ▶ per ascoltarlo (sull'iPhone a volte la prima volta scrive «Pronto: tocca ▶»: ritocca e parte). I telefoni Android che non sanno registrare nel formato che legge l'iPhone registrano in un formato che si sente ovunque, al massimo 40 secondi.",
         "Modificare o eliminare: tocca un tuo messaggio e compaiono «Modifica» ed «Elimina». Modifica: il testo torna nella casella, lo correggi e tocchi Invia (la scritta «modificato» sul messaggio la vede solo chi è entrato come admin). Elimina lo toglie per tutti, con la foto o il vocale.",
         "«Letto da…» mostra chi l'ha letto.",
       ],

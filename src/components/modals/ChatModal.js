@@ -56,9 +56,18 @@ import { techOf } from "../../profile";
 
 // vocale: scaricato solo quando lo ascolti (poi tenuto in memoria)
 const audioCache = {};
+// iPhone: l'audio parte solo se play() è chiamato subito al tocco. Il vocale però arriva dal database
+// un attimo dopo: al tocco faccio partire un «silenzio» sullo stesso lettore (così l'iPhone lo sblocca),
+// poi gli metto il vocale vero. Se l'iPhone non lo fa partire comunque, il vocale resta pronto: basta ritoccare ▶.
+const SILENT = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAIA+AAACABAAZGF0YQAAAAA=";
+const fmtOf = (src, mime) => {
+  const m = String(mime || (String(src || "").match(/^data:([^;,]+)/) || [])[1] || "");
+  return /webm/.test(m) ? "webm" : /ogg/.test(m) ? "ogg" : /mp4|aac|m4a/.test(m) ? "mp4" : m.replace("audio/", "") || "?";
+};
 export const VoicePlayer = ({ id, src: given, dur, mine, color = "blue" }) => {
-  const [state, setState] = useState("idle"); // idle | loading | play | pause | error
+  const [state, setState] = useState("idle"); // idle | loading | ready | play | pause | error | format
   const [pos, setPos] = useState(0);
+  const [fmt, setFmt] = useState("");
   const el = useRef(null);
   useEffect(
     () => () => {
@@ -73,34 +82,59 @@ export const VoicePlayer = ({ id, src: given, dur, mine, color = "blue" }) => {
       return;
     }
     if (!el.current) {
+      // lettore creato e «sbloccato» subito, dentro il tocco
+      const a = new Audio();
+      a.src = SILENT;
+      a.play().catch(() => {});
+      a.ontimeupdate = () => setPos(a.currentTime);
+      a.onplay = () => a.src !== SILENT && setState("play");
+      a.onpause = () => a.src !== SILENT && setState((st) => (st === "play" ? "pause" : st));
+      a.onended = () => {
+        if (a.src === SILENT) return;
+        setState("idle");
+        setPos(0);
+      };
       let src = given || audioCache[id];
+      let mime = "";
       if (!src) {
         setState("loading");
         try {
           const s = await getDoc(chatDoc("chat_audio", id));
-          src = s.exists() ? (s.data() || {}).data : null;
+          const d = s.exists() ? s.data() || {} : {};
+          src = d.data || null;
+          mime = d.mime || "";
         } catch (err) {
           src = null;
         }
         if (!src) return setState("error");
         audioCache[id] = src;
       }
-      const a = new Audio(src);
-      a.ontimeupdate = () => setPos(a.currentTime);
-      a.onplay = () => setState("play");
-      a.onpause = () => setState("pause");
-      a.onended = () => {
-        setState("idle");
-        setPos(0);
+      setFmt(fmtOf(src, mime));
+      a.onerror = () => {
+        // 4 = formato che questo telefono non sa leggere
+        if (a.src !== SILENT) setState(a.error && a.error.code === 4 ? "format" : "error");
       };
-      a.onerror = () => setState("error");
+      a.src = src;
       el.current = a;
     }
-    el.current.play().catch(() => setState("error"));
+    el.current
+      .play()
+      .then(() => setState("play"))
+      .catch((err) => {
+        if (err && err.name === "NotAllowedError") setState("ready"); // l'iPhone vuole un altro tocco
+        else if (err && err.name === "NotSupportedError") setState("format");
+        else setState("error");
+      });
   };
   const total = Math.max(1, Number(dur) || 1);
   const pct = Math.min(100, (pos / total) * 100);
-  if (state === "error") return <div className="text-[11px] italic opacity-80 py-1">Vocale non disponibile su questo telefono</div>;
+  if (state === "error") return <div className="text-[11px] italic opacity-80 py-1" data-voice-error>Vocale non disponibile: controlla la rete e riapri la chat</div>;
+  if (state === "format")
+    return (
+      <div className="text-[11px] italic opacity-80 py-1" data-voice-error="format">
+        Questo telefono non legge il vocale (formato {fmt}). Chiedi a chi l'ha mandato di aggiornare l'app e rimandarlo.
+      </div>
+    );
   return (
     <div className="flex items-center gap-2 min-w-[170px] py-0.5" data-voice>
       <button
@@ -116,7 +150,7 @@ export const VoicePlayer = ({ id, src: given, dur, mine, color = "blue" }) => {
           <div className={`h-1.5 rounded-full ${mine ? "bg-white" : `bg-${color}-600`}`} style={{ width: `${pct}%` }} />
         </div>
         <div className={`text-[10px] mt-1 font-bold ${mine ? "text-white/80" : "text-slate-500"}`}>
-          <Mic className="inline w-3 h-3 -mt-0.5" /> {durLabel(state === "idle" ? total : pos)}
+          <Mic className="inline w-3 h-3 -mt-0.5" /> {state === "ready" ? "Pronto: tocca ▶" : durLabel(state === "idle" ? total : pos)}
         </div>
       </div>
     </div>
@@ -389,7 +423,7 @@ export const ChatModal = ({
     return () => clearInterval(t);
   }, [rec]);
   useEffect(() => {
-    if (rec && recSecs >= VOICE_MAX) recStop();
+    if (rec && recSecs >= (rec.max || VOICE_MAX)) recStop();
   });
   // chiudendo la chat la registrazione si ferma
   useEffect(
