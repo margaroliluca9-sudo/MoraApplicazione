@@ -15,7 +15,6 @@ import {
   MinusCircle,
   Camera,
   Image as ImageIcon,
-  CheckCircle2,
   Printer,
   History as HistoryIcon,
   RotateCcw,
@@ -1110,7 +1109,15 @@ export const NewEntryForm = ({
             </div>
           )}
           <div className="flex items-center gap-3">
-            <CheckCircle2 className="w-10 h-10 text-emerald-600 shrink-0" />
+            {/* spunta che si disegna: rapporto salvato */}
+            <svg viewBox="0 0 52 52" className="w-14 h-14 shrink-0" data-saved-check aria-hidden="true">
+              <style>{"@keyframes moraDraw{to{stroke-dashoffset:0}} @keyframes moraPop{0%{transform:scale(.6);opacity:0}60%{transform:scale(1.08);opacity:1}100%{transform:scale(1)}}"}</style>
+              <g style={{ transformOrigin: "26px 26px", animation: "moraPop .45s ease-out both" }}>
+                <circle cx="26" cy="26" r="24" fill="#10b981" opacity=".12" />
+                <circle cx="26" cy="26" r="22" fill="none" stroke="#059669" strokeWidth="3" strokeDasharray="140" strokeDashoffset="140" style={{ animation: "moraDraw .5s .1s ease-out forwards" }} />
+                <path d="M15 27 l7 7 l15 -16" fill="none" stroke="#059669" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" strokeDasharray="40" strokeDashoffset="40" style={{ animation: "moraDraw .35s .55s ease-out forwards" }} />
+              </g>
+            </svg>
             <div className="min-w-0">
               <h3 className="font-black text-slate-800 text-xl">Rapporto salvato</h3>
               <p className="text-sm font-semibold text-slate-500 truncate">

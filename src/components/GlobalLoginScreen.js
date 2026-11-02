@@ -82,6 +82,29 @@ export const GlobalLoginScreen = ({ technicians, onUnlock, color = "blue" }) => 
               />
               <User className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 w-5 h-5" />
             </div>
+            {/* tocca il tuo nome invece di scriverlo */}
+            {technicians.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 pt-1.5" data-section="login-names">
+                {technicians
+                  .filter((t) => t.name && (!name.trim() || t.name.toLowerCase().includes(name.trim().toLowerCase())) && t.name.toLowerCase() !== name.trim().toLowerCase())
+                  .slice(0, 12)
+                  .map((t) => (
+                    <button
+                      key={t.id || t.name}
+                      type="button"
+                      data-login-name={t.name}
+                      onClick={() => {
+                        setName(t.name);
+                        setError("");
+                      }}
+                      className={`h-9 pl-1 pr-3 rounded-full bg-slate-100 text-slate-700 text-sm font-bold flex items-center gap-1.5 active:scale-95`}
+                    >
+                      <span className={`w-7 h-7 rounded-full bg-${color}-600 text-white text-xs font-black flex items-center justify-center`}>{t.name.charAt(0).toUpperCase()}</span>
+                      {t.name}
+                    </button>
+                  ))}
+              </div>
+            )}
           </div>
 
           <div className="space-y-1">

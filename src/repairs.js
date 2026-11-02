@@ -3,6 +3,17 @@
 const FIX = /(sostitu|ripar|guast|rott|cambiat|non funzion|blocc|smontat|rifatt|aggiust|bruciat|spezzat|sistemat|montat)/i;
 export const isRepair = (l) => FIX.test(String((l && l.description) || ""));
 
+// tipo di lavoro per l'etichetta colorata dello Storico (dalla descrizione)
+const INSTALL = /(installa|nuova gru|nuovo impianto|messa in servizio|collaud)/i;
+const CHECK = /(verific|trimestral|annual|controll|ispezion|manutenzione periodica)/i;
+export const workKind = (l) => {
+  const d = String((l && l.description) || "");
+  if (INSTALL.test(d)) return { id: "install", label: "Installazione", tone: "bg-sky-50 text-sky-700 border-sky-200" };
+  if (isRepair(l)) return { id: "repair", label: "Riparazione", tone: "bg-orange-50 text-orange-700 border-orange-200" };
+  if (CHECK.test(d)) return { id: "check", label: "Verifica", tone: "bg-emerald-50 text-emerald-700 border-emerald-200" };
+  return { id: "other", label: "Intervento", tone: "bg-slate-50 text-slate-600 border-slate-200" };
+};
+
 export const officeCharts = (logs, top = 8) => {
   const cranes = new Map();
   const clients = new Map();

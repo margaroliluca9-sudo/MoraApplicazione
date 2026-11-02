@@ -53,8 +53,8 @@ export const MachineHistoryModal = ({
       <div className="w-full max-w-4xl h-full md:h-[90vh] md:rounded-3xl overflow-hidden flex flex-col shadow-2xl bg-white" data-section="machine-card">
         <div className="bg-white px-4 pt-4 pb-4 flex flex-col gap-3 border-b border-slate-200">
           <div className="flex items-start gap-3">
-            <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br from-${color}-50 to-${color}-100 text-${color}-700 flex items-center justify-center shrink-0 border border-${color}-100`}>
-              <CraneTypeIcon type={machine.type} className="w-8 h-8" />
+            <div className={`w-20 h-20 rounded-3xl bg-gradient-to-br from-${color}-50 to-${color}-100 text-${color}-700 flex items-center justify-center shrink-0 border border-${color}-100 shadow-sm`} data-crane-art>
+              <CraneTypeIcon type={machine.type} className="w-14 h-14" />
             </div>
             <div className="flex-1 min-w-0">
               <button type="button" onClick={() => onOpenCustomer(machine.customerName)} className="text-left block max-w-full">

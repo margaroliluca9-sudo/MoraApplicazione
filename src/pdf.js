@@ -28,6 +28,8 @@ const loadLib = () => {
 };
 
 // colori (r, g, b 0-255)
+// colore della ditta per la fascia in alto e i titoli dei PDF
+const ACC = [29, 78, 216];
 const C = {
   ink: [15, 23, 42],
   text: [51, 65, 85],
@@ -154,6 +156,7 @@ const createFlow = async ({ title, subtitle, docTitle }) => {
   const header = () => {
     const page = doc.addPage([W, H]);
     flow.page = page;
+    page.drawRectangle({ x: 0, y: H - 7, width: W, height: 7, color: col(ACC) }); // fascia colorata in alto
     const lh = 38;
     const lw = lh * logoRatio;
     page.drawImage(logo, { x: M, y: H - M - lh, width: lw, height: lh });
@@ -169,7 +172,7 @@ const createFlow = async ({ title, subtitle, docTitle }) => {
       const st = fitLine(font, subtitle, 8, 200);
       page.drawText(st, { x: W - M - widthOf(font, st, 8), y: H - M - 23, size: 8, font, color: col(C.grey) });
     }
-    page.drawLine({ start: { x: M, y: H - M - 48 }, end: { x: W - M, y: H - M - 48 }, thickness: 1.2, color: col(C.ink) });
+    page.drawLine({ start: { x: M, y: H - M - 48 }, end: { x: W - M, y: H - M - 48 }, thickness: 1.4, color: col(ACC) });
     flow.y = H - M - 64;
   };
   header();
@@ -181,7 +184,8 @@ const createFlow = async ({ title, subtitle, docTitle }) => {
   flow.heading = (t) => {
     flow.ensure(40);
     flow.y -= 6;
-    flow.page.drawText(cleanText(bold, t).toUpperCase(), { x: M, y: flow.y, size: 9.5, font: bold, color: col(C.ink) });
+    flow.page.drawRectangle({ x: M, y: flow.y - 1.5, width: 3, height: 11, color: col(ACC) });
+    flow.page.drawText(cleanText(bold, t).toUpperCase(), { x: M + 8, y: flow.y, size: 9.5, font: bold, color: col(C.ink) });
     flow.page.drawLine({ start: { x: M, y: flow.y - 5 }, end: { x: W - M, y: flow.y - 5 }, thickness: 0.6, color: col(C.line) });
     flow.y -= 20;
   };

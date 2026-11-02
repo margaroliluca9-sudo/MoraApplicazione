@@ -604,13 +604,21 @@ export const ChatModal = ({
                 return (
                   <React.Fragment key={m.id}>
                     {newDay && (
-                      <div className="flex justify-center py-1.5">
+                      <div className="flex justify-center py-1.5 sticky top-0 z-10" data-day-label>
                         <span className="text-[10px] font-black uppercase text-slate-500 bg-white px-2.5 py-1 rounded-full shadow-sm">
                           {dayLabel(m)}
                         </span>
                       </div>
                     )}
-                    <div className={`flex ${mine ? "justify-end" : "justify-start"}`} data-chat-msg={m.id} data-mine={mine ? "1" : "0"}>
+                    <div className={`flex items-end gap-1.5 ${mine ? "justify-end" : "justify-start"}`} data-chat-msg={m.id} data-mine={mine ? "1" : "0"}>
+                      {/* nel gruppo: la foto (o l'iniziale) di chi scrive, accanto al suo ultimo messaggio di fila */}
+                      {!mine && conv === GROUP && (
+                        <span className="w-7 shrink-0 mb-0.5" data-chat-face>
+                          {(i === thread.length - 1 || thread[i + 1].authorKey !== m.authorKey || dayLabel(thread[i + 1]) !== dayLabel(m)) && (
+                            <Avatar tech={techOf(technicians, m.author)} name={m.author} className="w-7 h-7" textClass="text-xs" color={color} />
+                          )}
+                        </span>
+                      )}
                       <div className="max-w-[82%]">
                         <div
                           role="button"

@@ -249,6 +249,9 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
       points: [
         "Il modulo è diviso in schede numerate: 1 Chi e quando, 2 Cliente e gru, 3 Cosa hai fatto, 4 Foto. In alto la barra mostra quali sono complete; la scheda completa diventa verde con la spunta.",
         "Scegli tecnico principale (e quelli aggiuntivi), data, N. assistenza, cliente e gru.",
+        "Storico: accanto alla data un'etichetta colorata dice il tipo di lavoro, presa dalla descrizione: verde Verifica, arancione Riparazione, azzurro Installazione, grigio Intervento.",
+        "Home: sui riquadri ci sono i numeri (interventi di oggi, quanti clienti e gru). Nella ricerca i risultati si dividono in schede (Tutti, Clienti, Gru, Interventi) e le parole cercate sono evidenziate in giallo.",
+        "Accesso: sotto «Il tuo nome» ci sono i nomi dei tecnici: tocca il tuo invece di scriverlo. Chat di gruppo: accanto ai messaggi dei colleghi c'è la loro foto (o l'iniziale) e la data resta in alto mentre scorri.",
         "Barra in basso: Home, Storico, il tasto grande «Nuovo» al centro per un rapporto nuovo, «Mia area» e Admin. Nel Nuovo rapporto tocca un passo in alto (Chi e quando, Cliente e gru, …) per andare subito a quella parte.",
         "Tasti grandi (con i guanti): tocca «Guanti» in cima al Nuovo rapporto, oppure La mia area → ⚙ Impostazioni → «Tasti grandi». Campi, scritte e pulsanti diventano più grandi e più distanziati; il telefono se lo ricorda. Ritocca («Grandi») per tornare normale.",
         "Portata: sotto il campo le portate più usate, in ordine di utilizzo (si aggiornano da sole con i rapporti).",

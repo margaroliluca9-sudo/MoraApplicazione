@@ -119,6 +119,7 @@ export const DashboardView = ({
 }) => {
   const color = layoutConfig?.themeColor || "blue";
   const [query, setQuery] = useState("");
+  const [searchTab, setSearchTab] = useState("all"); // ricerca: Tutti / Clienti / Gru / Interventi
   const [showMine, setShowMine] = useState(false);
   // GUIDA ALL'APP (pulsante in fondo alla Home, accanto a "Modifica aspetto")
   const [showGuide, setShowGuide] = useState(false);
@@ -226,6 +227,20 @@ export const DashboardView = ({
     () => todayItems(personal.events || [], personal.reminders || []).length,
     [personal.events, personal.reminders],
   );
+  // numeri sui riquadri della Home: interventi di oggi, clienti e gru, clienti sulla mappa
+  const homeNums = useMemo(() => {
+    const t = new Date();
+    const isToday = (s) => {
+      const p = String(s || "").split("/").map(Number);
+      return p.length === 3 && p[0] === t.getDate() && p[1] === t.getMonth() + 1 && p[2] === t.getFullYear();
+    };
+    return {
+      today: logs.filter((l) => isToday(l.dateString)).length,
+      customers: customers.length,
+      cranes: machines.length,
+      onMap: customers.filter((c) => Number.isFinite(Number(c.lat)) && c.lat !== "" && c.lat != null).length,
+    };
+  }, [logs, customers, machines]);
   const myMonthCount = useMemo(
     () =>
       logs.filter((l) => isMyLog(l, currentTechName) && isThisMonth(l)).length,
@@ -268,21 +283,21 @@ export const DashboardView = ({
       id: "explore",
       label: "Esplora",
       icon: Folder,
-      desc: "Clienti, gru e interventi",
+      desc: homeNums.customers ? `${homeNums.customers} clienti · ${homeNums.cranes} gru` : "Clienti, gru e interventi",
       action: () => onNavigate("explore"),
     },
     map: {
       id: "map",
       label: "Mappa",
       icon: MapIcon,
-      desc: "Dove sono i clienti",
+      desc: homeNums.onMap ? `${homeNums.onMap} clienti sulla mappa` : "Dove sono i clienti",
       action: () => onNavigate("map"),
     },
     history: {
       id: "history",
       label: "Storico",
       icon: History,
-      desc: "Cronologia interventi",
+      desc: homeNums.today === 1 ? "1 intervento oggi" : homeNums.today > 1 ? `${homeNums.today} interventi oggi` : "Cronologia interventi",
       action: () => onNavigate("history"),
     },
     database: {
@@ -444,10 +459,48 @@ export const DashboardView = ({
 
   let searchResults = null;
   if (searching) {
-    const { cs, ms, ls } = results;
-    const none = !cs.length && !ms.length && !ls.length;
+    const { cs: cs0, ms: ms0, ls: ls0 } = results;
+    const none = !cs0.length && !ms0.length && !ls0.length;
+    // schede della ricerca: si vede solo il gruppo scelto
+    const tab = { cs: cs0.length, ms: ms0.length, ls: ls0.length }[searchTab] ? searchTab : "all"; // scheda vuota con la nuova ricerca: torna a Tutti
+    const cs = tab === "all" || tab === "cs" ? cs0 : [];
+    const ms = tab === "all" || tab === "ms" ? ms0 : [];
+    const ls = tab === "all" || tab === "ls" ? ls0 : [];
+    // parole cercate evidenziate in giallo
+    const words = query
+      .trim()
+      .split(/\s+/)
+      .filter((w) => w.length >= 2)
+      .map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+    const re = words.length ? new RegExp(`(${words.join("|")})`, "gi") : null;
+    const Hl = ({ text }) => {
+      const t = String(text || "");
+      if (!re) return t;
+      return t.split(re).map((part, i) => (i % 2 === 1 ? <mark key={i} className="bg-yellow-200 text-slate-900 rounded px-0.5">{part}</mark> : part));
+    };
+    const tabs = [
+      ["all", "Tutti", cs0.length + ms0.length + ls0.length],
+      ["cs", "Clienti", cs0.length],
+      ["ms", "Gru", ms0.length],
+      ["ls", "Interventi", ls0.length],
+    ].filter(([id, , n]) => id === "all" || n > 0);
     searchResults = (
       <div className="space-y-5" data-section="search-results">
+        {!none && tabs.length > 2 && (
+          <div className="flex gap-1.5 overflow-x-auto no-scrollbar" data-section="search-tabs">
+            {tabs.map(([id, label, n]) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setSearchTab(id)}
+                data-search-tab={id}
+                className={`h-9 px-3.5 rounded-full text-sm font-bold whitespace-nowrap ${tab === id ? `bg-${color}-600 text-white` : "bg-white border border-slate-200 text-slate-600"}`}
+              >
+                {label} {n}
+              </button>
+            ))}
+          </div>
+        )}
         {none && (
           <EmptyState color={color} title={`Nessun risultato per «${query.trim()}»`} text="Prova con un pezzo del nome del cliente, la matricola della gru o il N. assistenza." />
         )}
@@ -466,7 +519,7 @@ export const DashboardView = ({
                 onClick={() => onOpenCustomer(c.name)}
               >
                 <span className="flex-1 min-w-0 font-bold text-sm text-slate-800 truncate">
-                  {c.name}
+                  <Hl text={c.name} />
                 </span>
                 <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />
               </button>
@@ -491,10 +544,10 @@ export const DashboardView = ({
               >
                 <span className="flex-1 min-w-0">
                   <span className="font-bold text-sm text-slate-800 block truncate">
-                    {getSafeMatricola(m)}
+                    <Hl text={getSafeMatricola(m)} />
                   </span>
                   <span className="text-xs text-slate-500 block truncate">
-                    {m.customerName}
+                    <Hl text={m.customerName} />
                     {m.type ? ` · ${m.type}` : ""}
                   </span>
                 </span>
@@ -527,10 +580,10 @@ export const DashboardView = ({
                     {l.ticketNumber ? ` · N. ${ticketLabel(l)}` : ""}
                   </span>
                   <span className="font-bold text-sm text-slate-800 block truncate">
-                    {l.customer} · {l.machineId}
+                    <Hl text={l.customer} /> · <Hl text={l.machineId} />
                   </span>
                   <span className="text-xs text-slate-500 block truncate">
-                    {l.description}
+                    <Hl text={l.description} />
                   </span>
                 </span>
                 <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />

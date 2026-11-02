@@ -15,6 +15,7 @@ import {
 import { isAdminPassword } from "../passwords";
 import { Avatar } from "../components/Avatar";
 import { CardsSkeleton } from "../components/Skeleton";
+import { workKind } from "../repairs";
 import { techOf } from "../profile";
 import { getTechsString, formatCapacity } from "../utils";
 import { getProPanelClass } from "../ui";
@@ -303,7 +304,12 @@ export const HistoryView = ({
                       >
                         {log.customer}
                       </h4>
-                      <span className="text-xs font-bold text-slate-500 whitespace-nowrap bg-slate-100 rounded-full px-2.5 py-1 tabular-nums">{log.dateString}</span>
+                      <span className="flex flex-col items-end gap-1 shrink-0">
+                        <span className="text-xs font-bold text-slate-500 whitespace-nowrap bg-slate-100 rounded-full px-2.5 py-1 tabular-nums">{log.dateString}</span>
+                        <span className={`text-[11px] font-bold rounded-full px-2 py-0.5 border ${workKind(log).tone}`} data-work-kind={workKind(log).id}>
+                          {workKind(log).label}
+                        </span>
+                      </span>
                     </div>
                     <button
                       type="button"
