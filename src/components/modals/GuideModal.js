@@ -318,7 +318,7 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
         "Cerca insieme clienti, gru e interventi: nome, matricola, N. assistenza, tecnico, data o parole della descrizione.",
         "Il N. assistenza riparte ogni anno: «5» trova i n. 5 di tutti gli anni (il più recente in cima), «5/2027» solo quello del 2027.",
         "Tocca un risultato per aprire la scheda della gru con tutto il suo storico.",
-        "Nella scheda della gru: in cima quanti interventi e, in un riquadro, l'ultimo intervento (quando, chi e cosa è stato fatto); «Nuovo rapporto su questa gru» apre il modulo con cliente, gru, tipo e portata già scritti.",
+        "Nella scheda della gru: in cima quanti interventi e quando è stato l'ultimo; «Nuovo rapporto su questa gru» apre il modulo con cliente, gru, tipo e portata già scritti.",
       ],
     },
     {
