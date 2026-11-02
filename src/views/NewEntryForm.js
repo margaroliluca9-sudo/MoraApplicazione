@@ -35,6 +35,8 @@ import { DEFAULT_LAYOUT } from "../constants";
 import {
   getTodayString,
   compressImage,
+  MAX_PHOTOS,
+  photoBudget,
   describeError,
   getTechsString,
   getSafeMatricola,
@@ -235,8 +237,13 @@ export const NewEntryForm = ({
 
   const handlePhotoUpload = async (e) => {
     const files = Array.from(e.target.files);
-    if (files.length + formData.photos.length > 3) {
-      alert("Puoi caricare un massimo di 3 foto in totale.");
+    if (files.length + formData.photos.length > MAX_PHOTOS) {
+      alert(`Puoi caricare al massimo ${MAX_PHOTOS} foto per intervento.`);
+      return;
+    }
+    const budget = photoBudget(formData.photos, files.length);
+    if (budget < 40000) {
+      alert("Non c'è più spazio per altre foto in questo intervento: togline una.");
       return;
     }
 
@@ -245,7 +252,7 @@ export const NewEntryForm = ({
       const newBase64Photos = [];
       for (let file of files) {
         if (!file.type.startsWith("image/")) continue;
-        const base64 = await compressImage(file);
+        const base64 = await compressImage(file, budget);
         newBase64Photos.push(base64);
       }
       setFormData((p) => ({ ...p, photos: [...p.photos, ...newBase64Photos] }));
@@ -819,7 +826,7 @@ export const NewEntryForm = ({
         return (
           <div key="photos" className="space-y-2">
             <div className="flex justify-between items-center gap-3 flex-wrap">
-              <p className="text-xs text-slate-500 font-semibold">Fino a 3 foto, dalla fotocamera o dalla galleria.</p>
+              <p className="text-xs text-slate-500 font-semibold">Fino a {MAX_PHOTOS} foto, dalla fotocamera o dalla galleria.</p>
               <div className="flex gap-2">
                 {[
                   ["camera", Camera, "Scatta", { capture: "environment" }],
@@ -829,7 +836,7 @@ export const NewEntryForm = ({
                     key={id}
                     data-action={"photo-" + id}
                     className={`cursor-pointer h-11 px-3.5 bg-white border border-slate-300 rounded-xl text-sm font-bold text-slate-700 flex items-center gap-2 hover:bg-slate-100 transition-all ${
-                      formData.photos.length >= 3 ? "opacity-50 cursor-not-allowed" : ""
+                      formData.photos.length >= MAX_PHOTOS ? "opacity-50 cursor-not-allowed" : ""
                     }`}
                   >
                     <Icon className="w-4 h-4" /> {label}
@@ -839,7 +846,7 @@ export const NewEntryForm = ({
                       {...extra}
                       className="hidden"
                       onChange={handlePhotoUpload}
-                      disabled={formData.photos.length >= 3 || uploadingPhotos}
+                      disabled={formData.photos.length >= MAX_PHOTOS || uploadingPhotos}
                     />
                   </label>
                 ))}

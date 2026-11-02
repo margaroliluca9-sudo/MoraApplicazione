@@ -88,7 +88,7 @@ const reportStepsFor = ({ hasVan }) =>
     {
       icon: Camera,
       title: "9. Le foto",
-      text: "In «Allega Foto» puoi aggiungere fino a 3 foto dalla fotocamera o dalla galleria. Vengono ridotte da sole e finiscono anche nel foglio stampato. Per indicare il punto rotto tocca la foto (o la matita sull'angolo): puoi disegnarci sopra una freccia, un cerchio o un tratto a mano libera, in rosso, giallo o bianco; ↶ toglie l'ultimo segno, il cestino li toglie tutti, «Fatto» salva la foto con i segni (va anche nel rapporto stampato), la X esce senza cambiare niente. Si può fare anche quando modifichi un rapporto.",
+      text: "In «Allega Foto» puoi aggiungere fino a 5 foto dalla fotocamera o dalla galleria. Vengono ridotte da sole e finiscono anche nel foglio stampato. Per indicare il punto rotto tocca la foto (o la matita sull'angolo): puoi disegnarci sopra una freccia, un cerchio o un tratto a mano libera, in rosso, giallo o bianco; ↶ toglie l'ultimo segno, il cestino li toglie tutti, «Fatto» salva la foto con i segni (va anche nel rapporto stampato), la X esce senza cambiare niente. Si può fare anche quando modifichi un rapporto.",
     },
     {
       icon: Save,

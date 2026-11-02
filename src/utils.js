@@ -9,11 +9,18 @@ export const getTodayString = () => {
 };
 
 // HELPER: COMPRESSIONE FOTO
-// Le foto vengono salvate dentro il rapporto (Firebase: max ~1 MB per rapporto, max 3 foto).
+// Le foto di un rapporto stanno in un documento solo (Firebase: max ~1 MB), al massimo MAX_PHOTOS.
 // Ogni foto parte da 1600 pixel sul lato lungo e qualità alta; la qualità scende solo quanto
 // serve per stare nel suo spazio (PHOTO_MAX_CHARS). Se non basta, la foto viene rimpicciolita
-// a passi fino a 800 pixel (la risoluzione di prima). 3 foto + testo restano sotto il limite.
-export const PHOTO_MAX_CHARS = 290000; // ~210 KB di JPEG per foto
+// a passi fino a 800 pixel. 5 foto restano sotto il limite.
+export const MAX_PHOTOS = 5;
+export const PHOTO_MAX_CHARS = 190000; // ~140 KB di JPEG per foto (5 foto ≈ 950 KB)
+export const PHOTOS_TOTAL_CHARS = 980000; // spazio di tutte le foto di un rapporto
+// spazio per ogni foto nuova, tenendo conto di quelle già nel rapporto (anche vecchie, più pesanti)
+export const photoBudget = (existing = [], adding = 1) => {
+  const used = existing.reduce((t, p) => t + (typeof p === "string" && p.startsWith("data:") ? p.length : 0), 0);
+  return Math.min(PHOTO_MAX_CHARS, Math.floor((PHOTOS_TOTAL_CHARS - used) / Math.max(1, adding)));
+};
 const PHOTO_SIDES = [1600, 1400, 1200, 1000, 800];
 const PHOTO_QUALITIES = [0.85, 0.78, 0.7, 0.62, 0.55];
 
@@ -31,7 +38,7 @@ const encodeAt = (img, maxSide, quality) => {
   return canvas.toDataURL("image/jpeg", quality);
 };
 
-export const compressImage = (file) => {
+export const compressImage = (file, maxChars = PHOTO_MAX_CHARS) => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.readAsDataURL(file);
@@ -46,11 +53,13 @@ export const compressImage = (file) => {
           for (const side of sides) {
             for (const q of PHOTO_QUALITIES) {
               const data = encodeAt(img, side, q);
-              if (data.length <= PHOTO_MAX_CHARS) return resolve(data);
+              if (data.length <= maxChars) return resolve(data);
             }
           }
           // ultima risorsa (foto estremamente dettagliate): 800 px, qualità più bassa
-          resolve(encodeAt(img, 800, 0.4));
+          let last = encodeAt(img, 800, 0.4);
+          if (last.length > maxChars) last = encodeAt(img, 600, 0.4);
+          resolve(last);
         } catch (err) {
           reject(err);
         }

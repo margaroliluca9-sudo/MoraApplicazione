@@ -20,7 +20,7 @@ import { TicketTwins } from "../TicketTwins";
 import { ticketYear } from "../../ticket";
 import { db, appId } from "../../firebase";
 import { DEFAULT_LAYOUT } from "../../constants";
-import { compressImage, describeError } from "../../utils";
+import { compressImage, describeError, MAX_PHOTOS, photoBudget } from "../../utils";
 // stesso aspetto del modulo «Nuovo rapporto»
 const F_INPUT =
   "w-full min-w-0 min-h-[48px] px-4 py-2.5 bg-white border border-slate-300 rounded-xl text-base font-semibold text-slate-800 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all outline-none placeholder:text-slate-400";
@@ -110,8 +110,13 @@ export const EditLogModal = ({
 
   const handlePhotoUpload = async (e) => {
     const files = Array.from(e.target.files);
-    if (files.length + data.photos.length > 3) {
-      alert("Puoi caricare un massimo di 3 foto in totale per intervento.");
+    if (files.length + data.photos.length > MAX_PHOTOS) {
+      alert(`Puoi caricare al massimo ${MAX_PHOTOS} foto per intervento.`);
+      return;
+    }
+    const budget = photoBudget(data.photos, files.length);
+    if (budget < 40000) {
+      alert("Non c'è più spazio per altre foto in questo intervento: togline una.");
       return;
     }
     setUploadingPhotos(true);
@@ -119,7 +124,7 @@ export const EditLogModal = ({
       const newBase64Photos = [];
       for (let file of files) {
         if (!file.type.startsWith("image/")) continue;
-        const base64 = await compressImage(file);
+        const base64 = await compressImage(file, budget);
         newBase64Photos.push(base64);
       }
       setData((p) => ({ ...p, photos: [...p.photos, ...newBase64Photos] }));
@@ -432,10 +437,10 @@ export const EditLogModal = ({
           <Section icon={Camera} title="Foto" color={color}>
           <div className="space-y-2">
             <div className="flex justify-between items-center">
-              <span className={F_LABEL}>Fino a 3 foto</span>
+              <span className={F_LABEL}>Fino a {MAX_PHOTOS} foto</span>
               <label
                 className={`text-sm font-bold flex items-center gap-1 min-h-[36px] text-${color}-700 cursor-pointer ${
-                  data.photos.length >= 3 ? "opacity-50 cursor-not-allowed" : ""
+                  data.photos.length >= MAX_PHOTOS ? "opacity-50 cursor-not-allowed" : ""
                 }`}
               >
                 <PlusCircle className="w-4 h-4" /> Aggiungi
@@ -445,7 +450,7 @@ export const EditLogModal = ({
                   multiple
                   className="hidden"
                   onChange={handlePhotoUpload}
-                  disabled={data.photos.length >= 3 || uploadingPhotos || photoState !== "ready"}
+                  disabled={data.photos.length >= MAX_PHOTOS || uploadingPhotos || photoState !== "ready"}
                 />
               </label>
             </div>
