@@ -33,7 +33,8 @@
  *   1. Apri https://script.google.com con l'account che vede la cartella Clienti → il progetto (o «Nuovo progetto»).
  *   2. Cancella tutto e incolla questo file. Salva (icona del dischetto).
  *   3. In alto scegli la funzione «installa» e premi «Esegui» (Google chiede i permessi: «Consenti»).
- *   4. (Per «Compila verifica» con file Word o Excel) A sinistra «Servizi» → + → «Drive API» → Aggiungi.
+ *   4. (Per «Compila verifica») A sinistra «Servizi» → + → «Drive API» → Aggiungi, poi di nuovo + → «Google Docs API»
+ *      → Aggiungi: servono per i Word e per aggiungere la colonna «Note» con i bordi come fatta a mano.
  *   Fatto: aggiorna subito e poi ogni mattina alle 10. In Admin → Drive c'è anche «Aggiorna adesso»: parte entro 5 minuti. L'esito si vede nell'app in Admin → Drive.
  *   (Per rileggere tutto da capo: esegui «ricomincia».)
  */
@@ -477,7 +478,21 @@ function scriviNelFile_(fileId, lista) {
       return righe;
     });
     var gru = estraiGru(testoTab);
-    var colNote = {}; // tabella → colonna delle note (aggiunta se manca)
+    // tabelle senza colonna «Note» che servono: la aggiungo prima di scrivere
+    var manca = {};
+    lista.forEach(function (x) {
+      var g = trova(gru, x.k);
+      if (g && g._note < 0) manca[g._t] = g._h;
+    });
+    var colNote = {}; // tabella → colonna delle note
+    if (Object.keys(manca).length) {
+      doc.saveAndClose();
+      Object.keys(manca).forEach(function (t) {
+        colNote[t] = aggiungiColonnaNote_(fileId, Number(t), manca[t]);
+      });
+      doc = DocumentApp.openById(fileId);
+      tabs = doc.getBody().getTables();
+    }
     lista.forEach(function (x) {
       var g = trova(gru, x.k);
       if (!g) {
@@ -485,23 +500,13 @@ function scriviNelFile_(fileId, lista) {
         return;
       }
       var tb = tabs[g._t];
-      if (!(g._t in colNote)) {
-        if (g._note >= 0) colNote[g._t] = g._note;
-        else {
-          // manca la colonna «Note»: la aggiungo in fondo a tutte le righe della tabella
-          var n = 0;
-          for (var r = 0; r < tb.getNumRows(); r++) n = Math.max(n, tb.getRow(r).getNumCells());
-          for (var r2 = 0; r2 < tb.getNumRows(); r2++) {
-            var row2 = tb.getRow(r2);
-            while (row2.getNumCells() < n) row2.appendTableCell("");
-            row2.appendTableCell(r2 === g._h ? "Note" : "");
-          }
-          colNote[g._t] = n;
-        }
-      }
+      var col = g._t in colNote ? colNote[g._t] : g._note;
       var row = tb.getRow(g._r);
-      while (row.getNumCells() <= colNote[g._t]) row.appendTableCell("");
-      row.getCell(colNote[g._t]).setText(String(x.testo || ""));
+      if (col < 0 || col >= row.getNumCells()) {
+        errori[x.id] = "Non trovo la colonna «Note» in questa riga";
+        return;
+      }
+      row.getCell(col).setText(String(x.testo || ""));
     });
     doc.saveAndClose();
     return errori;
@@ -528,8 +533,18 @@ function scriviNelFile_(fileId, lista) {
       if (!(g._t in colS)) {
         if (g._note >= 0) colS[g._t] = g._note;
         else {
-          var c0 = sh.getLastColumn(); // prima colonna libera
+          // manca la colonna «Note»: la aggiungo dopo l'ultima, con lo stesso aspetto (bordi, caratteri)
+          // della colonna accanto, dall'intestazione all'ultima gru della tabella
+          var c0 = sh.getLastColumn();
+          var ultima = g._r;
+          gruS.forEach(function (y) {
+            if (y._t === g._t && y._r > ultima) ultima = y._r;
+          });
+          var righe = ultima - g._h + 1;
+          sh.getRange(g._h + 1, c0, righe, 1).copyFormatToRange(sh, c0 + 1, c0 + 1, g._h + 1, g._h + righe);
+          sh.getRange(g._h + 1, c0 + 1, righe, 1).setBorder(true, true, true, true, true, true, "#000000", SpreadsheetApp.BorderStyle.SOLID);
           sh.getRange(g._h + 1, c0 + 1).setValue("Note");
+          sh.autoResizeColumn(c0 + 1);
           colS[g._t] = c0;
         }
       }
@@ -544,6 +559,75 @@ function scriviNelFile_(fileId, lista) {
   return errori;
 }
 var scrittoIn_ = null;
+
+// Aggiunge la colonna «Note» a destra di una tabella di un Documento Google, con i bordi neri,
+// e scrive «Note» nell'intestazione. Restituisce il numero della colonna nuova (0 = la prima).
+// Con il servizio «Google Docs API» (Servizi → + → Google Docs API) la colonna è una colonna vera, come
+// se la aggiungessi a mano (Inserisci colonna a destra); senza, aggiungo le celle una per una.
+function aggiungiColonnaNote_(docId, t, h) {
+  var NERO = { color: { rgbColor: { red: 0, green: 0, blue: 0 } } };
+  var bordo = { color: NERO, width: { magnitude: 1, unit: "PT" }, dashStyle: "SOLID" };
+  if (typeof Docs !== "undefined" && Docs.Documents) {
+    var d = Docs.Documents.get(docId);
+    var tabelle = [];
+    (d.body.content || []).forEach(function (el) {
+      if (el.table) tabelle.push(el);
+    });
+    var el = tabelle[t];
+    if (el) {
+      var righe = el.table.tableRows || [];
+      var col = el.table.columns || 0;
+      var dove = { tableStartLocation: { index: el.startIndex } };
+      // riga da cui partire: una con l'ultima cella non unita alle altre (le celle unite danno errore)
+      var rif = h;
+      for (var q = 0; q < righe.length; q++) {
+        var cs = righe[q].tableCells || [];
+        var ul = cs[cs.length - 1];
+        if (cs.length === col && !(ul && ul.tableCellStyle && ul.tableCellStyle.columnSpan > 1)) {
+          rif = q;
+          break;
+        }
+      }
+      Docs.Documents.batchUpdate(
+        {
+          requests: [
+            { insertTableColumn: { tableCellLocation: { tableStartLocation: dove.tableStartLocation, rowIndex: rif, columnIndex: col - 1 }, insertRight: true } },
+            {
+              updateTableCellStyle: {
+                tableRange: { tableCellLocation: { tableStartLocation: dove.tableStartLocation, rowIndex: 0, columnIndex: col }, rowSpan: righe.length, columnSpan: 1 },
+                tableCellStyle: { borderLeft: bordo, borderRight: bordo, borderTop: bordo, borderBottom: bordo },
+                fields: "borderLeft,borderRight,borderTop,borderBottom",
+              },
+            },
+          ],
+        },
+        docId
+      );
+      var doc = DocumentApp.openById(docId);
+      var tb = doc.getBody().getTables()[t];
+      var cella = tb.getRow(h).getCell(col);
+      cella.setText("Note");
+      cella.editAsText().setBold(true);
+      doc.saveAndClose();
+      return col;
+    }
+  }
+  // senza il servizio: celle aggiunte in fondo a ogni riga, poi bordi neri su tutta la tabella
+  var doc2 = DocumentApp.openById(docId);
+  var tb2 = doc2.getBody().getTables()[t];
+  var n = 0;
+  for (var r = 0; r < tb2.getNumRows(); r++) n = Math.max(n, tb2.getRow(r).getNumCells());
+  for (var r2 = 0; r2 < tb2.getNumRows(); r2++) {
+    var row2 = tb2.getRow(r2);
+    while (row2.getNumCells() < n) row2.appendTableCell("");
+    var c = row2.appendTableCell(r2 === h ? "Note" : "");
+    if (r2 === h) c.editAsText().setBold(true);
+  }
+  tb2.setBorderColor("#000000");
+  tb2.setBorderWidth(1);
+  doc2.saveAndClose();
+  return n;
+}
 
 /** Dimentica cosa ha già letto: il prossimo giro rilegge tutte le cartelle. */
 function ricomincia() {
