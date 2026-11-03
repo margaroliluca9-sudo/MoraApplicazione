@@ -4,6 +4,7 @@ import React, { useEffect, useState } from "react";
 import { CardsSkeleton } from "./Skeleton";
 import { Trash2, RotateCcw, Loader2, CheckCircle2 } from "lucide-react";
 import { listTrash, restoreLog, purgeLog, daysLeft, TRASH_DAYS } from "../trash";
+import { unitLabel } from "../utils";
 
 const when = (r) => {
   const t = r.deletedAt && r.deletedAt.seconds ? r.deletedAt.seconds * 1000 : Number(r.deletedAtMs) || 0;
@@ -74,7 +75,7 @@ export const TrashView = ({ color = "blue" }) => {
                 <p className="font-black text-slate-800 truncate">{r.customer || "—"}</p>
                 <span className="text-xs font-bold text-slate-500 shrink-0">{r.dateString}</span>
               </div>
-              <p className="text-sm text-slate-600">Gru {r.machineId}{r.ticketNumber ? ` · N. ${r.ticketNumber}` : ""}{r.technician ? ` · ${r.technician}` : ""}</p>
+              <p className="text-sm text-slate-600">{unitLabel(r.machineType)} {r.machineId}{r.ticketNumber ? ` · N. ${r.ticketNumber}` : ""}{r.technician ? ` · ${r.technician}` : ""}</p>
               {r.description && <p className="text-sm text-slate-500 line-clamp-2 mt-0.5">{r.description}</p>}
               <p className="text-xs text-slate-400 mt-1">
                 Eliminato {when(r)}{r.deletedBy ? ` da ${r.deletedBy}` : ""} · si cancella tra {daysLeft(r)} {daysLeft(r) === 1 ? "giorno" : "giorni"}

@@ -16,7 +16,7 @@ import { isAdminPassword } from "../passwords";
 import { Avatar } from "../components/Avatar";
 import { CardsSkeleton } from "../components/Skeleton";
 import { techOf } from "../profile";
-import { getTechsString, formatCapacity } from "../utils";
+import { getTechsString, formatCapacity, unitLabel } from "../utils";
 import { getProPanelClass } from "../ui";
 import { DeleteConfirmDialog } from "../components/DeleteConfirmDialog";
 import { EditLogModal } from "../components/modals/EditLogModal";
@@ -311,7 +311,7 @@ export const HistoryView = ({
                       aria-label={`Scheda della gru ${log.machineId}`}
                       className={`block text-left text-sm font-bold text-${color}-700 py-1.5 -my-1.5`}
                     >
-                      Gru {log.machineId}
+                      {unitLabel(log.machineType)} {log.machineId}
                       <span className="font-semibold text-slate-500">
                         {log.machineType ? ` · ${log.machineType}` : ""}
                         {log.capacity ? ` · ${formatCapacity(log.capacity)}` : ""}

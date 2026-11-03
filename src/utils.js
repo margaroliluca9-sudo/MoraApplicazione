@@ -112,6 +112,11 @@ export const getTechsString = (log) => {
 };
 
 // HELPER GLOBALE PER LA PORTATA
+// «Gru 4868» solo se è davvero una gru: sottoganci, bilancini, impianti sospesi, pinze, magneti… → «Matr. 4868»
+const NOT_CRANE = /sottogan|bilancin|imbrac|\bbrac[ah]|pinz|magnet|ventos|forc|accessor|impianto sospes|attrezz|tenagl|grill|golfar/i;
+export const isCraneType = (type) => !NOT_CRANE.test(String(type || ""));
+export const unitLabel = (type) => (isCraneType(type) ? "Gru" : "Matr.");
+
 export const formatCapacity = (val) => {
   if (!val) return "";
   const s = String(val).trim();

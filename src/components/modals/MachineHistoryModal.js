@@ -5,7 +5,7 @@ import {
   Camera,
   PlusCircle,
 } from "lucide-react";
-import { getTechsString, formatCapacity, getSafeMatricola } from "../../utils";
+import { getTechsString, formatCapacity, getSafeMatricola, unitLabel } from "../../utils";
 import { ROPE_ITEMS, formatRopeLong, lastRopeOf } from "../../ropes";
 import { AssistantPanel } from "../AssistantPanel";
 import { PrintLogButton } from "../PrintLogButton";
@@ -63,7 +63,7 @@ export const MachineHistoryModal = ({
                 </h2>
               </button>
               <p className="text-sm font-bold mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1">
-                <span className={`px-2 py-0.5 rounded-full bg-${color}-50 text-${color}-700`}>Gru {getSafeMatricola(machine)}</span>
+                <span className={`px-2 py-0.5 rounded-full bg-${color}-50 text-${color}-700`}>{unitLabel(machine.type)} {getSafeMatricola(machine)}</span>
                 {machine.type && <span className="text-slate-500 font-semibold">{machine.type}</span>}
               </p>
             </div>

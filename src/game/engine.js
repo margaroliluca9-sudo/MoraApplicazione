@@ -6,6 +6,9 @@
 //  - i camion chiedono pezzi precisi (icone sul cassone); appoggiare piano = «Perfetto!», sbattere = «Botta!»
 //  - LIVELLI: si parte facilissimo (1 pezzo, niente vento, gancio che dondola poco, freccia che indica cosa fare)
 //    e ogni livello aggiunge qualcosa: più pezzi, meno tempo, vento, gancio più ballerino, vetro fragile.
+//  - MAGAZZINO: un pezzo appoggiato a terra (es. preso per sbaglio) va sempre nella piazzola libera più vicina
+//    (al massimo 2 uno sopra l'altro, ben dritti): mentre lo porti vedi il riquadro tratteggiato di dove andrà.
+//    Nella corsia del camion, quando il camion non c'è, il gancio col pezzo non scende.
 
 import { lookById } from "./looks";
 import { paintBackground, paintVignette, paintItem, paintTruck, paintCrane, paintDust, softShadow } from "./art";
@@ -140,6 +143,33 @@ export class CraneEngine {
     o.onTruck = false;
     this.items.push(o);
     return true;
+  }
+  // dove va un pezzo appoggiato a terra: la piazzola più vicina con posto (al massimo 2 pezzi).
+  // apply = sto appoggiando davvero: se è tutto pieno il muletto porta via un pezzo che non serve.
+  dropSpot(x, apply = false) {
+    const pickSpot = () => {
+      let best = -1;
+      let bd = 1e9;
+      this.spots.forEach((sx, i) => {
+        if (this.stackAt(sx).length >= 2) return;
+        const d = Math.abs(sx - x);
+        if (d < bd) {
+          bd = d;
+          best = i;
+        }
+      });
+      return best;
+    };
+    let i = pickSpot();
+    if (i < 0 && apply && this.makeRoom()) i = pickSpot();
+    if (i < 0) i = this.spots.map((sx, k) => [Math.abs(sx - x), k]).sort((a, b) => a[0] - b[0])[0][1];
+    const sx = this.spots[i];
+    const st = this.stackAt(sx);
+    return { x: sx, y: st.length ? Math.min(...st.map((p) => p.y - p.h)) : this.floorY };
+  }
+  // corsia del camion (a destra del magazzino)
+  inLane(x) {
+    return x > this.spots[this.spots.length - 1] + 30;
   }
   freeSpot() {
     const free = this.spots.map((x, i) => ({ i, n: this.stackAt(x).length })).filter((s) => s.n < 2);
@@ -279,7 +309,20 @@ export class CraneEngine {
     const { hx } = this.hookPos();
     const hw = this.load ? this.load.w / 2 : 5;
     const sf = this.surface(hx, hw);
-    const maxL = clamp(sf.y - this.beamY - HOOK - extra, this.Lmin, this.Lmax);
+    let floorY = sf.y;
+    if (this.load && !sf.bed) {
+      // col pezzo a terra: scende fino alla piazzola dove andrà; nella corsia senza camion non scende
+      if (this.inLane(hx)) {
+        floorY = Math.min(floorY, this.beamY + HOOK + extra + this.Lmin + 70);
+        if (this.hold && this.L >= floorY - this.beamY - HOOK - extra - 1 && !(this.laneMsgT > 0)) {
+          this.laneMsgT = 2.5;
+          this.float(this.truck ? "Aspetta il camion" : "Qui arriva il camion", hx, this.bedY - 70, "#fde68a");
+        }
+      } else floorY = Math.min(floorY, this.dropSpot(hx).y);
+    }
+    if (this.laneMsgT > 0) this.laneMsgT -= dt;
+    const laneStop = this.load && !sf.bed && this.inLane(hx);
+    const maxL = clamp(floorY - this.beamY - HOOK - extra, this.Lmin, this.Lmax);
     if (this.hold && this.lockL == null) this.L = Math.min(this.L + DOWN * dt, maxL);
     else if (!this.hold) this.L = Math.max(this.Lmin, this.L - UP * dt);
     if (this.lockL != null) this.L = Math.min(this.L, maxL);
@@ -288,7 +331,7 @@ export class CraneEngine {
     // tocca qualcosa?
     if (this.hold && this.lockL == null && this.L >= maxL - 0.5 && Math.cos(this.th) > 0.85) {
       if (!this.load && sf.top && Math.abs(sf.top.x - hx) < sf.top.w / 2 + 4) this.grab(sf.top);
-      else if (this.load) this.place(sf);
+      else if (this.load && !laneStop) this.place(sf);
       // gancio vuoto a terra: resta lì finché tieni premuto (se ci passa sopra un pezzo lo prende)
     }
 
@@ -322,6 +365,11 @@ export class CraneEngine {
     }
     this.items.forEach((o) => {
       if (o.drop > 0) o.drop = Math.max(0, o.drop - dt * 1.6);
+      if (o.slideX || o.slideY) {
+        const k = Math.max(0, 1 - dt * 9);
+        o.slideX = Math.abs(o.slideX * k) < 0.3 ? 0 : o.slideX * k;
+        o.slideY = Math.abs(o.slideY * k) < 0.3 ? 0 : o.slideY * k;
+      }
     });
     this.updateFx(dt);
   }
@@ -394,7 +442,13 @@ export class CraneEngine {
         col = "#fed7aa";
       }
     } else {
+      // a terra: sempre nella piazzola libera più vicina del magazzino, dritto (scivola lì)
       o.onTruck = false;
+      const d = this.dropSpot(hx, true);
+      o.slideX = hx - d.x;
+      o.slideY = sf.y - d.y;
+      o.x = d.x;
+      o.y = d.y;
     }
     if (bump && o.fragile) {
       // il vetro sbattuto si rompe: sparisce (e libera il posto sul camion)
@@ -649,15 +703,17 @@ export class CraneEngine {
     softShadow(c, hx, sf.y, hw * (1.1 + dist / 300), clamp(0.5 - dist / 700, 0.12, 0.5), 3.5 + dist / 120);
     // pezzi: riflesso, ombra, pezzo
     const ground = this.items.filter((o) => !o.onTruck);
-    this.reflect(c, () => ground.forEach((o) => paintItem(c, o, o.x, o.y - (o.drop || 0) * 60)));
+    this.reflect(c, () => ground.forEach((o) => paintItem(c, o, o.x + (o.slideX || 0), o.y + (o.slideY || 0) - (o.drop || 0) * 60)));
     ground.forEach((o) => {
       if (Math.abs(o.y - fy) < 1) softShadow(c, o.x, fy, o.w * 0.62, 0.45, 4);
-      paintItem(c, o, o.x, o.y - (o.drop || 0) * 60);
+      paintItem(c, o, o.x + (o.slideX || 0), o.y + (o.slideY || 0) - (o.drop || 0) * 60);
     });
     for (const o of this.items) if (o.onTruck && t) paintItem(c, o, o.x + t.off, o.y);
 
     // primi livelli: freccia che dice cosa fare
     if (this.rules.help && !this.over) this.drawHelp(c);
+    // col pezzo appeso sopra il magazzino: riquadro tratteggiato dove andrà appoggiandolo
+    if (this.load && !this.over) this.drawDrop(c);
     // carroponte: colonne, trave, carrello, funi, gancio (e pezzo appeso)
     this.drawCrane(c);
     // polvere nella luce
@@ -786,6 +842,25 @@ export class CraneEngine {
     const tops = this.items.filter((o) => !o.onTruck && kinds.includes(o.kind) && !this.items.some((p) => p !== o && !p.onTruck && Math.abs(p.x - o.x) < 6 && p.y <= o.y - o.h + 1));
     const o = tops[0];
     return o ? { x: o.x, y: o.y - o.h - 14, txt: "Prendi" } : null;
+  }
+  drawDrop(c) {
+    const o = this.load;
+    const { hx } = this.hookPos();
+    const sf = this.surface(hx, o.w / 2);
+    if (sf.bed || this.inLane(hx)) return;
+    const d = this.dropSpot(hx);
+    const a = 0.55 + Math.sin(this.t * 6) * 0.2;
+    c.save();
+    c.setLineDash([5, 4]);
+    c.lineWidth = 1.6;
+    c.strokeStyle = `rgba(253,224,71,${a})`;
+    c.fillStyle = `rgba(253,224,71,${a * 0.18})`;
+    c.beginPath();
+    if (c.roundRect) c.roundRect(d.x - o.w / 2, d.y - o.h, o.w, o.h, 4);
+    else c.rect(d.x - o.w / 2, d.y - o.h, o.w, o.h);
+    c.fill();
+    c.stroke();
+    c.restore();
   }
   drawHelp(c) {
     const h = this.helpTarget();

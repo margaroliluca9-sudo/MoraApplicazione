@@ -4,7 +4,7 @@
 // Unire non si può annullare: prima di farlo chiede conferma dicendo cosa succede.
 import React, { useMemo, useState } from "react";
 import { X, RefreshCw, CheckCircle, Copy, Star } from "lucide-react";
-import { getSafeMatricola } from "../../utils";
+import { getSafeMatricola, unitLabel } from "../../utils";
 import { EmptyState } from "../EmptyState";
 
 const norm = (s) => String(s || "").trim().toUpperCase();
@@ -28,7 +28,7 @@ const factsOf = (item, type, logs, machines) => {
   const cust = norm(item.customerName);
   const mine = logs.filter((l) => (norm(l.machineId) === mat && norm(l.customer) === cust) || l.machineId === item.id);
   return {
-    title: `Gru ${getSafeMatricola(item)}`,
+    title: `${unitLabel(item.type)} ${getSafeMatricola(item)}`,
     sub: item.customerName,
     logs: mine.length,
     lines: [
