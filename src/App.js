@@ -374,11 +374,12 @@ export default function App() {
 
     onAuthStateChanged(auth, (u) => {
       setUser(u);
-      // l'animazione di avvio (~2,4 s) solo la prima volta del giorno: le altre volte l'app si apre subito
-      // (e mai quando si apre la misura rapida dall'icona)
-      const splashOn = getCachedLayout().showSplash !== false && getSettings().splash !== false && !quickAtStart.current && !splashSeenEarlier.current;
-      if (splashOn) markSplashShown();
-      setTimeout(() => setIsAppLoading(false), splashOn ? 2500 : 0);
+      // l'animazione di avvio (~2,4 s) solo la prima volta del giorno; le altre volte l'immagine ferma per un attimo
+      // (e niente quando si apre la misura rapida dall'icona)
+      const splashOn = getCachedLayout().showSplash !== false && getSettings().splash !== false && !quickAtStart.current;
+      const animated = splashOn && !splashSeenEarlier.current;
+      if (animated) markSplashShown();
+      setTimeout(() => setIsAppLoading(false), animated ? 2500 : splashOn ? 700 : 0);
     });
   }, []);
 
@@ -1050,7 +1051,7 @@ export default function App() {
 
   const color = viewConfig.themeColor || "blue";
 
-  if (isAppLoading && (layoutConfig.showSplash === false || mySettings.splash === false || quickAtStart.current || splashSeenEarlier.current))
+  if (isAppLoading && (layoutConfig.showSplash === false || mySettings.splash === false || quickAtStart.current))
     return <div className="mora-app min-h-screen bg-slate-100" />;
 
   if (isAppLoading)
@@ -1059,6 +1060,7 @@ export default function App() {
         dark={isDark}
         title={layoutConfig.appTitle || "Assistenza Mora"}
         season={splashSeason(layoutConfig)}
+        still={splashSeenEarlier.current}
       />
     );
 

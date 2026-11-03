@@ -2,7 +2,8 @@ import React from "react";
 import { greetingOf } from "../season";
 
 // Schermata di avvio: un carroponte solleva la cassa "MORA", accanto una gru a bandiera.
-// Dura circa 2,4 secondi. Con "Riduci movimento" attivo mostra subito l'immagine finale.
+// Dura circa 2,4 secondi (solo la prima apertura del giorno; le altre volte l'immagine finale ferma per un attimo).
+// Con "Riduci movimento" attivo mostra subito l'immagine finale.
 // Cambia da sola col periodo dell'anno (season.js): Natale (regalo, neve, lucine),
 // Pasqua (uovo, prato, fiori), Estate (sole, pallone), Halloween (zucca, pipistrelli),
 // San Valentino (cuori che salgono, scatola a cuore), Carnevale (coriandoli, stelle filanti, maschera),
@@ -112,6 +113,8 @@ const SPLASH_CSS = `
 @media (prefers-reduced-motion: reduce) {
   .mora-splash * { animation: none !important; }
 }
+/* «still»: solo l'immagine finale, ferma (aperture dopo la prima del giorno) */
+.mora-splash.still * { animation: none !important; }
 `;
 
 const S = {
@@ -328,9 +331,10 @@ const FLAKES = Array.from({ length: 28 }, (_, i) => ({
   delay: -((i * 11) % 9),
 }));
 
-export const SplashScreen = ({ dark = true, title = "Assistenza Mora", season = "normale" }) => (
+export const SplashScreen = ({ dark = true, title = "Assistenza Mora", season = "normale", still = false }) => (
   <div
-    className={`mora-splash${dark ? "" : " light"} s-${season}`}
+    className={`mora-splash${dark ? "" : " light"}${still ? " still" : ""} s-${season}`}
+    data-splash={still ? "ferma" : "animata"}
     role="img"
     aria-label={"Avvio dell'app: " + (LABELS[season] || LABELS.normale)}
     data-season={season}
