@@ -12,7 +12,7 @@ import { describeError } from "../../utils";
 
 // mancano dati? (non disponibili al momento, o fune senza tipo, o campi vuoti)
 export const ropeIncomplete = (saved, id) =>
-  !!saved && (!!saved.nonDisponibile || !saved.certificato || !saved.diametro || !saved.lunghezza || (id === "fune" && !saved.fas && !saved.costruzione));
+  !!saved && (!!saved.nonDisponibile || !saved.certificato || !saved.diametro || !saved.lunghezza || (id === "fune" && !saved.fas && !saved.teci && !saved.costruzione));
 
 export const CompleteRopeModal = ({ log, id, onClose, color = "blue" }) => {
   const item = ROPE_ITEMS.find((r) => r.id === id) || ROPE_ITEMS[0];

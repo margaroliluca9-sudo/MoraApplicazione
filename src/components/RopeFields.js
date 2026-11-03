@@ -3,6 +3,7 @@ import { AlertTriangle } from "lucide-react";
 import { PRO_INPUT } from "../ui";
 import { ROPE_ITEMS, emptyRope, ROPE_TYPES, consInText, ropeName } from "../ropes";
 import { fasFamily, fasItem, fasSearch } from "../fasRopes";
+import { teciFamily, teciItem, teciSearch } from "../teciRopes";
 
 // Dati FUNE / CATENA sostituita.
 // Non c'è nessuna casella da spuntare: la sezione compare da sola quando la
@@ -85,24 +86,37 @@ export const RopeFields = ({ ropes, onChange, completing = false }) => {
                 <input
                   type="text"
                   className={PRO_INPUT}
-                  placeholder="Tipo fune (es. FZ636A12 dal certificato, o 6x36)"
+                  placeholder="Tipo fune (es. FZ636A12, Teci S10 ZN, o 6x36)"
                   aria-label="Tipo fune"
                   data-rope-field="codice"
-                  value={r.codice ? r.codice : r.fas || r.costruzione || ""}
+                  value={r.codice ? r.codice : r.fas || (r.teci && teciFamily(r.teci) ? teciFamily(r.teci).name : "") || r.costruzione || ""}
                   onChange={(e) => {
                     const v = e.target.value.toUpperCase();
                     const t = v.trim();
                     // codice FAS dell'articolo (FZ636A12): fune e diametro dal catalogo
                     const hit = t ? fasSearch(t).find((h) => h.item) : null;
-                    if (hit) return set(id, { codice: v, fas: hit.fam.id, costruzione: "", diametro: r.diametro || String(hit.item.d).replace(".", ",") });
+                    if (hit) return set(id, { codice: v, fas: hit.fam.id, teci: "", costruzione: "", diametro: r.diametro || String(hit.item.d).replace(".", ",") });
                     // famiglia FAS (FZ636AC)
                     const fam = t ? fasFamily(t) : null;
-                    if (fam) return set(id, { codice: v, fas: fam.id, costruzione: "" });
+                    if (fam) return set(id, { codice: v, fas: fam.id, teci: "", costruzione: "" });
+                    // fune del catalogo Teci (nome: «S10 ZN», «Teci A7 ALC», «TK17»)
+                    const tf = t ? teciSearch(t) : null;
+                    if (tf) return set(id, { codice: v, fas: "", teci: tf.id, costruzione: "" });
                     // altre marche: la costruzione (6x36, 8x19…) o quello che c'è scritto
                     const c = consInText(t);
-                    return set(id, { codice: v, fas: "", costruzione: c ? c.costruzione : t });
+                    return set(id, { codice: v, fas: "", teci: "", costruzione: c ? c.costruzione : t });
                   }}
                 />
+                {!r.fas && r.teci && teciFamily(r.teci) && (
+                  <p className="text-[11px] font-bold text-slate-600" data-rope-teci>
+                    Teci {teciFamily(r.teci).name} · {(teciItem(teciFamily(r.teci), Number(String(r.diametro).replace(",", "."))) || {}).cons || teciFamily(r.teci).cons.join(" / ")}
+                    {teciItem(teciFamily(r.teci), Number(String(r.diametro).replace(",", "."))) && teciItem(teciFamily(r.teci), Number(String(r.diametro).replace(",", "."))).exact
+                      ? ` · carico di rottura ${String(teciItem(teciFamily(r.teci), Number(String(r.diametro).replace(",", "."))).kN).replace(".", ",")} kN (dal catalogo)`
+                      : r.diametro
+                        ? " · diametro non presente nel catalogo: controlla"
+                        : ""}
+                  </p>
+                )}
                 {!r.fas && r.costruzione && ROPE_TYPES.some(([v]) => v === r.costruzione) && (
                   <p className="text-[11px] font-bold text-slate-600" data-rope-cons>
                     Costruzione {ropeName(r.costruzione)} (altra marca)

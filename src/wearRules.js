@@ -12,6 +12,7 @@
 //   scarto se dm < 0,9·d nominale (usura > 10%) — EN 818-6 (imbracature) e criteri dei costruttori delle catene
 //   da paranco (EN 818-7). Passo di una maglia +5%; catena da paranco: su 11 maglie +2%.
 
+import { teciFamily, teciItem, teciTableLimits, teciLabel } from "./teciRopes";
 import { fasFamily, fasRange, fasItem, fasLabel } from "./fasRopes";
 
 // ---------------------------------------------------------------- FUNI
@@ -142,10 +143,13 @@ export const checkRope = (x0) => {
   const g = auto ? guessRope(x0) : null;
   // fune del catalogo FAS («fas:FZ636AC»): limiti di scarto scritti nel catalogo per quel diametro
   const fam = !auto && String(x0.rope || "").startsWith("fas:") ? fasFamily(String(x0.rope).slice(4)) : null;
-  const x = auto ? { ...x0, lay: g.lay, core: g.core, layers: g.layers } : fam ? { ...x0, lay: fam.lay, core: fam.core } : x0;
+  // fune del catalogo Teci («teci:S10ZN»): fili portanti esterni e carico di rottura dal catalogo, cordatura standard
+  const tfam = !auto && String(x0.rope || "").startsWith("teci:") ? teciFamily(String(x0.rope).slice(5)) : null;
+  const x = auto ? { ...x0, lay: g.lay, core: g.core, layers: g.layers } : fam ? { ...x0, lay: fam.lay, core: fam.core } : tfam ? { ...x0, lay: tfam.lay || "parallela", core: tfam.core } : x0;
   const d = Number(String(x.d || "").replace(",", ".")) || 0;
+  const ti = tfam ? teciItem(tfam, d) || teciItem(tfam, tfam.it[0][0]) : null;
   const fr = fam ? fasRange(fam, d) : null;
-  const rope = auto ? { n: g.n, rr: g.rr, label: g.label } : fam ? { n: fr ? fr.n : fam.r[0][3], rr: fam.rr, label: fasLabel(fam) } : ROPES.find((r) => r.id === x.rope) || ROPES[0];
+  const rope = auto ? { n: g.n, rr: g.rr, label: g.label } : fam ? { n: fr ? fr.n : fam.r[0][3], rr: fam.rr, label: fasLabel(fam) } : tfam ? { n: (ti && ti.n) || 0, rr: tfam.rr, label: teciLabel(tfam) } : ROPES.find((r) => r.id === x.rope) || ROPES[0];
   const n = rope.n || Number(x.n) || 0;
   const rr = rope.rr;
   const dRef = readMeasure(x.dRef, d) || d;
@@ -155,7 +159,9 @@ export const checkRope = (x0) => {
     ? fr
       ? { rcn: fr.rcn, six: multi ? fr.m6 : fr.s6, thirty: multi ? fr.m30 : fr.s30, fas: true }
       : { rcn: fam.r[0][2], six: multi ? fam.r[0][5] : fam.r[0][4], thirty: multi ? fam.r[0][7] : fam.r[0][6], fas: true, noDiam: true }
-    : wireLimits({ n, rr, lay: x.lay, layers: x.layers });
+    : tfam && teciTableLimits(tfam, d)
+      ? { rcn: "tabella Teci", ...teciTableLimits(tfam, d) }
+      : wireLimits({ n, rr, lay: x.lay, layers: x.layers });
   const b6 = Math.max(0, Number(x.b6) || 0);
   // il tratto di 30d comprende quello di 6d: i fili rotti su 30d sono almeno quelli su 6d
   const b30 = Math.max(0, Number(x.b30) || 0, b6);
@@ -176,6 +182,8 @@ export const checkRope = (x0) => {
     auto,
     fam,
     fasItem: fam ? fasItem(fam, d) : null,
+    tfam,
+    teciItem: ti,
     guess: g,
     limCross,
     n,

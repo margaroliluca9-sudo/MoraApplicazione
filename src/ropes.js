@@ -1,5 +1,6 @@
 // FUNE e CATENA sostituite: dati obbligatori (certificato, diametro, lunghezza; per la fune anche il tipo).
 import { fasFamily, fasItem, fasCode, FAS_ROPES } from "./fasRopes";
+import { teciFamily, teciItem, teciSearch } from "./teciRopes";
 // Salvati nel rapporto come  fune: {...}  e  catena: {...}  (solo se sostituite).
 // Dal certificato (facoltativi): costruzione (es. "6x36", vedi wearRules.ROPES), marca (FAS, Teci…), rottura
 // (carico di rottura minimo, kN); per la catena grado e passo (mm). Servono al controllo «Fune e catena».
@@ -21,6 +22,7 @@ export const emptyRope = () => ({
   nonDisponibile: false,
   motivo: "",
   fas: "", // famiglia del catalogo FAS (es. "FZ636AC")
+  teci: "", // fune del catalogo Teci (es. "S10ZN")
   codice: "", // codice articolo dal certificato (es. "FZ636A12")
   costruzione: "",
   marca: "",
@@ -89,7 +91,7 @@ export const validateRopes = (ropes) => {
       continue;
     }
     const missing = [];
-    if (id === "fune" && !r.fas && !String(r.costruzione || "").trim()) missing.push("tipo di fune (codice FAS del certificato o costruzione)");
+    if (id === "fune" && !r.fas && !r.teci && !String(r.costruzione || "").trim()) missing.push("tipo di fune (codice FAS del certificato o costruzione)");
     if (!String(r.certificato || "").trim()) missing.push("numero certificato");
     if (!parseNum(r.diametro)) missing.push("diametro");
     if (!parseNum(r.lunghezza)) missing.push("lunghezza");
@@ -111,8 +113,16 @@ const extras = (r) => {
     else if (it) o.codice = fasCode(fam, it);
     if (!parseNum(r.rottura) && it) o.rottura = it.kN;
   }
+  const tf = !fam && r.teci ? teciFamily(r.teci) : null;
+  if (tf) {
+    o.teci = tf.id;
+    o.marca = "Teci";
+    const it = teciItem(tf, parseNum(r.diametro));
+    if (String(r.codice || "").trim()) o.codice = String(r.codice).trim().toUpperCase();
+    if (!parseNum(r.rottura) && it && it.exact) o.rottura = it.kN;
+  }
   if (String(r.costruzione || "").trim()) o.costruzione = String(r.costruzione).trim();
-  if (!fam && String(r.marca || "").trim()) o.marca = String(r.marca).trim();
+  if (!fam && !tf && String(r.marca || "").trim()) o.marca = String(r.marca).trim();
   if (parseNum(r.rottura)) o.rottura = parseNum(r.rottura);
   if (String(r.grado || "").trim()) o.grado = String(r.grado).trim();
   if (parseNum(r.passo)) o.passo = parseNum(r.passo);
@@ -139,6 +149,7 @@ export const fromSavedRope = (saved) =>
         nonDisponibile: !!saved.nonDisponibile,
         motivo: saved.motivo || "",
         fas: saved.fas || "",
+        teci: saved.teci || "",
         codice: saved.codice || "",
         costruzione: saved.costruzione || "",
         marca: saved.marca || "",
@@ -188,9 +199,10 @@ export const formatRopeLong = (saved) => {
   if (all || saved.diametro) parts.push(`Diametro ${saved.diametro ? fmt(saved.diametro) + " mm" : "-"}`);
   if (all || saved.lunghezza) parts.push(`Lunghezza ${saved.lunghezza ? fmt(saved.lunghezza) + " m" : "-"}`);
   if (saved.fas) parts.push(`FAS ${saved.fas}${saved.codice ? " (" + saved.codice + ")" : ""}${fasFamily(saved.fas) ? " " + fasFamily(saved.fas).cons.join("/") : ""}`);
+  if (saved.teci) parts.push(`Teci ${teciFamily(saved.teci) ? teciFamily(saved.teci).name + " " + teciFamily(saved.teci).cons.join("/") : saved.teci}`);
   if (saved.costruzione) parts.push(`Costruzione ${ropeName(saved.costruzione)}`);
   if (saved.grado) parts.push(`Grado ${saved.grado}`);
-  if (saved.marca && !saved.fas) parts.push(saved.marca);
+  if (saved.marca && !saved.fas && !saved.teci) parts.push(saved.marca);
   if (saved.rottura) parts.push(`Carico di rottura ${fmt(saved.rottura)} kN`);
   if (saved.nonDisponibile)
     parts.push(`dati non disponibili${saved.motivo ? ": " + saved.motivo : ""}`);
@@ -247,10 +259,20 @@ export const ropeTypeOfLog = (log) => {
   const f = log && (log.fune || (ropeReplacedInText(log.description) ? {} : null));
   if (!f) return null;
   if (f.fas) return { fas: f.fas, diametro: f.diametro, from: "rapporto" };
+  if (f.teci) return { teci: f.teci, diametro: f.diametro, from: "rapporto" };
   if (f.costruzione) return { costruzione: f.costruzione, diametro: f.diametro, from: "rapporto" };
   const text = `${f.certificato || ""} ${f.codice || ""} ${log.description || ""}`;
   const fx = fasInText(text);
   if (fx) return { fas: fx.fas, diametro: f.diametro || fx.d || diamInText(log.description), from: "testo" };
+  // «fune Teci S10 ZN …»: il nome dopo «Teci»
+  const tm = text.match(/teci\s+([A-Za-z0-9][A-Za-z0-9 \-]{1,18})/i);
+  if (tm) {
+    const words = tm[1].trim().split(/\s+/);
+    for (let k = Math.min(4, words.length); k > 0; k--) {
+      const t = teciSearch(words.slice(0, k).join(" "));
+      if (t) return { teci: t.id, diametro: f.diametro || diamInText(log.description), from: "testo" };
+    }
+  }
   const cx = consInText(text);
   if (cx) return { ...cx, diametro: f.diametro || diamInText(log.description), from: "testo" };
   return null;

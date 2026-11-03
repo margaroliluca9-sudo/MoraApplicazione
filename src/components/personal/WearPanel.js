@@ -16,6 +16,7 @@ import { SLING_COLORS, SLING_MODES, SLING_FLAGS, SLING_TEXT, SLING_SOURCE, check
 import { getSafeMatricola } from "../../utils";
 import { DriveCraneInfo } from "../DriveCraneInfo";
 import { FAS_ROPES, FAS_GROUPS, fasCode } from "../../fasRopes";
+import { TECI_ROPES, TECI_GROUPS, teciFamily } from "../../teciRopes";
 
 // catalogo FAS delle funi (si apre sul loro sito)
 const FAS_CATALOG = "https://www.fasitaly.com/sottofamiglia/0107.pdf";
@@ -766,14 +767,18 @@ const Pick = ({ value, onChange, options, id }) => {
 const RopeCheck = ({ known = null, onReport = null, crane = null }) => {
   // fune montata con un rapporto dell'app (con la costruzione dal certificato): si parte già da quella
   // fune montata: dal catalogo FAS (fas) o con la costruzione scritta a mano
-  const kf = known && known.fas && FAS_ROPES.some((f) => f.id === known.fas) ? "fas:" + known.fas : "";
+  const kf = known && known.fas && FAS_ROPES.some((f) => f.id === known.fas) ? "fas:" + known.fas : known && known.teci && teciFamily(known.teci) ? "teci:" + known.teci : "";
   const kc = known && ROPES.find((r) => r.id === known.costruzione);
   const kd = known && known.diametro ? String(known.diametro).replace(".", ",") : "";
   const [x, setX] = useState({ mode: kf || kc ? "so" : "auto", strands: "6", rope: kf || (kc ? kc.id : "6x36"), n: "", core: "metallica", lay: "nonso", layers: "nonso", d: kd, dRef: kd, dMis: "", b6: "", b30: "", flags: {} });
   const set = (k) => (v) => setX((o) => ({ ...o, [k]: v }));
   const r = useMemo(() => checkRope(x), [x]);
   const isFas = !!r.fam;
-  const rope = isFas ? { n: r.n, rr: r.rr, label: r.lim.rcn } : ROPES.find((o) => o.id === x.rope) || ROPES[0];
+  const isTeci = !!r.tfam;
+  const isCat = isFas || isTeci;
+  const rope = isCat ? { n: r.n, rr: r.rr, label: r.lim.rcn } : ROPES.find((o) => o.id === x.rope) || ROPES[0];
+  const catName = r.auto ? r.guess.label : isFas ? `FAS ${r.fam.id} (${r.fam.cons.join("/")})` : isTeci ? `Teci ${r.tfam.name} (${r.teciItem ? r.teciItem.cons : r.tfam.cons.join("/")})` : rope.label;
+  const consNow = r.auto ? "" : isFas ? consOf({ fam: r.fam }) : isTeci ? (r.teciItem ? r.teciItem.cons : r.tfam.cons[0]) : consOf({ rope: ROPES.find((o) => o.id === x.rope) });
   const [copied, copy] = useCopy();
   const ready = Number(r.n) > 0 && (x.b6 !== "" || x.b30 !== "" || x.dMis !== "" || r.flags.length > 0);
   const lines = [];
@@ -783,7 +788,7 @@ const RopeCheck = ({ known = null, onReport = null, crane = null }) => {
   if ((x.b6 !== "" || x.b30 !== "") && r.dec != null) lines.push(`Insieme (fili + diametro): ${r.combined}%`);
   r.flags.forEach((k) => lines.push((ROPE_FLAGS.find((f) => f[0] === k) || [k, k])[1] + " → scarto"));
   const title = r.level === "scarto" ? "Fune da scartare" : r.level === "attenzione" ? "Fune idonea, vicina al limite di scarto" : "Fune idonea";
-  const report = `Controllo fune ${r.auto ? r.guess.label.split(" (")[0] : isFas ? `FAS ${r.fam.id} (${r.fam.cons.join("/")})` : rope.label}${x.d ? " Ø" + x.d + " mm" : ""} (ISO 4309${r.auto ? ", valori prudenti" : ""}): ${title.toLowerCase()}. ${lines.join(". ")}.`;
+  const report = `Controllo fune ${r.auto ? r.guess.label.split(" (")[0] : catName}${x.d ? " Ø" + x.d + " mm" : ""} (ISO 4309${r.auto ? ", valori prudenti" : ""}): ${title.toLowerCase()}. ${lines.join(". ")}.`;
   return (
     <div className="space-y-4" data-section="wear-rope">
       {x.mode !== "so" ? (
@@ -838,6 +843,15 @@ const RopeCheck = ({ known = null, onReport = null, crane = null }) => {
                 ))}
               </optgroup>
             ))}
+            {TECI_GROUPS.map(([g, gl]) => (
+              <optgroup key={g} label={gl}>
+                {TECI_ROPES.filter((f) => f.grp === g).map((f) => (
+                  <option key={f.id} value={"teci:" + f.id}>
+                    {f.name} · {f.cons.join(" / ")}
+                  </option>
+                ))}
+              </optgroup>
+            ))}
             <optgroup label="Altre marche (per costruzione)">
               {ROPES.map((o) => (
                 <option key={o.id} value={o.id}>
@@ -855,13 +869,21 @@ const RopeCheck = ({ known = null, onReport = null, crane = null }) => {
             {r.lim.noDiam ? " · scrivi il diametro per i limiti giusti" : ` · limiti: ${r.lim.six} fili su 6d, ${r.lim.thirty} su 30d`}
           </p>
         )}
-        {!r.auto && consOf({ fam: r.fam, rope: isFas ? null : ROPES.find((o) => o.id === x.rope) }) && (
+        {isTeci && (
+          <p className="text-xs text-slate-600 bg-blue-50 border border-blue-100 rounded-xl p-2 leading-snug" data-wear-teci>
+            <b>Dal catalogo Teci:</b> {r.tfam.name} · {r.teciItem ? r.teciItem.cons : r.tfam.cons.join(" / ")} · {r.tfam.rr ? "antigiro" : r.tfam.lay ? `cordatura ${r.tfam.lay} (standard del catalogo)` : "cordatura non scritta: contata come parallela"} · anima {r.tfam.core}
+            {r.teciItem && r.teciItem.exact ? ` · carico di rottura minimo ${fmt(r.teciItem.kN)} kN (classe ${r.tfam.grade})` : x.d ? " · diametro non presente nel catalogo: controlla" : ""}
+            {r.teciItem && r.teciItem.n ? ` · ${r.teciItem.n} fili portanti esterni` : ""}
+            {` · limiti: ${r.lim.six} fili su 6d, ${r.lim.thirty} su 30d${r.lim.teci ? " (tabella Teci)" : " (ISO 4309)"}`}
+          </p>
+        )}
+        {consNow && (
           <div className="rounded-2xl bg-slate-50 border border-slate-200 p-3">
-            <RopeSectionArt cons={consOf({ fam: r.fam, rope: isFas ? null : ROPES.find((o) => o.id === x.rope) })} />
+            <RopeSectionArt cons={consNow} />
           </div>
         )}
-        {!isFas && !rope.n && <Num id="n" label="Fili portanti dei trefoli esterni (n)" unit="fili" value={x.n} onChange={set("n")} hint="Fili esterni portanti × numero dei trefoli esterni (quelli di riempimento non contano)." />}
-        {!isFas && !rope.rr && (
+        {!isCat && !rope.n && <Num id="n" label="Fili portanti dei trefoli esterni (n)" unit="fili" value={x.n} onChange={set("n")} hint="Fili esterni portanti × numero dei trefoli esterni (quelli di riempimento non contano)." />}
+        {!isCat && !rope.rr && (
           <>
             <span className="block text-xs font-black text-slate-500">Anima</span>
             <Choice id="core" value={x.core} onChange={set("core")} options={[["metallica", "Metallica"], ["tessile", "Tessile"]]} />
@@ -920,8 +942,8 @@ const RopeCheck = ({ known = null, onReport = null, crane = null }) => {
           copied={copied}
           onReport={onReport ? () => onReport({ type: "fune", level: r.level, title, text: report, d: x.d, b6: x.b6, b30: x.b30, dMis: r.dMis || x.dMis, rope: r.auto ? "" : x.rope }) : null}
           big={ropeBig(r)}
-          register={{ ...ropeVerdict(r), text: ropeRegister({ r, x, label: r.auto ? r.guess.label : isFas ? `FAS ${r.fam.id} (${r.fam.cons.join("/")})` : rope.label }) }}
-          onPrint={() => printWear({ ...ropeReport({ r, x, label: r.auto ? r.guess.label : isFas ? `FAS ${r.fam.id} (${r.fam.cons.join("/")})` : rope.label, fas: !!isFas }), cons: r.auto ? "" : consOf({ fam: r.fam, rope: isFas ? null : ROPES.find((o) => o.id === x.rope) }) }, crane)}
+          register={{ ...ropeVerdict(r), text: ropeRegister({ r, x, label: catName }) }}
+          onPrint={() => printWear({ ...ropeReport({ r, x, label: catName, fas: !!isFas, teci: !!isTeci }), cons: consNow }, crane)}
         />
       )}
       <p className="text-[11px] text-slate-400 leading-snug">
@@ -1217,7 +1239,7 @@ export const WearPanel = ({ color = "blue", onBack, onClose, machines = [], logs
   const pickable = useMemo(() => machines.filter((m) => (type === "fune" ? !!known[mkey(m)] : chainKeys.has(mkey(m)))), [machines, known, chainKeys, type]);
   const kr = crane && type === "fune" ? known[mkey(crane)] : null;
   const mounted = crane ? (kr ? kr.log : lastRopeOf(craneLogs, type)) : null;
-  const knownType = kr ? { ...(mounted.fune || {}), fas: kr.type.fas || "", costruzione: kr.type.costruzione || "", diametro: kr.type.diametro || (mounted.fune || {}).diametro } : null;
+  const knownType = kr ? { ...(mounted.fune || {}), fas: kr.type.fas || "", teci: kr.type.teci || "", costruzione: kr.type.costruzione || "", diametro: kr.type.diametro || (mounted.fune || {}).diametro } : null;
   const prev = crane ? lastCheckOf(craneLogs, type) : null;
   const report =
     crane && onNewReport
@@ -1255,7 +1277,7 @@ export const WearPanel = ({ color = "blue", onBack, onClose, machines = [], logs
                 <p className="font-bold text-slate-700">{formatRopeLong(mounted[type])}</p>
                 {kr && kr.type.from === "testo" && (
                   <p className="text-xs text-slate-500 mt-0.5" data-wear-inferred>
-                    Tipo di fune trovato nel rapporto: {kr.type.fas ? `FAS ${kr.type.fas}${fasFamily(kr.type.fas) ? " · " + fasFamily(kr.type.fas).cons.join(" / ") : ""}` : ropeName(kr.type.costruzione)} — controlla che sia giusto.
+                    Tipo di fune trovato nel rapporto: {kr.type.fas ? `FAS ${kr.type.fas}${fasFamily(kr.type.fas) ? " · " + fasFamily(kr.type.fas).cons.join(" / ") : ""}` : kr.type.teci ? `Teci ${teciFamily(kr.type.teci) ? teciFamily(kr.type.teci).name : kr.type.teci}` : ropeName(kr.type.costruzione)} — controlla che sia giusto.
                   </p>
                 )}
               </div>

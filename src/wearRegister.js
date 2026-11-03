@@ -70,7 +70,7 @@ export const chainRegister = ({ r, x }) => {
 // ---------------------------------------------------------------- VERBALE IN PDF (Stampa)
 // dati già pronti per il PDF (src/pdf.js → buildWearPdf): misure con limite ed esito, difetti, norme usate
 const ok = (bad) => (bad ? "OLTRE IL LIMITE" : "entro il limite");
-export const ropeReport = ({ r, x, label = "", fas = false }) => {
+export const ropeReport = ({ r, x, label = "", fas = false, teci = false }) => {
   const v = ropeVerdict(r);
   const d = Number(String(x.d || "").replace(",", ".")) || 0;
   const rows = [
@@ -92,6 +92,7 @@ export const ropeReport = ({ r, x, label = "", fas = false }) => {
     "ISO 4309:2017 (UNI ISO 4309) – Cranes – Wire ropes – Care and maintenance, inspection and discard. Criteri usati: numero di fili rotti visibili su 6d e su 30d, diminuzione del diametro rispetto al diametro di riferimento, valutazione combinata dei due; valori per meccanismi di classe M1–M4 o di classe non nota.",
   ];
   if (fas) norms.push("Catalogo funi FAS (rev. 09/2026): numero massimo di fili rotti su 6d e 30d indicato nel catalogo per questa fune e questo diametro.");
+  if (teci) norms.push(`Catalogo Teci «Funi in acciaio / Steel Wire Ropes»: costruzione, fili portanti esterni e carico di rottura minimo della fune${r.lim.teci ? "; fili rotti ammessi dalla tabella Teci «Rottura dei fili (secondo ISO 4309)», meccanismi M1–M4" : ""}.`);
   if (r.auto) norms.push("Fune non identificata: l'app usa i valori della fune più delicata del tipo osservato, con cordatura parallela e anima metallica.");
   norms.push(DLGS_3_1_2);
   return {
