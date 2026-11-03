@@ -7,7 +7,7 @@ import { FAS_ROPES, FAS_GROUPS, fasFamily, fasItem, fasSearch } from "../fasRope
 // Dati FUNE / CATENA sostituita.
 // Non c'è nessuna casella da spuntare: la sezione compare da sola quando la
 // descrizione parla di sostituzione (vedi autoTick in ropes.js).
-export const RopeFields = ({ ropes, onChange }) => {
+export const RopeFields = ({ ropes, onChange, completing = false }) => {
   const value = ropes || {};
   const set = (id, patch) =>
     onChange({ ...value, [id]: { ...(value[id] || emptyRope()), ...patch } });
@@ -42,8 +42,9 @@ export const RopeFields = ({ ropes, onChange }) => {
               <p className="text-[11px] font-bold text-amber-800 flex items-start gap-1.5">
                 <AlertTriangle className="w-4 h-4 shrink-0" />
                 <span>
-                  Dalla descrizione risulta sostituita la {label}: inserisci i
-                  dati della {label} nuova.
+                  {completing
+                    ? `Aggiungi i dati che mancano della ${label} montata con questo intervento.`
+                    : `Dalla descrizione risulta sostituita la ${label}: inserisci i dati della ${label} nuova.`}
                 </span>
               </p>
 

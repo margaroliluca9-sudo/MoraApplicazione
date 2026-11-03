@@ -49,7 +49,14 @@ export const CompleteRopeModal = ({ log, id, onClose, color = "blue" }) => {
           </button>
         </div>
         <div className="p-4 overflow-y-auto space-y-3">
-          <RopeFields ropes={ropes} onChange={setRopes} />
+          <RopeFields
+            ropes={ropes}
+            completing
+            onChange={(v) => {
+              setRopes(v);
+              setErr("");
+            }}
+          />
           {err && <p className="text-sm font-bold text-red-700">{err}</p>}
         </div>
         <div className="p-4 border-t border-slate-200">
