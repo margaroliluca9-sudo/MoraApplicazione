@@ -2,8 +2,8 @@
 // Raccolta a sé (wear_reports): NON tocca gli interventi. Un documento per verbale:
 //   { at, day, type: "fune"|"catena", esito, level, rep (JSON del verbale), crane { customerName, matricola, type, capacity }, tech, owner }
 // Si leggono solo aprendo «Fune e catena» (gli ultimi 20).
-import { collection, query, orderBy, limit } from "firebase/firestore";
-import { addDoc } from "./tracked";
+import { collection, query, orderBy, limit, doc } from "firebase/firestore";
+import { addDoc, deleteDoc } from "./tracked";
 import { getDocs } from "./metered";
 import { db, appId } from "./firebase";
 import { key } from "./chat";
@@ -23,6 +23,9 @@ export const saveWearReport = ({ rep, crane = null, tech = "", day }) =>
     tech: String(tech || ""),
     owner: key(tech) || "",
   });
+
+// solo admin (Fune e catena → Verbali stampati → cestino)
+export const deleteWearReport = (id) => deleteDoc(doc(ref(), id));
 
 export const listWearReports = async (n = 20) => {
   const s = await getDocs(query(ref(), orderBy("at", "desc"), limit(n)));

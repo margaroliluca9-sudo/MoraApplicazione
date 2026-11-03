@@ -212,7 +212,8 @@ export const checkChain = (x) => {
   const d = num(x.d);
   const d1 = readMeasure(x.d1, d);
   const d2 = readMeasure(x.d2, d) || d1;
-  const dm = d1 ? (d1 + d2) / 2 : 0;
+  // regola Mora: basta una misura sotto il 90% del nominale → conta la misura più bassa (non la media)
+  const dm = d1 ? Math.min(d1, d2) : 0;
   const wear = d && dm ? Math.max(0, Math.round(((d - dm) / d) * 10000) / 100) : null;
   const t = num(x.t);
   const t1 = readMeasure(x.t1, t);

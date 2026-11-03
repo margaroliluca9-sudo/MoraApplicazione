@@ -748,14 +748,14 @@ export const buildWearPdf = async ({ rep, crane = null, tech = "", today }) => {
   const printed = today || new Date().toLocaleDateString("it-IT");
   const flow = await createFlow({ title: rep.title, subtitle: crane ? [crane.customerName, getSafeMatricola(crane)].filter(Boolean).join(" · ") : "", docTitle: rep.title });
   const { col, bold, font } = flow.ctx;
-  const sl = rep.type === "fascia";
+  const sl = rep.type === "fascia" || !!rep.sottoganci;
   flow.meta([`Data del controllo: ${printed}`, `Tecnico: ${tech || "-"}`, sl ? `Cliente: ${crane ? crane.customerName : "-"}` : crane ? `Gru: ${getSafeMatricola(crane)}` : "Gru: -"]);
   if (crane)
     flow.details(
       sl
         ? [
             ["Cliente", crane.customerName],
-            ["Codice braca", crane.matricola || ""],
+            ["Numero Mora", crane.matricola || ""],
           ]
         : [
             ["Cliente", crane.customerName],

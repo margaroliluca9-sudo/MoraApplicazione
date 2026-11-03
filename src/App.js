@@ -1340,6 +1340,7 @@ export default function App() {
                   key={`wear${wearPage.n}`}
                   color={color}
                   initialTab={wearPage.tab}
+                  isAdmin={isAdminAuthenticated}
                   machines={machines}
                   logs={logs}
                   onBack={() => setActiveTab("dashboard")}

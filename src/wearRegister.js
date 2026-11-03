@@ -58,8 +58,8 @@ export const ropeRegister = ({ r, x, label = "" }) => {
 export const chainRegister = ({ r, x }) => {
   const v = chainVerdict(r);
   const out = [`CONTROLLO CATENA ${x.kind === "imbracatura" ? "DEI SOTTOGANCI (BRACA DI CATENA)" : "DEL PARANCO"} – ${today()}${tech() ? " – tecnico " + tech() : ""}`];
-  out.push(`Catena: Ø${fmt(r.d, 2)} mm nominale${Number(String(x.t || "").replace(",", ".")) ? ` · passo ${x.t} mm` : ""}`);
-  out.push(r.wear != null ? `Usura: diametro medio ${fmt(r.dm, 2)} mm (minimo ${fmt(r.minDm, 2)} mm) · usura ${fmt(r.wear)}% (scarto oltre il 10%)` : "Usura: non misurata");
+  out.push(`Catena: ${x.kind === "imbracatura" && x.mora ? `N. Mora ${x.mora} · ` : ""}Ø${fmt(r.d, 2)} mm nominale${Number(String(x.t || "").replace(",", ".")) ? ` · passo ${x.t} mm` : ""}`);
+  out.push(r.wear != null ? `Usura: misura più bassa ${fmt(r.dm, 2)} mm (minimo ${fmt(r.minDm, 2)} mm) · usura ${fmt(r.wear)}% (scarto oltre il 10%)` : "Usura: non misurata");
   if (r.p1 != null) out.push(`Allungamento di una maglia: ${fmt(r.p1)}% (scarto oltre il 5%)`);
   if (r.p11 != null && r.hoist) out.push(`Allungamento su 11 maglie: ${fmt(r.p11)}% (scarto oltre il 2%)`);
   out.push(`Altri difetti: ${r.flags.length ? r.flags.map((k) => (CHAIN_FLAGS.find((f) => f[0] === k) || [k, k])[1]).join("; ") : "nessuno"}`);
@@ -116,26 +116,30 @@ export const chainReport = ({ r, x }) => {
   const v = chainVerdict(r);
   const hoist = x.kind !== "imbracatura";
   const rows = [];
-  if (r.wear != null) rows.push(["Usura della maglia (media di d1 e d2)", `Ø medio ${fmt(r.dm, 2)} mm · usura ${fmt(r.wear)}%`, `scarto oltre il 10% (sotto ${fmt(r.minDm, 2)} mm)`, ok(r.wear > 10)]);
+  if (r.wear != null) rows.push(["Usura della maglia (misura più bassa)", `Ø ${fmt(r.dm, 2)} mm · usura ${fmt(r.wear)}%`, `scarto oltre il 10% (sotto ${fmt(r.minDm, 2)} mm)`, ok(r.wear > 10)]);
   else rows.push(["Usura della maglia", "non misurata", "", ""]);
   if (r.p1 != null) rows.push(["Allungamento di una maglia", `${fmt(r.p1)}%`, "scarto oltre il 5%", ok(r.p1 > 5)]);
   if (hoist && r.p11 != null) rows.push(["Allungamento su 11 maglie", `${fmt(r.p11)}%`, "scarto oltre il 2%", ok(r.p11 > 2)]);
   const params = [
     ["Catena", hoist ? "del paranco" : "dei sottoganci (braca di catena)"],
+    ["Numero Mora (targhetta)", hoist ? "" : x.mora || ""],
     ["Diametro nominale", r.d ? `${fmt(r.d, 2)} mm` : ""],
     ["Misure", [x.d1, x.d2].filter(Boolean).map((m) => `${m} mm`).join(" · ")],
     ["Passo nominale", Number(String(x.t || "").replace(",", ".")) ? `${x.t} mm` : ""],
   ];
   const norms = hoist
     ? ["Catena del paranco: limiti usati dall'app – usura oltre il 10% del diametro nominale, allungamento di una maglia oltre il 5%, allungamento su 11 maglie oltre il 2%. Fanno fede i limiti del manuale del costruttore del paranco."]
-    : ["Sottoganci (brache di catena), UNI EN 818-6. Limiti usati dall'app: usura oltre il 10% del diametro nominale (media di due misure a 90°), allungamento della maglia oltre il 5%."];
+    : ["Sottoganci (brache di catena), UNI EN 818-6. Limiti usati dall'app: usura oltre il 10% del diametro nominale, allungamento della maglia oltre il 5%."];
+  norms.push("Elettromeccanica Mora: basta una sola misura sotto il 90% del diametro nominale perché la catena sia da scartare (si considera la misura più bassa, non la media).");
   norms.push(DLGS_3_1_2);
   return {
     type: "catena",
+    sottoganci: !hoist,
+    mora: hoist ? "" : x.mora || "",
     title: "VERBALE DI CONTROLLO CATENA",
     tiles: [
       ["Usura", r.wear != null ? `${fmt(r.wear)}% / 10%` : "—"],
-      ["Diametro medio", r.wear != null ? `${fmt(r.dm, 2)} mm` : "—"],
+      ["Misura più bassa", r.wear != null ? `${fmt(r.dm, 2)} mm` : "—"],
       ["Minimo ammesso", r.minDm ? `${fmt(r.minDm, 2)} mm` : "—"],
       ["Allungamento", r.p1 != null ? `${fmt(r.p1)}% / 5%` : "—"],
     ],

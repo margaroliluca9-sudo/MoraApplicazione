@@ -3,14 +3,14 @@
 // (EN 818-6 sottoganci / brache di catena, criteri dei costruttori per le catene da paranco). Le regole stanno in src/wearRules.js.
 import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { CheckCircle2, AlertTriangle, XCircle, Copy, Check, Info, X, ExternalLink, FilePlus2, History, Printer } from "lucide-react";
+import { CheckCircle2, AlertTriangle, XCircle, Copy, Check, Info, X, ExternalLink, FilePlus2, History, Printer, Trash2 } from "lucide-react";
 import { PanelHeader, INPUT } from "./PersonalUi";
 import { ROPES, ROPE_FLAGS, CHAIN_FLAGS, checkRope, checkChain, measureFixed } from "../../wearRules";
 import { lastRopeOf, formatRopeLong, knownRopes, ropeName } from "../../ropes";
 import { fasFamily } from "../../fasRopes";
 import { ropeVerdict, chainVerdict, ropeRegister, chainRegister, ropeReport, chainReport } from "../../wearRegister";
 import { printWear, doPrintWear } from "../WearPrintHost";
-import { listWearReports } from "../../wearReports";
+import { listWearReports, deleteWearReport } from "../../wearReports";
 import { ropeSection, describeCons, consOf } from "../../ropeSection";
 import { SLING_COLORS, SLING_MODES, SLING_FLAGS, SLING_TEXT, SLING_SOURCE, checkSling, slingVerdict, slingRegister, slingReport } from "../../slingRules";
 import { getSafeMatricola } from "../../utils";
@@ -186,8 +186,15 @@ export const RopeSectionArt = ({ cons, size = 150 }) => {
 };
 
 // VERBALI STAMPATI (gli ultimi 20, di tutti): tocca per ristamparlo
-const PrintedReports = () => {
+const PrintedReports = ({ isAdmin = false }) => {
   const [list, setList] = useState(null);
+  const [ask, setAsk] = useState(null);
+  const del = (id) => {
+    if (ask !== id) return setAsk(id);
+    setAsk(null);
+    setList((l) => (l || []).filter((x) => x.id !== id));
+    deleteWearReport(id).catch(() => window.dispatchEvent(new CustomEvent("mora-wear-saved")));
+  };
   useEffect(() => {
     let alive = true;
     const load = () =>
@@ -209,8 +216,8 @@ const PrintedReports = () => {
       {list === null && <p className="text-xs text-slate-400">Carico…</p>}
       {list && !list.length && <p className="text-xs text-slate-400" data-wear-printed-none>Ancora nessuno: compaiono qui quando stampi un verbale.</p>}
       {(list || []).map((v) => (
+        <div key={v.id} className="flex items-stretch gap-2">
         <button
-          key={v.id}
           type="button"
           onClick={() => doPrintWear({ rep: v.rep, crane: v.crane, day: v.day, tech: v.tech, again: true })}
           data-wear-printed={v.id}
@@ -228,6 +235,12 @@ const PrintedReports = () => {
           </span>
           <Printer className="w-4 h-4 text-slate-400 shrink-0" />
         </button>
+        {isAdmin && (
+          <button type="button" onClick={() => del(v.id)} data-action={`wear-printed-del-${v.id}`} aria-label="Cancella il verbale" className={`shrink-0 rounded-xl px-3 text-xs font-black border ${ask === v.id ? "bg-red-600 text-white border-red-600" : "bg-white text-red-600 border-red-200"}`}>
+            {ask === v.id ? "Sicuro?" : <Trash2 className="w-4 h-4" />}
+          </button>
+        )}
+        </div>
       ))}
     </section>
   );
@@ -623,7 +636,7 @@ export const INFO = {
   },
   catmisura: {
     title: "Dove misurare la catena",
-    text: "La catena si consuma dove una maglia tocca l'altra, all'interno della curva. Allenta la catena, apri un po' le maglie e misura lo spessore del tondino proprio in quel punto; poi gira il calibro di 90° e misura di nuovo: si guarda la media delle due misure. Controlla le maglie che lavorano di più: quelle che passano sulla noce del paranco e quelle vicino al gancio con il carico che solleva di solito. Scarto se l'usura supera il 10% del diametro nominale.",
+    text: "La catena si consuma dove una maglia tocca l'altra, all'interno della curva. Allenta la catena, apri un po' le maglie e misura lo spessore del tondino proprio in quel punto; poi gira il calibro di 90° e misura di nuovo. Basta una misura sotto il 90% del nominale perché la catena sia da scartare (conta la misura più bassa). Controlla le maglie che lavorano di più: quelle che passano sulla noce del paranco e quelle vicino al gancio con il carico che solleva di solito. Scarto se l'usura supera il 10% del diametro nominale.",
     art: <ChainArt />,
   },
   catnominale: {
@@ -928,7 +941,7 @@ const ChainCheck = ({ known = null, onReport = null, crane = null }) => {
   const r = useMemo(() => checkChain(x), [x]);
   const [copied, copy] = useCopy();
   const lines = r.checks.map((c) => `${c.label}: ${fmt(c.value)}% (scarto oltre il ${c.limit}%)${c.bad ? " → scarto" : ""}`);
-  if (r.wear != null) lines.unshift(`Diametro medio ${fmt(r.dm, 2)} mm su ${fmt(r.d, 2)} mm nominale (minimo ammesso ${fmt(r.minDm, 2)} mm)`);
+  if (r.wear != null) lines.unshift(`Misura più bassa ${fmt(r.dm, 2)} mm su ${fmt(r.d, 2)} mm nominale (minimo ammesso ${fmt(r.minDm, 2)} mm)`);
   r.flags.forEach((k) => lines.push((CHAIN_FLAGS.find((f) => f[0] === k) || [k, k])[1] + " → scarto"));
   const title = r.level === "scarto" ? "Catena da scartare" : r.level === "attenzione" ? "Catena idonea, vicina al limite di scarto" : "Catena idonea";
   const report = `Controllo catena ${x.kind === "imbracatura" ? "dei sottoganci" : "del paranco"}${x.d ? " Ø" + x.d + " mm" : ""}: ${title.toLowerCase()}. ${lines.join(". ")}.`;
@@ -943,12 +956,13 @@ const ChainCheck = ({ known = null, onReport = null, crane = null }) => {
           </div>
           <InfoBtn id="imbracatura" label="paranco o sottoganci" />
         </div>
+        {x.kind === "imbracatura" && <Txt id="mora" label="Numero Mora (targhetta)" value={x.mora || ""} onChange={set("mora")} hint="Il numero progressivo della targhetta Mora sul sottogancio." />}
         <Num id="d" info="catnominale" label="Diametro nominale (d)" value={x.d} onChange={set("d")} />
         <div className="grid grid-cols-2 gap-3">
           <Num id="d1" info="catmisura" label="Misura d1" value={x.d1} onChange={set("d1")} hint={readAs(x.d1, nOf(x.d))} />
           <Num id="d2" label="Misura d2 (a 90°)" value={x.d2} onChange={set("d2")} hint={readAs(x.d2, nOf(x.d))} />
         </div>
-        <p className="text-[11px] text-slate-400 leading-snug">Misura nel punto dove le maglie si toccano (dove si consuma), con la catena allentata: due misure a 90° tra loro. Si guarda la media.</p>
+        <p className="text-[11px] text-slate-400 leading-snug">Misura nel punto dove le maglie si toccano (dove si consuma), con la catena allentata: due misure a 90° tra loro. Conta la misura più bassa: basta una sotto il 90% del nominale per lo scarto.</p>
         {r.wear != null && (
           <div className="text-xs font-bold text-slate-500">
             Usura {fmt(r.wear)}% (scarto oltre il 10%)
@@ -985,7 +999,7 @@ const ChainCheck = ({ known = null, onReport = null, crane = null }) => {
         />
       )}
       <p className="text-[11px] text-slate-400 leading-snug">
-        Usura: diametro medio dm = (d1+d2)/2 non sotto 0,9·d (EN 818-6 per i sottoganci / brache di catena; per le catene da paranco l'app usa lo stesso limite). Allungamento: una maglia +5%;
+        Usura: nessuna misura sotto 0,9·d (regola Mora: basta una misura sotto il 90% del nominale; limite del 10% della EN 818-6, usato anche per la catena del paranco). Allungamento: una maglia +5%;
         catena da paranco su 11 maglie +2%. Fa sempre fede il manuale del costruttore del paranco.
       </p>
     </div>
@@ -993,8 +1007,17 @@ const ChainCheck = ({ known = null, onReport = null, crane = null }) => {
 };
 
 // ---------------------------------------------------------------- FASCE E ANELLI (sottoganci di poliestere)
+// campo di testo libero (numero Mora, codice)
+const Txt = ({ label, value, onChange, id, hint }) => (
+  <label className="block space-y-1">
+    <span className="text-xs font-black text-slate-500">{label}</span>
+    <input className={INPUT} value={value} onChange={(e) => onChange(e.target.value.toUpperCase())} data-wear-input={id} autoComplete="off" />
+    {hint && <span className="block text-[11px] text-slate-400 leading-snug">{hint}</span>}
+  </label>
+);
+
 const SlingCheck = () => {
-  const [x, setX] = useState({ kind: "fascia", color: "", wll: "", mode: "diritto", code: "", len: "", flags: {}, labelBad: false });
+  const [x, setX] = useState({ kind: "fascia", color: "", wll: "", mode: "diritto", code: "", mora: "", len: "", flags: {}, labelBad: false });
   const set = (k) => (v) => setX((o) => ({ ...o, [k]: v }));
   const r = useMemo(() => checkSling(x), [x]);
   const v = slingVerdict(r);
@@ -1002,7 +1025,6 @@ const SlingCheck = () => {
   const flags = SLING_FLAGS.filter(([, , only]) => !only || only === x.kind);
   const lines = [];
   if (r.cap != null) lines.push(`${r.mode.label}: ${fmt(r.wll, 2)} t × ${fmt(r.mode.factor, 2)} = ${fmt(r.cap, 2)} t`);
-  if (r.labelBad) lines.push("Etichetta mancante o illeggibile");
   r.flags.forEach((f) => lines.push(f.l + " → scarto"));
   const title = r.discard ? "Braca da scartare" : "Braca idonea";
   return (
@@ -1031,8 +1053,11 @@ const SlingCheck = () => {
         </div>
         <Num id="wll" label="Portata sull'etichetta" unit="t" value={x.wll} onChange={(val) => setX((o) => ({ ...o, wll: val, color: (SLING_COLORS.find((c) => String(c[2]) === val.replace(",", ".")) || [, ""])[1] }))} />
         <div className="grid grid-cols-2 gap-3">
-          <Num id="code" label="Codice (facoltativo)" unit="" value={x.code} onChange={(val) => set("code")(val)} />
+          <Txt id="mora" label="Numero Mora (targhetta)" value={x.mora} onChange={set("mora")} />
           <Num id="len" label="Lunghezza" unit="m" value={x.len} onChange={set("len")} />
+        </div>
+        <div>
+          <Txt id="code" label="Codice del fabbricante (facoltativo)" value={x.code} onChange={set("code")} />
         </div>
       </section>
 
@@ -1065,7 +1090,7 @@ const SlingCheck = () => {
         <h4 className="font-black text-slate-800">Controllo a vista</h4>
         <label className="flex items-start gap-2 text-sm text-slate-700">
           <input type="checkbox" className="mt-1 w-4 h-4" checked={x.labelBad} onChange={(e) => set("labelBad")(e.target.checked)} data-sling-label />
-          <span className="flex-1">Etichetta mancante o illeggibile</span>
+          <span className="flex-1">Targhetta (etichetta) mancante o illeggibile → scarto</span>
           <InfoBtn id="s_marcatura" label="marcatura" />
         </label>
         <Flags list={flags.map(([k, l]) => [k, l])} value={x.flags} onChange={set("flags")} />
@@ -1175,7 +1200,7 @@ const CranePicker = ({ machines, crane, onPick, color, type }) => {
   );
 };
 
-export const WearPanel = ({ color = "blue", onBack, onClose, machines = [], logs = [], onNewReport = null, initialTab = "rope" }) => {
+export const WearPanel = ({ color = "blue", onBack, onClose, machines = [], logs = [], onNewReport = null, initialTab = "rope", isAdmin = false }) => {
   const [tab, setTab] = useState(initialTab === "chain" ? "chain" : "rope");
   const [crane, setCrane] = useState(null);
   const craneLogs = useMemo(() => {
@@ -1257,7 +1282,7 @@ export const WearPanel = ({ color = "blue", onBack, onClose, machines = [], logs
         ) : (
           <ChainCheck key={`c${crane ? crane.id : ""}`} known={mounted && mounted.catena} onReport={report} crane={crane} />
         )}
-        <PrintedReports />
+        <PrintedReports isAdmin={isAdmin} />
         <a href={FAS_CATALOG} target="_blank" rel="noopener noreferrer" className="block text-center text-sm font-bold text-blue-700 underline" data-fas-catalog>
           Catalogo delle funi FAS
         </a>

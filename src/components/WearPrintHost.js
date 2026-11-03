@@ -42,14 +42,14 @@ export const WearPrintHost = ({ machines = [], color = "blue" }) => {
       const d = (e && e.detail) || {};
       if (!d.rep) return;
       if (d.crane) return doPrintWear({ rep: d.rep, crane: d.crane });
-      setF({ matricola: "", customerName: "", capacity: "", type: "" });
+      setF({ matricola: (d.rep && d.rep.mora) || "", customerName: "", capacity: "", type: "" });
       setPicked(null);
       setJob(d);
     };
     window.addEventListener("mora-wear-print", on);
     return () => window.removeEventListener("mora-wear-print", on);
   }, []);
-  const sling = job && job.rep && job.rep.type === "fascia";
+  const sling = job && job.rep && (job.rep.type === "fascia" || !!job.rep.sottoganci);
   const q = norm(f.matricola);
   const found = useMemo(() => {
     if (!q || sling) return [];
@@ -96,7 +96,7 @@ export const WearPrintHost = ({ machines = [], color = "blue" }) => {
               </button>
             ))}
             <label className="block space-y-1">
-              <span className="text-xs font-black text-slate-500">Codice o numero della braca (facoltativo)</span>
+              <span className="text-xs font-black text-slate-500">Numero Mora (targhetta)</span>
               <input className={INPUT} value={f.matricola} onChange={set("matricola")} autoComplete="off" data-print-input="codice" />
             </label>
           </div>

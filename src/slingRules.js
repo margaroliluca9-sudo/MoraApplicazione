@@ -65,13 +65,16 @@ export const checkSling = (x) => {
   const mode = SLING_MODES.find((m) => m.id === x.mode) || SLING_MODES[0];
   const cap = wll ? Math.round(wll * mode.factor * 1000) / 1000 : null;
   const flags = SLING_FLAGS.filter(([k, , only]) => x.flags && x.flags[k] && (!only || only === x.kind)).map(([k, l]) => ({ k, l }));
+  const catalog = flags.length > 0;
+  // regola Mora: senza targhetta (etichetta) la braca si scarta
+  if (x.labelBad) flags.unshift({ k: "etichetta", l: "Targhetta (etichetta) mancante o illeggibile" });
   const discard = flags.length > 0;
-  return { wll, mode, cap, flags, discard, level: discard ? "scarto" : "ok", labelBad: !!x.labelBad };
+  return { wll, mode, cap, flags, discard, catalog, level: discard ? "scarto" : "ok", labelBad: !!x.labelBad };
 };
 
 export const slingVerdict = (r) => ({
   esito: r.discard ? "DA SCARTARE" : "IDONEA",
-  azione: r.discard ? `${r.flags.map((f) => f.l).join("; ")}. «${SLING_TEXT.scarto}»` : "Nessuno dei casi di scarto indicati nel catalogo.",
+  azione: r.discard ? `${r.flags.map((f) => f.l).join("; ")}.${r.catalog ? ` «${SLING_TEXT.scarto}»` : ""}` : "Nessuno dei casi di scarto indicati nel catalogo; targhetta presente.",
 });
 
 const today = () => {
@@ -90,9 +93,9 @@ const kindName = (k) => (k === "anello" ? "anello continuo (EN 1492-2)" : "fasci
 export const slingRegister = ({ r, x }) => {
   const v = slingVerdict(r);
   const out = [`CONTROLLO BRACA DI POLIESTERE – ${today()}${tech() ? " – tecnico " + tech() : ""}`];
-  out.push(`Braca: ${kindName(x.kind)}${x.code ? ` · ${x.code}` : ""}${r.wll ? ` · portata ${fmt(r.wll)} t${x.color ? ` (${x.color})` : ""}` : ""}${x.len ? ` · lunghezza ${x.len} m` : ""}`);
+  out.push(`Braca: ${kindName(x.kind)}${x.mora ? ` · N. Mora ${x.mora}` : ""}${x.code ? ` · ${x.code}` : ""}${r.wll ? ` · portata ${fmt(r.wll)} t${x.color ? ` (${x.color})` : ""}` : ""}${x.len ? ` · lunghezza ${x.len} m` : ""}`);
   if (r.cap != null) out.push(`Uso: ${r.mode.label} · fattore ${fmt(r.mode.factor)} · portata ${fmt(r.cap)} t`);
-  out.push(`Etichetta: ${r.labelBad ? "mancante o illeggibile" : "presente e leggibile"}`);
+  out.push(`Targhetta: ${r.labelBad ? "mancante o illeggibile" : "presente e leggibile"}`);
   out.push(`Casi di scarto trovati: ${r.flags.length ? r.flags.map((f) => f.l).join("; ") : "nessuno"}`);
   out.push(`Esito: ${v.esito}`);
   return out.join("\n");
@@ -101,7 +104,7 @@ export const slingRegister = ({ r, x }) => {
 export const slingReport = ({ r, x }) => {
   const v = slingVerdict(r);
   const rows = SLING_FLAGS.filter(([, , only]) => !only || only === x.kind).map(([k, l]) => [l, x.flags && x.flags[k] ? "SÌ" : "no", "scarto", x.flags && x.flags[k] ? "SCARTO" : "assente"]);
-  rows.unshift(["Etichetta presente e leggibile", r.labelBad ? "NO" : "sì", "marcatura del catalogo", r.labelBad ? "MANCANTE" : "presente"]);
+  rows.unshift(["Targhetta (etichetta) presente e leggibile", r.labelBad ? "NO" : "sì", "senza targhetta: scarto", r.labelBad ? "SCARTO" : "presente"]);
   return {
     type: "fascia",
     title: "VERBALE CONTROLLO BRACA",
@@ -114,11 +117,13 @@ export const slingReport = ({ r, x }) => {
       ["Braca", kindName(x.kind)],
       ["Modo di imbracare", r.mode.label],
       ["Colore", x.color || ""],
-      ["Codice / identificazione", x.code || ""],
+      ["Numero Mora (targhetta)", x.mora || ""],
+      ["Codice del fabbricante", x.code || ""],
       ["Lunghezza", x.len ? `${x.len} m` : ""],
     ],
     rows,
     rowHead: ["Controllo", "Trovato", "Criterio", "Esito"],
+    mora: x.mora || "",
     defects: r.flags.map((f) => f.l),
     esito: v.esito,
     azione: v.azione,
@@ -127,7 +132,7 @@ export const slingReport = ({ r, x }) => {
       `${SLING_SOURCE}: «${SLING_TEXT.norme}»`,
       `Fattori di carico: tabella «Portata delle imbragature» del catalogo (colori secondo EN1492-1/2). «${SLING_TEXT.simmetria}» «${SLING_TEXT.angolo}»`,
       `Criteri di scarto (catalogo): «${SLING_TEXT.scarto}» «${SLING_TEXT.danneggiate}»`,
-      `Marcatura (catalogo): «${SLING_TEXT.marcatura}»`,
+      `Marcatura (catalogo): «${SLING_TEXT.marcatura}» Elettromeccanica Mora: senza targhetta la braca si scarta.`,
       `Verifiche periodiche (catalogo): «${SLING_TEXT.verifiche}»`,
     ],
   };
