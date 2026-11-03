@@ -11,13 +11,27 @@ export const RopeFields = ({ ropes, onChange }) => {
   const value = ropes || {};
   const set = (id, patch) =>
     onChange({ ...value, [id]: { ...(value[id] || emptyRope()), ...patch } });
-  const active = ROPE_ITEMS.filter(({ id }) => value[id] && value[id].on);
+  // sostituite, oppure indicate «non l'ho sostituita» (resta la casella per tornare indietro)
+  const active = ROPE_ITEMS.filter(({ id }) => value[id] && (value[id].on || value[id].declined));
   if (!active.length) return null;
 
   return (
     <div key="ropes" data-section="ropes" className="space-y-3">
       {active.map(({ id, label }) => {
         const r = value[id];
+        if (!r.on)
+          return (
+            <label key={id} data-rope={id} data-rope-declined className="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-xl p-3 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                className="w-4 h-4 accent-amber-600"
+                checked
+                onChange={() => set(id, { on: true, declined: false, touched: true })}
+                aria-label={`Non ho sostituito la ${label}`}
+              />
+              <span className="text-[11px] font-bold text-slate-600">Non ho sostituito la {label} (togli la spunta se invece l'hai sostituita)</span>
+            </label>
+          );
         return (
           <div
             key={id}
@@ -32,13 +46,7 @@ export const RopeFields = ({ ropes, onChange }) => {
                   dati della {label} nuova.
                 </span>
               </p>
-              <button
-                type="button"
-                onClick={() => set(id, { on: false, touched: true })}
-                className="text-[10px] font-bold text-slate-500 underline shrink-0"
-              >
-                Non è stata sostituita
-              </button>
+
             </div>
             <input
               type="text"
@@ -129,34 +137,6 @@ export const RopeFields = ({ ropes, onChange }) => {
                     {fasItem(fasFamily(r.fas), r.diametro) ? ` · carico di rottura ${String(fasItem(fasFamily(r.fas), r.diametro).kN).replace(".", ",")} kN (dal catalogo)` : r.diametro ? " · diametro non presente nel catalogo: controlla" : ""}
                   </p>
                 )}
-                {!r.fas && (
-                  <div className="grid grid-cols-2 gap-2">
-                    <input
-                      type="text"
-                      list="rope-brands"
-                      className={PRO_INPUT}
-                      placeholder="Marca (Teci…)"
-                      aria-label="Marca della fune"
-                      data-rope-field="marca"
-                      value={r.marca || ""}
-                      onChange={(e) => set(id, { marca: e.target.value })}
-                    />
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      className={PRO_INPUT}
-                      placeholder="Carico rottura (kN)"
-                      aria-label="Carico di rottura minimo in kN"
-                      data-rope-field="rottura"
-                      value={r.rottura || ""}
-                      onChange={(e) => set(id, { rottura: e.target.value })}
-                    />
-                  </div>
-                )}
-                <datalist id="rope-brands">
-                  <option value="FAS" />
-                  <option value="Teci" />
-                </datalist>
               </>
             ) : (
               <div className="grid grid-cols-2 gap-2">
@@ -178,6 +158,18 @@ export const RopeFields = ({ ropes, onChange }) => {
                 />
               </div>
             )}
+            {/* due cose diverse: non l'ho sostituita / l'ho sostituita ma non ho i dati adesso */}
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input
+                type="checkbox"
+                className="w-4 h-4 accent-amber-600"
+                checked={false}
+                onChange={() => set(id, { on: false, declined: true, touched: true })}
+                aria-label={`Non ho sostituito la ${label}`}
+                data-rope-decline={id}
+              />
+              <span className="text-[11px] font-bold text-slate-600">Non ho sostituito la {label}</span>
+            </label>
             <label className="flex items-center gap-2 cursor-pointer select-none">
               <input
                 type="checkbox"
@@ -187,7 +179,7 @@ export const RopeFields = ({ ropes, onChange }) => {
                 aria-label={`Dati ${label} non disponibili ora`}
               />
               <span className="text-[11px] font-bold text-slate-600">
-                Dati non disponibili ora
+                L'ho sostituita ma non ho i dati adesso
               </span>
             </label>
             {r.nonDisponibile && (

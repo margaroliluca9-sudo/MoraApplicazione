@@ -21,6 +21,7 @@ import { getProPanelClass } from "../ui";
 import { DeleteConfirmDialog } from "../components/DeleteConfirmDialog";
 import { EditLogModal } from "../components/modals/EditLogModal";
 import { formatRope, formatRopeLong, ROPE_ITEMS } from "../ropes";
+import { CompleteRopeModal, ropeIncomplete } from "../components/modals/CompleteRopeModal";
 import { printIntervention } from "../components/PrintLogButton";
 import { trashLog } from "../trash";
 import { editsOf } from "../logHistory";
@@ -88,6 +89,7 @@ export const HistoryView = ({
   me = "", // tecnico collegato: filtro «I miei»
 }) => {
   const [searchTerm, setSearchTerm] = useState("");
+  const [completing, setCompleting] = useState(null); // { log, id }: completa i dati di fune/catena
   const [show, setShow] = useState("all"); // all | mine | photos
   const [page, setPage] = useState(1);
   // telefono: i primi 20, poi altri 20 man mano che scorri (si apre subito anche con migliaia di interventi)
@@ -351,7 +353,7 @@ export const HistoryView = ({
                       </div>
                     )}
                     <p className="text-slate-700 text-sm leading-snug whitespace-pre-wrap break-words">{log.description}</p>
-                    <RopeInfo log={log} />
+                    <RopeInfo log={log} onComplete={readOnly ? null : (id) => setCompleting({ log, id })} />
                     <div className="flex justify-between items-center pt-2 border-t border-slate-100">
                       <TechFaces log={log} technicians={technicians} color={color} />
                       <div className="flex gap-1 shrink-0">
@@ -543,7 +545,7 @@ export const HistoryView = ({
                     </td>
                     <td className="px-4 py-4 text-xs text-slate-600 italic break-words whitespace-pre-wrap align-top border-r border-slate-100 overflow-hidden">
                       "{log.description}"
-                      <RopeInfo log={log} />
+                      <RopeInfo log={log} onComplete={readOnly ? null : (id) => setCompleting({ log, id })} />
                       {isAdmin && editsOf(log).length > 0 && (
                         <button type="button" onClick={() => setShowEdits(log)} data-action="log-edits" className="mt-1 not-italic text-[11px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md inline-flex items-center gap-1">
                           <PenLine className="w-3 h-3" /> Modificato {editsOf(log).length === 1 ? "1 volta" : `${editsOf(log).length} volte`}
@@ -611,6 +613,7 @@ export const HistoryView = ({
           </div>
         )}
       </div>
+      {completing && <CompleteRopeModal log={completing.log} id={completing.id} color={color} onClose={() => setCompleting(null)} />}
       {isDeleting && (
         <DeleteConfirmDialog
           onConfirm={confirmDelete}
@@ -641,8 +644,8 @@ export const HistoryView = ({
   );
 };
 
-// Dati della fune / catena sostituita (Storico)
-const RopeInfo = ({ log }) => {
+// Dati della fune / catena sostituita (Storico): se mancano, «Completa i dati» (anche senza password admin)
+const RopeInfo = ({ log, onComplete }) => {
   const items = ROPE_ITEMS.filter(({ id }) => log && log[id]);
   if (!items.length) return null;
   return (
@@ -654,6 +657,11 @@ const RopeInfo = ({ log }) => {
           className="text-[11px] font-bold text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1 whitespace-normal"
         >
           {title} sostituita: {formatRopeLong(log[id])}
+          {onComplete && ropeIncomplete(log[id], id) && (
+            <button type="button" onClick={() => onComplete(id)} data-action={`complete-${id}`} className="ml-1 underline text-blue-700">
+              Completa i dati
+            </button>
+          )}
         </div>
       ))}
     </div>

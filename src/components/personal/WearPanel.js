@@ -5,7 +5,8 @@ import React, { useMemo, useState } from "react";
 import { CheckCircle2, AlertTriangle, XCircle, Copy, Check, Info, X, ExternalLink, Search, FilePlus2, History } from "lucide-react";
 import { PanelHeader, INPUT } from "./PersonalUi";
 import { ROPES, ROPE_FLAGS, CHAIN_FLAGS, checkRope, checkChain } from "../../wearRules";
-import { lastRopeOf, formatRopeLong } from "../../ropes";
+import { lastRopeOf, formatRopeLong, knownRopes, ropeName } from "../../ropes";
+import { fasFamily } from "../../fasRopes";
 import { getSafeMatricola } from "../../utils";
 import { DriveCraneInfo } from "../DriveCraneInfo";
 import { FAS_ROPES, FAS_GROUPS, fasCode } from "../../fasRopes";
@@ -503,13 +504,11 @@ const lastCheckOf = (logs, type) => {
 };
 const norm = (v) => String(v || "").trim().toUpperCase();
 
-// SU QUALE GRU? cerca per cliente o matricola
-const CranePicker = ({ machines, crane, onPick, color }) => {
+// SU QUALE GRU? solo le gru di cui l'app sa la fune (o la catena): sostituita con un rapporto, col tipo
+const CranePicker = ({ machines, crane, onPick, color, type }) => {
   const [q, setQ] = useState("");
   const words = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
-  const found = words.length
-    ? machines.filter((m) => words.every((w) => `${getSafeMatricola(m)} ${m.customerName} ${m.type || ""}`.toLowerCase().includes(w))).slice(0, 6)
-    : [];
+  const found = machines.filter((m) => !words.length || words.every((w) => `${getSafeMatricola(m)} ${m.customerName} ${m.type || ""}`.toLowerCase().includes(w))).slice(0, 8);
   if (crane)
     return (
       <div className="bg-white rounded-3xl border border-slate-200 p-3 flex items-center gap-3" data-wear-crane>
@@ -527,7 +526,12 @@ const CranePicker = ({ machines, crane, onPick, color }) => {
     );
   return (
     <div className="bg-white rounded-3xl border border-slate-200 p-3 space-y-2" data-wear-picker>
-      <p className="text-xs font-black text-slate-500">Su quale gru? (facoltativo: così vedi la fune montata e il controllo precedente)</p>
+      <p className="text-xs font-black text-slate-500">Su quale gru? (facoltativo) — qui ci sono solo le gru di cui l'app sa {type === "catena" ? "la catena montata" : "che fune c'è montata"}</p>
+      {!machines.length && (
+        <p className="text-xs text-slate-400" data-wear-none>
+          Per ora nessuna: compaiono quando {type === "catena" ? "la catena viene sostituita" : "la fune viene sostituita"} con un rapporto dell'app (con il tipo di fune).
+        </p>
+      )}
       <div className="relative">
         <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
         <input className={`${INPUT} pl-9`} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cliente o matricola…" data-wear-input="crane" />
@@ -541,7 +545,7 @@ const CranePicker = ({ machines, crane, onPick, color }) => {
           </span>
         </button>
       ))}
-      {words.length > 0 && !found.length && <p className="text-xs text-slate-400">Nessuna gru trovata.</p>}
+      {machines.length > 0 && words.length > 0 && !found.length && <p className="text-xs text-slate-400">Nessuna gru trovata.</p>}
     </div>
   );
 };
@@ -556,7 +560,14 @@ export const WearPanel = ({ color = "blue", onBack, onClose, machines = [], logs
     return logs.filter((l) => norm(l.machineId) === mat && norm(l.customer) === cust);
   }, [crane, logs]);
   const type = tab === "rope" ? "fune" : "catena";
-  const mounted = crane ? lastRopeOf(craneLogs, type) : null;
+  const mkey = (m) => `${norm(m.customerName)}|${norm(getSafeMatricola(m))}`;
+  // gru di cui si sa la fune montata (tutti gli interventi, anche quelli di prima: tipo dal certificato o dalla descrizione)
+  const known = useMemo(() => knownRopes(logs), [logs]);
+  const chainKeys = useMemo(() => new Set(logs.filter((l) => l && l.catena && l.catena.diametro).map((l) => `${norm(l.customer)}|${norm(l.machineId)}`)), [logs]);
+  const pickable = useMemo(() => machines.filter((m) => (type === "fune" ? !!known[mkey(m)] : chainKeys.has(mkey(m)))), [machines, known, chainKeys, type]);
+  const kr = crane && type === "fune" ? known[mkey(crane)] : null;
+  const mounted = crane ? (kr ? kr.log : lastRopeOf(craneLogs, type)) : null;
+  const knownType = kr ? { ...(mounted.fune || {}), fas: kr.type.fas || "", costruzione: kr.type.costruzione || "", diametro: kr.type.diametro || (mounted.fune || {}).diametro } : null;
   const prev = crane ? lastCheckOf(craneLogs, type) : null;
   const report =
     crane && onNewReport
@@ -574,7 +585,7 @@ export const WearPanel = ({ color = "blue", onBack, onClose, machines = [], logs
     <div className="flex flex-col h-full" data-section="wear">
       <PanelHeader title="Fune e catena" sub="Cosa dice la norma" onBack={onBack} onClose={onClose} color={color} />
       <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50">
-        <CranePicker machines={machines} crane={crane} onPick={setCrane} color={color} />
+        <CranePicker machines={pickable} crane={crane} onPick={setCrane} color={color} type={type} />
         <div className="flex bg-slate-200/70 p-1 rounded-2xl" role="tablist">
           {[
             ["rope", "Fune"],
@@ -591,7 +602,11 @@ export const WearPanel = ({ color = "blue", onBack, onClose, machines = [], logs
               <div className="rounded-2xl bg-white border border-slate-200 p-3 text-sm" data-wear-mounted>
                 <p className="text-[11px] font-black text-slate-400">{type === "fune" ? "FUNE MONTATA" : "CATENA MONTATA"} · {mounted.dateString}{mounted.technician ? ` · ${mounted.technician}` : ""}</p>
                 <p className="font-bold text-slate-700">{formatRopeLong(mounted[type])}</p>
-                {type === "fune" && !(mounted[type] && mounted[type].costruzione) && <p className="text-xs text-slate-400 mt-0.5">La costruzione non è stata scritta nel rapporto: rispondi alle domande qui sotto.</p>}
+                {kr && kr.type.from === "testo" && (
+                  <p className="text-xs text-slate-500 mt-0.5" data-wear-inferred>
+                    Tipo di fune trovato nel rapporto: {kr.type.fas ? `FAS ${kr.type.fas}${fasFamily(kr.type.fas) ? " · " + fasFamily(kr.type.fas).cons.join(" / ") : ""}` : ropeName(kr.type.costruzione)} — controlla che sia giusto.
+                  </p>
+                )}
               </div>
             ) : (
               <p className="text-xs text-slate-400 px-1" data-wear-mounted-none>Nessuna {type} sostituita con l'app su questa gru.</p>
@@ -610,7 +625,7 @@ export const WearPanel = ({ color = "blue", onBack, onClose, machines = [], logs
           </div>
         )}
         {tab === "rope" ? (
-          <RopeCheck key={`r${crane ? crane.id : ""}`} known={mounted && mounted.fune} onReport={report} />
+          <RopeCheck key={`r${crane ? crane.id : ""}`} known={knownType} onReport={report} />
         ) : (
           <ChainCheck key={`c${crane ? crane.id : ""}`} known={mounted && mounted.catena} onReport={report} />
         )}

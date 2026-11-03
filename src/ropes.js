@@ -1,5 +1,5 @@
 // FUNE e CATENA sostituite: dati obbligatori (certificato, diametro, lunghezza; per la fune anche il tipo).
-import { fasFamily, fasItem, fasCode } from "./fasRopes";
+import { fasFamily, fasItem, fasCode, FAS_ROPES } from "./fasRopes";
 // Salvati nel rapporto come  fune: {...}  e  catena: {...}  (solo se sostituite).
 // Dal certificato (facoltativi): costruzione (es. "6x36", vedi wearRules.ROPES), marca (FAS, Teci…), rottura
 // (carico di rottura minimo, kN); per la catena grado e passo (mm). Servono al controllo «Fune e catena».
@@ -14,6 +14,7 @@ export const emptyRope = () => ({
   on: false,
   auto: false, // spuntata in automatico dalla descrizione
   touched: false, // il tecnico l'ha spuntata/tolta a mano: niente più automatismi
+  declined: false, // «Non ho sostituito la fune» (la descrizione ne parlava ma non l'ha cambiata)
   certificato: "",
   diametro: "",
   lunghezza: "",
@@ -93,7 +94,7 @@ export const validateRopes = (ropes) => {
     if (!parseNum(r.diametro)) missing.push("diametro");
     if (!parseNum(r.lunghezza)) missing.push("lunghezza");
     if (missing.length)
-      return `Hai sostituito la ${label}: inserisci ${missing.join(", ")}. Se non li hai ora, spunta "Non disponibile ora" e scrivi il motivo.`;
+      return `Hai sostituito la ${label}: inserisci ${missing.join(", ")}. Se l'hai sostituita ma non hai i dati adesso, spunta «L'ho sostituita ma non ho i dati adesso» e scrivi il motivo; se non l'hai sostituita, spunta «Non ho sostituito la ${label}».`;
   }
   return "";
 };
@@ -208,3 +209,60 @@ export const lastRopeOf = (logs, id) => {
       .sort((a, b) => key(b.dateString) - key(a.dateString))[0] || null
   );
 };
+
+// CHE FUNE C'È MONTATA (per il controllo «Fune e catena»): dall'ultimo rapporto con la fune sostituita.
+// Rapporti nuovi: tipo scritto (fas o costruzione). Rapporti di prima: lo cerco nel certificato e nella
+// descrizione (codice FAS come «FZ636A12» / «FZ636AC», oppure la costruzione come «6x36», «8x19», «35x7»).
+const CONS_IDS = ROPE_TYPES.map((r) => r[0]);
+const fasInText = (text) => {
+  const toks = String(text || "").toUpperCase().match(/\bF[LZX][A-Z0-9]{2,}(?:[.,]\d)?\b/g) || [];
+  for (const t of toks) {
+    for (const f of FAS_ROPES) {
+      if (f.id === t) return { fas: f.id, d: null };
+      const it = f.it.find((x) => x[0].split("/").includes(t));
+      if (it) return { fas: f.id, d: it[1] };
+    }
+  }
+  return null;
+};
+const consInText = (text) => {
+  const m = String(text || "").toLowerCase().match(/\b(\d{1,2})\s*[x×]\s*k?(\d{1,2})/);
+  if (!m) return null;
+  let id = `${m[1]}x${m[2]}`;
+  if (id === "19x7") id = "18x7";
+  if (id === "6x25") id = "6x19"; // filler: 19 fili portanti
+  if (id === "8x25") id = "8x19";
+  return CONS_IDS.includes(id) ? { costruzione: id } : null;
+};
+export const ropeTypeOfLog = (log) => {
+  const f = log && log.fune;
+  if (!f) return null;
+  if (f.fas) return { fas: f.fas, diametro: f.diametro, from: "rapporto" };
+  if (f.costruzione) return { costruzione: f.costruzione, diametro: f.diametro, from: "rapporto" };
+  const text = `${f.certificato || ""} ${f.codice || ""} ${log.description || ""}`;
+  const fx = fasInText(text);
+  if (fx) return { fas: fx.fas, diametro: f.diametro || fx.d, from: "testo" };
+  const cx = consInText(text);
+  if (cx) return { ...cx, diametro: f.diametro, from: "testo" };
+  return null;
+};
+// le gru di cui si sa la fune montata: { "CLIENTE|MATRICOLA": { log, type } } (l'ultima sostituzione per gru)
+export const knownRopes = (logs) => {
+  const key = (ds) => {
+    const p = String(ds || "").split("/").map(Number);
+    return p.length === 3 ? p[2] * 10000 + p[1] * 100 + p[0] : 0;
+  };
+  const last = {};
+  (logs || []).forEach((l) => {
+    if (!l || !l.fune) return;
+    const k = `${String(l.customer || "").trim().toUpperCase()}|${String(l.machineId || "").trim().toUpperCase()}`;
+    if (!last[k] || key(l.dateString) > key(last[k].dateString)) last[k] = l;
+  });
+  const out = {};
+  Object.keys(last).forEach((k) => {
+    const t = ropeTypeOfLog(last[k]);
+    if (t) out[k] = { log: last[k], type: t };
+  });
+  return out;
+};
+
