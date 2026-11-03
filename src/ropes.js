@@ -225,7 +225,7 @@ const fasInText = (text) => {
   }
   return null;
 };
-const consInText = (text) => {
+export const consInText = (text) => {
   const m = String(text || "").toLowerCase().match(/\b(\d{1,2})\s*[x×]\s*k?(\d{1,2})/);
   if (!m) return null;
   let id = `${m[1]}x${m[2]}`;
