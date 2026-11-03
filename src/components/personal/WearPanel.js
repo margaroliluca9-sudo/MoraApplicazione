@@ -1,6 +1,6 @@
 // LA MIA AREA → «Fune e catena»: il tecnico scrive le misure e l'app dice cosa dice la norma.
 // Funi: ISO 4309:2017 (fili rotti su 6d e 30d, diminuzione del diametro). Catene: usura della maglia e allungamento
-// (EN 818-6 imbracature, criteri dei costruttori per le catene da paranco). Le regole stanno in src/wearRules.js.
+// (EN 818-6 sottoganci / brache di catena, criteri dei costruttori per le catene da paranco). Le regole stanno in src/wearRules.js.
 import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { CheckCircle2, AlertTriangle, XCircle, Copy, Check, Info, X, ExternalLink, Search, FilePlus2, History, Printer } from "lucide-react";
@@ -11,6 +11,7 @@ import { fasFamily } from "../../fasRopes";
 import { ropeVerdict, chainVerdict, ropeRegister, chainRegister, ropeReport, chainReport } from "../../wearRegister";
 import { printWear, doPrintWear } from "../WearPrintHost";
 import { listWearReports } from "../../wearReports";
+import { ropeSection, describeCons, consOf } from "../../ropeSection";
 import { getSafeMatricola } from "../../utils";
 import { DriveCraneInfo } from "../DriveCraneInfo";
 import { FAS_ROPES, FAS_GROUPS, fasCode } from "../../fasRopes";
@@ -160,6 +161,28 @@ const Verdict = ({ level, title, lines, onCopy, copied, onReport, big = null, re
 
 // STAMPA: verbale PDF con l'intestazione Mora e le norme usate (components/WearPrintHost.js)
 export { printWear };
+
+// SEZIONE DELLA FUNE NOTA (disegno indicativo dell'app dalla costruzione: trefoli, fili, anima)
+const FILL = { strand: "#f1f5f9", wire: "#a8b4c4", fiber: "#d6b98c", plastic: "#93c5fd" };
+export const RopeSectionArt = ({ cons, size = 150 }) => {
+  const list = useMemo(() => ropeSection(cons), [cons]);
+  if (!list.length) return null;
+  return (
+    <div className="flex items-center gap-3" data-rope-section={cons}>
+      <svg viewBox="-1.05 -1.05 2.1 2.1" width={size} height={size} className="shrink-0" aria-label={`Sezione della fune ${cons}`}>
+        <circle cx="0" cy="0" r="1.03" fill="#e2e8f0" stroke="#94a3b8" strokeWidth="0.015" />
+        {list.map((c, i) => (
+          <circle key={i} cx={c.x} cy={c.y} r={c.r} fill={FILL[c.t] || FILL.wire} stroke={c.t === "strand" ? "#64748b" : "#334155"} strokeWidth={c.t === "wire" ? 0.005 : 0.012} />
+        ))}
+      </svg>
+      <div className="min-w-0 text-xs text-slate-600 leading-snug">
+        <p className="font-black text-slate-800 text-sm">{cons}</p>
+        <p>{describeCons(cons)}</p>
+        <p className="text-[10px] text-slate-400 mt-1">Disegno indicativo fatto dall'app dalla costruzione (non è il disegno del catalogo FAS).</p>
+      </div>
+    </div>
+  );
+};
 
 // VERBALI STAMPATI (gli ultimi 20, di tutti): tocca per ristamparlo
 const PrintedReports = () => {
@@ -570,8 +593,8 @@ export const INFO = {
     art: <PassoArt />,
   },
   imbracatura: {
-    title: "Catena del paranco o di imbracatura",
-    text: "Catena del paranco: è quella che lavora dentro il paranco a catena, passa sulla noce (la ruota dentata) e solleva il gancio; si controllano usura e allungamento, anche su 11 maglie, perché se si allunga non ingrana più bene nella noce. Catena di imbracatura: è la braca di catena (a uno, due o quattro bracci, con anello in testa e ganci in fondo) che si usa per agganciare il carico al gancio della gru; non passa su nessuna noce. Per le brache vale la UNI EN 818-6: scarto con usura oltre il 10%, maglia allungata oltre il 5%, cricche, maglie storte, ganci aperti.",
+    title: "Catena del paranco o dei sottoganci",
+    text: "Catena del paranco: è quella che lavora dentro il paranco a catena, passa sulla noce (la ruota dentata) e solleva il gancio; si controllano usura e allungamento, anche su 11 maglie, perché se si allunga non ingrana più bene nella noce. Catena dei sottoganci: è la braca di catena (a uno, due o quattro bracci, con anello in testa e ganci in fondo) che si usa per agganciare il carico al gancio della gru; non passa su nessuna noce. Per le brache di catena l'app usa i limiti della UNI EN 818-6: usura oltre il 10%, maglia allungata oltre il 5%.",
     art: <DefectArt k="gancio" />,
   },
   f_valle: {
@@ -697,7 +720,7 @@ const RopeCheck = ({ known = null, onReport = null, crane = null }) => {
   if (r.dec != null) lines.push(`Diametro: calato del ${fmt(r.dec)}% (scarto al ${fmt(r.dia.limit)}%) → gravità ${r.dia.sev}%`);
   if ((x.b6 !== "" || x.b30 !== "") && r.dec != null) lines.push(`Insieme (fili + diametro): ${r.combined}%`);
   r.flags.forEach((k) => lines.push((ROPE_FLAGS.find((f) => f[0] === k) || [k, k])[1] + " → scarto"));
-  const title = r.level === "scarto" ? "Fune da scartare" : r.level === "attenzione" ? "Fune ancora idonea, da tenere d'occhio" : "Fune idonea";
+  const title = r.level === "scarto" ? "Fune da scartare" : r.level === "attenzione" ? "Fune idonea, vicina al limite di scarto" : "Fune idonea";
   const report = `Controllo fune ${r.auto ? r.guess.label.split(" (")[0] : isFas ? `FAS ${r.fam.id} (${r.fam.cons.join("/")})` : rope.label}${x.d ? " Ø" + x.d + " mm" : ""} (ISO 4309${r.auto ? ", valori prudenti" : ""}): ${title.toLowerCase()}. ${lines.join(". ")}.`;
   return (
     <div className="space-y-4" data-section="wear-rope">
@@ -770,6 +793,11 @@ const RopeCheck = ({ known = null, onReport = null, crane = null }) => {
             {r.lim.noDiam ? " · scrivi il diametro per i limiti giusti" : ` · limiti: ${r.lim.six} fili su 6d, ${r.lim.thirty} su 30d`}
           </p>
         )}
+        {!r.auto && consOf({ fam: r.fam, rope: isFas ? null : ROPES.find((o) => o.id === x.rope) }) && (
+          <div className="rounded-2xl bg-slate-50 border border-slate-200 p-3">
+            <RopeSectionArt cons={consOf({ fam: r.fam, rope: isFas ? null : ROPES.find((o) => o.id === x.rope) })} />
+          </div>
+        )}
         {!isFas && !rope.n && <Num id="n" label="Fili portanti dei trefoli esterni (n)" unit="fili" value={x.n} onChange={set("n")} hint="Fili esterni portanti × numero dei trefoli esterni (quelli di riempimento non contano)." />}
         {!isFas && !rope.rr && (
           <>
@@ -831,11 +859,11 @@ const RopeCheck = ({ known = null, onReport = null, crane = null }) => {
           onReport={onReport ? () => onReport({ type: "fune", level: r.level, title, text: report, d: x.d, b6: x.b6, b30: x.b30, dMis: r.dMis || x.dMis, rope: r.auto ? "" : x.rope }) : null}
           big={ropeBig(r)}
           register={{ ...ropeVerdict(r), text: ropeRegister({ r, x, label: r.auto ? r.guess.label : isFas ? `FAS ${r.fam.id} (${r.fam.cons.join("/")})` : rope.label }) }}
-          onPrint={() => printWear(ropeReport({ r, x, label: r.auto ? r.guess.label : isFas ? `FAS ${r.fam.id} (${r.fam.cons.join("/")})` : rope.label, fas: !!isFas }), crane)}
+          onPrint={() => printWear({ ...ropeReport({ r, x, label: r.auto ? r.guess.label : isFas ? `FAS ${r.fam.id} (${r.fam.cons.join("/")})` : rope.label, fas: !!isFas }), cons: r.auto ? "" : consOf({ fam: r.fam, rope: isFas ? null : ROPES.find((o) => o.id === x.rope) }) }, crane)}
         />
       )}
       <p className="text-[11px] text-slate-400 leading-snug">
-        Norma ISO 4309:2017 (Tab. 3, 4 e 5; valutazione combinata Allegato G). Valori per meccanismi M1–M4 o di classe non nota, i più prudenti. Fa sempre fede il
+        Norma ISO 4309:2017: fili rotti su 6d e 30d, diminuzione del diametro e valutazione combinata. Valori per meccanismi M1–M4 o di classe non nota. Fa sempre fede il
         manuale del costruttore della gru e della fune (es. FAS, Teci).
       </p>
     </div>
@@ -853,8 +881,8 @@ const ChainCheck = ({ known = null, onReport = null, crane = null }) => {
   const lines = r.checks.map((c) => `${c.label}: ${fmt(c.value)}% (scarto oltre il ${c.limit}%)${c.bad ? " → scarto" : ""}`);
   if (r.wear != null) lines.unshift(`Diametro medio ${fmt(r.dm, 2)} mm su ${fmt(r.d, 2)} mm nominale (minimo ammesso ${fmt(r.minDm, 2)} mm)`);
   r.flags.forEach((k) => lines.push((CHAIN_FLAGS.find((f) => f[0] === k) || [k, k])[1] + " → scarto"));
-  const title = r.level === "scarto" ? "Catena da scartare" : r.level === "attenzione" ? "Catena ancora idonea, vicina al limite" : "Catena idonea";
-  const report = `Controllo catena ${x.kind === "imbracatura" ? "di imbracatura" : "del paranco"}${x.d ? " Ø" + x.d + " mm" : ""}: ${title.toLowerCase()}. ${lines.join(". ")}.`;
+  const title = r.level === "scarto" ? "Catena da scartare" : r.level === "attenzione" ? "Catena idonea, vicina al limite di scarto" : "Catena idonea";
+  const report = `Controllo catena ${x.kind === "imbracatura" ? "dei sottoganci" : "del paranco"}${x.d ? " Ø" + x.d + " mm" : ""}: ${title.toLowerCase()}. ${lines.join(". ")}.`;
   const ready = r.checks.length > 0 || r.flags.length > 0;
   return (
     <div className="space-y-4" data-section="wear-chain">
@@ -862,9 +890,9 @@ const ChainCheck = ({ known = null, onReport = null, crane = null }) => {
         <h4 className="font-black text-slate-800">La catena</h4>
         <div className="flex items-center gap-2">
           <div className="flex-1">
-            <Choice id="kind" value={x.kind} onChange={set("kind")} options={[["paranco", "Del paranco"], ["imbracatura", "Di imbracatura"]]} />
+            <Choice id="kind" value={x.kind} onChange={set("kind")} options={[["paranco", "Del paranco"], ["imbracatura", "Dei sottoganci"]]} />
           </div>
-          <InfoBtn id="imbracatura" label="paranco o imbracatura" />
+          <InfoBtn id="imbracatura" label="paranco o sottoganci" />
         </div>
         <Num id="d" info="catnominale" label="Diametro nominale (d)" value={x.d} onChange={set("d")} />
         <div className="grid grid-cols-2 gap-3">
@@ -908,7 +936,7 @@ const ChainCheck = ({ known = null, onReport = null, crane = null }) => {
         />
       )}
       <p className="text-[11px] text-slate-400 leading-snug">
-        Usura: diametro medio dm = (d1+d2)/2 non sotto 0,9·d (EN 818-6 per le imbracature; stesso criterio dei costruttori per le catene da paranco, EN 818-7). Allungamento: una maglia +5%;
+        Usura: diametro medio dm = (d1+d2)/2 non sotto 0,9·d (EN 818-6 per i sottoganci / brache di catena; per le catene da paranco l'app usa lo stesso limite). Allungamento: una maglia +5%;
         catena da paranco su 11 maglie +2%. Fa sempre fede il manuale del costruttore del paranco.
       </p>
     </div>

@@ -10,6 +10,7 @@ import { formatRopeLong } from "./ropes";
 import { fabKey } from "./driveCranes";
 import { fmtMin, fmtDelta, deltaOf, kindOf, shortDay, rangeSummary, periodLabel, isFreeDay } from "./hours";
 import { COMPANY_DEFAULT, companyInfo } from "./company";
+import { ropeSection, describeCons } from "./ropeSection";
 
 // intestazione: dati modificabili dall'admin (company.js)
 export const COMPANY = COMPANY_DEFAULT;
@@ -757,6 +758,23 @@ export const buildWearPdf = async ({ rep, crane = null, tech = "", today }) => {
     ]);
   flow.heading(rep.type === "fune" ? "Fune controllata" : "Catena controllata");
   flow.details(rep.params);
+  // sezione della fune (disegno indicativo dalla costruzione)
+  const sec = rep.cons ? ropeSection(rep.cons) : [];
+  if (sec.length) {
+    flow.heading("Sezione della fune (disegno indicativo)");
+    const R = 55;
+    flow.ensure(2 * R + 16);
+    const cx = flow.M + R + 4;
+    const cy = flow.y - R + 6;
+    const fill = { strand: [241, 245, 249], wire: [168, 180, 196], fiber: [214, 185, 140], plastic: [147, 197, 253] };
+    flow.page.drawCircle({ x: cx, y: cy, size: R * 1.03, color: col([226, 232, 240]), borderColor: col([148, 163, 184]), borderWidth: 0.6 });
+    sec.forEach((c) => flow.page.drawCircle({ x: cx + c.x * R, y: cy - c.y * R, size: c.r * R, color: col(fill[c.t] || fill.wire), borderColor: col(c.t === "strand" ? [100, 116, 139] : [51, 65, 85]), borderWidth: c.t === "wire" ? 0.2 : 0.5 }));
+    const tx = cx + R + 18;
+    flow.page.drawText(rep.cons, { x: tx, y: cy + 22, size: 12, font: bold, color: col(C.ink) });
+    wrapText(font, describeCons(rep.cons), 9, W - flow.M - tx).forEach((ln, i) => flow.page.drawText(ln, { x: tx, y: cy + 6 - i * 12, size: 9, font, color: col(C.text) }));
+    wrapText(font, "Disegno fatto dall'app dalla costruzione della fune: non è il disegno del catalogo del fabbricante.", 7.5, W - flow.M - tx).forEach((ln, i) => flow.page.drawText(ln, { x: tx, y: cy - 30 - i * 10, size: 7.5, font, color: col(C.grey) }));
+    flow.y -= 2 * R + 16;
+  }
   flow.heading("Risultato");
   flow.tiles(rep.tiles);
   // esito: riquadro colorato

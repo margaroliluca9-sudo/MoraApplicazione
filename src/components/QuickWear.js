@@ -387,7 +387,7 @@ export const QuickWear = ({ initial = "catena", onClose, onFull }) => {
           </button>
         )}
         <p className="text-[11px] text-slate-400 leading-snug">
-          {tab === "catena" ? "Catena: scarto se il diametro medio nel punto di contatto tra le maglie è sotto il 90% del nominale (EN 818-6 / criteri dei costruttori). " : "Fune: ISO 4309:2017, meccanismi M1–M4 o classe non nota. "}
+          {tab === "catena" ? "Catena: scarto se il diametro medio nel punto di contatto tra le maglie è sotto il 90% del nominale (limite della EN 818-6, usato anche per la catena del paranco). " : "Fune: ISO 4309:2017, meccanismi M1–M4 o classe non nota. "}
           Fa sempre fede il manuale del costruttore.
         </p>
       </div>
