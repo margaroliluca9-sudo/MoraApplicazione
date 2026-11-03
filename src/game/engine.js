@@ -161,7 +161,7 @@ export class CraneEngine {
     const old = this.floorY;
     this.vh = vh;
     // in orizzontale i tasti sono ai lati: sotto il pavimento basta poco spazio
-    this.floorY = this.wide ? Math.max(430, vh - 30) : Math.max(430, vh - 175);
+    this.floorY = this.wide ? Math.max(430, vh - 60) : Math.max(430, vh - 175); // in orizzontale: sotto restano strisce e scritte
     // schermo cambiato (o prima misura): i pezzi seguono il pavimento
     if (old != null && this.items) this.items.forEach((o) => (o.y += this.floorY - old));
     // trave non troppo alta: fune più corta = gru più docile (sopra: tetto, finestroni, lampade)
@@ -771,7 +771,7 @@ export class CraneEngine {
   draw(c, W, H, dpr) {
     // in orizzontale più grande (fino a +20% circa), lasciando ai lati lo spazio per i tasti
     const wide = W > H * 1.15;
-    const s = wide ? Math.min(H / 462, (W - 270) / VW, 2.4) : Math.min(W / VW, H / 560);
+    const s = wide ? Math.min(H / 494, (W - 270) / VW, 2.4) : Math.min(W / VW, H / 560);
     const vw = W / s;
     const ox = (vw - VW) / 2;
     if (wide !== this.wide || Math.abs(H / s - this.vh) > 1) {

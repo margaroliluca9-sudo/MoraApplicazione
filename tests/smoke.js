@@ -74,8 +74,9 @@ const check = (label, got, want) => {
     await p.evaluate(() => { const b = [...document.querySelectorAll("button")].find((x) => /indietro|torna/i.test(x.getAttribute("aria-label") || "")); if (b) b.click(); });
     await wait(p, 400);
   }
-  await p.evaluate(() => { const b = document.querySelector('[aria-label="Chiudi"]'); if (b) b.click(); });
-  await wait(p, 400);
+  // la mia area è una pagina (come lo Storico): si torna alla Home
+  await home(p);
+  await wait(p, 500);
   // Guida
   await clickSel(p, '[data-action="open-guide"]');
   await wait(p, 1500);
