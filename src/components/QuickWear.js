@@ -3,9 +3,10 @@
 // diametro nominale e la misura e in un attimo vede il risultato, grande, in cima (non lo copre la tastiera).
 // Le regole sono quelle di src/wearRules.js (le stesse del controllo completo nella Mia area).
 import React, { useMemo, useRef, useState } from "react";
-import { X, Minus, Plus, Copy, Check, ChevronRight } from "lucide-react";
+import { X, Minus, Plus, Copy, Check, ChevronRight, Printer } from "lucide-react";
 import { checkChain, checkRope, measureFixed } from "../wearRules";
-import { InfoBtn } from "./personal/WearPanel";
+import { InfoBtn, printWear } from "./personal/WearPanel";
+import { ropeVerdict, chainVerdict, ropeRegister, chainRegister, ropeReport, chainReport } from "../wearRegister";
 
 const KEY = "mora_quick_wear_v1";
 const load = () => {
@@ -148,7 +149,7 @@ const useCopy = () => {
 };
 
 // risultato in cima, grande: il numero, la parola (IDONEA / DA SCARTARE) e la misura minima
-const Result = ({ level, label, big, unit, sub, gauge, extra, idle, onCopy, copied }) => (
+const Result = ({ level, label, big, unit, sub, gauge, extra, idle, onCopy, copied, reg = null, onPrint = null }) => (
   <div key={level + big} className={`qw-pop rounded-3xl p-5 shadow-lg ${idle ? "qw-idle" : TONE[level]}`} data-quick-result={idle ? "vuoto" : level}>
     <p className="text-sm font-black uppercase tracking-wider opacity-90">{label}</p>
     {idle ? (
@@ -168,10 +169,22 @@ const Result = ({ level, label, big, unit, sub, gauge, extra, idle, onCopy, copi
       </>
     )}
     {sub && <p className="text-base font-bold mt-1 opacity-95">{sub}</p>}
+    {!idle && reg && (
+      <div className="mt-3 rounded-2xl bg-black/20 p-3" data-quick-register>
+        <p className="text-[11px] font-black uppercase tracking-wider opacity-90">Sul registro di controllo</p>
+        <p className="font-black">Esito: {reg.esito}</p>
+        <p className="text-sm font-bold opacity-95">{reg.azione}</p>
+      </div>
+    )}
     {extra}
     {!idle && onCopy && (
       <button type="button" onClick={onCopy} data-action="quick-copy" className="mt-3 h-10 px-3 rounded-xl bg-black/20 text-sm font-bold flex items-center gap-1.5">
-        {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />} {copied ? "Copiato" : "Copia per il rapporto"}
+        {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />} {copied ? "Copiato: incollalo sul registro o nel rapporto" : "Copia per il registro"}
+      </button>
+    )}
+    {!idle && onPrint && (
+      <button type="button" onClick={onPrint} data-action="quick-print" className="mt-2 h-10 px-3 rounded-xl bg-black/20 text-sm font-bold flex items-center gap-1.5">
+        <Printer className="w-4 h-4" /> Stampa il verbale (PDF)
       </button>
     )}
   </div>
@@ -195,7 +208,9 @@ const QuickChain = ({ saved, onSave }) => {
   };
   const minDm = num(d) ? 0.9 * num(d) : null;
   const ready = r.wear != null;
-  const text = ready ? `Controllo catena Ø${d} mm: diametro medio ${fmt(r.dm, 2)} mm, usura ${fmt(r.wear)}% (scarto oltre il 10%, minimo ${fmt(r.minDm, 2)} mm): ${WORD[r.level].toLowerCase()}.` : "";
+  const text = ready ? chainRegister({ r, x: { kind: "paranco", d } }) : "";
+  const reg = ready ? chainVerdict(r) : null;
+  const print = () => printWear(chainReport({ r, x: { kind: "paranco", d, d1: m1, d2: two ? m2 : "" } }));
   return (
     <div className="space-y-4" data-section="quick-chain">
       <Result
@@ -208,6 +223,8 @@ const QuickChain = ({ saved, onSave }) => {
         sub={ready ? `Misura ${fmt(r.dm, 2)} mm · scarto sotto ${fmt(r.minDm, 2)} mm (usura oltre il 10%)` : minDm ? "Usura ammessa fino al 10% del diametro nominale" : ""}
         onCopy={() => copy(text)}
         copied={copied}
+        reg={reg}
+        onPrint={print}
       />
       <div className="space-y-2">
         <BigNum id="d" info="catnominale" label="Diametro nominale" value={d} autoFocus={!startOnM} onChange={(v) => { setD(v); onSave({ cd: v }); }} />
@@ -255,9 +272,9 @@ const QuickRope = ({ saved, onSave }) => {
   // il numero grande: quello messo peggio (calo del diametro o fili rotti)
   const wireBig = r.s6 >= r.s30 ? [b6, r.lim.six, "su 6d"] : [b30, r.lim.thirty, "su 30d"];
   const showWireBig = hasWire && (!hasDia || Math.max(r.s6, r.s30) > (r.dia ? r.dia.sev : 0));
-  const text = ready
-    ? `Controllo fune Ø${d} mm (${(STRANDS.find((s) => s[0] === strands) || STRANDS[0])[1]}, valori prudenti): ${hasDia ? `diametro misurato ${fmt(r.dMis, 2)} mm, calo ${fmt(r.dec)}% (scarto oltre il ${fmt(limD)}%)` : "diametro non misurato"}; fili rotti ${b6} su 6d (scarto a ${r.lim.six}) e ${b30} su 30d (scarto a ${r.lim.thirty}): ${WORD[r.level].toLowerCase()}.`
-    : "";
+  const text = ready ? ropeRegister({ r, x: { d }, label: `${(STRANDS.find((s) => s[0] === strands) || STRANDS[0])[1]}, non nota (valori prudenti)` }) : "";
+  const reg = ready ? ropeVerdict(r) : null;
+  const print = () => printWear(ropeReport({ r, x: { d, lay: "", layers: "uno" }, label: `${(STRANDS.find((s) => s[0] === strands) || STRANDS[0])[1]}, non nota (valori prudenti)` }));
   return (
     <div className="space-y-4" data-section="quick-rope">
       <Result
@@ -289,6 +306,8 @@ const QuickRope = ({ saved, onSave }) => {
         }
         onCopy={() => copy(text)}
         copied={copied}
+        reg={reg}
+        onPrint={print}
       />
       <div className="flex items-center gap-2 text-xs font-black text-slate-500 uppercase tracking-wider">
         <span className="flex-1">Quanti trefoli vedi fuori?</span>

@@ -3,11 +3,14 @@
 // (EN 818-6 imbracature, criteri dei costruttori per le catene da paranco). Le regole stanno in src/wearRules.js.
 import React, { useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { CheckCircle2, AlertTriangle, XCircle, Copy, Check, Info, X, ExternalLink, Search, FilePlus2, History } from "lucide-react";
+import { CheckCircle2, AlertTriangle, XCircle, Copy, Check, Info, X, ExternalLink, Search, FilePlus2, History, Printer } from "lucide-react";
 import { PanelHeader, INPUT } from "./PersonalUi";
 import { ROPES, ROPE_FLAGS, CHAIN_FLAGS, checkRope, checkChain, measureFixed } from "../../wearRules";
 import { lastRopeOf, formatRopeLong, knownRopes, ropeName } from "../../ropes";
 import { fasFamily } from "../../fasRopes";
+import { ropeVerdict, chainVerdict, ropeRegister, chainRegister, ropeReport, chainReport } from "../../wearRegister";
+import { buildWearPdf, pdfFileName } from "../../pdf";
+import { openPdf } from "../PdfHost";
 import { getSafeMatricola } from "../../utils";
 import { DriveCraneInfo } from "../DriveCraneInfo";
 import { FAS_ROPES, FAS_GROUPS, fasCode } from "../../fasRopes";
@@ -82,7 +85,8 @@ const Flags = ({ list, value, onChange }) => (
     {list.map(([k, l]) => (
       <label key={k} className="flex items-start gap-2 text-sm text-slate-700">
         <input type="checkbox" className="mt-1 w-4 h-4" checked={!!value[k]} onChange={(e) => onChange({ ...value, [k]: e.target.checked })} data-wear-flag={k} />
-        <span>{l}</span>
+        <span className="flex-1">{l}</span>
+        {INFO["f_" + k] && <InfoBtn id={"f_" + k} label={l} />}
       </label>
     ))}
   </div>
@@ -95,7 +99,8 @@ const Bar = ({ sev }) => (
 );
 
 // verdetto: in cima, grande e colorato, il numero che conta (usura, calo del diametro, fili rotti)
-const Verdict = ({ level, title, lines, onCopy, copied, onReport, big = null }) => {
+const Verdict = ({ level, title, lines, onCopy, copied, onReport, big = null, register = null, onPrint = null }) => {
+  const [regCopied, copyReg] = useCopy();
   const tone = level === "scarto" ? ["bg-red-600", XCircle] : level === "attenzione" ? ["bg-amber-600", AlertTriangle] : ["bg-emerald-600", CheckCircle2];
   const Icon = tone[1];
   return (
@@ -123,9 +128,26 @@ const Verdict = ({ level, title, lines, onCopy, copied, onReport, big = null }) 
             <li key={i}>{l}</li>
           ))}
         </ul>
+        {register && (
+          <div className="mt-3 rounded-2xl bg-slate-50 border border-slate-200 p-3" data-wear-register>
+            <p className="text-[11px] font-black text-slate-500 uppercase tracking-wider">Sul registro di controllo</p>
+            <p className="font-black text-slate-800 mt-0.5" data-wear-esito>
+              Esito: {register.esito}
+            </p>
+            <p className="text-sm font-semibold text-slate-700">{register.azione}</p>
+            <button type="button" onClick={() => copyReg(register.text)} className="mt-2 h-10 px-3 rounded-xl bg-white border border-slate-300 text-sm font-bold text-slate-700 flex items-center gap-1.5" data-action="wear-copy-register">
+              {regCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />} {regCopied ? "Copiato: incollalo sul registro" : "Copia per il registro"}
+            </button>
+          </div>
+        )}
         <button type="button" onClick={onCopy} className="mt-3 h-10 px-3 rounded-xl bg-slate-100 border border-slate-200 text-sm font-bold text-slate-700 flex items-center gap-1.5" data-action="wear-copy">
           {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />} {copied ? "Copiato: incollalo nel rapporto" : "Copia per il rapporto"}
         </button>
+        {onPrint && (
+          <button type="button" onClick={onPrint} className="mt-2 w-full h-11 px-3 rounded-xl bg-slate-900 text-white text-sm font-bold flex items-center justify-center gap-1.5" data-action="wear-print">
+            <Printer className="w-4 h-4" /> Stampa il verbale (PDF)
+          </button>
+        )}
         {onReport && (
           <button type="button" onClick={onReport} className="mt-2 w-full h-11 px-3 rounded-xl bg-blue-600 text-white text-sm font-bold flex items-center justify-center gap-1.5" data-action="wear-report">
             <FilePlus2 className="w-4 h-4" /> Nuovo rapporto con questo controllo
@@ -134,6 +156,18 @@ const Verdict = ({ level, title, lines, onCopy, copied, onReport, big = null }) 
       </div>
     </div>
   );
+};
+
+// STAMPA: verbale PDF con l'intestazione Mora e le norme usate (src/pdf.js → buildWearPdf)
+export const printWear = (rep, crane = null) => {
+  let tech = "";
+  try {
+    tech = localStorage.getItem("mora_tech_last_name") || "";
+  } catch (e) {
+    tech = "";
+  }
+  const day = new Date().toLocaleDateString("it-IT");
+  openPdf(() => buildWearPdf({ rep, crane, tech }), pdfFileName(rep.type === "fune" ? "Controllo fune" : "Controllo catena", crane ? crane.customerName : "", crane ? getSafeMatricola(crane) : "", day));
 };
 
 // il numero grande del verdetto
@@ -311,6 +345,114 @@ const PassoArt = () => (
   </svg>
 );
 
+// disegni dei difetti (indicativi, fatti apposta per l'app)
+const Strands = ({ x = 10, y = 10, w = 120, h = 22, pinch = null }) => (
+  <g>
+    <rect x={x} y={y} width={w} height={h} rx={h / 2} fill="#94a3b8" />
+    {Array.from({ length: Math.round(w / 12) }).map((_, i) => (
+      <path key={i} d={`M${x + 4 + i * 12} ${y + 1} l${h * 0.45} ${h - 2}`} stroke="#475569" strokeWidth="2.5" strokeLinecap="round" />
+    ))}
+    {pinch}
+  </g>
+);
+const Cap = ({ t }) => (
+  <text x="0" y="0" fontSize="10" fontWeight="900" fill="#334155">
+    {t}
+  </text>
+);
+const DefectArt = ({ k }) => {
+  if (k === "valle")
+    return (
+      <svg viewBox="0 0 260 70" className="w-full max-w-xs" aria-hidden="true">
+        <Strands x={10} y={14} w={240} h={30} />
+        <g stroke="#dc2626" strokeWidth="3" strokeLinecap="round">
+          <path d="M101 20 l5 -12" />
+          <path d="M113 38 l6 12" />
+        </g>
+        <circle cx="108" cy="29" r="17" fill="none" stroke="#dc2626" strokeWidth="2" strokeDasharray="4 3" />
+        <text x="130" y="64" fontSize="10" fontWeight="900" fill="#dc2626">fili rotti nella valle, tra due trefoli</text>
+      </svg>
+    );
+  if (k === "terminale")
+    return (
+      <svg viewBox="0 0 260 70" className="w-full max-w-xs" aria-hidden="true">
+        <Strands x={10} y={22} w={170} h={24} />
+        <rect x="176" y="16" width="44" height="36" rx="6" fill="#64748b" />
+        <path d="M220 34 h26" stroke="#64748b" strokeWidth="10" strokeLinecap="round" />
+        <g stroke="#dc2626" strokeWidth="3" strokeLinecap="round">
+          <path d="M160 24 l8 -12" />
+          <path d="M150 44 l7 12" />
+        </g>
+        <text x="30" y="14" fontSize="10" fontWeight="900" fill="#dc2626">fili rotti vicino al capocorda</text>
+      </svg>
+    );
+  if (k === "locale")
+    return (
+      <svg viewBox="0 0 260 64" className="w-full max-w-xs" aria-hidden="true">
+        <path d="M10 18 h95 q25 10 50 0 h95 v28 h-95 q-25 -10 -50 0 h-95 z" fill="#94a3b8" />
+        {Array.from({ length: 20 }).map((_, i) => (
+          <path key={i} d={`M${14 + i * 12} 19 l12 26`} stroke="#475569" strokeWidth="2.5" strokeLinecap="round" />
+        ))}
+        <path d="M130 4 v10 M130 50 v10" stroke="#dc2626" strokeWidth="3" />
+        <text x="140" y="12" fontSize="10" fontWeight="900" fill="#dc2626">si stringe in un punto</text>
+      </svg>
+    );
+  if (k === "deforma")
+    return (
+      <svg viewBox="0 0 300 150" className="w-full max-w-sm" aria-hidden="true">
+        {/* gabbia d'uccello */}
+        <g transform="translate(0 0)">
+          <path d="M6 26 h40 M104 26 h40" stroke="#94a3b8" strokeWidth="22" strokeLinecap="round" />
+          {[-1, 1].map((sg) => [0, 1, 2].map((i) => <path key={sg + "" + i} d={`M46 ${26 + sg * (3 + i * 3)} C 62 ${26 + sg * (30 - i * 6)}, 88 ${26 + sg * (30 - i * 6)}, 104 ${26 + sg * (3 + i * 3)}`} fill="none" stroke="#475569" strokeWidth="3" />))}
+          <g transform="translate(160 30)"><Cap t="«gabbia d'uccello»" /></g>
+        </g>
+        {/* nodo / asola */}
+        <g transform="translate(0 60)">
+          <path d="M6 30 h50 c 30 0 30 -26 10 -26 c -20 0 -16 26 14 26 h66" fill="none" stroke="#94a3b8" strokeWidth="12" strokeLinecap="round" />
+          <g transform="translate(160 28)"><Cap t="nodo, asola, piega secca" /></g>
+        </g>
+        {/* schiacciata */}
+        <g transform="translate(0 110)">
+          <path d="M6 14 h50 q20 6 40 0 h50 v20 h-50 q-20 -16 -40 0 h-50 z" fill="#94a3b8" />
+          <path d="M56 10 h40 M56 38 h40" stroke="#dc2626" strokeWidth="2.5" />
+          <g transform="translate(160 28)"><Cap t="schiacciata (appiattita)" /></g>
+        </g>
+      </svg>
+    );
+  if (k === "cricche")
+    return (
+      <svg viewBox="0 0 260 80" className="w-full max-w-xs" aria-hidden="true">
+        <rect x="40" y="16" width="170" height="48" rx="24" fill="none" stroke="#64748b" strokeWidth="13" />
+        <path d="M120 10 l6 6 l-5 5 l6 5" fill="none" stroke="#dc2626" strokeWidth="2.5" />
+        <text x="134" y="12" fontSize="10" fontWeight="900" fill="#dc2626">cricca / taglio</text>
+      </svg>
+    );
+  if (k === "piegata")
+    return (
+      <svg viewBox="0 0 260 80" className="w-full max-w-xs" aria-hidden="true">
+        <path d="M40 40 C 40 10, 120 6, 140 24 C 160 42, 220 20, 220 40 C 220 70, 140 74, 120 56 C 100 38, 40 70, 40 40 z" fill="none" stroke="#64748b" strokeWidth="12" />
+        <text x="80" y="78" fontSize="10" fontWeight="900" fill="#dc2626">maglia storta o ritorta</text>
+      </svg>
+    );
+  if (k === "calore")
+    return (
+      <svg viewBox="0 0 260 80" className="w-full max-w-xs" aria-hidden="true">
+        <rect x="40" y="16" width="170" height="48" rx="24" fill="none" stroke="#7c5a3a" strokeWidth="13" />
+        {[70, 110, 150, 185].map((x) => <circle key={x} cx={x} cy={x % 2 ? 16 : 64} r="5" fill="#b45309" />)}
+        <text x="60" y="78" fontSize="10" fontWeight="900" fill="#b45309">colori da calore, ruggine profonda</text>
+      </svg>
+    );
+  if (k === "gancio")
+    return (
+      <svg viewBox="0 0 200 110" className="w-full max-w-[14rem]" aria-hidden="true">
+        <path d="M100 6 v30 c0 14 -34 10 -34 40 c0 20 30 26 42 10" fill="none" stroke="#64748b" strokeWidth="12" strokeLinecap="round" />
+        <path d="M108 86 l22 -18" stroke="#dc2626" strokeWidth="3" strokeDasharray="4 3" />
+        <text x="118" y="100" fontSize="10" fontWeight="900" fill="#dc2626">bocca aperta</text>
+      </svg>
+    );
+  return null;
+};
+
 export const INFO = {
   6: {
     title: "Fune a 6 trefoli",
@@ -388,6 +530,46 @@ export const INFO = {
     text: "Il passo t è la lunghezza interna di una maglia (catena 10×30: passo 30 mm). Misura una maglia all'interno: scarto se è più lunga del 5%. Per la catena del paranco misura anche 11 maglie di fila con la catena tesa e confrontale con 11 volte il passo: scarto oltre il 2%. Una catena allungata non ingrana più bene nella noce e può saltare.",
     art: <PassoArt />,
   },
+  f_valle: {
+    title: "Fili rotti nella valle",
+    text: "La valle è la riga dove due trefoli si toccano. Un filo che si rompe lì si vede poco (non sporge come quelli sulla cresta) ma vuol dire che la fune si consuma dentro, contro l'anima o tra i trefoli. Per la ISO 4309 bastano 2 fili rotti nella valle in un passo di cordatura (circa 6d) per scartare la fune.",
+    art: <DefectArt k="valle" />,
+  },
+  f_terminale: {
+    title: "Fili rotti vicino alla terminazione",
+    text: "Vicino al capocorda, alla redancia, al morsetto o al punto fisso sul tamburo la fune lavora di più e non si può controllare dentro. Già 2 fili rotti lì portano allo scarto (o a rifare la terminazione, se il tratto si può accorciare secondo il costruttore).",
+    art: <DefectArt k="terminale" />,
+  },
+  f_locale: {
+    title: "Diametro che cala in un punto solo",
+    text: "Se in un punto la fune si stringe (mentre prima e dopo è normale) di solito l'anima dentro è rotta, schiacciata o consumata: la fune ha perso il sostegno interno. Si scarta anche se i fili rotti fuori sono pochi.",
+    art: <DefectArt k="locale" />,
+  },
+  f_deforma: {
+    title: "Deformazioni: gabbia d'uccello, nodo, schiacciamento",
+    text: "Gabbia d'uccello: i trefoli si aprono e si allontanano dall'anima come una gabbietta (di solito per uno strappo o per la fune che gira su sé stessa). Nodo o asola: la fune si è avvolta su sé stessa e poi è stata tirata. Schiacciamento: la fune è appiattita (pulegge, avvolgimento sbagliato sul tamburo). In tutti questi casi la fune si scarta.",
+    art: <DefectArt k="deforma" />,
+  },
+  f_cricche: {
+    title: "Cricche, tagli, intagli",
+    text: "Una cricca è una crepa sottile nel tondino della maglia; un taglio o un intaglio sono segni profondi fatti da spigoli o urti. Anche le saldature fatte dopo sulla catena non vanno bene. Basta una maglia così per scartare la catena.",
+    art: <DefectArt k="cricche" />,
+  },
+  f_piegata: {
+    title: "Maglie piegate, ritorte, schiacciate",
+    text: "Le maglie devono essere tutte uguali e dritte. Una maglia storta, ritorta, schiacciata o allungata a vista (la catena non scorre più bene nella noce) vuol dire che la catena è stata sovraccaricata o ha preso un colpo: si scarta.",
+    art: <DefectArt k="piegata" />,
+  },
+  f_calore: {
+    title: "Calore o corrosione profonda",
+    text: "Colori strani sull'acciaio (blu, viola, paglierino) indicano che la catena ha preso calore (saldature vicine, fiamma): l'acciaio perde resistenza. La ruggine superficiale si toglie; la corrosione profonda con buchi (vaiolatura) no. In questi casi si scarta.",
+    art: <DefectArt k="calore" />,
+  },
+  f_gancio: {
+    title: "Gancio aperto o sicura che non chiude",
+    text: "Se la bocca del gancio si è allargata (di solito oltre il 5% rispetto a nuovo, guarda il manuale del costruttore) il gancio è stato sovraccaricato. Anche un gancio storto o la sicura che non chiude da sola vanno segnalati: si sostituisce.",
+    art: <DefectArt k="gancio" />,
+  },
   parallela: {
     title: "Cordatura parallela (Lang)",
     text: "Trefoli e fili vanno nello stesso verso: i fili si vedono inclinati in diagonale, come i trefoli. Si consuma più piano, ma la norma ammette circa la metà dei fili rotti.",
@@ -452,7 +634,7 @@ const Pick = ({ value, onChange, options, id }) => {
 };
 
 // ---------------------------------------------------------------- FUNE
-const RopeCheck = ({ known = null, onReport = null }) => {
+const RopeCheck = ({ known = null, onReport = null, crane = null }) => {
   // fune montata con un rapporto dell'app (con la costruzione dal certificato): si parte già da quella
   // fune montata: dal catalogo FAS (fas) o con la costruzione scritta a mano
   const kf = known && known.fas && FAS_ROPES.some((f) => f.id === known.fas) ? "fas:" + known.fas : "";
@@ -604,6 +786,8 @@ const RopeCheck = ({ known = null, onReport = null }) => {
           copied={copied}
           onReport={onReport ? () => onReport({ type: "fune", level: r.level, title, text: report, d: x.d, b6: x.b6, b30: x.b30, dMis: r.dMis || x.dMis, rope: r.auto ? "" : x.rope }) : null}
           big={ropeBig(r)}
+          register={{ ...ropeVerdict(r), text: ropeRegister({ r, x, label: r.auto ? r.guess.label : isFas ? `FAS ${r.fam.id} (${r.fam.cons.join("/")})` : rope.label }) }}
+          onPrint={() => printWear(ropeReport({ r, x, label: r.auto ? r.guess.label : isFas ? `FAS ${r.fam.id} (${r.fam.cons.join("/")})` : rope.label, fas: !!isFas }), crane)}
         />
       )}
       <p className="text-[11px] text-slate-400 leading-snug">
@@ -615,7 +799,7 @@ const RopeCheck = ({ known = null, onReport = null }) => {
 };
 
 // ---------------------------------------------------------------- CATENA
-const ChainCheck = ({ known = null, onReport = null }) => {
+const ChainCheck = ({ known = null, onReport = null, crane = null }) => {
   const kd = known && known.diametro ? String(known.diametro).replace(".", ",") : "";
   const kp = known && known.passo ? String(known.passo).replace(".", ",") : "";
   const [x, setX] = useState({ kind: "paranco", d: kd, d1: "", d2: "", t: kp, t1: "", t11: "", flags: {} });
@@ -670,6 +854,8 @@ const ChainCheck = ({ known = null, onReport = null }) => {
           copied={copied}
           onReport={onReport ? () => onReport({ type: "catena", level: r.level, title, text: report, d: x.d, d1: x.d1, d2: x.d2 }) : null}
           big={chainBig(r)}
+          register={{ ...chainVerdict(r), text: chainRegister({ r, x }) }}
+          onPrint={() => printWear(chainReport({ r, x }), crane)}
         />
       )}
       <p className="text-[11px] text-slate-400 leading-snug">
@@ -811,9 +997,9 @@ export const WearPanel = ({ color = "blue", onBack, onClose, machines = [], logs
           </div>
         )}
         {tab === "rope" ? (
-          <RopeCheck key={`r${crane ? crane.id : ""}`} known={knownType} onReport={report} />
+          <RopeCheck key={`r${crane ? crane.id : ""}`} known={knownType} onReport={report} crane={crane} />
         ) : (
-          <ChainCheck key={`c${crane ? crane.id : ""}`} known={mounted && mounted.catena} onReport={report} />
+          <ChainCheck key={`c${crane ? crane.id : ""}`} known={mounted && mounted.catena} onReport={report} crane={crane} />
         )}
         <a href={FAS_CATALOG} target="_blank" rel="noopener noreferrer" className="block text-center text-sm font-bold text-blue-700 underline" data-fas-catalog>
           Catalogo delle funi FAS

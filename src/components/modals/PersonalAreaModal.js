@@ -1,7 +1,7 @@
 // LA MIA AREA: Oggi, Calendario, Note, Chat, Promemoria e contatti, Magazzino (solo con furgone), numeri del mese.
 // Ogni tecnico vede solo le sue cose.
 import React, { useEffect, useMemo, useState } from "react";
-import { X, CalendarDays, StickyNote, MessageSquare, Bell, Truck, ClipboardList, Printer, WifiOff, Settings, Timer, Wrench, ChevronRight, Ruler } from "lucide-react";
+import { X, CalendarDays, StickyNote, MessageSquare, Bell, Truck, ClipboardList, Printer, WifiOff, Settings, Timer, Wrench, ChevronRight } from "lucide-react";
 import { HoursPanel } from "../personal/HoursPanel";
 import { getSettings } from "../../settings";
 import { fmtMin, monthSummary, getStd, withDefaults, getSince } from "../../hours";
@@ -269,18 +269,7 @@ export const PersonalAreaModal = ({
             <ChevronRight className="w-5 h-5 text-slate-400 shrink-0" />
           </button>
           )}
-          {on("wear") && (
-          <button type="button" onClick={() => setPanel("wear")} data-area-tile="wear" className="w-full text-left bg-white rounded-3xl border border-slate-200 p-4 flex items-center gap-3 active:scale-[0.99] transition-transform">
-            <span className="w-10 h-10 rounded-xl flex items-center justify-center bg-indigo-50 text-indigo-700 shrink-0">
-              <Ruler className="w-5 h-5" />
-            </span>
-            <span className="flex-1 min-w-0">
-              <span className="block font-black text-slate-800 text-base">Fune e catena</span>
-              <span className="block text-sm font-semibold text-slate-500 truncate">Misure e fili rotti: cosa dice la norma</span>
-            </span>
-            <ChevronRight className="w-5 h-5 text-slate-400 shrink-0" />
-          </button>
-          )}
+          {/* «Fune e catena» ora è in Home, vicino allo Storico */}
           <button type="button" onClick={() => setPanel("settings")} data-action="area-settings-link" className="w-full flex items-center justify-center gap-1.5 py-2 text-sm font-bold text-slate-400">
             <Settings className="w-4 h-4" /> Impostazioni · notifiche e altro
           </button>

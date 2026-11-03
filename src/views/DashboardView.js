@@ -1,7 +1,7 @@
 import { parseTicketQuery, matchTicket, ticketLabel } from "../ticket";
 import React, { useEffect, useMemo, useState } from "react";
 import { EmptyState } from "../components/EmptyState";
-import {
+import { Ruler,
   PlusCircle,
   Search,
   X,
@@ -216,6 +216,11 @@ export const DashboardView = ({
   ];
   // "I miei interventi" e "Chat" stanno dentro "La mia area" (non più in Home)
   order = order.filter((k) => k !== "mine" && k !== "chat" && k !== "database" && k !== "map"); // Database è dentro Esplora; la Mappa è stata tolta
+  // «Fune e catena» (fuori dalla Mia area): subito dopo lo Storico
+  if (!order.includes("wear")) {
+    const k = order.indexOf("history");
+    order.splice(k === -1 ? order.length : k + 1, 0, "wear");
+  }
   // riquadro "La mia area" subito dopo "Nuovo Rapporto"
   if (currentTechName && !order.includes("area")) {
     const k = order.indexOf("new");
@@ -276,6 +281,13 @@ export const DashboardView = ({
       desc: "Registra nuovo intervento",
       action: () => onNavigate("new"),
       primary: true,
+    },
+    wear: {
+      id: "wear",
+      label: "Fune e catena",
+      icon: Ruler,
+      desc: "Fili rotti, usura, cosa scrivere sul registro",
+      action: () => window.dispatchEvent(new CustomEvent("mora-open-wear", { detail: "rope" })),
     },
     explore: {
       id: "explore",

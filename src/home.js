@@ -82,8 +82,8 @@ export const cachePrefs = (me, prefs) => {
 
 // Home effettiva: riquadri visibili in ordine + quelli nascosti che si possono aggiungere
 // base = ordine standard (admin); available = tutti gli id che esistono per questo tecnico
-// riquadri nuovi che compaiono subito dopo «Nuovo rapporto» anche a chi ha già sistemato la sua Home
-const FIRST = [];
+// riquadri nuovi che compaiono accanto a un altro anche a chi ha già sistemato la sua Home
+const NEXT_TO = { wear: "history" };
 export const resolveHome = (base, prefs, available) => {
   const p = prefs || {};
   const ok = (id) => available.includes(id);
@@ -93,8 +93,8 @@ export const resolveHome = (base, prefs, available) => {
   // riquadri standard nuovi (non ancora scelti né nascosti): in fondo, tranne quelli da tenere a portata di mano
   base.forEach((id) => {
     if (!ok(id) || order.includes(id) || hidden.includes(id)) return;
-    const k = order.indexOf("new");
-    if (FIRST.includes(id) && k !== -1) order.splice(k + 1, 0, id);
+    const k = NEXT_TO[id] ? order.indexOf(NEXT_TO[id]) : -1;
+    if (k !== -1) order.splice(k + 1, 0, id);
     else order.push(id);
   });
   if (!order.includes("new") && ok("new")) order.unshift("new");

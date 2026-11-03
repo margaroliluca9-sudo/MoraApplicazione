@@ -67,6 +67,7 @@ import { installErrorLog, setErrorContext } from "./errorLog";
 import { NewEntryForm } from "./views/NewEntryForm";
 import { HistoryView } from "./views/HistoryView";
 import { QuickWear } from "./components/QuickWear";
+import { WearPanel } from "./components/personal/WearPanel";
 const DatabaseView = lazyNamed(() => import("./views/DatabaseView"), "DatabaseView");
 const OfficeView = lazyNamed(() => import("./views/OfficeView"), "OfficeView");
 const AdminPanel = lazyNamed(() => import("./views/AdminPanel"), "AdminPanel");
@@ -220,7 +221,23 @@ export default function App() {
   const [areaPanel, setAreaPanel] = useState({ panel: "home", n: 0 });
   // da dove sono arrivato (sul telefono la X della mia area riporta lì)
   const beforeArea = useRef("dashboard");
+  // «Fune e catena»: pagina a sé (dalla Home, vicino allo Storico); «chain» = aperta sulla catena
+  const [wearPage, setWearPage] = useState({ tab: "rope", n: 0 });
+  const openWear = (tab) => {
+    setWearPage((w) => ({ tab: tab === "chain" ? "chain" : "rope", n: w.n + 1 }));
+    setActiveTab("wear");
+    window.scrollTo(0, 0);
+  };
+  const openWearRef = useRef(openWear);
+  openWearRef.current = openWear;
+  useEffect(() => {
+    const on = (e) => openWearRef.current(e && e.detail);
+    window.addEventListener("mora-open-wear", on);
+    return () => window.removeEventListener("mora-open-wear", on);
+  }, []);
   const openAreaTab = (panel) => {
+    // vecchi collegamenti alla Mia area → Fune e catena: ora è una pagina a sé
+    if (panel === "wear" || panel === "wear-chain") return openWear(panel === "wear-chain" ? "chain" : "rope");
     setAreaPanel((a) => ({ panel: panel || "home", n: a.n + 1 }));
     setActiveTab((t) => {
       if (t !== "area") beforeArea.current = t;
@@ -1315,6 +1332,19 @@ export default function App() {
                 onOpenPhotos={setGlobalPhotoView}
               />
             )}
+            {activeTab === "wear" && (
+              <div className="max-w-3xl mx-auto rounded-3xl overflow-hidden border border-slate-200" data-page="wear">
+                <WearPanel
+                  key={`wear${wearPage.n}`}
+                  color={color}
+                  initialTab={wearPage.tab}
+                  machines={machines}
+                  logs={logs}
+                  onBack={() => setActiveTab("dashboard")}
+                  onNewReport={(data) => window.dispatchEvent(new CustomEvent("mora-new-report", { detail: data }))}
+                />
+              </div>
+            )}
             {activeTab === "history" && (
               <HistoryView
                 logs={logs}
@@ -1400,7 +1430,7 @@ export default function App() {
           onClose={() => setQuickWear(null)}
           onFull={(t) => {
             setQuickWear(null);
-            openAreaTab(t === "catena" ? "wear-chain" : "wear");
+            openWear(t === "catena" ? "chain" : "rope");
           }}
         />
       )}

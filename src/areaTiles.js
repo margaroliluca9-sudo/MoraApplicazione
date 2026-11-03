@@ -10,7 +10,6 @@ export const AREA_TILES = [
   { id: "van", label: "Magazzino del furgone", sub: "Solo chi ha un furgone assegnato" },
   { id: "hours", label: "Le mie ore", sub: "Poi ognuno la accende nelle sue Impostazioni" },
   { id: "parts", label: "Cosa ho cambiato", sub: "Pezzi sostituiti quest'anno" },
-  { id: "wear", label: "Fune e catena", sub: "Controllo con la norma (ISO 4309, EN 818)" },
   { id: "numbers", label: "Numeri del mese", sub: "Interventi fatti e clienti visitati" },
 ];
 export const areaOn = (cfg, id) => !(cfg && cfg.areaTiles && cfg.areaTiles[id] === false);
