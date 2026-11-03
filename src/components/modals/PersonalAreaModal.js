@@ -15,6 +15,8 @@ import { VanView } from "../VanView";
 import { PrintPanel } from "../personal/PrintPanel";
 import { PartsPanel } from "../personal/PartsPanel";
 import { WearPanel } from "../personal/WearPanel";
+import { YearPanel } from "../personal/YearPanel";
+import { yearToShow } from "../../myYear";
 import { myChanges, partLabel } from "../../myParts";
 import { areaOn } from "../../areaTiles";
 import { ProfilePanel } from "../personal/ProfilePanel";
@@ -131,6 +133,7 @@ export const PersonalAreaModal = ({
         logs={logs}
         onNewReport={(data) => window.dispatchEvent(new CustomEvent("mora-new-report", { detail: data }))}
       />;
+  else if (panel === "year" && yearToShow()) body = <YearPanel me={me} logs={logs} year={yearToShow()} color={color} onBack={back} onClose={closeX} />;
   else if (panel === "profile") body = <ProfilePanel me={me} technicians={technicians} color={color} onBack={back} onClose={closeX} />;
   else if (panel === "settings") body = <SettingsPanel me={me} color={color} onBack={back} onClose={closeX} hoursAllowed={on("hours")} />;
   else if (panel === "notes" && on("notes")) body = <NotesPanel me={me} notes={notes} color={color} onBack={back} onClose={closeX} />;
@@ -178,6 +181,18 @@ export const PersonalAreaModal = ({
           </div>
         )}
         <div className={inline ? "space-y-4" : "flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50"}>
+          {yearToShow() && (
+            <button type="button" onClick={() => setPanel("year")} data-area-tile="year" className={`w-full text-left rounded-3xl bg-${color}-600 text-white p-4 flex items-center gap-3 active:scale-[0.99] transition-transform`}>
+              <span className="text-3xl" aria-hidden="true">
+                🎉
+              </span>
+              <span className="flex-1 min-w-0">
+                <span className="block font-black text-lg leading-tight">Il mio {yearToShow()}</span>
+                <span className="block text-sm font-semibold opacity-90 truncate">Il riepilogo del tuo anno: interventi, clienti, gru</span>
+              </span>
+              <ChevronRight className="w-5 h-5 opacity-80 shrink-0" />
+            </button>
+          )}
           {on("today") && (
           <section className="bg-white rounded-3xl border border-slate-200 p-4 space-y-3" data-section="area-today">
             <div className="flex justify-between items-baseline">

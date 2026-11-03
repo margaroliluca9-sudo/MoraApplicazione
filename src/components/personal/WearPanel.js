@@ -3,7 +3,7 @@
 // (EN 818-6 sottoganci / brache di catena, criteri dei costruttori per le catene da paranco). Le regole stanno in src/wearRules.js.
 import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { CheckCircle2, AlertTriangle, XCircle, Copy, Check, Info, X, ExternalLink, Search, FilePlus2, History, Printer } from "lucide-react";
+import { CheckCircle2, AlertTriangle, XCircle, Copy, Check, Info, X, ExternalLink, FilePlus2, History, Printer } from "lucide-react";
 import { PanelHeader, INPUT } from "./PersonalUi";
 import { ROPES, ROPE_FLAGS, CHAIN_FLAGS, checkRope, checkChain, measureFixed } from "../../wearRules";
 import { lastRopeOf, formatRopeLong, knownRopes, ropeName } from "../../ropes";
@@ -12,6 +12,7 @@ import { ropeVerdict, chainVerdict, ropeRegister, chainRegister, ropeReport, cha
 import { printWear, doPrintWear } from "../WearPrintHost";
 import { listWearReports } from "../../wearReports";
 import { ropeSection, describeCons, consOf } from "../../ropeSection";
+import { SLING_COLORS, SLING_MODES, SLING_FLAGS, SLING_TEXT, SLING_SOURCE, checkSling, slingVerdict, slingRegister, slingReport } from "../../slingRules";
 import { getSafeMatricola } from "../../utils";
 import { DriveCraneInfo } from "../DriveCraneInfo";
 import { FAS_ROPES, FAS_GROUPS, fasCode } from "../../fasRopes";
@@ -218,7 +219,7 @@ const PrintedReports = () => {
           <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${v.level === "scarto" ? "bg-red-500" : v.level === "attenzione" ? "bg-amber-500" : "bg-emerald-500"}`} />
           <span className="flex-1 min-w-0">
             <span className="block text-sm font-black text-slate-800 truncate">
-              {v.type === "fune" ? "Fune" : "Catena"} · {v.crane ? `${v.crane.customerName} · ${v.crane.matricola}` : "senza gru"}
+              {v.type === "fune" ? "Fune" : v.type === "fascia" ? "Fascia" : "Catena"} · {v.crane ? `${v.crane.customerName} · ${v.crane.matricola}` : "senza gru"}
             </span>
             <span className="block text-xs text-slate-500 truncate">
               {v.day}
@@ -515,6 +516,49 @@ const DefectArt = ({ k }) => {
   return null;
 };
 
+// disegnini dei modi di imbracare (fatti dall'app)
+const ModeArt = ({ id }) => {
+  const st = { fill: "none", stroke: "currentColor", strokeWidth: 5, strokeLinecap: "round", strokeLinejoin: "round" };
+  const hook = <path d="M30 4 v8" {...st} strokeWidth={3} />;
+  const p = {
+    diritto: <path d="M30 12 V58" {...st} />,
+    strozzo: (
+      <>
+        <path d="M30 12 V40" {...st} />
+        <ellipse cx="30" cy="48" rx="12" ry="9" {...st} />
+      </>
+    ),
+    u0: <path d="M24 12 V50 q6 8 12 0 V12" {...st} />,
+    u45: <path d="M30 12 L12 50 H48 Z" {...st} />,
+    u60: <path d="M30 12 L6 46 H54 Z" {...st} />,
+    tri45: <path d="M30 12 L14 50 Q30 56 46 50 Z" {...st} />,
+    tri60: <path d="M30 12 L8 46 Q30 52 52 46 Z" {...st} />,
+    due45: <path d="M30 12 L14 52 M30 12 L46 52" {...st} />,
+    due60: <path d="M30 12 L8 48 M30 12 L52 48" {...st} />,
+    duestr45: (
+      <>
+        <path d="M30 12 L18 44 M30 12 L42 44" {...st} />
+        <circle cx="16" cy="50" r="6" {...st} />
+        <circle cx="44" cy="50" r="6" {...st} />
+      </>
+    ),
+    duestr60: (
+      <>
+        <path d="M30 12 L12 40 M30 12 L48 40" {...st} />
+        <circle cx="9" cy="46" r="6" {...st} />
+        <circle cx="51" cy="46" r="6" {...st} />
+      </>
+    ),
+  }[id];
+  return (
+    <svg viewBox="0 0 60 62" className="w-12 h-12" aria-hidden="true">
+      {hook}
+      {p}
+    </svg>
+  );
+};
+
+
 export const INFO = {
   6: {
     title: "Fune a 6 trefoli",
@@ -596,6 +640,11 @@ export const INFO = {
     title: "Catena del paranco o dei sottoganci",
     text: "Catena del paranco: è quella che lavora dentro il paranco a catena, passa sulla noce (la ruota dentata) e solleva il gancio; si controllano usura e allungamento, anche su 11 maglie, perché se si allunga non ingrana più bene nella noce. Catena dei sottoganci: è la braca di catena (a uno, due o quattro bracci, con anello in testa e ganci in fondo) che si usa per agganciare il carico al gancio della gru; non passa su nessuna noce. Per le brache di catena l'app usa i limiti della UNI EN 818-6: usura oltre il 10%, maglia allungata oltre il 5%.",
     art: <DefectArt k="gancio" />,
+  },
+  s_marcatura: {
+    title: "Marcatura della braca (catalogo FAS)",
+    text: "«Ogni braca deve riportare le seguenti indicazioni: Identificazione del costruttore; Materiale del nastro (abbr. Poliestere: PES); Lunghezza nominale in metri; Carico massimo di esercizio; Codice di rintracciabilità; Marcatura CE; Le norme di riferimento. Tali informazioni sono riportate in modo leggibile e duraturo, tramite un'etichetta in materiale antistrappo cucita all'interno di una delle due asole o sulla guaina dell'anello.»",
+    art: <ModeArt id="diritto" />,
   },
   f_valle: {
     title: "Fili rotti nella valle",
@@ -943,6 +992,120 @@ const ChainCheck = ({ known = null, onReport = null, crane = null }) => {
   );
 };
 
+// ---------------------------------------------------------------- FASCE E ANELLI (sottoganci di poliestere)
+const SlingCheck = () => {
+  const [x, setX] = useState({ kind: "fascia", color: "", wll: "", mode: "diritto", code: "", len: "", flags: {}, labelBad: false });
+  const set = (k) => (v) => setX((o) => ({ ...o, [k]: v }));
+  const r = useMemo(() => checkSling(x), [x]);
+  const v = slingVerdict(r);
+  const [copied, copy] = useCopy();
+  const flags = SLING_FLAGS.filter(([, , only]) => !only || only === x.kind);
+  const lines = [];
+  if (r.cap != null) lines.push(`${r.mode.label}: ${fmt(r.wll, 2)} t × ${fmt(r.mode.factor, 2)} = ${fmt(r.cap, 2)} t`);
+  if (r.labelBad) lines.push("Etichetta mancante o illeggibile");
+  r.flags.forEach((f) => lines.push(f.l + " → scarto"));
+  const title = r.discard ? "Braca da scartare" : "Braca idonea";
+  return (
+    <div className="space-y-4" data-section="wear-sling">
+      <section className="bg-white rounded-3xl border border-slate-200 p-4 space-y-3">
+        <h4 className="font-black text-slate-800">La braca</h4>
+        <Choice id="slingkind" value={x.kind} onChange={set("kind")} options={[["fascia", "Fascia piatta"], ["anello", "Anello continuo"]]} />
+        <div>
+          <p className="text-xs font-black text-slate-500 mb-1.5">Colore = portata (EN 1492-1/2)</p>
+          <div className="grid grid-cols-4 gap-1.5" data-sling-colors>
+            {SLING_COLORS.map(([id, l, t, hex]) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => setX((o) => ({ ...o, color: l, wll: String(t) }))}
+                data-sling-color={id}
+                className={`rounded-xl border-2 p-1.5 flex flex-col items-center ${x.color === l ? "border-slate-900" : "border-slate-200"}`}
+              >
+                <span className="w-full h-3 rounded-full" style={{ background: hex }} />
+                <span className="text-[11px] font-black text-slate-700 mt-1">{t} t</span>
+                <span className="text-[10px] text-slate-500">{l}</span>
+              </button>
+            ))}
+          </div>
+          <p className="text-[11px] text-slate-400 mt-1">Oltre 10 t le brache sono arancio: scrivi la portata dell'etichetta.</p>
+        </div>
+        <Num id="wll" label="Portata sull'etichetta" unit="t" value={x.wll} onChange={(val) => setX((o) => ({ ...o, wll: val, color: (SLING_COLORS.find((c) => String(c[2]) === val.replace(",", ".")) || [, ""])[1] }))} />
+        <div className="grid grid-cols-2 gap-3">
+          <Num id="code" label="Codice (facoltativo)" unit="" value={x.code} onChange={(val) => set("code")(val)} />
+          <Num id="len" label="Lunghezza" unit="m" value={x.len} onChange={set("len")} />
+        </div>
+      </section>
+
+      <section className="bg-white rounded-3xl border border-slate-200 p-4 space-y-3">
+        <h4 className="font-black text-slate-800">Come viene usata</h4>
+        <div className="grid grid-cols-3 gap-2" data-sling-modes>
+          {SLING_MODES.map((m) => (
+            <button key={m.id} type="button" onClick={() => set("mode")(m.id)} data-sling-mode={m.id} className={`rounded-2xl border-2 p-2 flex flex-col items-center gap-1 text-center ${x.mode === m.id ? "border-blue-500 bg-blue-50 text-blue-800" : "border-slate-200 text-slate-600"}`}>
+              <ModeArt id={m.id} />
+              <span className="text-[10px] font-black leading-tight">{m.label}</span>
+              <span className="text-[11px] font-black">× {fmt(m.factor, 2)}</span>
+            </button>
+          ))}
+        </div>
+        {r.cap != null && (
+          <div className="rounded-2xl bg-slate-900 text-white p-4" data-sling-cap>
+            <p className="text-xs font-black uppercase tracking-wider opacity-80">Portata in questo uso</p>
+            <p className="font-black tabular-nums leading-none mt-1" style={{ fontSize: 48 }}>
+              {fmt(r.cap, 2)} t
+            </p>
+            <p className="text-sm font-bold opacity-90 mt-1">
+              {fmt(r.wll, 2)} t × {fmt(r.mode.factor, 2)} ({r.mode.label})
+            </p>
+          </div>
+        )}
+        <p className="text-[11px] text-slate-500 leading-snug">«{SLING_TEXT.angolo}» «{SLING_TEXT.simmetria}» (catalogo FAS)</p>
+      </section>
+
+      <section className="bg-white rounded-3xl border border-slate-200 p-4 space-y-3">
+        <h4 className="font-black text-slate-800">Controllo a vista</h4>
+        <label className="flex items-start gap-2 text-sm text-slate-700">
+          <input type="checkbox" className="mt-1 w-4 h-4" checked={x.labelBad} onChange={(e) => set("labelBad")(e.target.checked)} data-sling-label />
+          <span className="flex-1">Etichetta mancante o illeggibile</span>
+          <InfoBtn id="s_marcatura" label="marcatura" />
+        </label>
+        <Flags list={flags.map(([k, l]) => [k, l])} value={x.flags} onChange={set("flags")} />
+        <p className="text-[11px] text-slate-500 leading-snug">«{SLING_TEXT.scarto}» (catalogo FAS)</p>
+      </section>
+
+      <Verdict
+        level={r.level}
+        title={title}
+        lines={lines.length ? lines : ["Nessuno dei casi di scarto indicati nel catalogo."]}
+        onCopy={() => copy(slingRegister({ r, x }))}
+        copied={copied}
+        big={r.cap != null ? { label: "Portata in questo uso", value: fmt(r.cap, 2), unit: "t", sub: `${r.mode.label} · fattore ${fmt(r.mode.factor, 2)}` } : null}
+        register={{ ...v, text: slingRegister({ r, x }) }}
+        onPrint={() => printWear(slingReport({ r, x }))}
+      />
+
+      <section className="bg-white rounded-3xl border border-slate-200 p-4 space-y-2 text-[12px] text-slate-600 leading-snug" data-sling-rules>
+        <h4 className="font-black text-slate-800 text-sm">Dal catalogo FAS</h4>
+        <p>
+          <b>Asola nel gancio:</b> «{SLING_TEXT.asola}»
+        </p>
+        <p>
+          <b>Spigoli:</b> «{SLING_TEXT.spigoli}»
+        </p>
+        <p>
+          <b>Temperatura e prodotti chimici:</b> «{SLING_TEXT.temperatura}» «{SLING_TEXT.chimici}»
+        </p>
+        <p>
+          <b>Nodi:</b> «{SLING_TEXT.nodi}»
+        </p>
+        <p>
+          <b>Verifiche periodiche:</b> «{SLING_TEXT.verifiche}»
+        </p>
+        <p className="text-[11px] text-slate-400">{SLING_SOURCE}.</p>
+      </section>
+    </div>
+  );
+};
+
 // controllo salvato in un rapporto (ropeCheck) — il più recente di quel tipo
 const lastCheckOf = (logs, type) => {
   const key = (ds) => {
@@ -955,9 +1118,6 @@ const norm = (v) => String(v || "").trim().toUpperCase();
 
 // SU QUALE GRU? solo le gru di cui l'app sa la fune (o la catena): sostituita con un rapporto, col tipo
 const CranePicker = ({ machines, crane, onPick, color, type }) => {
-  const [q, setQ] = useState("");
-  const words = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
-  const found = machines.filter((m) => !words.length || words.every((w) => `${getSafeMatricola(m)} ${m.customerName} ${m.type || ""}`.toLowerCase().includes(w))).slice(0, 8);
   if (crane)
     return (
       <div className="bg-white rounded-3xl border border-slate-200 p-3 flex items-center gap-3" data-wear-crane>
@@ -973,28 +1133,44 @@ const CranePicker = ({ machines, crane, onPick, color, type }) => {
         </button>
       </div>
     );
+  // menu a tendina (le gru sono tante): raggruppate per cliente
+  const groups = {};
+  [...machines]
+    .sort((a, b) => String(a.customerName).localeCompare(String(b.customerName), "it") || String(getSafeMatricola(a)).localeCompare(String(getSafeMatricola(b)), "it", { numeric: true }))
+    .forEach((m) => {
+      (groups[m.customerName || "—"] = groups[m.customerName || "—"] || []).push(m);
+    });
   return (
     <div className="bg-white rounded-3xl border border-slate-200 p-3 space-y-2" data-wear-picker>
       <p className="text-xs font-black text-slate-500">Su quale gru? (facoltativo) — qui ci sono solo le gru di cui l'app sa {type === "catena" ? "la catena montata" : "che fune c'è montata"}</p>
-      {!machines.length && (
+      {!machines.length ? (
         <p className="text-xs text-slate-400" data-wear-none>
           Per ora nessuna: compaiono quando {type === "catena" ? "la catena viene sostituita" : "la fune viene sostituita"} con un rapporto dell'app (con il tipo di fune).
         </p>
+      ) : (
+        <select
+          className={INPUT}
+          value=""
+          data-wear-input="crane"
+          aria-label="Scegli la gru"
+          onChange={(e) => {
+            const m = machines.find((x) => String(x.id) === e.target.value);
+            if (m) onPick(m);
+          }}
+        >
+          <option value="">Scegli la gru ({machines.length})…</option>
+          {Object.keys(groups).map((c) => (
+            <optgroup key={c} label={c}>
+              {groups[c].map((m) => (
+                <option key={m.id} value={m.id} data-wear-crane-option={getSafeMatricola(m)}>
+                  {getSafeMatricola(m)}
+                  {m.type ? ` · ${m.type}` : ""}
+                </option>
+              ))}
+            </optgroup>
+          ))}
+        </select>
       )}
-      <div className="relative">
-        <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-        <input className={`${INPUT} pl-9`} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cliente o matricola…" data-wear-input="crane" />
-      </div>
-      {found.map((m) => (
-        <button key={m.id} type="button" onClick={() => onPick(m)} className="w-full text-left px-3 py-2 rounded-xl bg-slate-50 hover:bg-slate-100" data-wear-crane-option={getSafeMatricola(m)}>
-          <span className="block text-sm font-black text-slate-800">{getSafeMatricola(m)}</span>
-          <span className="block text-xs text-slate-500">
-            {m.customerName}
-            {m.type ? ` · ${m.type}` : ""}
-          </span>
-        </button>
-      ))}
-      {machines.length > 0 && words.length > 0 && !found.length && <p className="text-xs text-slate-400">Nessuna gru trovata.</p>}
     </div>
   );
 };
@@ -1034,18 +1210,19 @@ export const WearPanel = ({ color = "blue", onBack, onClose, machines = [], logs
     <div className="flex flex-col h-full" data-section="wear">
       <PanelHeader title="Fune e catena" sub="Cosa dice la norma" onBack={onBack} onClose={onClose} color={color} />
       <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50">
-        <CranePicker machines={pickable} crane={crane} onPick={setCrane} color={color} type={type} />
+        {tab !== "sling" && <CranePicker machines={pickable} crane={crane} onPick={setCrane} color={color} type={type} />}
         <div className="flex bg-slate-200/70 p-1 rounded-2xl" role="tablist">
           {[
             ["rope", "Fune"],
             ["chain", "Catena"],
+            ["sling", "Fasce"],
           ].map(([id, l]) => (
             <button key={id} type="button" role="tab" aria-selected={tab === id} onClick={() => setTab(id)} data-wear-tab={id} className={`flex-1 h-11 rounded-xl text-sm font-black ${tab === id ? `bg-white text-${color}-700 shadow` : "text-slate-500"}`}>
               {l}
             </button>
           ))}
         </div>
-        {crane && (
+        {crane && tab !== "sling" && (
           <div className="space-y-2" data-wear-history>
             {mounted ? (
               <div className="rounded-2xl bg-white border border-slate-200 p-3 text-sm" data-wear-mounted>
@@ -1073,7 +1250,9 @@ export const WearPanel = ({ color = "blue", onBack, onClose, machines = [], logs
             {type === "fune" && <DriveCraneInfo matricola={getSafeMatricola(crane)} customerName={crane.customerName} />}
           </div>
         )}
-        {tab === "rope" ? (
+        {tab === "sling" ? (
+          <SlingCheck />
+        ) : tab === "rope" ? (
           <RopeCheck key={`r${crane ? crane.id : ""}`} known={knownType} onReport={report} crane={crane} />
         ) : (
           <ChainCheck key={`c${crane ? crane.id : ""}`} known={mounted && mounted.catena} onReport={report} crane={crane} />

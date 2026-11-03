@@ -30,7 +30,7 @@ export const doPrintWear = ({ rep, crane = null, day = "", tech = "", again = fa
     saveWearReport({ rep, crane: c, tech: t, day: d })
       .then(() => window.dispatchEvent(new CustomEvent("mora-wear-saved")))
       .catch(() => {});
-  openPdf(() => buildWearPdf({ rep, crane: c, tech: t, today: d }), pdfFileName(rep.type === "fune" ? "Controllo fune" : "Controllo catena", c ? c.customerName : "", c ? c.matricola : "", d));
+  openPdf(() => buildWearPdf({ rep, crane: c, tech: t, today: d }), pdfFileName(rep.type === "fune" ? "Controllo fune" : rep.type === "fascia" ? "Controllo braca" : "Controllo catena", c ? c.customerName : "", c ? c.matricola : "", d));
 };
 
 export const WearPrintHost = ({ machines = [], color = "blue" }) => {
@@ -49,9 +49,10 @@ export const WearPrintHost = ({ machines = [], color = "blue" }) => {
     window.addEventListener("mora-wear-print", on);
     return () => window.removeEventListener("mora-wear-print", on);
   }, []);
+  const sling = job && job.rep && job.rep.type === "fascia";
   const q = norm(f.matricola);
   const found = useMemo(() => {
-    if (!q) return [];
+    if (!q || sling) return [];
     const all = machines.filter((m) => norm(getSafeMatricola(m)).includes(q));
     return all.sort((a, b) => (norm(getSafeMatricola(b)) === q) - (norm(getSafeMatricola(a)) === q)).slice(0, 5);
   }, [machines, q]);
@@ -65,23 +66,41 @@ export const WearPrintHost = ({ machines = [], color = "blue" }) => {
     setF((o) => ({ ...o, [k]: e.target.value }));
   };
   const go = (withCrane) => {
-    const crane = withCrane && f.matricola.trim() ? { ...f, matricola: f.matricola.trim(), customerName: f.customerName.trim() } : null;
+    const crane = withCrane && (sling ? f.customerName.trim() : f.matricola.trim()) ? { ...f, matricola: f.matricola.trim(), customerName: f.customerName.trim(), type: sling ? "" : f.type } : null;
     doPrintWear({ rep: job.rep, crane });
     setJob(null);
   };
-  const canPrint = !!f.matricola.trim() && !!f.customerName.trim();
+  const canPrint = sling ? !!f.customerName.trim() : !!f.matricola.trim() && !!f.customerName.trim();
+  const custs = sling && f.customerName.trim().length >= 2 ? [...new Set(machines.map((m) => m.customerName).filter(Boolean))].filter((c) => c.toUpperCase().includes(f.customerName.trim().toUpperCase()) && c !== f.customerName).slice(0, 5) : [];
   return (
     <div className="fixed inset-0 z-[320] bg-slate-900/50 flex items-end md:items-center justify-center md:p-4" data-section="wear-print">
       <div className="w-full md:max-w-md bg-white rounded-t-3xl md:rounded-3xl max-h-[92vh] flex flex-col">
         <div className="p-4 border-b border-slate-200 flex items-center gap-2">
           <div className="flex-1 min-w-0">
-            <h3 className="font-black text-slate-800 text-lg">Su quale gru?</h3>
+            <h3 className="font-black text-slate-800 text-lg">{sling ? "Di quale cliente?" : "Su quale gru?"}</h3>
             <p className="text-xs text-slate-500">Va scritta sul verbale. Non si salva negli interventi.</p>
           </div>
           <button type="button" onClick={() => setJob(null)} aria-label="Chiudi" className="w-10 h-10 rounded-full border border-slate-200 flex items-center justify-center">
             <X className="w-5 h-5 text-slate-500" />
           </button>
         </div>
+        {sling ? (
+          <div className="p-4 space-y-3 overflow-y-auto">
+            <label className="block space-y-1">
+              <span className="text-xs font-black text-slate-500">Cliente</span>
+              <input className={INPUT} value={f.customerName} onChange={set("customerName")} autoFocus autoComplete="off" data-print-input="cliente" />
+            </label>
+            {custs.map((c) => (
+              <button key={c} type="button" onClick={() => setF((o) => ({ ...o, customerName: c }))} data-print-cust={c} className="w-full text-left px-3 py-2 rounded-xl bg-blue-50 border border-blue-200 text-sm font-black text-slate-800">
+                {c}
+              </button>
+            ))}
+            <label className="block space-y-1">
+              <span className="text-xs font-black text-slate-500">Codice o numero della braca (facoltativo)</span>
+              <input className={INPUT} value={f.matricola} onChange={set("matricola")} autoComplete="off" data-print-input="codice" />
+            </label>
+          </div>
+        ) : (
         <div className="p-4 space-y-3 overflow-y-auto">
           <label className="block space-y-1">
             <span className="text-xs font-black text-slate-500">Numero della gru (matricola)</span>
@@ -129,12 +148,13 @@ export const WearPrintHost = ({ machines = [], color = "blue" }) => {
             )
           )}
         </div>
+        )}
         <div className="p-4 border-t border-slate-200 space-y-2">
           <button type="button" disabled={!canPrint} onClick={() => go(true)} data-action="print-with-crane" className={`w-full h-12 rounded-xl bg-${color}-600 text-white font-black flex items-center justify-center gap-2 disabled:opacity-40`}>
             <Printer className="w-5 h-5" /> Stampa il verbale
           </button>
           <button type="button" onClick={() => go(false)} data-action="print-no-crane" className="w-full h-11 rounded-xl border border-slate-300 text-sm font-bold text-slate-600">
-            Stampa senza gru
+            {sling ? "Stampa senza cliente" : "Stampa senza gru"}
           </button>
         </div>
       </div>
