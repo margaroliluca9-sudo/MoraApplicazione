@@ -1,7 +1,6 @@
 import { parseTicketQuery, matchTicket, ticketLabel, ticketYear } from "../ticket";
 import React, { useState, useMemo } from "react";
 import { OfficeCharts } from "../components/OfficeCharts";
-import { OfficeDrive } from "../components/OfficeDrive";
 import { MonthSummaryCard } from "../components/MonthSummaryCard";
 import {
   Search,
@@ -25,7 +24,7 @@ import { buildLogsReportPdf, pdfFileName } from "../pdf";
 import { openPdf } from "../components/PdfHost";
 import { PrintLogButton } from "../components/PrintLogButton";
 
-const OfficeStats = ({
+export const OfficeView = ({
   logs,
   machines,
   customers,
@@ -775,54 +774,6 @@ const OfficeStats = ({
           </div>
         </div>
       )}
-    </div>
-  );
-};
-
-// UFFICIO: due schede in alto, «Statistiche» (calendario, report, riepilogo, grafici) e «Drive»
-// (ultime verifiche e funi/catene dai fogli nel Drive, vedi components/OfficeDrive.js). L'app si ricorda l'ultima.
-const TAB_KEY = "mora_office_tab";
-const savedTab = () => {
-  try {
-    // dalla notifica del riepilogo del mese (?focus=riepilogo) si parte sempre dalle Statistiche
-    if (/[?&]focus=/.test(window.location.search)) return "stats";
-    return localStorage.getItem(TAB_KEY) === "drive" ? "drive" : "stats";
-  } catch (e) {
-    return "stats";
-  }
-};
-export const OfficeView = (props) => {
-  const [tab, setTab] = useState(savedTab);
-  const color = props.layoutConfig?.themeColor || "blue";
-  const pick = (t) => {
-    setTab(t);
-    try {
-      localStorage.setItem(TAB_KEY, t);
-    } catch (e) {
-      // niente
-    }
-  };
-  return (
-    <div className="space-y-6">
-      <div className="flex bg-slate-200/70 p-1 rounded-xl w-full md:w-fit" role="tablist" data-section="office-tabs">
-        {[
-          ["stats", "Statistiche"],
-          ["drive", "Drive"],
-        ].map(([id, label]) => (
-          <button
-            key={id}
-            type="button"
-            role="tab"
-            aria-selected={tab === id}
-            onClick={() => pick(id)}
-            data-office-tab={id}
-            className={`flex-1 md:flex-none md:px-8 h-10 rounded-lg text-sm font-black ${tab === id ? `bg-white text-${color}-700 shadow-sm` : "text-slate-500"}`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-      {tab === "drive" ? <OfficeDrive customers={props.customers} machines={props.machines} color={color} /> : <OfficeStats {...props} />}
     </div>
   );
 };
