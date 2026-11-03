@@ -32,6 +32,7 @@ export const OfficeView = ({
   layoutConfig,
   technicians,
   onOpenPhotos,
+  isAdmin = false,
 }) => {
   const today = new Date();
   const [calMonth, setCalMonth] = useState(today.getMonth());
@@ -461,7 +462,7 @@ export const OfficeView = ({
       </div>
 
       {/* verifiche in scadenza, dai nomi dei fogli nel Drive (vedi DueChecksCard.js) */}
-      <DueChecksCard customers={customers} color={color} />
+      <DueChecksCard customers={customers} color={color} canEdit={isAdmin} />
 
       {/* riepilogo del mese appena finito, in PDF (vedi MonthSummaryCard.js) */}
       <MonthSummaryCard logs={logs} color={color} />

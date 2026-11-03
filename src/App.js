@@ -1327,6 +1327,7 @@ export default function App() {
                 layoutConfig={viewConfig}
                 technicians={fieldTechs}
                 onOpenPhotos={setGlobalPhotoView}
+                isAdmin={isAdminAuthenticated}
               />
             )}
             {activeTab === "database" && (

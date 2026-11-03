@@ -2,6 +2,7 @@
 // In cima le scadute (rosso), poi questo mese (giallo) e il mese prossimo (blu); più avanti e ferme si aprono a parte.
 // Se l'ultimo foglio è un'annuale e non si sa se il cliente è trimestrale, lo chiedo qui (una volta, salvato nel cliente).
 // Toccando «trimestrale» / «annuale» su una riga si cambia (per i clienti dove la regola sbaglia).
+// Rispondere e cambiare: solo l'admin (l'Ufficio lo aprono anche i tecnici, che vedono la lista e basta).
 import React, { useEffect, useMemo, useState } from "react";
 import { doc } from "firebase/firestore";
 import { CalendarClock, ChevronDown, Loader2, HelpCircle } from "lucide-react";
@@ -29,13 +30,13 @@ const Name = ({ r }) => (
   </p>
 );
 
-const Row = ({ r, chip, onEvery }) => (
+const Row = ({ r, chip, onEvery, canEdit }) => (
   <li className="flex items-center gap-3 py-2.5 border-t border-slate-100 first:border-t-0" data-due-row={r.group} data-due-name={r.name}>
     <div className="flex-1 min-w-0">
       <Name r={r} />
       <p className="text-xs text-slate-500 truncate" title={r.sheet}>
         ultima {r.lastLabel} ·{" "}
-        {r.matched ? (
+        {r.matched && canEdit ? (
           <button type="button" onClick={() => onEvery(r, r.every === 3 ? 12 : 3)} className="underline decoration-dotted underline-offset-2" title="Tocca per cambiare" data-due-every={r.every}>
             {r.every === 3 ? "trimestrale" : "annuale"}
           </button>
@@ -52,11 +53,13 @@ const Row = ({ r, chip, onEvery }) => (
   </li>
 );
 
-const AskRow = ({ r, onEvery }) => (
+const AskRow = ({ r, onEvery, canEdit }) => (
   <li className="py-2.5 border-t border-slate-200 first:border-t-0" data-due-row="ask" data-due-name={r.name}>
     <Name r={r} />
     <p className="text-xs text-slate-500">ultima {r.lastLabel}: le verifiche le fa ogni 3 mesi o solo una volta all'anno?</p>
-    {r.matched ? (
+    {!canEdit ? (
+      <p className="mt-1 text-xs text-slate-400" data-due-admin-only>Lo può dire solo l'admin.</p>
+    ) : r.matched ? (
       <div className="mt-2 flex gap-2">
         <button type="button" onClick={() => onEvery(r, 3)} className="flex-1 h-10 rounded-xl border border-slate-200 bg-white text-slate-800 text-sm font-bold" data-due-ask="3">
           Trimestrale
@@ -71,13 +74,13 @@ const AskRow = ({ r, onEvery }) => (
   </li>
 );
 
-export const DueChecksCard = ({ customers = [], color = "blue", now }) => {
+export const DueChecksCard = ({ customers = [], color = "blue", now, canEdit = false }) => {
   const [data, setData] = useState(null);
   const [open, setOpen] = useState({});
   const [every, setEvery] = useState({});
   const [err, setErr] = useState("");
   const onEvery = async (r, v) => {
-    if (!r.customerId) return;
+    if (!r.customerId || !canEdit) return;
     setErr("");
     setEvery((o) => ({ ...o, [r.customerId]: v }));
     try {
@@ -156,7 +159,7 @@ export const DueChecksCard = ({ customers = [], color = "blue", now }) => {
               <p className="text-xs text-slate-500 mb-1">L'ultimo foglio è un'annuale: dimmi se il cliente fa anche le trimestrali, così calcolo la prossima.</p>
               <ul>
                 {(open.ask || of("ask").length <= FIRST + 2 ? of("ask") : of("ask").slice(0, FIRST)).map((r) => (
-                  <AskRow key={r.key} r={r} onEvery={onEvery} />
+                  <AskRow key={r.key} r={r} onEvery={onEvery} canEdit={canEdit} />
                 ))}
               </ul>
               {!open.ask && of("ask").length > FIRST + 2 && (
@@ -178,7 +181,7 @@ export const DueChecksCard = ({ customers = [], color = "blue", now }) => {
                 </h4>
                 <ul>
                   {(all ? list : list.slice(0, FIRST)).map((r) => (
-                    <Row key={r.key} r={r} chip={g.chip} onEvery={onEvery} />
+                    <Row key={r.key} r={r} chip={g.chip} onEvery={onEvery} canEdit={canEdit} />
                   ))}
                 </ul>
                 {!all && (
@@ -208,7 +211,7 @@ export const DueChecksCard = ({ customers = [], color = "blue", now }) => {
                 {open[g.id] && (
                   <ul>
                     {list.map((r) => (
-                      <Row key={r.key} r={r} chip="bg-slate-50 text-slate-600 border-slate-200" onEvery={onEvery} />
+                      <Row key={r.key} r={r} chip="bg-slate-50 text-slate-600 border-slate-200" onEvery={onEvery} canEdit={canEdit} />
                     ))}
                   </ul>
                 )}
