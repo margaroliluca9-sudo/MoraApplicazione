@@ -134,6 +134,13 @@ body { padding-top: var(--mora-safe-top); }
 .animate-in.zoom-in-95 { animation-name: mora-zoom; }
 .animate-in.slide-in-from-bottom-4 { animation-name: mora-up; animation-duration: 0.4s; }
 .animate-in.slide-in-from-top-2 { animation-name: mora-down; }
+/* passaggio tra le schede (Home → Storico → …): la pagina nuova scivola dentro dal lato giusto */
+@keyframes mora-from-right { from { opacity: 0; transform: translateX(28px); } to { opacity: 1; transform: none; } }
+@keyframes mora-from-left { from { opacity: 0; transform: translateX(-28px); } to { opacity: 1; transform: none; } }
+.animate-in.mora-tab-right { animation-name: mora-from-right; animation-duration: 0.34s; }
+.animate-in.mora-tab-left { animation-name: mora-from-left; animation-duration: 0.34s; }
+/* mentre scivola la pagina non deve far comparire la barra orizzontale */
+.mora-app main { overflow-x: clip; }
 /* le finestre dal basso sul telefono salgono */
 @media (max-width: 767px) {
   .fixed.inset-0 > .animate-in.zoom-in-95 { animation-name: mora-up; }

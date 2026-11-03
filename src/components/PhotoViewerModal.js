@@ -8,52 +8,138 @@ import {
 } from "lucide-react";
 import { isPhotoRef, resolvePhotos } from "../logPhotos";
 
-// GALLERIA FOTO GLOBALE CON SCARICAMENTO
-// gesti: scorri a destra/sinistra = foto dopo/prima, doppio tocco o due dita = ingrandisci, tira giù = chiudi
+// GALLERIA FOTO A SCHERMO INTERO (come la galleria del telefono)
+//  - scorri a destra/sinistra: la foto segue il dito e arriva quella dopo/prima
+//  - due dita: ingrandisci proprio dove hai le dita · doppio tocco: ingrandisci lì (di nuovo: torna normale)
+//  - ingrandita: la sposti col dito · tira giù (non ingrandita): lo sfondo si schiarisce e si chiude
+//  - computer: frecce ← → della tastiera, Esc chiude, doppio clic ingrandisce
+const MAX = 4;
+const ZOOM = 2.5;
 const Viewer = ({ photos, onClose }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [z, setZ] = useState({ s: 1, x: 0, y: 0 });
+  const [drag, setDrag] = useState({ dx: 0, dy: 0, live: false });
+  const [still, setStill] = useState(false); // cambio foto senza movimento (dopo lo scorrimento)
   const g = useRef(null);
-  const lastTap = useRef(0);
+  const stage = useRef(null);
+  const lastTap = useRef({ t: 0, x: 0, y: 0 });
+  const busy = useRef(false);
   const n = photos ? photos.length : 0;
-  const go = (d) => {
-    setZ({ s: 1, x: 0, y: 0 });
-    setCurrentIndex((p) => (p + d + n) % n);
+
+  const box = () => {
+    const r = stage.current ? stage.current.getBoundingClientRect() : { left: 0, top: 0, width: window.innerWidth, height: window.innerHeight };
+    return { cx: r.left + r.width / 2, cy: r.top + r.height / 2, w: r.width, h: r.height };
   };
+  // ingrandita non deve uscire dallo schermo più del necessario
+  const clamp = (o) => {
+    if (o.s <= 1.02) return { s: 1, x: 0, y: 0 };
+    const b = box();
+    const mx = (b.w * (o.s - 1)) / 2;
+    const my = (b.h * (o.s - 1)) / 2;
+    return { s: o.s, x: Math.max(-mx, Math.min(mx, o.x)), y: Math.max(-my, Math.min(my, o.y)) };
+  };
+  const zoomAt = (px, py, s) => {
+    const b = box();
+    return clamp({ s, x: (px - b.cx) * (1 - s), y: (py - b.cy) * (1 - s) });
+  };
+
+  const go = (d) => {
+    if (n < 2 || busy.current) return;
+    busy.current = true;
+    const w = box().w;
+    setZ({ s: 1, x: 0, y: 0 });
+    setDrag({ dx: d > 0 ? -w : w, dy: 0, live: false });
+    setTimeout(() => {
+      setStill(true);
+      setCurrentIndex((p) => (p + d + n) % n);
+      setDrag({ dx: 0, dy: 0, live: false });
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => {
+          setStill(false);
+          busy.current = false;
+        })
+      );
+    }, 230);
+  };
+
+  useEffect(() => {
+    const k = (e) => {
+      if (e.key === "ArrowRight") go(1);
+      else if (e.key === "ArrowLeft") go(-1);
+      else if (e.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", k);
+    return () => window.removeEventListener("keydown", k);
+  });
+
+  const mid = (t) => ({ x: (t[0].clientX + t[1].clientX) / 2, y: (t[0].clientY + t[1].clientY) / 2 });
   const dist = (t) => Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
   const tStart = (e) => {
+    if (busy.current) return;
     const t = e.touches;
-    if (t.length === 2) g.current = { pinch: dist(t), s0: z.s };
-    else g.current = { x0: t[0].clientX, y0: t[0].clientY, zx: z.x, zy: z.y, dx: 0, dy: 0 };
+    if (t.length === 2) {
+      const b = box();
+      const m = mid(t);
+      // punto della foto sotto le dita: resta sotto le dita mentre ingrandisci
+      g.current = { pinch: dist(t), s0: z.s, px: (m.x - b.cx - z.x) / z.s, py: (m.y - b.cy - z.y) / z.s };
+      setDrag({ dx: 0, dy: 0, live: false });
+    } else g.current = { x0: t[0].clientX, y0: t[0].clientY, zx: z.x, zy: z.y, dx: 0, dy: 0, t0: Date.now(), axis: "" };
   };
   const tMove = (e) => {
     const c = g.current;
     if (!c) return;
     const t = e.touches;
     if (c.pinch && t.length === 2) {
-      setZ((o) => ({ ...o, s: Math.min(4, Math.max(1, (c.s0 * dist(t)) / c.pinch)) }));
+      const b = box();
+      const m = mid(t);
+      const s = Math.min(MAX, Math.max(0.8, (c.s0 * dist(t)) / c.pinch));
+      setZ({ s, x: m.x - b.cx - c.px * s, y: m.y - b.cy - c.py * s });
       return;
     }
     if (t.length !== 1 || c.pinch) return;
     c.dx = t[0].clientX - c.x0;
     c.dy = t[0].clientY - c.y0;
-    if (z.s > 1) setZ((o) => ({ ...o, x: c.zx + c.dx, y: c.zy + c.dy }));
-  };
-  const tEnd = () => {
-    const c = g.current;
-    g.current = null;
-    if (!c || c.pinch) {
-      if (z.s <= 1.05) setZ({ s: 1, x: 0, y: 0 });
+    if (z.s > 1) {
+      setZ((o) => ({ ...o, x: c.zx + c.dx, y: c.zy + c.dy }));
       return;
     }
-    if (z.s > 1) return;
-    if (Math.abs(c.dx) > 60 && Math.abs(c.dx) > Math.abs(c.dy) && n > 1) go(c.dx < 0 ? 1 : -1);
-    else if (c.dy > 110 && Math.abs(c.dy) > Math.abs(c.dx)) onClose();
-    else if (Math.abs(c.dx) < 8 && Math.abs(c.dy) < 8) {
-      const now = Date.now();
-      if (now - lastTap.current < 300) setZ((o) => (o.s > 1 ? { s: 1, x: 0, y: 0 } : { s: 2.5, x: 0, y: 0 }));
-      lastTap.current = now;
+    if (!c.axis && Math.hypot(c.dx, c.dy) > 8) c.axis = Math.abs(c.dx) > Math.abs(c.dy) ? "x" : "y";
+    if (c.axis === "x") setDrag({ dx: n > 1 ? c.dx : c.dx / 4, dy: 0, live: true });
+    else if (c.axis === "y") setDrag({ dx: 0, dy: Math.max(0, c.dy), live: true });
+  };
+  const tEnd = (e) => {
+    const c = g.current;
+    if (e && e.touches && e.touches.length) {
+      // tolto un dito su due: continuo a spostare con quello rimasto
+      if (c && c.pinch) g.current = { x0: e.touches[0].clientX, y0: e.touches[0].clientY, zx: z.x, zy: z.y, dx: 0, dy: 0, t0: Date.now(), axis: "", after: true };
+      return;
     }
+    g.current = null;
+    if (!c) return;
+    if (c.pinch || c.after) {
+      setZ((o) => clamp(o));
+      return;
+    }
+    // tocco (senza spostare): doppio tocco = ingrandisci lì, oppure torna normale
+    if (Math.hypot(c.dx, c.dy) < 10) {
+      setDrag({ dx: 0, dy: 0, live: false });
+      const now = Date.now();
+      const l = lastTap.current;
+      if (now - l.t < 300 && Math.hypot(c.x0 - l.x, c.y0 - l.y) < 40) {
+        setZ((o) => (o.s > 1 ? { s: 1, x: 0, y: 0 } : zoomAt(c.x0, c.y0, ZOOM)));
+        lastTap.current = { t: 0, x: 0, y: 0 };
+      } else lastTap.current = { t: now, x: c.x0, y: c.y0 };
+      return;
+    }
+    if (z.s > 1) {
+      setZ((o) => clamp(o));
+      return;
+    }
+    const w = box().w;
+    const fast = Date.now() - c.t0 < 250;
+    if (c.axis === "x" && n > 1 && (Math.abs(c.dx) > w * 0.25 || (fast && Math.abs(c.dx) > 40))) return go(c.dx < 0 ? 1 : -1);
+    if (c.axis === "y" && (c.dy > 120 || (fast && c.dy > 60))) return onClose();
+    setDrag({ dx: 0, dy: 0, live: false });
   };
 
   if (!photos || photos.length === 0) return null;
@@ -68,10 +154,19 @@ const Viewer = ({ photos, onClose }) => {
     document.body.removeChild(link);
   };
 
+  const moving = drag.live || !!g.current;
+  const ease = still || moving ? "none" : "transform .23s cubic-bezier(.2,.8,.2,1)";
+  const fade = Math.max(0.35, 1 - drag.dy / 420);
+  const slides = n > 1 ? [-1, 0, 1] : [0];
+
   return (
-    <div className="fixed inset-0 bg-black/95 z-[500] flex flex-col items-center justify-center p-4 backdrop-blur-md animate-in fade-in">
-      <div className="absolute top-4 right-4 flex gap-4 z-10 items-center">
-        <div className="bg-black/50 text-white px-4 py-2 rounded-full font-bold text-xs flex items-center shadow-lg">
+    <div
+      className="fixed inset-0 z-[500] flex flex-col items-center justify-center p-4 backdrop-blur-md animate-in fade-in"
+      style={{ backgroundColor: `rgba(0,0,0,${0.95 * fade})` }}
+      data-section="photo-viewer"
+    >
+      <div className="absolute top-4 right-4 flex gap-4 z-10 items-center" style={{ opacity: fade }}>
+        <div className="bg-black/50 text-white px-4 py-2 rounded-full font-bold text-xs flex items-center shadow-lg" data-photo-count>
           {currentIndex + 1} / {photos.length}
         </div>
         <button
@@ -90,27 +185,46 @@ const Viewer = ({ photos, onClose }) => {
         </button>
       </div>
 
-      <div className="relative w-full max-w-5xl flex items-center justify-center flex-1 min-h-0 overflow-hidden touch-none"
-        onTouchStart={tStart} onTouchMove={tMove} onTouchEnd={tEnd} onTouchCancel={tEnd}
-        onDoubleClick={() => setZ((o) => (o.s > 1 ? { s: 1, x: 0, y: 0 } : { s: 2.5, x: 0, y: 0 }))}
-        data-section="photo-stage">
-        <img
-          key={currentIndex}
-          src={photos[currentIndex]}
-          alt={`Foto ${currentIndex + 1}`}
-          draggable={false}
-          className="max-w-full max-h-full object-contain rounded-xl shadow-2xl animate-in zoom-in-95 duration-300 select-none"
-          style={{ transform: `translate(${z.x}px, ${z.y}px) scale(${z.s})`, transition: g.current ? "none" : "transform .2s" }}
-        />
+      <div
+        ref={stage}
+        className="relative w-full max-w-5xl flex-1 min-h-0 overflow-hidden touch-none select-none"
+        onTouchStart={tStart}
+        onTouchMove={tMove}
+        onTouchEnd={tEnd}
+        onTouchCancel={tEnd}
+        onDoubleClick={(e) => setZ((o) => (o.s > 1 ? { s: 1, x: 0, y: 0 } : zoomAt(e.clientX, e.clientY, ZOOM)))}
+        data-section="photo-stage"
+        data-zoom={z.s.toFixed(2)}
+      >
+        <div className="absolute inset-0" style={{ transform: `translate(${drag.dx}px, ${drag.dy}px) scale(${1 - drag.dy / 1600})`, transition: ease }} data-photo-track>
+          {slides.map((off) => {
+            const i = (currentIndex + off + n) % n;
+            const cur = off === 0;
+            return (
+              <div key={off === 0 ? `c${i}` : off} className="absolute inset-0 flex items-center justify-center" style={{ transform: `translateX(${off * 100}%)` }} aria-hidden={!cur}>
+                <img
+                  src={photos[i]}
+                  alt={`Foto ${i + 1}`}
+                  draggable={false}
+                  data-photo-current={cur ? "" : undefined}
+                  className="max-w-full max-h-full object-contain rounded-xl shadow-2xl select-none"
+                  style={cur ? { transform: `translate(${z.x}px, ${z.y}px) scale(${z.s})`, transition: g.current ? "none" : "transform .22s cubic-bezier(.2,.8,.2,1)" } : undefined}
+                />
+              </div>
+            );
+          })}
+        </div>
 
-        {photos.length > 1 && (
+        {photos.length > 1 && z.s <= 1 && (
           <>
             <button
               onClick={(e) => {
                 e.stopPropagation();
                 go(-1);
               }}
-              className="absolute left-2 md:left-8 p-3 md:p-4 bg-black/40 hover:bg-black/70 text-white rounded-full backdrop-blur-sm transition-all shadow-lg"
+              aria-label="Foto prima"
+              className="absolute left-2 md:left-8 top-1/2 -translate-y-1/2 p-3 md:p-4 bg-black/40 hover:bg-black/70 text-white rounded-full backdrop-blur-sm transition-all shadow-lg"
+              style={{ opacity: fade }}
             >
               <ArrowLeft className="w-6 h-6 md:w-8 md:h-8" />
             </button>
@@ -119,7 +233,9 @@ const Viewer = ({ photos, onClose }) => {
                 e.stopPropagation();
                 go(1);
               }}
-              className="absolute right-2 md:right-8 p-3 md:p-4 bg-black/40 hover:bg-black/70 text-white rounded-full backdrop-blur-sm transition-all shadow-lg"
+              aria-label="Foto dopo"
+              className="absolute right-2 md:right-8 top-1/2 -translate-y-1/2 p-3 md:p-4 bg-black/40 hover:bg-black/70 text-white rounded-full backdrop-blur-sm transition-all shadow-lg"
+              style={{ opacity: fade }}
             >
               <ArrowRight className="w-6 h-6 md:w-8 md:h-8" />
             </button>
@@ -128,12 +244,16 @@ const Viewer = ({ photos, onClose }) => {
       </div>
 
       {photos.length > 1 && (
-        <div className="mt-6 flex gap-3 overflow-x-auto pb-4 max-w-full px-4">
+        <div className="mt-6 flex gap-3 overflow-x-auto pb-4 max-w-full px-4" style={{ opacity: fade }}>
           {photos.map((p, i) => (
             <img
               key={i}
               src={p}
-              onClick={() => setCurrentIndex(i)}
+              onClick={() => {
+                setZ({ s: 1, x: 0, y: 0 });
+                setCurrentIndex(i);
+              }}
+              data-photo-thumb={i}
               className={`w-20 h-20 md:w-24 md:h-24 object-cover rounded-xl cursor-pointer transition-all shadow-md ${
                 currentIndex === i
                   ? "ring-4 ring-blue-500 scale-105 opacity-100"

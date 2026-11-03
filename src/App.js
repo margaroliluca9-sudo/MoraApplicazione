@@ -91,6 +91,9 @@ const watch = (ref, a, b, c) => {
 // chat: quanti messaggi recenti tengo (più quelli fissati)
 const CHAT_KEEP = 500;
 
+// ordine delle schede come nella barra (per il verso del passaggio morbido)
+const TAB_ORDER = ["dashboard", "history", "explore", "database", "map", "new", "area", "office", "admin"];
+
 export default function App() {
   // TEMA chiaro / scuro (scelto su ogni dispositivo)
   const [themeMode, setThemeMode] = useState(getThemeMode);
@@ -438,6 +441,14 @@ export default function App() {
 
   // DISCONNESSIONE FORZATA dall'amministratore (Admin > System)
   const logoutRef = useRef(null);
+  // passaggio morbido tra le schede: la nuova entra da destra se è più avanti nella barra, da sinistra se è prima
+  const tabMove = useRef({ tab: activeTab, cls: "" });
+  if (tabMove.current.tab !== activeTab) {
+    const a = TAB_ORDER.indexOf(tabMove.current.tab);
+    const b = TAB_ORDER.indexOf(activeTab);
+    tabMove.current = { tab: activeTab, cls: a < 0 || b < 0 || a === b ? "" : b > a ? "mora-tab-right" : "mora-tab-left" };
+  }
+  const tabSlide = tabMove.current.cls;
   useEffect(() => {
     if (!user) return;
     const sessionId =
@@ -1217,7 +1228,7 @@ export default function App() {
             />
           </div>
         ) : (
-          <div key={activeTab} className="animate-in fade-in duration-300">
+          <div key={activeTab} className={`animate-in fade-in duration-300 ${tabSlide}`} data-tab-slide={tabSlide || "none"}>
             {(activeTab === "dashboard" || activeTab === "area") && (
               <DashboardView
                 key={activeTab === "area" ? `area${areaPanel.n}` : "home"}
