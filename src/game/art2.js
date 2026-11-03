@@ -4,7 +4,7 @@
 //    stralli e la luce rossa in cima, cabina del gruista appesa al carrello. Sfondo: il molo col mare e la nave.
 //  - PERSONE: operai col casco e il gilet che camminano avanti e indietro, uno al telefono, uno che fuma.
 // Stesse coordinate «virtuali» del resto (larghezza 360). Il carrello e il gancio sono quelli di art.js (paintHoist).
-import { seeded, lin, rad, rr, bolt, TAU, FONT, shade, paintFloor } from "./art";
+import { seeded, lin, rad, rr, bolt, TAU, FONT, shade, paintFloor, paintItem } from "./art";
 
 // ---------------------------------------------------------------- GRU A BANDIERA
 export const paintJib = (c, { by, floorY, VW, look, name }) => {
@@ -613,4 +613,212 @@ const paintPerson = (c, p, y, t, front = 0) => {
 // y = dove poggiano i piedi; front = sulla passerella davanti (un po' più grandi)
 export const paintPeople = (c, list, y, t, front = 0) => {
   list.forEach((p) => paintPerson(c, p, y, t, front));
+};
+
+// ---------------------------------------------------------------- MULETTO
+// x = punta delle forche (dove sta il pezzo), y = pavimento, dir 1 = va verso destra (porta), -1 = torna indietro
+export const paintForklift = (c, { x, y, item, dir = 1, t = 0, moving = false }) => {
+  c.save();
+  // le forche sono sempre davanti, verso il magazzino (a destra): il corpo sta a sinistra della punta
+  const bx = x - 40; // retro del muletto
+  const wob = moving ? Math.sin(t * 30) * 0.4 : 0;
+  c.translate(0, wob);
+  // ombra
+  c.fillStyle = "rgba(2,6,23,.3)";
+  c.beginPath();
+  c.ellipse(bx + 20, y, 26, 3, 0, 0, TAU);
+  c.fill();
+  // contrappeso e carrozzeria gialla
+  c.fillStyle = lin(c, 0, y - 22, 0, y - 6, [
+    [0, "#fde047"],
+    [1, "#ca8a04"],
+  ]);
+  rr(c, bx, y - 22, 30, 16, 3);
+  c.fill();
+  c.fillStyle = "#111827";
+  c.fillRect(bx, y - 10, 30, 3);
+  // gabbia di protezione e guidatore
+  c.strokeStyle = "#1f2937";
+  c.lineWidth = 1.6;
+  c.beginPath();
+  c.moveTo(bx + 4, y - 22);
+  c.lineTo(bx + 6, y - 44);
+  c.lineTo(bx + 26, y - 44);
+  c.lineTo(bx + 28, y - 22);
+  c.stroke();
+  c.fillStyle = "#f97316";
+  rr(c, bx + 11, y - 34, 8, 11, 2);
+  c.fill();
+  c.fillStyle = "#e0ac83";
+  c.beginPath();
+  c.arc(bx + 15, y - 37, 3, 0, TAU);
+  c.fill();
+  c.fillStyle = "#facc15";
+  c.beginPath();
+  c.arc(bx + 15, y - 38, 3.4, Math.PI, 0);
+  c.fill();
+  // lampeggiante arancio sul tetto
+  if (moving && Math.sin(t * 12) > 0) {
+    c.fillStyle = "rgba(251,146,60,.9)";
+    c.beginPath();
+    c.arc(bx + 16, y - 46, 2.2, 0, TAU);
+    c.fill();
+  }
+  // montante e forche
+  c.fillStyle = "#334155";
+  c.fillRect(bx + 31, y - 48, 3, 46);
+  c.fillRect(bx + 35, y - 48, 2, 46);
+  c.fillStyle = "#1e293b";
+  c.fillRect(bx + 33, y - 5, 26, 2.5);
+  // ruote
+  [bx + 7, bx + 26].forEach((wx, i) => {
+    c.fillStyle = "#0f172a";
+    c.beginPath();
+    c.arc(wx, y - 4, i ? 4.5 : 4, 0, TAU);
+    c.fill();
+    c.fillStyle = "#94a3b8";
+    c.beginPath();
+    c.arc(wx, y - 4, 1.6, 0, TAU);
+    c.fill();
+  });
+  c.restore();
+  // il pezzo sulle forche
+  if (item) paintItem(c, item, x, y - 5 + wob);
+  void dir;
+};
+
+// ---------------------------------------------------------------- METEO (porto)
+export const paintWeather = (c, { L, R, by, fy, t, kind, wind = 0 }) => {
+  if (kind === "pioggia") {
+    const lean = Math.max(-0.6, Math.min(0.6, wind / 500));
+    c.save();
+    c.strokeStyle = "rgba(219,234,254,.8)";
+    c.lineWidth = 1.2;
+    const W = R - L;
+    for (let i = 0; i < 150; i++) {
+      const sp = 380 + (i % 7) * 40;
+      const x0 = L + ((i * 97.13) % W);
+      const y = by - 120 + ((t * sp + i * 53) % (fy - by + 140));
+      const x = x0 + (y - by) * lean * 0.3;
+      c.beginPath();
+      c.moveTo(x, y);
+      c.lineTo(x + lean * 8, y + 9);
+      c.stroke();
+    }
+    // schizzi a terra
+    c.fillStyle = "rgba(191,219,254,.5)";
+    for (let i = 0; i < 18; i++) {
+      const a = (t * 2 + i * 0.37) % 1;
+      const x = L + ((i * 61.7) % (R - L));
+      c.beginPath();
+      c.ellipse(x, fy + 1, 1 + a * 4, 0.6 + a, 0, 0, TAU);
+      c.globalAlpha = 1 - a;
+      c.fill();
+    }
+    c.restore();
+  } else if (kind === "nebbia") {
+    c.save();
+    for (let i = 0; i < 5; i++) {
+      const y = by + 30 + i * ((fy - by) / 5);
+      const x = L + (((t * (8 + i * 3) + i * 90) % (R - L + 200)) - 100);
+      const g = c.createRadialGradient(x, y, 10, x, y, 170);
+      g.addColorStop(0, "rgba(226,232,240,.42)");
+      g.addColorStop(1, "rgba(226,232,240,0)");
+      c.fillStyle = g;
+      c.fillRect(x - 170, y - 170, 340, 340);
+    }
+    c.fillStyle = "rgba(226,232,240,.16)";
+    c.fillRect(L, by - 120, R - L, fy - by + 160);
+    c.restore();
+  }
+};
+
+// ---------------------------------------------------------------- GIORNO, SERA, NOTTE (ora vera)
+export const dayPhase = (d = new Date()) => {
+  const h = d.getHours() + d.getMinutes() / 60;
+  if (h >= 7 && h < 17) return "giorno";
+  if ((h >= 17 && h < 20) || (h >= 6 && h < 7)) return "sera";
+  return "notte";
+};
+// si dipinge sopra lo sfondo fermo (una volta sola): luce più calda la sera, buio e lampade accese di notte
+export const paintTimeOfDay = (c, { L, R, fy, by, vh, phase, port }) => {
+  if (phase === "giorno") return;
+  const top = -60;
+  const night = phase === "notte";
+  c.save();
+  c.fillStyle = night ? "rgba(2,6,23,.5)" : "rgba(124,45,18,.16)";
+  c.fillRect(L, top, R - L, vh + 100);
+  if (!night) {
+    c.fillStyle = "rgba(30,27,75,.12)";
+    c.fillRect(L, top, R - L, vh + 100);
+  }
+  if (port && night) {
+    // stelle e luna sopra il mare
+    const r = seeded(91);
+    const sea = fy - 74;
+    c.fillStyle = "rgba(255,255,255,.85)";
+    for (let i = 0; i < 70; i++) {
+      c.globalAlpha = 0.4 + r() * 0.6;
+      c.fillRect(L + r() * (R - L), top + r() * (sea - top - 40), 1, 1);
+    }
+    c.globalAlpha = 1;
+    c.fillStyle = rad(c, 70, top + 110, 0, 40, [
+      [0, "rgba(254,249,195,.5)"],
+      [1, "rgba(254,249,195,0)"],
+    ]);
+    c.fillRect(30, top + 70, 80, 80);
+    c.fillStyle = "#fef9c3";
+    c.beginPath();
+    c.arc(70, top + 110, 11, 0, TAU);
+    c.fill();
+    c.fillStyle = "rgba(2,6,23,.55)";
+    c.beginPath();
+    c.arc(75, top + 106, 10, 0, TAU);
+    c.fill();
+    // luci della nave e dei lampioni del molo
+    c.globalCompositeOperation = "lighter";
+    for (let x = 160; x < R; x += 17) {
+      c.fillStyle = "rgba(253,224,71,.8)";
+      c.fillRect(x, sea + 14, 1.5, 1.5);
+    }
+    for (let x = Math.floor(L / 120) * 120 + 60; x < R; x += 120) {
+      c.fillStyle = lin(c, 0, by - 40, 0, fy, [
+        [0, "rgba(255,237,180,.28)"],
+        [1, "rgba(255,237,180,0)"],
+      ]);
+      c.beginPath();
+      c.moveTo(x - 4, by - 40);
+      c.lineTo(x + 4, by - 40);
+      c.lineTo(x + 60, fy);
+      c.lineTo(x - 60, fy);
+      c.closePath();
+      c.fill();
+    }
+  } else {
+    // capannone: le lampade accese (più forti col buio)
+    c.globalCompositeOperation = "lighter";
+    const k = night ? 1 : 0.5;
+    for (let x = Math.floor(L / 120) * 120 + 60; x < R; x += 120) {
+      c.fillStyle = lin(c, 0, by - 52, 0, fy, [
+        [0, `rgba(255,236,179,${0.38 * k})`],
+        [0.6, `rgba(255,236,179,${0.12 * k})`],
+        [1, "rgba(255,236,179,0)"],
+      ]);
+      c.beginPath();
+      c.moveTo(x - 9, by - 52);
+      c.lineTo(x + 9, by - 52);
+      c.lineTo(x + 76, fy);
+      c.lineTo(x - 76, fy);
+      c.closePath();
+      c.fill();
+      c.fillStyle = rad(c, x, by - 51, 0, 26, [
+        [0, `rgba(255,250,220,${0.9 * k})`],
+        [1, "rgba(255,250,220,0)"],
+      ]);
+      c.beginPath();
+      c.arc(x, by - 51, 26, 0, TAU);
+      c.fill();
+    }
+  }
+  c.restore();
 };

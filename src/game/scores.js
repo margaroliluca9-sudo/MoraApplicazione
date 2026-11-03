@@ -2,6 +2,8 @@
 //   best / stage      record di punti e livello più alto (di sempre)
 //   week / weekBest   record della settimana (week = «2026-W45»: lunedì → domenica)
 //   games             partite finite
+//   day / dayBest     sfida del giorno: giorno («2026-11-03») e record di quel giorno
+//   medals            medaglie vinte («s2:velluto,porto»: la stagione davanti)
 //   save / saveAt     la partita lasciata a metà (JSON: livello, punti, vite…), così riprendi anche da un altro telefono
 //   season           stagione della classifica: quando la si azzera si passa alla stagione dopo e tutto quello
 //                    della stagione prima non conta più (record, livello, partita salvata). Stagione 2: dal 3/11/2026.
@@ -28,18 +30,29 @@ export const weekKey = (d = new Date()) => {
   return `${y}-W${String(w).padStart(2, "0")}`;
 };
 
+// giorno della sfida (ora di qui): «2026-11-03»
+export const dayKey = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+export const medalsOf = (r) => {
+  const m = String((r && r.medals) || "");
+  return m.startsWith(`s${SEASON}:`) ? m.slice(String(SEASON).length + 2).split(",").filter(Boolean) : [];
+};
 // tutti i tecnici in classifica (righe con almeno un punto)
 export const allScores = async () => {
   const s = await getDocs(query(ref(), limit(60)));
   return s.docs
     .map((d) => ({ id: d.id, ...d.data() }))
-    .filter((r) => Number(r.season) === SEASON && r.name && (Number(r.best) > 0 || Number(r.stage) > 1));
+    .filter((r) => Number(r.season) === SEASON && r.name && (Number(r.best) > 0 || Number(r.stage) > 1 || Number(r.dayBest) > 0));
 };
-// classifica di sempre (per punti, poi livello) o della settimana
+// classifica di sempre (per punti, poi livello), della settimana o della sfida di oggi («day»)
 export const rank = (rows = [], mode = "all", now = new Date()) => {
   const wk = weekKey(now);
+  const dk = dayKey(now);
   return rows
-    .map((r) => ({ ...r, pts: mode === "week" ? (r.week === wk ? Number(r.weekBest) || 0 : 0) : Number(r.best) || 0 }))
+    .map((r) => ({
+      ...r,
+      pts: mode === "day" ? (r.day === dk ? Number(r.dayBest) || 0 : 0) : mode === "week" ? (r.week === wk ? Number(r.weekBest) || 0 : 0) : Number(r.best) || 0,
+      nMedals: medalsOf(r).length,
+    }))
     .filter((r) => r.pts > 0)
     .sort((a, b) => b.pts - a.pts || (Number(b.stage) || 0) - (Number(a.stage) || 0) || String(a.name).localeCompare(String(b.name)));
 };
@@ -62,7 +75,7 @@ export const myData = async (me) => {
     save = null;
   }
   if (save && Number(save.season) !== SEASON) save = null;
-  return { stage: Number(d.stage) || 0, best: Number(d.best) || 0, save, saveAt: save ? Number(raw.saveAt) || 0 : 0 };
+  return { stage: Number(d.stage) || 0, best: Number(d.best) || 0, save, saveAt: save ? Number(raw.saveAt) || 0 : 0, medals: medalsOf(raw) };
 };
 export const myStage = async (me) => ((await myData(me)) || {}).stage || 0;
 
@@ -95,6 +108,43 @@ export const saveScore = async (me, score, look = "", stage = 0, ended = true) =
     },
     { merge: true }
   );
+  return true;
+};
+
+// sfida del giorno: solo il record di oggi (la classifica normale non cambia)
+export const saveDaily = async (me, score, look = "") => {
+  const k = key(me);
+  if (!k || !(score > 0)) return false;
+  const d = myDoc(k);
+  const snap = await getDoc(d);
+  const old = snap.exists() ? cur(snap.data()) : {};
+  const dk = dayKey();
+  const oldDay = old.day === dk ? Number(old.dayBest) || 0 : 0;
+  if (score <= oldDay) return false;
+  await setDoc(
+    d,
+    {
+      name: String(me).trim(),
+      owner: k,
+      best: Number(old.best) || 0,
+      stage: Number(old.stage) || 0,
+      week: old.week || "",
+      weekBest: Number(old.weekBest) || 0,
+      games: Number(old.games) || 0,
+      look: look || old.look || "",
+      day: dk,
+      dayBest: score,
+      season: SEASON,
+    },
+    { merge: true }
+  );
+  return true;
+};
+// medaglie vinte (tutte, non solo le nuove)
+export const saveMedals = async (me, list) => {
+  const k = key(me);
+  if (!k) return false;
+  await setDoc(myDoc(k), { name: String(me).trim(), owner: k, medals: `s${SEASON}:${[...new Set(list)].join(",")}` }, { merge: true });
   return true;
 };
 

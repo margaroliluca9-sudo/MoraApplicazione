@@ -8,9 +8,9 @@
 // altro telefono. CLASSIFICA: della settimana e di sempre, con il podio; i punti contano anche se esci a metà.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { X, Trophy, RotateCcw, Heart, Volume2, VolumeX, Medal, Pause, Play, Lock, Paintbrush, ChevronDown, Crown } from "lucide-react";
-import { CraneEngine, stageNews, TRUCKS_PER_STAGE, stageCrane, CRANE_NAMES } from "../game/engine";
+import { CraneEngine, stageNews, TRUCKS_PER_STAGE, stageCrane, CRANE_NAMES, MEDALS, DAILY_SECONDS } from "../game/engine";
 import { play, soundOn, setSoundOn } from "../game/sound";
-import { allScores, rank, saveScore, myData, saveGame, weekKey } from "../game/scores";
+import { allScores, rank, saveScore, myData, saveGame, weekKey, saveDaily, saveMedals, dayKey } from "../game/scores";
 import { LOOKS, lookById, unlocked, readLook, saveLook, cleanName } from "../game/looks";
 import { RowsSkeleton } from "./Skeleton";
 import { key } from "../chat";
@@ -29,6 +29,23 @@ const writeSave = (snap) => {
   try {
     if (snap) localStorage.setItem(SAVE, JSON.stringify(snap));
     else localStorage.removeItem(SAVE);
+  } catch (e) {
+    // niente
+  }
+};
+// medaglie vinte (su questo telefono; online in game_scores → medals)
+const MEDALS_KEY = "mora_crane_medals_s2";
+const readMedals = () => {
+  try {
+    const j = JSON.parse(localStorage.getItem(MEDALS_KEY) || "[]");
+    return Array.isArray(j) ? j : [];
+  } catch (e) {
+    return [];
+  }
+};
+const writeMedals = (l) => {
+  try {
+    localStorage.setItem(MEDALS_KEY, JSON.stringify(l));
   } catch (e) {
     // niente
   }
@@ -99,7 +116,8 @@ const Leaderboard = ({ rows, me, loading, mode, setMode, compact = false }) => {
     <div className="space-y-3" data-game-board data-board-mode={mode}>
       <div className="flex bg-slate-100 p-1 rounded-full" role="tablist">
         {[
-          ["week", "Questa settimana"],
+          ["day", "Sfida di oggi"],
+          ["week", "Settimana"],
           ["all", "Di sempre"],
         ].map(([id, label]) => (
           <button
@@ -118,7 +136,7 @@ const Leaderboard = ({ rows, me, loading, mode, setMode, compact = false }) => {
       {loading ? (
         <RowsSkeleton count={3} />
       ) : !list.length ? (
-        <p className="text-sm text-slate-400 py-3">{mode === "week" ? "Questa settimana ancora nessuno: fatti avanti tu!" : "Ancora nessuno in classifica: comincia tu!"}</p>
+        <p className="text-sm text-slate-400 py-3">{mode === "day" ? "Oggi nessuno ha ancora fatto la sfida: tocca a te!" : mode === "week" ? "Questa settimana ancora nessuno: fatti avanti tu!" : "Ancora nessuno in classifica: comincia tu!"}</p>
       ) : (
         <>
           <div className="flex items-end justify-center gap-2 pt-2" data-board-podium>
@@ -133,6 +151,7 @@ const Leaderboard = ({ rows, me, loading, mode, setMode, compact = false }) => {
                   <Face r={r} size={place === 1 ? "w-14 h-14 text-lg" : "w-11 h-11 text-sm"} />
                   <p className={`mt-1 text-xs font-black truncate max-w-full ${isMe(r, me) ? "text-amber-700" : "text-slate-700"}`}>{r.name}</p>
                   <p className="text-sm font-black text-slate-900 tabular-nums leading-none">{r.pts}</p>
+                  {r.nMedals > 0 && <p className="text-[10px] font-bold text-amber-600">🏅 {r.nMedals}</p>}
                   <p className="text-[10px] font-bold text-slate-400">liv. {Number(r.stage) || 1}</p>
                   <div className={`mt-1 w-full ${h} rounded-t-xl bg-gradient-to-b ${bar} flex items-start justify-center pt-1 text-white font-black text-lg shadow-inner`}>{place}</div>
                 </div>
@@ -146,6 +165,7 @@ const Leaderboard = ({ rows, me, loading, mode, setMode, compact = false }) => {
                   <span className="w-6 text-center font-black text-slate-400 tabular-nums">{i + 4}</span>
                   <Face r={r} size="w-7 h-7 text-[10px]" />
                   <span className="flex-1 font-bold text-slate-700 truncate">{r.name}</span>
+                  {r.nMedals > 0 && <span className="text-[11px] font-bold text-amber-600" title="Medaglie">🏅{r.nMedals}</span>}
                   <span className="text-[11px] font-bold text-slate-400">liv. {Number(r.stage) || 1}</span>
                   <span className="w-12 text-right font-black text-slate-800 tabular-nums">{r.pts}</span>
                 </li>
@@ -154,7 +174,13 @@ const Leaderboard = ({ rows, me, loading, mode, setMode, compact = false }) => {
           )}
           {me && (
             <p className="text-xs font-bold text-slate-500" data-board-me>
-              {pos >= 0 ? `Sei ${pos + 1}° su ${list.length}${mode === "week" ? " questa settimana" : ""}` : mode === "week" ? "Questa settimana non hai ancora giocato" : "Non sei ancora in classifica"}
+              {pos >= 0
+                ? `Sei ${pos + 1}° su ${list.length}${mode === "week" ? " questa settimana" : mode === "day" ? " nella sfida di oggi" : ""}`
+                : mode === "day"
+                ? "Oggi non hai ancora fatto la sfida"
+                : mode === "week"
+                ? "Questa settimana non hai ancora giocato"
+                : "Non sei ancora in classifica"}
             </p>
           )}
         </>
@@ -182,6 +208,12 @@ export const CraneGame = ({ onClose, me = "" }) => {
   const [saved, setSaved] = useState(() => mineSave(readSave(), me)); // partita lasciata a metà
   const [view, setView] = useState("play"); // schermata iniziale: «play» | «board»
   const [boardMode, setBoardMode] = useState("week");
+  const [mode, setMode] = useState("normal"); // normal | daily (sfida del giorno)
+  const [timeLeft, setTimeLeft] = useState(0);
+  const [medals, setMedals] = useState(readMedals);
+  const [toast, setToast] = useState(null); // medaglia appena vinta
+  const [showMedals, setShowMedals] = useState(false);
+  const fromMode = useRef("normal");
   const [howTo, setHowTo] = useState(() => readRec() === 0);
   const [board, setBoard] = useState(null);
   const [boardLoading, setBoardLoading] = useState(true);
@@ -218,7 +250,7 @@ export const CraneGame = ({ onClose, me = "" }) => {
   const saveProgress = useCallback(
     (online = true) => {
       const e = eng.current;
-      if (!e || e.over || !live.current) return;
+      if (!e || e.over || !live.current || e.mode === "daily") return; // la sfida del giorno non si salva
       const snap = { ...e.snapshot(), me: key(me), at: Date.now() };
       if (snap.score <= 0 && snap.stage <= 1 && snap.level <= 0) return;
       writeSave(snap);
@@ -255,7 +287,12 @@ export const CraneGame = ({ onClose, me = "" }) => {
     };
   }, []);
   const close = () => {
-    if (phaseRef.current === "play" || phaseRef.current === "pause") saveProgress();
+    if (phaseRef.current === "play" || phaseRef.current === "pause") {
+      saveProgress();
+      // sfida del giorno lasciata a metà: i punti fatti contano lo stesso
+      const e = eng.current;
+      if (e && e.mode === "daily" && me && e.score > 0 && !e.over) saveDaily(me, e.score, readLook().id).catch(() => false);
+    }
     onClose();
   };
 
@@ -359,15 +396,17 @@ export const CraneGame = ({ onClose, me = "" }) => {
         }
         if (ev.type === "over") {
           live.current = false;
-          setResult({ score: ev.score, stats: ev.stats, level: ev.level, stage: ev.stage });
+          setResult({ score: ev.score, stats: ev.stats, level: ev.level, stage: ev.stage, daily: e.mode === "daily" });
           setPhase("end");
         }
+        if (ev.type === "medal") medalRef.current(ev.id);
       },
     });
     const lk = readLook();
     e.setLook(lk.id, lk.name);
     if (fromStage.current > 1) e.startAt(fromStage.current);
     if (fromSnap.current) e.restore(fromSnap.current);
+    if (fromMode.current === "daily") e.startDaily();
     eng.current = e;
     if (window.__moraTest) window.__crane = e; // solo per le prove automatiche
     let raf = 0;
@@ -421,6 +460,43 @@ export const CraneGame = ({ onClose, me = "" }) => {
     };
   }, [round]);
 
+  // sfida del giorno: il tempo in alto
+  useEffect(() => {
+    if (mode !== "daily" || phase !== "play") return undefined;
+    const id = setInterval(() => eng.current && setTimeLeft(Math.ceil(eng.current.timeLeft)), 250);
+    return () => clearInterval(id);
+  }, [mode, phase]);
+  // MEDAGLIE: la prima volta che la vinci compare il cartello e si salva (telefono + online)
+  const medalRef = useRef(() => {});
+  medalRef.current = (id) => {
+    const cur = readMedals();
+    if (cur.includes(id)) return;
+    const next = [...cur, id];
+    writeMedals(next);
+    setMedals(next);
+    setToast({ id, at: Date.now() });
+    play("perfect");
+    if (me) saveMedals(me, next).catch(() => false);
+  };
+  useEffect(() => {
+    if (!toast) return undefined;
+    const t = setTimeout(() => setToast(null), 3200);
+    return () => clearTimeout(t);
+  }, [toast]);
+  // medaglie salvate online (altro telefono)
+  useEffect(() => {
+    if (!me) return;
+    myData(me)
+      .then((d) => {
+        if (d && d.medals && d.medals.length) {
+          const all = [...new Set([...readMedals(), ...d.medals])];
+          writeMedals(all);
+          setMedals(all);
+        }
+      })
+      .catch(() => {});
+  }, [me]);
+
   // cartello «Livello N» per qualche secondo
   useEffect(() => {
     if (!banner) return undefined;
@@ -433,6 +509,25 @@ export const CraneGame = ({ onClose, me = "" }) => {
   useEffect(() => {
     if (phase !== "end" || !result || endSaved.current === result) return;
     endSaved.current = result; // una volta sola per partita
+    if (result.daily) {
+      // sfida del giorno: solo nella classifica di oggi
+      if (me && result.score > 0) {
+        const k = key(me);
+        setBoard((b) => {
+          const list = [...(b || [])];
+          const i = list.findIndex((r) => key(r.name) === k);
+          const old = i >= 0 ? list[i] : { id: k, name: String(me).trim(), owner: k, season: 2 };
+          const dk = dayKey();
+          const row = { ...old, day: dk, dayBest: Math.max(old.day === dk ? Number(old.dayBest) || 0 : 0, result.score) };
+          if (i >= 0) list[i] = row;
+          else list.push(row);
+          return list;
+        });
+        saveDaily(me, result.score, readLook().id).catch(() => false);
+      }
+      setBoardMode("day");
+      return;
+    }
     if ((result.stage || 1) > readStage()) {
       saveStage(result.stage || 1);
       setBestStage(result.stage || 1);
@@ -577,7 +672,7 @@ export const CraneGame = ({ onClose, me = "" }) => {
   // fine partita: i punti salgono da 0 al risultato
   const [shown, setShown] = useState(0);
   const recordBefore = useRef(0);
-  const newRecord = !!result && result.score > 0 && result.score > recordBefore.current;
+  const newRecord = !!result && !result.daily && result.score > 0 && result.score > recordBefore.current;
   useEffect(() => {
     if (phase !== "end" || !result) return undefined;
     let raf = 0;
@@ -592,13 +687,16 @@ export const CraneGame = ({ onClose, me = "" }) => {
     return () => cancelAnimationFrame(raf);
   }, [phase, result, newRecord]);
 
-  const start = (from = 1, snap = null) => {
-    const st = Math.max(1, Number((snap && snap.stage) || from) || 1);
+  const start = (from = 1, snap = null, m = "normal") => {
+    const st = m === "daily" ? 1 : Math.max(1, Number((snap && snap.stage) || from) || 1);
+    fromMode.current = m;
+    setMode(m);
+    setTimeLeft(m === "daily" ? DAILY_SECONDS : 0);
     fromStage.current = st;
     fromSnap.current = snap;
     live.current = true;
     recordBefore.current = Math.max(readRec(), best);
-    if (!snap) clearSave(); // partita nuova: quella vecchia non serve più
+    if (!snap && m !== "daily") clearSave(); // partita nuova: quella vecchia non serve più (la sfida non la tocca)
     // iPhone: se il campo del nome era ancora attivo, tenendo premuto comparivano «Copia / Incolla»
     try {
       if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
@@ -616,7 +714,7 @@ export const CraneGame = ({ onClose, me = "" }) => {
     setTip(true);
     setRound((r) => r + 1);
     setPhase("play");
-    setBanner({ stage: st, news: stageNews(st), life: false, id: Date.now() });
+    setBanner({ stage: st, news: m === "daily" ? "Sfida del giorno: 3 minuti, stessi camion per tutti!" : stageNews(st), life: false, id: Date.now() });
     play("start");
   };
   const pause = () => {
@@ -659,6 +757,14 @@ export const CraneGame = ({ onClose, me = "" }) => {
               <Heart key={i} className={`${lives > 3 ? "w-4 h-4" : "w-5 h-5"} ${i < lives ? "text-red-500 fill-red-500" : "text-white/30"}`} />
             ))}
           </div>
+          {mode === "daily" && phase !== "intro" && (
+            <div className={`px-3 h-12 rounded-2xl shadow flex flex-col justify-center ${timeLeft <= 20 ? "bg-red-600 text-white" : "bg-sky-600 text-white"}`} data-game-timer>
+              <span className="text-[10px] font-bold text-white/70 leading-none">TEMPO</span>
+              <span className="text-xl font-black leading-tight tabular-nums">
+                {Math.floor(timeLeft / 60)}:{String(timeLeft % 60).padStart(2, "0")}
+              </span>
+            </div>
+          )}
           <div className="px-3 h-12 rounded-2xl bg-slate-900/80 text-white shadow flex flex-col justify-center" data-game-stage>
             <span className="text-[10px] font-bold text-white/60 leading-none">LIVELLO</span>
             <span className="text-xl font-black leading-tight tabular-nums">{stage}</span>
@@ -689,6 +795,19 @@ export const CraneGame = ({ onClose, me = "" }) => {
             <br />
             Tieni premuto A per calare il gancio
           </span>
+        </div>
+      )}
+
+      {/* medaglia appena vinta */}
+      {toast && (
+        <div key={toast.at} className="absolute inset-x-0 flex justify-center pointer-events-none animate-in zoom-in-95 z-20" style={{ top: "calc(max(10px, env(safe-area-inset-top)) + 64px)" }} data-game-medal-toast={toast.id}>
+          <div className="px-4 py-2 rounded-2xl bg-white shadow-2xl border-2 border-amber-300 flex items-center gap-2">
+            <span className="text-2xl">{(MEDALS.find((m) => m.id === toast.id) || {}).icon}</span>
+            <span>
+              <span className="block text-[10px] font-black tracking-widest text-amber-600">NUOVA MEDAGLIA</span>
+              <span className="block text-sm font-black text-slate-800">{(MEDALS.find((m) => m.id === toast.id) || {}).label}</span>
+            </span>
+          </div>
         </div>
       )}
 
@@ -857,6 +976,15 @@ export const CraneGame = ({ onClose, me = "" }) => {
                       Gioca
                     </button>
                   )}
+                  <button
+                    type="button"
+                    onClick={() => start(1, null, "daily")}
+                    data-action="game-daily"
+                    className="w-full rounded-2xl bg-sky-600 text-white px-4 py-2.5 shadow-[0_5px_0_#075985] active:translate-y-[3px] active:shadow-none"
+                  >
+                    <span className="block text-base font-black leading-tight">📅 Sfida del giorno</span>
+                    <span className="block text-xs font-bold text-white/85">3 minuti · stessi camion per tutti · classifica di oggi</span>
+                  </button>
                   <button type="button" onClick={() => setView("board")} className="w-full flex items-center justify-center gap-2 text-sm font-bold text-slate-600" data-action="game-board">
                     <Medal className="w-4 h-4 text-amber-500" /> {myLine || "Guarda la classifica"}
                   </button>
@@ -905,6 +1033,28 @@ export const CraneGame = ({ onClose, me = "" }) => {
                     </div>
                   )}
                 </div>
+                  <div className="rounded-2xl border border-slate-200 p-3 text-left" data-game-medals>
+                    <button type="button" onClick={() => setShowMedals(!showMedals)} className="w-full flex items-center gap-2" data-action="game-medals">
+                      <span className="flex-1 text-sm font-black text-slate-700">
+                        🏅 Le tue medaglie · {medals.length}/{MEDALS.length}
+                      </span>
+                      <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${showMedals ? "rotate-180" : ""}`} />
+                    </button>
+                    {showMedals && (
+                      <div className="mt-2 grid grid-cols-2 gap-2">
+                        {MEDALS.map((m) => {
+                          const on = medals.includes(m.id);
+                          return (
+                            <div key={m.id} className={`rounded-xl p-2 border ${on ? "border-amber-300 bg-amber-50" : "border-slate-200 bg-slate-50 opacity-60"}`} data-medal={m.id} data-medal-on={on ? "1" : "0"}>
+                              <p className={`text-xl leading-none ${on ? "" : "grayscale"}`}>{on ? m.icon : "🔒"}</p>
+                              <p className="text-xs font-black text-slate-700 mt-1">{m.label}</p>
+                              <p className="text-[11px] text-slate-500 leading-snug">{m.text}</p>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
                   <div className="rounded-2xl border border-slate-200 p-3 text-left">
                     <button type="button" onClick={() => setHowTo(!howTo)} className="w-full flex items-center gap-2" data-action="game-howto">
                       <span className="flex-1 text-sm font-black text-slate-700">Come si gioca</span>
@@ -937,7 +1087,7 @@ export const CraneGame = ({ onClose, me = "" }) => {
           <div className="bg-white rounded-3xl shadow-2xl max-w-sm w-full overflow-hidden my-auto animate-in zoom-in-95">
             <div className={`px-5 pt-5 pb-4 text-center ${newRecord ? "bg-gradient-to-br from-amber-300 via-amber-400 to-orange-500" : "bg-gradient-to-br from-slate-700 to-slate-900 text-white"}`}>
               <Trophy className={`w-12 h-12 mx-auto ${newRecord ? "text-white drop-shadow" : "text-amber-400"}`} />
-              <p className="text-xs font-black tracking-[0.25em] opacity-70 mt-1">PARTITA FINITA</p>
+              <p className="text-xs font-black tracking-[0.25em] opacity-70 mt-1">{result.daily ? "SFIDA DEL GIORNO" : "PARTITA FINITA"}</p>
               <h2 className="text-5xl font-black tabular-nums leading-none mt-1" data-game-end-score>
                 {shown}
               </h2>
@@ -967,7 +1117,12 @@ export const CraneGame = ({ onClose, me = "" }) => {
                 </p>
               )}
               <Leaderboard rows={board} me={me} loading={boardLoading} mode={boardMode} setMode={setBoardMode} compact />
-              {Math.max(bestStage, result.stage || 1) > 1 && (
+              {result.daily && (
+                <button type="button" onClick={() => start(1, null, "daily")} data-action="game-daily-again" className="w-full h-12 rounded-full bg-sky-600 text-white font-black shadow-[0_5px_0_#075985] active:translate-y-[3px] active:shadow-none">
+                  📅 Riprova la sfida
+                </button>
+              )}
+              {!result.daily && Math.max(bestStage, result.stage || 1) > 1 && (
                 <button type="button" onClick={() => start(Math.max(bestStage, result.stage || 1))} data-action="game-continue" className="w-full h-12 rounded-full bg-amber-500 text-white font-black shadow-[0_5px_0_#b45309] active:translate-y-[3px] active:shadow-none">
                   Continua dal livello {Math.max(bestStage, result.stage || 1)}
                 </button>
