@@ -90,9 +90,57 @@ const useCopy = () => {
   return [copied, copy];
 };
 
+// disegnini per riconoscere la fune a occhio
+const Section = ({ n }) => {
+  const outer = n === "tanti" ? 14 : Number(n);
+  const R = 15;
+  const r = n === "tanti" ? 3.6 : n === "8" ? 5 : 6.2;
+  return (
+    <svg viewBox="0 0 44 44" className="w-11 h-11" aria-hidden="true">
+      <circle cx="22" cy="22" r="20" fill="none" stroke="currentColor" strokeOpacity=".25" />
+      {n === "tanti" && [0, 1, 2, 3, 4, 5].map((i) => <circle key={"i" + i} cx={22 + 7 * Math.cos((i * Math.PI) / 3)} cy={22 + 7 * Math.sin((i * Math.PI) / 3)} r="3" fill="currentColor" opacity=".45" />)}
+      {Array.from({ length: outer }, (_, i) => (
+        <circle key={i} cx={22 + (n === "tanti" ? 16 : R) * Math.cos((i * 2 * Math.PI) / outer)} cy={22 + (n === "tanti" ? 16 : R) * Math.sin((i * 2 * Math.PI) / outer)} r={r} fill="currentColor" opacity=".8" />
+      ))}
+      {n !== "tanti" && <circle cx="22" cy="22" r={n === "8" ? 8 : 7} fill="currentColor" opacity=".3" />}
+    </svg>
+  );
+};
+const Lay = ({ kind }) => (
+  <svg viewBox="0 0 80 28" className="w-20 h-7" aria-hidden="true">
+    <rect x="1" y="3" width="78" height="22" rx="11" fill="currentColor" opacity=".12" />
+    {[0, 1, 2, 3, 4, 5].map((i) => (
+      <path key={i} d={`M${i * 14 - 4} 25 L${i * 14 + 10} 3`} stroke="currentColor" strokeOpacity=".55" strokeWidth="1.6" />
+    ))}
+    {Array.from({ length: 16 }, (_, i) =>
+      kind === "crociata" ? (
+        <path key={"w" + i} d={`M${i * 5 + 2} ${8 + (i % 3) * 5} h4`} stroke="currentColor" strokeWidth="1.2" />
+      ) : (
+        <path key={"w" + i} d={`M${i * 5} ${18 - (i % 3) * 4} l3 -5`} stroke="currentColor" strokeWidth="1.2" />
+      )
+    )}
+  </svg>
+);
+const Pick = ({ value, onChange, options, id }) => (
+  <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }} data-wear-choice={id}>
+    {options.map(([v, l, art]) => (
+      <button
+        key={v}
+        type="button"
+        onClick={() => onChange(v)}
+        data-choice={v}
+        className={`rounded-2xl border-2 p-2 flex flex-col items-center gap-1 text-center ${value === v ? "border-blue-500 bg-blue-50 text-blue-800" : "border-slate-200 text-slate-600"}`}
+      >
+        {art}
+        <span className="text-[11px] font-black leading-tight">{l}</span>
+      </button>
+    ))}
+  </div>
+);
+
 // ---------------------------------------------------------------- FUNE
 const RopeCheck = () => {
-  const [x, setX] = useState({ rope: "6x36", n: "", core: "metallica", lay: "crociata", layers: "uno", d: "", dRef: "", dMis: "", b6: "", b30: "", flags: {} });
+  const [x, setX] = useState({ mode: "auto", strands: "6", rope: "6x36", n: "", core: "metallica", lay: "nonso", layers: "nonso", d: "", dRef: "", dMis: "", b6: "", b30: "", flags: {} });
   const set = (k) => (v) => setX((o) => ({ ...o, [k]: v }));
   const rope = ROPES.find((r) => r.id === x.rope) || ROPES[0];
   const r = useMemo(() => checkRope(x), [x]);
@@ -100,15 +148,54 @@ const RopeCheck = () => {
   const ready = Number(r.n) > 0 && (x.b6 !== "" || x.b30 !== "" || x.dMis !== "" || r.flags.length > 0);
   const lines = [];
   if (x.b6 !== "" || x.b30 !== "") lines.push(`Fili rotti: ${r.b6} su 6d (limite ${r.lim.six}) · ${r.b30} su 30d (limite ${r.lim.thirty}) → gravità ${Math.max(r.s6, r.s30)}%`);
+  if (r.limCross && (x.b6 !== "" || x.b30 !== "")) lines.push(`Contato come cordatura parallela (la più severa). Se sei sicuro che è crociata il limite sale a ${r.limCross.six} su 6d e ${r.limCross.thirty} su 30d.`);
   if (r.dec != null) lines.push(`Diametro: calato del ${fmt(r.dec)}% (scarto al ${fmt(r.dia.limit)}%) → gravità ${r.dia.sev}%`);
   if ((x.b6 !== "" || x.b30 !== "") && r.dec != null) lines.push(`Insieme (fili + diametro): ${r.combined}%`);
   r.flags.forEach((k) => lines.push((ROPE_FLAGS.find((f) => f[0] === k) || [k, k])[1] + " → scarto"));
   const title = r.level === "scarto" ? "Fune da scartare" : r.level === "attenzione" ? "Fune ancora idonea, da tenere d'occhio" : "Fune idonea";
-  const report = `Controllo fune ${rope.label}${x.d ? " Ø" + x.d + " mm" : ""} (ISO 4309): ${title.toLowerCase()}. ${lines.join(". ")}.`;
+  const report = `Controllo fune ${r.auto ? r.guess.label.split(" (")[0] : rope.label}${x.d ? " Ø" + x.d + " mm" : ""} (ISO 4309${r.auto ? ", valori prudenti" : ""}): ${title.toLowerCase()}. ${lines.join(". ")}.`;
   return (
     <div className="space-y-4" data-section="wear-rope">
+      {x.mode !== "so" ? (
+      <section className="bg-white rounded-3xl border border-slate-200 p-4 space-y-3" data-wear-auto>
+        <h4 className="font-black text-slate-800">La fune</h4>
+        <Choice id="mode" value={x.mode} onChange={set("mode")} options={[["auto", "Non so com'è fatta"], ["so", "So la costruzione"]]} />
+        <span className="block text-xs font-black text-slate-500">Quanti trefoli vedi fuori? (contali girando intorno alla fune)</span>
+        <Pick
+          id="strands"
+          value={x.strands}
+          onChange={set("strands")}
+          options={[
+            ["6", "6 trefoli", <Section key="a" n="6" />],
+            ["8", "8 trefoli", <Section key="b" n="8" />],
+            ["tanti", "Più di 10 (antigiro)", <Section key="c" n="tanti" />],
+          ]}
+        />
+        {x.strands !== "tanti" && (
+          <>
+            <span className="block text-xs font-black text-slate-500">Come stanno i fili sulla superficie?</span>
+            <Pick
+              id="lay"
+              value={x.lay}
+              onChange={set("lay")}
+              options={[
+                ["crociata", "Quasi dritti lungo la fune (crociata)", <Lay key="a" kind="crociata" />],
+                ["parallela", "Inclinati come i trefoli (parallela)", <Lay key="b" kind="parallela" />],
+                ["nonso", "Non lo so", <span key="c" className="h-7 flex items-center text-xl">🤷</span>],
+              ]}
+            />
+          </>
+        )}
+        <span className="block text-xs font-black text-slate-500">Sul tamburo si avvolge…</span>
+        <Choice id="layers" value={x.layers} onChange={set("layers")} options={[["uno", "Uno strato"], ["piu", "Più strati"], ["nonso", "Non so"]]} />
+        <p className="text-[11px] text-slate-500 leading-snug bg-slate-50 rounded-xl p-2">
+          Quello che non sai lo conto nel modo più prudente: la fune più delicata di quel tipo, cordatura parallela, anima metallica. Così il verdetto è sempre dalla parte della sicurezza.
+        </p>
+      </section>
+      ) : (
       <section className="bg-white rounded-3xl border border-slate-200 p-4 space-y-3">
         <h4 className="font-black text-slate-800">La fune</h4>
+        <Choice id="mode" value={x.mode} onChange={set("mode")} options={[["auto", "Non so com'è fatta"], ["so", "So la costruzione"]]} />
         <label className="block space-y-1">
           <span className="text-xs font-black text-slate-500">Costruzione</span>
           <select className={INPUT} value={x.rope} onChange={(e) => set("rope")(e.target.value)} data-wear-input="rope">
@@ -135,6 +222,7 @@ const RopeCheck = () => {
         </p>
       </section>
 
+      )}
       <section className="bg-white rounded-3xl border border-slate-200 p-4 space-y-3">
         <h4 className="font-black text-slate-800">Fili rotti</h4>
         <Num id="d" label="Diametro nominale" value={x.d} onChange={set("d")} hint={x.d ? `6d = ${r.len6} mm (${fmt(r.len6 / 10)} cm) · 30d = ${r.len30} mm (${fmt(r.len30 / 10)} cm): conta i fili rotti nel tratto peggiore.` : "Serve per sapere quanto è lungo il tratto da guardare (6d e 30d)."} />

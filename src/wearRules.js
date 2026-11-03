@@ -103,8 +103,25 @@ const wireSeverity = (count, limit) => {
   return Math.floor(r * 5) * 20;
 };
 
-export const checkRope = (x) => {
-  const rope = ROPES.find((r) => r.id === x.rope) || ROPES[0];
+// «NON SO COM'È FATTA»: il tecnico guarda solo quanti trefoli vede fuori (6, 8 o tanti = antigiro) e, se riesce,
+// come stanno i fili sulla superficie. Si prende la fune più delicata di quel tipo (meno fili esterni =
+// limiti più bassi), cordatura parallela se non si sa, anima metallica (calo del diametro più stretto):
+// così il verdetto è sempre dalla parte della sicurezza.
+export const GUESS = {
+  6: { n: 114, rr: false, label: "6 trefoli (si conta come 6×19)" },
+  8: { n: 152, rr: false, label: "8 trefoli (si conta come 8×19)" },
+  tanti: { n: 84, rr: true, label: "tanti trefoli: antigiro (si conta come 18×7)" },
+};
+export const guessRope = (x) => {
+  const g = GUESS[x.strands] || GUESS[6];
+  return { n: g.n, rr: g.rr, lay: x.lay === "crociata" ? "crociata" : "parallela", core: "metallica", layers: x.layers === "piu" ? "piu" : "uno", label: g.label };
+};
+
+export const checkRope = (x0) => {
+  const auto = x0.mode !== "so";
+  const g = auto ? guessRope(x0) : null;
+  const x = auto ? { ...x0, lay: g.lay, core: g.core, layers: g.layers } : x0;
+  const rope = auto ? { n: g.n, rr: g.rr, label: g.label } : ROPES.find((r) => r.id === x.rope) || ROPES[0];
   const n = rope.n || Number(x.n) || 0;
   const rr = rope.rr;
   const d = Number(String(x.d || "").replace(",", ".")) || 0;
@@ -124,7 +141,12 @@ export const checkRope = (x) => {
   const combined = Math.min(100, wire + (dia ? dia.sev : 0));
   const discard = wire >= 100 || (dia && dia.sev >= 100) || combined >= 100 || flags.length > 0;
   const worst = Math.max(wire, dia ? dia.sev : 0, combined);
+  // se non si sa la cordatura: anche il limite che varrebbe con la crociata (più comune), per informazione
+  const limCross = auto && !rr && x0.lay !== "crociata" ? wireLimits({ n, rr, lay: "crociata", layers: x.layers }) : null;
   return {
+    auto,
+    guess: g,
+    limCross,
     n,
     rr,
     lim,
