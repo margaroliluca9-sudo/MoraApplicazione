@@ -785,7 +785,6 @@ export const buildWearPdf = async ({ rep, crane = null, tech = "", today }) => {
   flow.heading("Norme e criteri utilizzati per il calcolo");
   rep.norms.forEach((n) => flow.paragraph(n, { size: 8.5 }));
   flow.paragraph("Il calcolo è uno strumento di aiuto al controllo visivo e alle misure. Fanno sempre fede il manuale del costruttore dell'apparecchio di sollevamento e della fune o catena e la valutazione della persona competente che ha eseguito il controllo.", { size: 8, color: C.grey });
-  flow.signatures(["Il tecnico", "Per il cliente"]);
   return flow.finish(`Verbale generato dall'app Assistenza Mora il ${printed}.`);
 };
 

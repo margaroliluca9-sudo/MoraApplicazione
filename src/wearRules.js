@@ -157,7 +157,8 @@ export const checkRope = (x0) => {
       : { rcn: fam.r[0][2], six: multi ? fam.r[0][5] : fam.r[0][4], thirty: multi ? fam.r[0][7] : fam.r[0][6], fas: true, noDiam: true }
     : wireLimits({ n, rr, lay: x.lay, layers: x.layers });
   const b6 = Math.max(0, Number(x.b6) || 0);
-  const b30 = Math.max(0, Number(x.b30) || 0);
+  // il tratto di 30d comprende quello di 6d: i fili rotti su 30d sono almeno quelli su 6d
+  const b30 = Math.max(0, Number(x.b30) || 0, b6);
   const s6 = wireSeverity(b6, lim.six);
   const s30 = wireSeverity(b30, lim.thirty);
   const wire = Math.max(s6, s30);

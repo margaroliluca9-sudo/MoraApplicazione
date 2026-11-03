@@ -67,6 +67,7 @@ import { installErrorLog, setErrorContext } from "./errorLog";
 import { NewEntryForm } from "./views/NewEntryForm";
 import { HistoryView } from "./views/HistoryView";
 import { QuickWear } from "./components/QuickWear";
+import { WearPrintHost } from "./components/WearPrintHost";
 import { WearPanel } from "./components/personal/WearPanel";
 const DatabaseView = lazyNamed(() => import("./views/DatabaseView"), "DatabaseView");
 const OfficeView = lazyNamed(() => import("./views/OfficeView"), "OfficeView");
@@ -1119,6 +1120,7 @@ export default function App() {
         />
       )}
       <PdfHost />
+      <WearPrintHost machines={machines} color={color} />
       <VanHost vanItems={vanItems} color={color} />
       <header
         className="sticky top-0 z-50 px-4 py-3 transition-colors duration-300 bg-white/90 backdrop-blur-md border-b border-slate-200"

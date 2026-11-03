@@ -1,7 +1,7 @@
 // LA MIA AREA → «Fune e catena»: il tecnico scrive le misure e l'app dice cosa dice la norma.
 // Funi: ISO 4309:2017 (fili rotti su 6d e 30d, diminuzione del diametro). Catene: usura della maglia e allungamento
 // (EN 818-6 imbracature, criteri dei costruttori per le catene da paranco). Le regole stanno in src/wearRules.js.
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { CheckCircle2, AlertTriangle, XCircle, Copy, Check, Info, X, ExternalLink, Search, FilePlus2, History, Printer } from "lucide-react";
 import { PanelHeader, INPUT } from "./PersonalUi";
@@ -9,8 +9,8 @@ import { ROPES, ROPE_FLAGS, CHAIN_FLAGS, checkRope, checkChain, measureFixed } f
 import { lastRopeOf, formatRopeLong, knownRopes, ropeName } from "../../ropes";
 import { fasFamily } from "../../fasRopes";
 import { ropeVerdict, chainVerdict, ropeRegister, chainRegister, ropeReport, chainReport } from "../../wearRegister";
-import { buildWearPdf, pdfFileName } from "../../pdf";
-import { openPdf } from "../PdfHost";
+import { printWear, doPrintWear } from "../WearPrintHost";
+import { listWearReports } from "../../wearReports";
 import { getSafeMatricola } from "../../utils";
 import { DriveCraneInfo } from "../DriveCraneInfo";
 import { FAS_ROPES, FAS_GROUPS, fasCode } from "../../fasRopes";
@@ -158,16 +158,55 @@ const Verdict = ({ level, title, lines, onCopy, copied, onReport, big = null, re
   );
 };
 
-// STAMPA: verbale PDF con l'intestazione Mora e le norme usate (src/pdf.js → buildWearPdf)
-export const printWear = (rep, crane = null) => {
-  let tech = "";
-  try {
-    tech = localStorage.getItem("mora_tech_last_name") || "";
-  } catch (e) {
-    tech = "";
-  }
-  const day = new Date().toLocaleDateString("it-IT");
-  openPdf(() => buildWearPdf({ rep, crane, tech }), pdfFileName(rep.type === "fune" ? "Controllo fune" : "Controllo catena", crane ? crane.customerName : "", crane ? getSafeMatricola(crane) : "", day));
+// STAMPA: verbale PDF con l'intestazione Mora e le norme usate (components/WearPrintHost.js)
+export { printWear };
+
+// VERBALI STAMPATI (gli ultimi 20, di tutti): tocca per ristamparlo
+const PrintedReports = () => {
+  const [list, setList] = useState(null);
+  useEffect(() => {
+    let alive = true;
+    const load = () =>
+      listWearReports()
+        .then((l) => alive && setList(l))
+        .catch(() => alive && setList([]));
+    load();
+    window.addEventListener("mora-wear-saved", load);
+    return () => {
+      alive = false;
+      window.removeEventListener("mora-wear-saved", load);
+    };
+  }, []);
+  return (
+    <section className="bg-white rounded-3xl border border-slate-200 p-4 space-y-2" data-section="wear-printed">
+      <h4 className="font-black text-slate-800 flex items-center gap-2">
+        <Printer className="w-4 h-4 text-slate-500" /> Verbali stampati
+      </h4>
+      {list === null && <p className="text-xs text-slate-400">Carico…</p>}
+      {list && !list.length && <p className="text-xs text-slate-400" data-wear-printed-none>Ancora nessuno: compaiono qui quando stampi un verbale.</p>}
+      {(list || []).map((v) => (
+        <button
+          key={v.id}
+          type="button"
+          onClick={() => doPrintWear({ rep: v.rep, crane: v.crane, day: v.day, tech: v.tech, again: true })}
+          data-wear-printed={v.id}
+          className="w-full text-left px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 flex items-center gap-3"
+        >
+          <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${v.level === "scarto" ? "bg-red-500" : v.level === "attenzione" ? "bg-amber-500" : "bg-emerald-500"}`} />
+          <span className="flex-1 min-w-0">
+            <span className="block text-sm font-black text-slate-800 truncate">
+              {v.type === "fune" ? "Fune" : "Catena"} · {v.crane ? `${v.crane.customerName} · ${v.crane.matricola}` : "senza gru"}
+            </span>
+            <span className="block text-xs text-slate-500 truncate">
+              {v.day}
+              {v.tech ? ` · ${v.tech}` : ""} · {v.esito}
+            </span>
+          </span>
+          <Printer className="w-4 h-4 text-slate-400 shrink-0" />
+        </button>
+      ))}
+    </section>
+  );
 };
 
 // il numero grande del verdetto
@@ -530,6 +569,11 @@ export const INFO = {
     text: "Il passo t è la lunghezza interna di una maglia (catena 10×30: passo 30 mm). Misura una maglia all'interno: scarto se è più lunga del 5%. Per la catena del paranco misura anche 11 maglie di fila con la catena tesa e confrontale con 11 volte il passo: scarto oltre il 2%. Una catena allungata non ingrana più bene nella noce e può saltare.",
     art: <PassoArt />,
   },
+  imbracatura: {
+    title: "Catena del paranco o di imbracatura",
+    text: "Catena del paranco: è quella che lavora dentro il paranco a catena, passa sulla noce (la ruota dentata) e solleva il gancio; si controllano usura e allungamento, anche su 11 maglie, perché se si allunga non ingrana più bene nella noce. Catena di imbracatura: è la braca di catena (a uno, due o quattro bracci, con anello in testa e ganci in fondo) che si usa per agganciare il carico al gancio della gru; non passa su nessuna noce. Per le brache vale la UNI EN 818-6: scarto con usura oltre il 10%, maglia allungata oltre il 5%, cricche, maglie storte, ganci aperti.",
+    art: <DefectArt k="gancio" />,
+  },
   f_valle: {
     title: "Fili rotti nella valle",
     text: "La valle è la riga dove due trefoli si toccano. Un filo che si rompe lì si vede poco (non sporge come quelli sulla cresta) ma vuol dire che la fune si consuma dentro, contro l'anima o tra i trefoli. Per la ISO 4309 bastano 2 fili rotti nella valle in un passo di cordatura (circa 6d) per scartare la fune.",
@@ -748,7 +792,7 @@ const RopeCheck = ({ known = null, onReport = null, crane = null }) => {
         <Num id="d" info="nomfune" label="Diametro nominale" value={x.d} onChange={set("d")} hint={x.d ? `6d = ${r.len6} mm (${fmt(r.len6 / 10)} cm) · 30d = ${r.len30} mm (${fmt(r.len30 / 10)} cm): conta i fili rotti nel tratto peggiore.` : "Serve per sapere quanto è lungo il tratto da guardare (6d e 30d)."} />
         <div className="grid grid-cols-2 gap-3">
           <Num id="b6" info="fili" label={`Fili rotti su 6d${r.len6 ? ` (${fmt(r.len6 / 10)} cm)` : ""}`} unit="fili" value={x.b6} onChange={set("b6")} />
-          <Num id="b30" info="tratto" label={`Fili rotti su 30d${r.len30 ? ` (${fmt(r.len30 / 10)} cm)` : ""}`} unit="fili" value={x.b30} onChange={set("b30")} />
+          <Num id="b30" info="tratto" label={`Fili rotti su 30d${r.len30 ? ` (${fmt(r.len30 / 10)} cm)` : ""}`} unit="fili" value={x.b30} onChange={set("b30")} hint={r.b6 > (Number(x.b30) || 0) ? `Contati ${r.b30}: il tratto di 30d comprende quello di 6d, quindi ci sono almeno i ${r.b6} fili del 6d. Aggiungi quelli che vedi nel resto dei 30d.` : "Comprende il tratto di 6d: conta anche quei fili."} />
         </div>
         {(x.b6 !== "" || x.b30 !== "") && (
           <div className="text-xs font-bold text-slate-500">
@@ -816,7 +860,12 @@ const ChainCheck = ({ known = null, onReport = null, crane = null }) => {
     <div className="space-y-4" data-section="wear-chain">
       <section className="bg-white rounded-3xl border border-slate-200 p-4 space-y-3">
         <h4 className="font-black text-slate-800">La catena</h4>
-        <Choice id="kind" value={x.kind} onChange={set("kind")} options={[["paranco", "Del paranco"], ["imbracatura", "Di imbracatura"]]} />
+        <div className="flex items-center gap-2">
+          <div className="flex-1">
+            <Choice id="kind" value={x.kind} onChange={set("kind")} options={[["paranco", "Del paranco"], ["imbracatura", "Di imbracatura"]]} />
+          </div>
+          <InfoBtn id="imbracatura" label="paranco o imbracatura" />
+        </div>
         <Num id="d" info="catnominale" label="Diametro nominale (d)" value={x.d} onChange={set("d")} />
         <div className="grid grid-cols-2 gap-3">
           <Num id="d1" info="catmisura" label="Misura d1" value={x.d1} onChange={set("d1")} hint={readAs(x.d1, nOf(x.d))} />
@@ -1001,6 +1050,7 @@ export const WearPanel = ({ color = "blue", onBack, onClose, machines = [], logs
         ) : (
           <ChainCheck key={`c${crane ? crane.id : ""}`} known={mounted && mounted.catena} onReport={report} crane={crane} />
         )}
+        <PrintedReports />
         <a href={FAS_CATALOG} target="_blank" rel="noopener noreferrer" className="block text-center text-sm font-bold text-blue-700 underline" data-fas-catalog>
           Catalogo delle funi FAS
         </a>

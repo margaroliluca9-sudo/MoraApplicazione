@@ -99,7 +99,7 @@ const Presets = ({ list, value, onPick }) => (
 );
 
 // contatore grande (fili rotti) con − e +
-const Counter = ({ label, value, onChange, id, limit, info = "" }) => (
+const Counter = ({ label, value, onChange, id, limit, info = "", note = "" }) => (
   <div>
     <span className="text-xs font-black text-slate-500 uppercase tracking-wider flex items-center gap-1.5 min-h-7">
       <span>{label}</span>
@@ -117,6 +117,7 @@ const Counter = ({ label, value, onChange, id, limit, info = "" }) => (
       </button>
     </div>
     {limit != null && <span className="block text-xs text-slate-500 mt-1 text-center">ammessi fino a {limit - 1} (scarto a {limit})</span>}
+    {note && <span className="block text-[11px] text-slate-500 mt-0.5 text-center leading-snug">{note}</span>}
   </div>
 );
 
@@ -337,8 +338,8 @@ const QuickRope = ({ saved, onSave }) => {
       </div>
       <BigNum id="mis" info="diamfune" label="Diametro misurato" value={mis} inputRef={mRef} autoFocus={startOnM} onChange={setMis} hint={readAs(mis, num(d))} />
       <div className="grid grid-cols-2 gap-3">
-        <Counter id="b6" info="fili" label="Fili rotti su 6d" value={b6} onChange={setB6} limit={r.lim.six} />
-        <Counter id="b30" info="tratto" label="Fili rotti su 30d" value={b30} onChange={setB30} limit={r.lim.thirty} />
+        <Counter id="b6" info="fili" label="Fili rotti su 6d" value={b6} onChange={(v) => { setB30((o) => Math.max(v, o + (v - b6))); setB6(v); }} limit={r.lim.six} />
+        <Counter id="b30" info="tratto" label="Fili rotti su 30d" value={b30} onChange={(v) => setB30(Math.max(v, b6))} limit={r.lim.thirty} note="Comprende i fili del 6d: aumenta da solo" />
       </div>
       <p className="text-xs text-slate-500 leading-snug">Fune non nota: l'app conta nel modo più prudente (ISO 4309). Per una fune FAS o una costruzione precisa usa il controllo completo.</p>
     </div>
