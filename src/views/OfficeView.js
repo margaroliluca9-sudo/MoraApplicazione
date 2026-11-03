@@ -2,7 +2,6 @@ import { parseTicketQuery, matchTicket, ticketLabel, ticketYear } from "../ticke
 import React, { useState, useMemo } from "react";
 import { OfficeCharts } from "../components/OfficeCharts";
 import { MonthSummaryCard } from "../components/MonthSummaryCard";
-import { DueChecksCard } from "../components/DueChecksCard";
 import {
   Search,
   X,
@@ -32,7 +31,6 @@ export const OfficeView = ({
   layoutConfig,
   technicians,
   onOpenPhotos,
-  isAdmin = false,
 }) => {
   const today = new Date();
   const [calMonth, setCalMonth] = useState(today.getMonth());
@@ -460,9 +458,6 @@ export const OfficeView = ({
           </div>
         </div>
       </div>
-
-      {/* verifiche in scadenza, dai nomi dei fogli nel Drive (vedi DueChecksCard.js) */}
-      <DueChecksCard customers={customers} color={color} canEdit={isAdmin} />
 
       {/* riepilogo del mese appena finito, in PDF (vedi MonthSummaryCard.js) */}
       <MonthSummaryCard logs={logs} color={color} />

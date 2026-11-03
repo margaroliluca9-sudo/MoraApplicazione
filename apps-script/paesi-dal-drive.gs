@@ -24,10 +24,6 @@
  * Posizione sulla mappa: per i clienti con paese o indirizzo cerca le coordinate su Google Maps (solo se sono
  * nuovi o cambiati) e le scrive nel cliente: in Esplora → Mappa compaiono tutti i clienti.
  *
- * Verifiche in scadenza (Ufficio): dai nomi dei fogli di ogni cartella («T10.26» = trimestrale di ottobre 2026,
- * «A10.26» = annuale) capisco l'ultima verifica e se il cliente è trimestrale (c'è una «T» nell'ultimo anno) o solo
- * annuale. Lo scrivo in settings/drive_checks, un documento a parte: clienti, gru e interventi dell'app non li tocco.
- *
  * I clienti segnati «Solo interventi» nell'app (niente verifiche, quindi niente cartella) non li abbino mai.
  *
  * Paese e indirizzo: aggiorna solo i clienti senza paese o quelli che aveva già aggiornato lui
@@ -222,23 +218,15 @@ function giro_() {
       }
       // la chiave cambia se cambia il foglio o se nell'app scegli un altro cliente per questa cartella
       var chiave = file.getId() + "|" + file.getLastUpdated().getTime() + "|" + (scelto ? scelto.id : "") + (cima ? "|" + cima.id : "");
-      // verifiche fatte (dai nomi dei fogli): le rileggo solo se è cambiato qualcosa nella cartella
-      var storia = prima.s && prima.k === chiave ? prima.s : storiaVerifiche_(cart);
       // già letto e abbinato: salto. Non abbinato: riprovo solo se nell'app sono cambiati i clienti
-      if (prima.k === chiave && ((prima.c && voce.c) || (!prima.c && prima.n === clienti.length))) {
-        if (!prima.s) {
-          prima.s = storia;
-          nuoviVisti["v_" + voce.id] = JSON.stringify(prima);
-        }
-        return;
-      }
+      if (prima.k === chiave && ((prima.c && voce.c) || (!prima.c && prima.n === clienti.length))) return;
       conti.lette++;
       var foglio = leggiFoglio_(file);
       var info = estrai(foglio.testo);
       var cliente = scelto || cima || abbinaUno_([cart.getName(), info.cliente].filter(String), custs);
       if (!u.top && cliente) clienteDiCima[voce.id] = cliente;
       var dove = { placeFolder: voce.n, placeSheet: file.getName(), placeSheetUrl: file.getUrl() };
-      var ora = { k: chiave, c: cliente ? cliente.id : "", n: clienti.length, g: [], s: storia };
+      var ora = { k: chiave, c: cliente ? cliente.id : "", n: clienti.length, g: [] };
       voce.c = ora.c;
       if (cliente) {
         conti.abbinati++;
@@ -346,11 +334,9 @@ function giro_() {
   props.deleteProperty("visti"); // formato vecchio
   // totali (anche delle cartelle non rilette oggi): quante abbinate a un cliente e quante gru in tutto
   var gruTotali = 0;
-  var verifiche = []; // per «Verifiche in scadenza» in Ufficio
   elenco.forEach(function (v) {
     var rec = nuoviVisti["v_" + v.id] ? JSON.parse(nuoviVisti["v_" + v.id]) : visto(v.id);
     gruTotali += ((rec && rec.g) || []).length;
-    if (rec && rec.s && rec.s.u) verifiche.push({ id: v.id, c: v.c || "", n: v.n, u: rec.s.u, t: rec.s.t, q: rec.s.q, f: rec.s.f });
   });
   scriviTutto_(token, [
     aggiornaDoc_("settings/drive_places", {
@@ -371,9 +357,8 @@ function giro_() {
       erroriLista: JSON.stringify(conti.errori.slice(0, 15)),
       durata: Math.round((Date.now() - inizio) / 1000),
       lastError: "",
-      versione: 7,
+      versione: 6,
     }),
-    aggiornaDoc_("settings/drive_checks", { list: JSON.stringify(verifiche), updatedAt: new Date().toISOString(), versione: 7 }),
     aggiornaDoc_("settings/drive_folders", { list: JSON.stringify(elenco), updatedAt: new Date().toISOString() }),
   ]);
   Logger.log(
@@ -426,49 +411,6 @@ function ultimoFoglio_(cart) {
     if (!best || f.getLastUpdated() > best.getLastUpdated()) best = f;
   }
   return best;
-}
-
-// ---------- verifiche fatte, dai nomi dei fogli ----------
-// «SARPOM T10.26», «Cliente A 04/26», «OLTEK%20A10.25» → { p: 202610, t: "T" } (null se nel nome non c'è)
-var RE_PERIODO = /(?:^|[^A-Z0-9])([TA]) ?(\d{1,2}) ?[.\/\\,-] ?(\d{2})(?:[^0-9]|$)/i;
-function periodoDaNome(nome) {
-  var n = String(nome || "").replace(/%20/gi, " ").replace(/%2c/gi, ",");
-  var m = n.match(RE_PERIODO);
-  if (!m) return null;
-  var mese = Number(m[2]);
-  if (mese < 1 || mese > 12) return null;
-  return { p: (2000 + Number(m[3])) * 100 + mese, t: m[1].toUpperCase() };
-}
-var mesi_ = function (p) {
-  return Math.floor(p / 100) * 12 + (p % 100) - 1;
-};
-// dai nomi dei fogli di una cartella: ultima verifica (u = 202610, t = "T" o "A", f = nome del foglio) e
-// q = trimestrale (c'è almeno una «T» nei 15 mesi prima dell'ultima). Periodi più avanti di 2 mesi da oggi = errori di battitura.
-function storiaDaNomi(nomi, oggi) {
-  var d = oggi || new Date();
-  var limite = d.getFullYear() * 100 + d.getMonth() + 1;
-  limite = mesi_(limite) + 2;
-  var tutti = [];
-  (nomi || []).forEach(function (n) {
-    if (SALTA.test(n)) return;
-    var x = periodoDaNome(n);
-    if (x && mesi_(x.p) <= limite) tutti.push({ p: x.p, t: x.t, f: String(n).replace(/%20/gi, " ").trim() });
-  });
-  if (!tutti.length) return { u: 0 };
-  tutti.sort(function (a, b) {
-    return b.p - a.p || (a.t === "A" ? -1 : 1);
-  });
-  var u = tutti[0];
-  var q = tutti.some(function (x) {
-    return x.t === "T" && mesi_(u.p) - mesi_(x.p) <= 15;
-  });
-  return { u: u.p, t: u.t, q: q, f: u.f.slice(0, 80) };
-}
-function storiaVerifiche_(cart) {
-  var nomi = [];
-  var files = cart.getFiles();
-  while (files.hasNext()) nomi.push(files.next().getName());
-  return storiaDaNomi(nomi);
 }
 
 function xmlTesto_(s) {
@@ -875,4 +817,4 @@ function scriviTutto_(token, scritture) {
 }
 
 // per le prove fuori da Google (node)
-if (typeof module !== "undefined") module.exports = { righeXlsx: righeXlsx, NOME_VERIFICA: NOME_VERIFICA, estrai: estrai, normName: normName, abbinaUno: abbinaUno_, estraiGru: estraiGru, tabelleDocx: tabelleDocx, fabKey: fabKey, etichettaFoglio: etichettaFoglio_, storiaDaNomi: storiaDaNomi, periodoDaNome: periodoDaNome };
+if (typeof module !== "undefined") module.exports = { righeXlsx: righeXlsx, NOME_VERIFICA: NOME_VERIFICA, estrai: estrai, normName: normName, abbinaUno: abbinaUno_, estraiGru: estraiGru, tabelleDocx: tabelleDocx, fabKey: fabKey, etichettaFoglio: etichettaFoglio_ };
