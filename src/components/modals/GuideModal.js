@@ -170,7 +170,7 @@ const appStepsFor = ({ hasVan, chatEnabled, isAdmin }) =>
     {
       icon: UserCircle,
       title: "La mia area",
-      text: "«La mia area» è una pagina come lo Storico (anche sul telefono): la apri dal riquadro in Home o da «Mia area» nella barra in basso, che resta sempre visibile; con la X torni dov'eri. Il riquadro «La mia area»: è solo tuo. In cima «Oggi» con impegni e promemoria, poi I miei interventi, Stampa interventi, Calendario, Note, Promemoria" + (hasVan ? ", Magazzino" : "") + " e i numeri del mese. Con ⚙ in alto a destra le tue Impostazioni (notifiche e altro); lì puoi accendere anche «Le mie ore», il calendario degli orari (straordinari, ferie, permessi).",
+      text: "«La mia area» è una pagina normale come lo Storico: la apri da «Mia area» nella barra in basso (che resta sempre visibile) o dal riquadro in Home, e per andare altrove usi la barra o «Home» in alto. Il riquadro «La mia area»: è solo tuo. In cima «Oggi» con impegni e promemoria, poi I miei interventi, Stampa interventi, Calendario, Note, Promemoria" + (hasVan ? ", Magazzino" : "") + " e i numeri del mese. Con ⚙ in alto a destra le tue Impostazioni (notifiche e altro); lì puoi accendere anche «Le mie ore», il calendario degli orari (straordinari, ferie, permessi).",
       go: { label: "Apri La mia area", to: "area" },
     },
     {

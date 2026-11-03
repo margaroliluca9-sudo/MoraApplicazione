@@ -64,7 +64,7 @@ export const PersonalAreaModal = ({
   color = "blue",
   initialPanel = null,
   areaTiles = null,
-  inline = false, // tablet/computer: dentro la sua scheda invece che in una finestra sopra la Home
+  inline = false, // pagina normale (scheda «Mia area», come lo Storico) invece che una finestra sopra la Home
 }) => {
   // parti accese o spente dall'admin
   const on = (id) => areaOn({ areaTiles }, id);
@@ -98,6 +98,8 @@ export const PersonalAreaModal = ({
   const todayEvents = events.filter((e) => e.date === today).length;
   const openRem = reminders.filter((r) => !r.done).length;
   const back = () => setPanel(null);
+  // pagina normale (come lo Storico): niente X per chiudere, si va altrove con la barra in basso o «Home»
+  const closeX = inline ? null : onClose;
   // numero dispari di riquadri: l'ultimo diventa largo
   const hoursOn = showHours && on("hours");
   const vanOn = !!van && on("van");
@@ -109,18 +111,18 @@ export const PersonalAreaModal = ({
 
   let body;
   if (panel === "calendar" && on("calendar"))
-    body = <CalendarPanel me={me} events={events} logs={logs} color={color} onBack={back} onClose={onClose} onOpenMachine={onOpenMachine} />;
+    body = <CalendarPanel me={me} events={events} logs={logs} color={color} onBack={back} onClose={closeX} onOpenMachine={onOpenMachine} />;
   else if (panel === "print" && on("print"))
-    body = <PrintPanel me={me} logs={logs} technicians={technicians} color={color} onBack={back} onClose={onClose} />;
+    body = <PrintPanel me={me} logs={logs} technicians={technicians} color={color} onBack={back} onClose={closeX} />;
   else if (panel === "hours" && hoursOn)
-    body = <HoursPanel me={me} hours={hours} reminder={hoursReminder} color={color} onBack={back} onClose={onClose} />;
+    body = <HoursPanel me={me} hours={hours} reminder={hoursReminder} color={color} onBack={back} onClose={closeX} />;
   else if (panel === "parts" && on("parts"))
-    body = <PartsPanel me={me} logs={logs} color={color} onBack={back} onClose={onClose} onOpenMachine={onOpenMachine} />;
-  else if (panel === "profile") body = <ProfilePanel me={me} technicians={technicians} color={color} onBack={back} onClose={onClose} />;
-  else if (panel === "settings") body = <SettingsPanel me={me} color={color} onBack={back} onClose={onClose} hoursAllowed={on("hours")} />;
-  else if (panel === "notes" && on("notes")) body = <NotesPanel me={me} notes={notes} color={color} onBack={back} onClose={onClose} />;
+    body = <PartsPanel me={me} logs={logs} color={color} onBack={back} onClose={closeX} onOpenMachine={onOpenMachine} />;
+  else if (panel === "profile") body = <ProfilePanel me={me} technicians={technicians} color={color} onBack={back} onClose={closeX} />;
+  else if (panel === "settings") body = <SettingsPanel me={me} color={color} onBack={back} onClose={closeX} hoursAllowed={on("hours")} />;
+  else if (panel === "notes" && on("notes")) body = <NotesPanel me={me} notes={notes} color={color} onBack={back} onClose={closeX} />;
   else if (panel === "reminders" && on("reminders"))
-    body = <RemindersPanel me={me} reminders={reminders} contacts={contacts} color={color} onBack={back} onClose={onClose} />;
+    body = <RemindersPanel me={me} reminders={reminders} contacts={contacts} color={color} onBack={back} onClose={closeX} />;
   else if (panel === "van" && vanOn) {
     const others = (van.users || []).filter((u) => u !== String(me).trim().toLowerCase());
     body = (
@@ -130,14 +132,14 @@ export const PersonalAreaModal = ({
         me={me}
         color={color}
         onBack={back}
-        onClose={onClose}
+        onClose={closeX}
         subtitle={`${vanList.length} articoli${others.length ? " · lo usi con " + others.map((u) => u.charAt(0).toUpperCase() + u.slice(1)).join(", ") : ""}`}
       />
     );
   } else
     body = (
       <div className="flex flex-col h-full" data-section="area-home">
-        <div className={`px-4 py-4 bg-white border-b border-slate-200 border-t-4 border-t-${color}-600 flex items-center gap-3 shrink-0`}>
+        <div className={inline ? "px-1 pt-1 pb-3 flex items-center gap-3 shrink-0" : `px-4 py-4 bg-white border-b border-slate-200 border-t-4 border-t-${color}-600 flex items-center gap-3 shrink-0`}>
           <button type="button" onClick={() => setPanel("profile")} aria-label="Il mio profilo" data-action="area-profile" className="shrink-0">
             <Avatar tech={techOf(technicians, me)} name={me} className="w-11 h-11" textClass="text-lg" color={color} />
           </button>
@@ -150,9 +152,11 @@ export const PersonalAreaModal = ({
           <button type="button" onClick={() => setPanel("settings")} aria-label="Impostazioni" data-action="area-settings" className="w-11 h-11 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-100">
             <Settings className="w-5 h-5" />
           </button>
-          <button type="button" onClick={onClose} aria-label="Chiudi" className="w-11 h-11 rounded-full border border-slate-200 flex items-center justify-center">
-            <X className="w-5 h-5 text-slate-500" />
-          </button>
+          {!inline && (
+            <button type="button" onClick={onClose} aria-label="Chiudi" className="w-11 h-11 rounded-full border border-slate-200 flex items-center justify-center">
+              <X className="w-5 h-5 text-slate-500" />
+            </button>
+          )}
         </div>
         {offline && (
           <div data-section="area-offline" className="px-4 py-2 bg-amber-50 border-b border-amber-200 text-amber-800 text-xs font-bold flex items-center gap-2 shrink-0">
@@ -160,7 +164,7 @@ export const PersonalAreaModal = ({
             Senza rete: vedi quello che è salvato sul telefono. Quello che scrivi parte quando torna la rete.
           </div>
         )}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50">
+        <div className={inline ? "space-y-4" : "flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50"}>
           {on("today") && (
           <section className="bg-white rounded-3xl border border-slate-200 p-4 space-y-3" data-section="area-today">
             <div className="flex justify-between items-baseline">
@@ -261,7 +265,7 @@ export const PersonalAreaModal = ({
 
   if (inline)
     return (
-      <div className="max-w-3xl mx-auto h-[calc(100dvh-215px)] min-h-[440px] md:h-[calc(100vh-180px)] md:min-h-[560px] flex flex-col rounded-3xl overflow-hidden bg-white shadow-sm border border-slate-200" data-section="personal-area" data-inline="1">
+      <div className="max-w-3xl mx-auto" data-section="personal-area" data-inline="1">
         {body}
       </div>
     );
