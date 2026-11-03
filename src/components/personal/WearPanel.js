@@ -2,7 +2,7 @@
 // Funi: ISO 4309:2017 (fili rotti su 6d e 30d, diminuzione del diametro). Catene: usura della maglia e allungamento
 // (EN 818-6 imbracature, criteri dei costruttori per le catene da paranco). Le regole stanno in src/wearRules.js.
 import React, { useMemo, useState } from "react";
-import { CheckCircle2, AlertTriangle, XCircle, Copy, Check } from "lucide-react";
+import { CheckCircle2, AlertTriangle, XCircle, Copy, Check, Info, X, ExternalLink } from "lucide-react";
 import { PanelHeader, INPUT } from "./PersonalUi";
 import { ROPES, ROPE_FLAGS, CHAIN_FLAGS, checkRope, checkChain } from "../../wearRules";
 
@@ -91,12 +91,12 @@ const useCopy = () => {
 };
 
 // disegnini per riconoscere la fune a occhio
-const Section = ({ n }) => {
+const Section = ({ n, big = false }) => {
   const outer = n === "tanti" ? 14 : Number(n);
   const R = 15;
   const r = n === "tanti" ? 3.6 : n === "8" ? 5 : 6.2;
   return (
-    <svg viewBox="0 0 44 44" className="w-11 h-11" aria-hidden="true">
+    <svg viewBox="0 0 44 44" className={big ? "w-28 h-28" : "w-11 h-11"} aria-hidden="true">
       <circle cx="22" cy="22" r="20" fill="none" stroke="currentColor" strokeOpacity=".25" />
       {n === "tanti" && [0, 1, 2, 3, 4, 5].map((i) => <circle key={"i" + i} cx={22 + 7 * Math.cos((i * Math.PI) / 3)} cy={22 + 7 * Math.sin((i * Math.PI) / 3)} r="3" fill="currentColor" opacity=".45" />)}
       {Array.from({ length: outer }, (_, i) => (
@@ -121,22 +121,138 @@ const Lay = ({ kind }) => (
     )}
   </svg>
 );
-const Pick = ({ value, onChange, options, id }) => (
-  <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }} data-wear-choice={id}>
-    {options.map(([v, l, art]) => (
-      <button
-        key={v}
-        type="button"
-        onClick={() => onChange(v)}
-        data-choice={v}
-        className={`rounded-2xl border-2 p-2 flex flex-col items-center gap-1 text-center ${value === v ? "border-blue-500 bg-blue-50 text-blue-800" : "border-slate-200 text-slate-600"}`}
-      >
-        {art}
-        <span className="text-[11px] font-black leading-tight">{l}</span>
-      </button>
-    ))}
-  </div>
-);
+// fune vista di lato: trefoli in diagonale (più sono, più sono sottili)
+const Side = ({ strands = 6, kind = "crociata" }) => {
+  const k = strands === "tanti" ? 16 : Number(strands);
+  const step = 120 / k;
+  return (
+    <svg viewBox="0 0 200 60" className="w-full h-16" aria-hidden="true">
+      <defs>
+        <clipPath id={`rope-${strands}-${kind}`}>
+          <rect x="2" y="8" width="196" height="44" rx="22" />
+        </clipPath>
+      </defs>
+      <g clipPath={`url(#rope-${strands}-${kind})`}>
+        <rect x="0" y="0" width="200" height="60" fill="#94a3b8" />
+        {Array.from({ length: Math.ceil(260 / step) }, (_, i) => (
+          <g key={i}>
+            <path d={`M${i * step - 40} 60 L${i * step + 10} 0`} stroke="#334155" strokeWidth="1.4" />
+            {kind === "crociata"
+              ? [0, 1, 2].map((j) => <path key={j} d={`M${i * step - 30 + j * 9} ${46 - j * 12} h${Math.max(3, step * 0.5)}`} stroke="#e2e8f0" strokeWidth="1" />)
+              : [0, 1, 2].map((j) => <path key={j} d={`M${i * step - 34 + j * 13} ${54 - j * 16} l${step * 0.22} -${step * 0.26 + 3}`} stroke="#e2e8f0" strokeWidth="1" />)}
+          </g>
+        ))}
+      </g>
+      <rect x="2" y="8" width="196" height="44" rx="22" fill="none" stroke="#0f172a" strokeOpacity=".5" />
+    </svg>
+  );
+};
+
+// SCHEDE «i»: come riconoscerla, con i disegni e il link al catalogo FAS (le foto sono di FAS: si aprono sul loro sito)
+const INFO = {
+  6: {
+    title: "Fune a 6 trefoli",
+    text: "Girando intorno alla fune conti 6 trefoli (i «cordoni» attorcigliati), belli grossi. In mezzo c'è l'anima, tessile o metallica. È la più comune sui paranchi e sui carriponte piccoli e medi.",
+    ex: "6×19 Seale, 6×19 Warrington, 6×25 Filler, 6×36 WS",
+    fas: "http://www.fasitaly.com/Tipo/0101000011.pdf",
+    art: (
+      <>
+        <Section n="6" big />
+        <Side strands={6} />
+      </>
+    ),
+  },
+  8: {
+    title: "Fune a 8 trefoli",
+    text: "Conti 8 trefoli, più sottili di quelli della 6: la fune è più tonda e più morbida. Molto usata sui carriponte e sulle gru moderne, quasi sempre con anima metallica.",
+    ex: "8×19 Seale, 8×25 Filler, 8×36 WS",
+    fas: "http://www.fasitaly.com/Tipo/0102000001.pdf",
+    art: (
+      <>
+        <Section n="8" big />
+        <Side strands={8} />
+      </>
+    ),
+  },
+  tanti: {
+    title: "Fune antigiro",
+    text: "Fuori vedi tanti trefoli piccoli (più di 10, di solito da 12 a 18) e sotto c'è un altro strato di trefoli girato al contrario: col carico appeso la fune non gira su sé stessa. Si usa con il tiro singolo e le grandi altezze (gru a torre, autogru, paranchi alti). Attenzione: la norma ammette pochissimi fili rotti.",
+    ex: "18×7, 19×7, 35×7, 35×K7",
+    fas: "https://www.fasitaly.com/Serie/0110005.pdf",
+    art: (
+      <>
+        <Section n="tanti" big />
+        <Side strands="tanti" />
+      </>
+    ),
+  },
+  crociata: {
+    title: "Cordatura crociata",
+    text: "I trefoli vanno in un verso e i fili dentro ogni trefolo nel verso opposto: guardando la fune da vicino i fili sembrano quasi dritti, paralleli alla fune. È la cordatura più comune.",
+    art: <Side strands={6} kind="crociata" />,
+  },
+  parallela: {
+    title: "Cordatura parallela (Lang)",
+    text: "Trefoli e fili vanno nello stesso verso: i fili si vedono inclinati in diagonale, come i trefoli. Si consuma più piano, ma la norma ammette circa la metà dei fili rotti.",
+    art: <Side strands={6} kind="parallela" />,
+  },
+};
+const InfoSheet = ({ id, onClose }) => {
+  const it = INFO[id];
+  if (!it) return null;
+  return (
+    <div className="fixed inset-0 z-[300] bg-slate-900/50 flex items-end md:items-center justify-center p-0 md:p-4" onClick={onClose} data-wear-info={id}>
+      <div className="w-full md:max-w-md bg-white rounded-t-3xl md:rounded-3xl p-5 space-y-3 max-h-[85vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-start gap-2">
+          <h4 className="flex-1 font-black text-lg text-slate-800">{it.title}</h4>
+          <button type="button" onClick={onClose} aria-label="Chiudi" className="w-10 h-10 rounded-full border border-slate-200 flex items-center justify-center">
+            <X className="w-5 h-5 text-slate-500" />
+          </button>
+        </div>
+        <div className="rounded-2xl bg-slate-50 border border-slate-200 p-3 flex flex-col items-center gap-3 text-slate-700">{it.art}</div>
+        <p className="text-sm text-slate-700 leading-relaxed">{it.text}</p>
+        {it.ex && (
+          <p className="text-sm text-slate-600">
+            <b>Costruzioni di questo tipo:</b> {it.ex}
+          </p>
+        )}
+        {it.fas && (
+          <a href={it.fas} target="_blank" rel="noopener noreferrer" data-fas-link className="h-11 px-4 rounded-xl bg-blue-600 text-white font-bold text-sm flex items-center justify-center gap-2">
+            <ExternalLink className="w-4 h-4" /> Vedi le foto nel catalogo FAS
+          </a>
+        )}
+        {it.fas && <p className="text-[11px] text-slate-400">Il catalogo si apre sul sito di FAS (serve la rete). I disegni qui sopra sono indicativi.</p>}
+      </div>
+    </div>
+  );
+};
+
+const Pick = ({ value, onChange, options, id }) => {
+  const [info, setInfo] = useState(null);
+  return (
+    <div className="grid gap-2" style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }} data-wear-choice={id}>
+      {options.map(([v, l, art]) => (
+        <div key={v} className="relative">
+          <button
+            type="button"
+            onClick={() => onChange(v)}
+            data-choice={v}
+            className={`w-full h-full rounded-2xl border-2 p-2 pt-3 flex flex-col items-center gap-1 text-center ${value === v ? "border-blue-500 bg-blue-50 text-blue-800" : "border-slate-200 text-slate-600"}`}
+          >
+            {art}
+            <span className="text-[11px] font-black leading-tight">{l}</span>
+          </button>
+          {INFO[v] && (
+            <button type="button" onClick={() => setInfo(v)} aria-label={`Com'è fatta: ${INFO[v].title}`} data-wear-i={v} className="absolute -top-2 -right-1.5 w-7 h-7 rounded-full bg-white border border-slate-300 shadow text-blue-700 flex items-center justify-center">
+              <Info className="w-4 h-4" />
+            </button>
+          )}
+        </div>
+      ))}
+      {info && <InfoSheet id={info} onClose={() => setInfo(null)} />}
+    </div>
+  );
+};
 
 // ---------------------------------------------------------------- FUNE
 const RopeCheck = () => {
