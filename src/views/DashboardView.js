@@ -14,7 +14,6 @@ import {
   Briefcase,
   Database,
   Folder,
-  Map as MapIcon,
   UserCircle,
   CalendarDays,
   BarChart3,
@@ -134,7 +133,6 @@ export const DashboardView = ({
     else if (to === "practice") setShowPractice(true);
     else if (to === "history") onNavigate("history");
     else if (to === "explore") onNavigate("explore");
-    else if (to === "map") onNavigate("map");
     else if (to === "chat") {
       setChatConv(null);
       setShowChat(true);
@@ -209,14 +207,13 @@ export const DashboardView = ({
   let order = layoutConfig?.dashboardOrder || [
     "new",
     "explore",
-    "map",
     "history",
     "database",
     "office",
     "admin",
   ];
   // "I miei interventi" e "Chat" stanno dentro "La mia area" (non più in Home)
-  order = order.filter((k) => k !== "mine" && k !== "chat" && k !== "database"); // Database è dentro Esplora
+  order = order.filter((k) => k !== "mine" && k !== "chat" && k !== "database" && k !== "map"); // Database è dentro Esplora; la Mappa è stata tolta
   // riquadro "La mia area" subito dopo "Nuovo Rapporto"
   if (currentTechName && !order.includes("area")) {
     const k = order.indexOf("new");
@@ -227,7 +224,7 @@ export const DashboardView = ({
     () => todayItems(personal.events || [], personal.reminders || []).length,
     [personal.events, personal.reminders],
   );
-  // numeri sui riquadri della Home: interventi di oggi, clienti e gru, clienti sulla mappa
+  // numeri sui riquadri della Home: interventi di oggi, clienti e gru
   const homeNums = useMemo(() => {
     const t = new Date();
     const isToday = (s) => {
@@ -238,7 +235,6 @@ export const DashboardView = ({
       today: logs.filter((l) => isToday(l.dateString)).length,
       customers: customers.length,
       cranes: machines.length,
-      onMap: customers.filter((c) => Number.isFinite(Number(c.lat)) && c.lat !== "" && c.lat != null).length,
     };
   }, [logs, customers, machines]);
   const myMonthCount = useMemo(
@@ -285,13 +281,6 @@ export const DashboardView = ({
       icon: Folder,
       desc: homeNums.customers ? `${homeNums.customers} clienti · ${homeNums.cranes} gru` : "Clienti, gru e interventi",
       action: () => onNavigate("explore"),
-    },
-    map: {
-      id: "map",
-      label: "Mappa",
-      icon: MapIcon,
-      desc: homeNums.onMap ? `${homeNums.onMap} clienti sulla mappa` : "Dove sono i clienti",
-      action: () => onNavigate("map"),
     },
     history: {
       id: "history",
@@ -410,10 +399,10 @@ export const DashboardView = ({
     items[id] = widgets[id];
   });
   const available = isOffice
-    ? ["history", "explore", "map"]
+    ? ["history", "explore"]
     : Object.keys(items).filter((id) => id !== "mine" && id !== "chat" && (id !== "area" || currentTechName));
   const home = isOffice
-    ? resolveHome(["history", "explore", "map"], { order: ["history", "explore", "map"], sizes: { history: "l", explore: "l", map: "l" } }, available)
+    ? resolveHome(["history", "explore"], { order: ["history", "explore"], sizes: { history: "l", explore: "l" } }, available)
     : resolveHome(order, prefs, available);
   if (isOffice) items.history = { ...items.history, label: "Interventi", desc: "Tutti gli interventi, con la stampa" };
 

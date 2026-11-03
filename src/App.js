@@ -14,7 +14,6 @@ import {
   Home,
   UserCircle,
   Folder,
-  Map as MapIcon,
 } from "lucide-react";
 import { signInAnonymously, onAuthStateChanged } from "firebase/auth";
 import { collection, serverTimestamp, Timestamp, orderBy, limit, documentId, getDocsFromCache, doc, query, where } from "firebase/firestore";
@@ -62,7 +61,6 @@ import { MachineHistoryModal } from "./components/modals/MachineHistoryModal";
 import { CustomerDetailModal } from "./components/modals/CustomerDetailModal";
 import { DashboardView } from "./views/DashboardView";
 import { ExploreView } from "./views/ExploreView";
-import { MapView } from "./views/MapView";
 // Esplora database, Ufficio e Admin si scaricano solo quando servono (vedi lazy.js)
 import { lazyNamed, preloadLazy } from "./lazy";
 import { installErrorLog, setErrorContext } from "./errorLog";
@@ -92,7 +90,7 @@ const watch = (ref, a, b, c) => {
 const CHAT_KEEP = 500;
 
 // ordine delle schede come nella barra (per il verso del passaggio morbido)
-const TAB_ORDER = ["dashboard", "history", "explore", "database", "map", "new", "area", "office", "admin"];
+const TAB_ORDER = ["dashboard", "history", "explore", "database", "new", "area", "office", "admin"];
 
 export default function App() {
   // TEMA chiaro / scuro (scelto su ogni dispositivo)
@@ -119,7 +117,7 @@ export default function App() {
     try {
       const q = new URLSearchParams(window.location.search);
       const t = q.get("tab");
-      if (["office", "history", "explore", "map"].includes(t)) {
+      if (["office", "history", "explore"].includes(t)) {
         if (q.get("focus")) setTimeout(() => focusSection(q.get("focus")), 1500);
         window.history.replaceState(null, "", window.location.pathname);
         return t;
@@ -129,7 +127,6 @@ export default function App() {
     }
     return "dashboard";
   });
-  const [exploreFocus, setExploreFocus] = useState(null); // dalla Mappa: «Vedi le gru» di un cliente
   // schermo per la TV dell'ufficio (Ufficio → «Schermo TV», oppure indirizzo con ?tv=1)
   const [tvOpen, setTvOpen] = useState(() => {
     try {
@@ -247,7 +244,7 @@ export default function App() {
   // chi fa i rapporti: solo i tecnici (quelli dell'ufficio non compaiono negli elenchi)
   const fieldTechs = useMemo(() => technicians.filter((t) => t.role !== "ufficio"), [technicians]);
   useEffect(() => {
-    if (isOffice && !["dashboard", "history", "explore", "map"].includes(activeTab)) setActiveTab("dashboard");
+    if (isOffice && !["dashboard", "history", "explore"].includes(activeTab)) setActiveTab("dashboard");
   }, [isOffice, activeTab]);
   const handlePreviewLook = (next, phase) => {
     if (phase === "start") modeBeforePreview.current = themeMode;
@@ -534,11 +531,8 @@ export default function App() {
             if (idx !== -1) order.splice(idx + 1, 0, "explore");
             else order.unshift("explore");
           }
-          // scheda Mappa: subito dopo Esplora
-          if (!order.includes("map")) {
-            order = [...order];
-            order.splice(order.indexOf("explore") + 1, 0, "map");
-          }
+          // la Mappa non c'è più (tolta): via dall'ordine salvato
+          order = order.filter((k) => k !== "map");
           let fOrder = data.formOrder || DEFAULT_LAYOUT.formOrder;
           if (!fOrder.includes("ticketNumber")) {
             fOrder = [...fOrder];
@@ -1286,18 +1280,6 @@ export default function App() {
                 logs={logs}
                 color={color}
                 onOpenPhotos={setGlobalPhotoView}
-                focus={exploreFocus}
-              />
-            )}
-            {activeTab === "map" && (
-              <MapView
-                customers={customers}
-                machines={machines}
-                color={color}
-                onShowMachines={(name) => {
-                  setExploreFocus({ name, at: Date.now() });
-                  setActiveTab("explore");
-                }}
               />
             )}
             {activeTab === "history" && (
@@ -1444,13 +1426,6 @@ export default function App() {
                 label="Esplora"
                 active={activeTab === "explore"}
                 onClick={() => setActiveTab("explore")}
-                color={color}
-              />
-              <NavButton
-                icon={MapIcon}
-                label="Mappa"
-                active={activeTab === "map"}
-                onClick={() => setActiveTab("map")}
                 color={color}
               />
             </>
