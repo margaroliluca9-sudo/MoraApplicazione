@@ -506,6 +506,29 @@ export class CraneEngine {
     this.rules = stageRules(st);
   }
 
+  // PARTITA SALVATA: quello che serve per riprendere (livello, camion fatti nel livello, punti, vite, statistiche).
+  // Il camion e i pezzi in giro no: si riparte dal camion che stavi caricando.
+  snapshot() {
+    return {
+      v: 1,
+      stage: this.stage,
+      stageTrucks: this.stageTrucks,
+      level: this.level,
+      score: this.score,
+      lives: this.lives,
+      stats: { ...this.stats },
+    };
+  }
+  restore(s) {
+    if (!s || !(Number(s.stage) >= 1)) return;
+    this.startAt(s.stage);
+    this.stageTrucks = Math.max(0, Math.min(TRUCKS_PER_STAGE - 1, Math.floor(Number(s.stageTrucks) || 0)));
+    this.level = Math.max(0, Math.floor(Number(s.level) || 0));
+    this.score = Math.max(0, Math.floor(Number(s.score) || 0));
+    this.lives = Math.max(1, Math.min(5, Math.floor(Number(s.lives) || 3)));
+    this.stats = { ...this.stats, ...(s.stats || {}) };
+  }
+
   nextStage() {
     this.stage += 1;
     this.stageTrucks = 0;

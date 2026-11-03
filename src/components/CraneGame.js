@@ -3,13 +3,37 @@
 // Comandi come un Game Boy: croce ◀ ▶ = sposti il carrello, A (o ▼) = cala il gancio finché tieni premuto,
 // B = ferma il carrello, START = pausa, SELECT = suoni. Si può anche trascinare il dito sul capannone.
 // Sul computer: frecce ← → e barra spaziatrice.
-import React, { useCallback, useEffect, useRef, useState } from "react";
-import { X, Trophy, RotateCcw, Heart, Volume2, VolumeX, Medal, Pause, Play, Lock, Paintbrush } from "lucide-react";
+// PARTITA SALVATA: uscendo (X, «Esci», pausa, telefono in tasca) la partita si salva da sola — livello, punti,
+// vite — sul telefono e online (game_scores → save): riaprendo il gioco c'è «Riprendi la partita», anche da un
+// altro telefono. CLASSIFICA: della settimana e di sempre, con il podio; i punti contano anche se esci a metà.
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { X, Trophy, RotateCcw, Heart, Volume2, VolumeX, Medal, Pause, Play, Lock, Paintbrush, ChevronDown, Crown } from "lucide-react";
 import { CraneEngine, stageNews, TRUCKS_PER_STAGE } from "../game/engine";
 import { play, soundOn, setSoundOn } from "../game/sound";
-import { topScores, saveScore, myStage } from "../game/scores";
+import { allScores, rank, saveScore, myData, saveGame, weekKey } from "../game/scores";
 import { LOOKS, lookById, unlocked, readLook, saveLook, cleanName } from "../game/looks";
 import { RowsSkeleton } from "./Skeleton";
+import { key } from "../chat";
+
+// partita lasciata a metà, su questo telefono (di chi: me)
+const SAVE = "mora_crane_game_save_v1";
+const readSave = () => {
+  try {
+    const j = JSON.parse(localStorage.getItem(SAVE) || "null");
+    return j && Number(j.stage) >= 1 ? j : null;
+  } catch (e) {
+    return null;
+  }
+};
+const writeSave = (snap) => {
+  try {
+    if (snap) localStorage.setItem(SAVE, JSON.stringify(snap));
+    else localStorage.removeItem(SAVE);
+  } catch (e) {
+    // niente
+  }
+};
+const mineSave = (snap, me) => (snap && (!snap.me || snap.me === key(me)) ? snap : null);
 
 const REC = "mora_crane_game_record";
 const readRec = () => {
@@ -43,21 +67,99 @@ const saveStage = (n) => {
   }
 };
 
-const Board = ({ rows, me, loading }) => {
-  if (loading) return <RowsSkeleton count={4} />;
-  if (!rows || !rows.length) return <p className="text-sm text-slate-400">Ancora nessuno in classifica: comincia tu!</p>;
-  const mine = String(me || "").trim().toLowerCase();
+const initials = (n) =>
+  String(n || "?")
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((w) => w[0])
+    .join("")
+    .toUpperCase();
+const isMe = (r, me) => String(r.name).trim().toLowerCase() === String(me || "").trim().toLowerCase();
+const Face = ({ r, size = "w-11 h-11 text-base" }) => {
+  const lk = lookById(r.look);
   return (
-    <ol className="space-y-1 text-left" data-game-board>
-      {rows.slice(0, 5).map((r, i) => (
-        <li key={r.id} className={`flex items-center gap-2 px-3 py-1.5 rounded-xl ${String(r.name).trim().toLowerCase() === mine ? "bg-amber-50 border border-amber-200" : "bg-slate-50"}`}>
-          <span className="w-6 text-center font-black text-slate-500">{i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : i + 1}</span>
-          <span className="w-3 h-3 rounded-full shrink-0 border border-black/10" style={{ background: lookById(r.look).bottom }} aria-hidden="true" />
-          <span className="flex-1 font-bold text-slate-700 truncate">{r.name}</span>
-          <span className="font-black text-slate-800 tabular-nums">{r.best}</span>
-        </li>
-      ))}
-    </ol>
+    <span
+      className={`${size} rounded-full flex items-center justify-center font-black shrink-0 border-2 border-white shadow`}
+      style={{ background: lk.stripes ? `repeating-linear-gradient(-45deg, ${lk.top} 0 5px, #111827 5px 10px)` : `linear-gradient(${lk.top}, ${lk.bottom})`, color: lk.ink }}
+      aria-hidden="true"
+    >
+      {initials(r.name)}
+    </span>
+  );
+};
+
+// CLASSIFICA: schede «Questa settimana» / «Di sempre», podio dei primi tre e poi gli altri
+const Leaderboard = ({ rows, me, loading, mode, setMode, compact = false }) => {
+  const list = useMemo(() => rank(rows || [], mode), [rows, mode]);
+  const pos = list.findIndex((r) => isMe(r, me));
+  const podium = [list[1], list[0], list[2]];
+  const rest = list.slice(3, compact ? 5 : 20);
+  return (
+    <div className="space-y-3" data-game-board data-board-mode={mode}>
+      <div className="flex bg-slate-100 p-1 rounded-full" role="tablist">
+        {[
+          ["week", "Questa settimana"],
+          ["all", "Di sempre"],
+        ].map(([id, label]) => (
+          <button
+            key={id}
+            type="button"
+            role="tab"
+            aria-selected={mode === id}
+            onClick={() => setMode(id)}
+            data-board-tab={id}
+            className={`flex-1 h-9 rounded-full text-xs font-black ${mode === id ? "bg-white text-slate-800 shadow" : "text-slate-500"}`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {loading ? (
+        <RowsSkeleton count={3} />
+      ) : !list.length ? (
+        <p className="text-sm text-slate-400 py-3">{mode === "week" ? "Questa settimana ancora nessuno: fatti avanti tu!" : "Ancora nessuno in classifica: comincia tu!"}</p>
+      ) : (
+        <>
+          <div className="flex items-end justify-center gap-2 pt-2" data-board-podium>
+            {podium.map((r, i) => {
+              if (!r) return <div key={i} className="w-[30%]" />;
+              const place = i === 1 ? 1 : i === 0 ? 2 : 3;
+              const h = place === 1 ? "h-20" : place === 2 ? "h-14" : "h-10";
+              const bar = place === 1 ? "from-amber-300 to-amber-500" : place === 2 ? "from-slate-200 to-slate-400" : "from-orange-200 to-orange-400";
+              return (
+                <div key={r.id} className="w-[30%] flex flex-col items-center min-w-0" data-podium={place} data-podium-name={r.name}>
+                  {place === 1 && <Crown className="w-6 h-6 text-amber-500 fill-amber-300 -mb-1" />}
+                  <Face r={r} size={place === 1 ? "w-14 h-14 text-lg" : "w-11 h-11 text-sm"} />
+                  <p className={`mt-1 text-xs font-black truncate max-w-full ${isMe(r, me) ? "text-amber-700" : "text-slate-700"}`}>{r.name}</p>
+                  <p className="text-sm font-black text-slate-900 tabular-nums leading-none">{r.pts}</p>
+                  <p className="text-[10px] font-bold text-slate-400">liv. {Number(r.stage) || 1}</p>
+                  <div className={`mt-1 w-full ${h} rounded-t-xl bg-gradient-to-b ${bar} flex items-start justify-center pt-1 text-white font-black text-lg shadow-inner`}>{place}</div>
+                </div>
+              );
+            })}
+          </div>
+          {rest.length > 0 && (
+            <ol className="space-y-1 text-left">
+              {rest.map((r, i) => (
+                <li key={r.id} className={`flex items-center gap-2 px-3 py-1.5 rounded-xl ${isMe(r, me) ? "bg-amber-50 border border-amber-200" : "bg-slate-50"}`} data-board-row={r.name}>
+                  <span className="w-6 text-center font-black text-slate-400 tabular-nums">{i + 4}</span>
+                  <Face r={r} size="w-7 h-7 text-[10px]" />
+                  <span className="flex-1 font-bold text-slate-700 truncate">{r.name}</span>
+                  <span className="text-[11px] font-bold text-slate-400">liv. {Number(r.stage) || 1}</span>
+                  <span className="w-12 text-right font-black text-slate-800 tabular-nums">{r.pts}</span>
+                </li>
+              ))}
+            </ol>
+          )}
+          {me && (
+            <p className="text-xs font-bold text-slate-500" data-board-me>
+              {pos >= 0 ? `Sei ${pos + 1}° su ${list.length}${mode === "week" ? " questa settimana" : ""}` : mode === "week" ? "Questa settimana non hai ancora giocato" : "Non sei ancora in classifica"}
+            </p>
+          )}
+        </>
+      )}
+    </div>
   );
 };
 
@@ -76,6 +178,10 @@ export const CraneGame = ({ onClose, me = "" }) => {
   const [sound, setSound] = useState(soundOn);
   const [record, setRecord] = useState(readRec);
   const [result, setResult] = useState(null);
+  const [saved, setSaved] = useState(() => mineSave(readSave(), me)); // partita lasciata a metà
+  const [view, setView] = useState("play"); // schermata iniziale: «play» | «board»
+  const [boardMode, setBoardMode] = useState("week");
+  const [howTo, setHowTo] = useState(() => readRec() === 0);
   const [board, setBoard] = useState(null);
   const [boardLoading, setBoardLoading] = useState(true);
   const [round, setRound] = useState(0);
@@ -85,27 +191,99 @@ export const CraneGame = ({ onClose, me = "" }) => {
   const phaseRef = useRef(phase);
   phaseRef.current = phase;
   const fromStage = useRef(1); // livello da cui parte la partita
+  const fromSnap = useRef(null); // partita da riprendere (punti, vite…)
+  const live = useRef(false); // c'è una partita in corso da salvare
 
-  // il livello raggiunto è salvato anche online: vale su tutti i telefoni del tecnico
+  // livello raggiunto e partita salvata anche online: valgono su tutti i telefoni del tecnico
   useEffect(() => {
     if (!me) return;
-    myStage(me)
-      .then((s) => {
-        if (s > readStage()) {
-          saveStage(s);
-          setBestStage(s);
+    myData(me)
+      .then((d) => {
+        if (!d) return;
+        if (d.stage > readStage()) {
+          saveStage(d.stage);
+          setBestStage(d.stage);
+        }
+        const local = mineSave(readSave(), me);
+        if (d.save && Number(d.save.stage) >= 1 && (!local || (d.saveAt || 0) > (local.at || 0)) && !live.current) {
+          writeSave(d.save);
+          setSaved(d.save);
         }
       })
       .catch(() => {});
   }, [me]);
 
+  // SALVA LA PARTITA (uscendo, in pausa, a ogni camion): sul telefono subito, online e in classifica
+  const saveProgress = useCallback(
+    (online = true) => {
+      const e = eng.current;
+      if (!e || e.over || !live.current) return;
+      const snap = { ...e.snapshot(), me: key(me), at: Date.now() };
+      if (snap.score <= 0 && snap.stage <= 1 && snap.level <= 0) return;
+      writeSave(snap);
+      setSaved(snap);
+      if (snap.stage > readStage()) {
+        saveStage(snap.stage);
+        setBestStage(snap.stage);
+      }
+      if (snap.score > readRec()) {
+        saveRec(snap.score);
+        setRecord(snap.score);
+      }
+      if (me && online) {
+        saveGame(me, snap).catch(() => false);
+        saveScore(me, snap.score, readLook().id, snap.stage, false).catch(() => false);
+      }
+    },
+    [me]
+  );
+  const saveRef = useRef(saveProgress);
+  saveRef.current = saveProgress;
+  const clearSave = useCallback(() => {
+    writeSave(null);
+    setSaved(null);
+    if (me) saveGame(me, null).catch(() => false);
+  }, [me]);
+  // chiudendo l'app o cambiando pagina (anche senza toccare X): almeno sul telefono resta salvata
+  useEffect(() => {
+    const onHide = () => saveRef.current(false);
+    window.addEventListener("pagehide", onHide);
+    return () => {
+      window.removeEventListener("pagehide", onHide);
+      saveRef.current(false);
+    };
+  }, []);
+  const close = () => {
+    if (phaseRef.current === "play" || phaseRef.current === "pause") saveProgress();
+    onClose();
+  };
+
+  // i miei punti appena fatti valgono subito in classifica (anche se la rete è lenta o il salvataggio è in ritardo)
+  const myBest = useRef(null);
+  const withMine = useCallback(
+    (rows) => {
+      const m = myBest.current;
+      if (!me || !m) return rows;
+      const k = key(me);
+      const wk = weekKey();
+      const list = [...(rows || [])];
+      const i = list.findIndex((r) => key(r.name) === k);
+      const old = i >= 0 ? list[i] : { id: k, name: String(me).trim(), owner: k };
+      const oldWeek = old.week === wk ? Number(old.weekBest) || 0 : 0;
+      const row = { ...old, best: Math.max(Number(old.best) || 0, m.score), stage: Math.max(Number(old.stage) || 0, m.stage), week: wk, weekBest: Math.max(oldWeek, m.score), look: old.look || readLook().id };
+      if (i >= 0) list[i] = row;
+      else list.push(row);
+      return list;
+    },
+    [me]
+  );
   const loadBoard = useCallback(() => {
     setBoardLoading(true);
-    topScores()
-      .then((r) => setBoard(r))
-      .catch(() => setBoard(null))
+    allScores()
+      .then((r) => setBoard(withMine(r)))
+      .catch(() => setBoard((b) => (b ? withMine(b) : null)))
       .then(() => setBoardLoading(false));
-  }, []);
+  }, [withMine]);
   useEffect(() => {
     loadBoard();
   }, [loadBoard]);
@@ -168,13 +346,17 @@ export const CraneGame = ({ onClose, me = "" }) => {
       onEvent: (ev) => {
         if (ev.type === "score") setScore(ev.score);
         if (ev.type === "miss") setLives(ev.lives);
-        if (ev.type === "done") setLevel(ev.level);
+        if (ev.type === "done") {
+          setLevel(ev.level);
+          setTimeout(() => saveRef.current(), 0); // a ogni camion la partita è salvata
+        }
         if (ev.type === "stage") {
           setStage(ev.stage);
           setLives(ev.lives);
           setBanner({ stage: ev.stage, news: ev.news, life: ev.life, id: Date.now() });
         }
         if (ev.type === "over") {
+          live.current = false;
           setResult({ score: ev.score, stats: ev.stats, level: ev.level, stage: ev.stage });
           setPhase("end");
         }
@@ -183,6 +365,7 @@ export const CraneGame = ({ onClose, me = "" }) => {
     const lk = readLook();
     e.setLook(lk.id, lk.name);
     if (fromStage.current > 1) e.startAt(fromStage.current);
+    if (fromSnap.current) e.restore(fromSnap.current);
     eng.current = e;
     if (window.__moraTest) window.__crane = e; // solo per le prove automatiche
     let raf = 0;
@@ -223,6 +406,7 @@ export const CraneGame = ({ onClose, me = "" }) => {
       if (document.hidden) {
         last = 0;
         if (phaseRef.current === "play") setPhase("pause");
+        if (phaseRef.current === "play" || phaseRef.current === "pause") saveRef.current();
       }
     };
     document.addEventListener("visibilitychange", onVis);
@@ -243,10 +427,10 @@ export const CraneGame = ({ onClose, me = "" }) => {
   }, [banner]);
 
   // fine partita: record e classifica
-  const saved = useRef(null);
+  const endSaved = useRef(null);
   useEffect(() => {
-    if (phase !== "end" || !result || saved.current === result) return;
-    saved.current = result; // una volta sola per partita
+    if (phase !== "end" || !result || endSaved.current === result) return;
+    endSaved.current = result; // una volta sola per partita
     if ((result.stage || 1) > readStage()) {
       saveStage(result.stage || 1);
       setBestStage(result.stage || 1);
@@ -255,12 +439,17 @@ export const CraneGame = ({ onClose, me = "" }) => {
       saveRec(result.score);
       setRecord(result.score);
     }
+    clearSave(); // partita finita: niente più da riprendere
+    if (result.score > 0) {
+      myBest.current = { score: Math.max(result.score, (myBest.current || {}).score || 0), stage: Math.max(result.stage || 1, (myBest.current || {}).stage || 1) };
+      setBoard((b) => withMine(b || []));
+    }
     if (me && (result.score > 0 || (result.stage || 1) > 1)) {
-      saveScore(me, result.score, readLook().id, result.stage || 1)
+      saveScore(me, result.score, readLook().id, result.stage || 1, true)
         .catch(() => false)
         .then(loadBoard);
     } else loadBoard();
-  }, [phase, result, me, loadBoard]);
+  }, [phase, result, me, loadBoard, clearSave, withMine]);
 
   // dito sul capannone: sposta il carrello
   const drag = useRef(null);
@@ -375,9 +564,39 @@ export const CraneGame = ({ onClose, me = "" }) => {
     if (eng.current) eng.current.setLook(next.id, next.name);
   };
 
-  const start = (from = 1) => {
-    const st = Math.max(1, Number(from) || 1);
+  // il mio posto in classifica (settimana, altrimenti di sempre)
+  const myLine = useMemo(() => {
+    if (!me || !board) return "";
+    const w = rank(board, "week").findIndex((r) => isMe(r, me));
+    if (w >= 0) return `Sei ${w + 1}° questa settimana`;
+    const a = rank(board, "all").findIndex((r) => isMe(r, me));
+    return a >= 0 ? `Sei ${a + 1}° nella classifica di sempre` : "";
+  }, [board, me]);
+  // fine partita: i punti salgono da 0 al risultato
+  const [shown, setShown] = useState(0);
+  const recordBefore = useRef(0);
+  const newRecord = !!result && result.score > 0 && result.score > recordBefore.current;
+  useEffect(() => {
+    if (phase !== "end" || !result) return undefined;
+    let raf = 0;
+    const t0 = performance.now();
+    const go = (ts) => {
+      const k = Math.min(1, (ts - t0) / 900);
+      setShown(Math.round(result.score * (1 - Math.pow(1 - k, 3))));
+      if (k < 1) raf = requestAnimationFrame(go);
+    };
+    raf = requestAnimationFrame(go);
+    if (newRecord) play("start");
+    return () => cancelAnimationFrame(raf);
+  }, [phase, result, newRecord]);
+
+  const start = (from = 1, snap = null) => {
+    const st = Math.max(1, Number((snap && snap.stage) || from) || 1);
     fromStage.current = st;
+    fromSnap.current = snap;
+    live.current = true;
+    recordBefore.current = Math.max(readRec(), best);
+    if (!snap) clearSave(); // partita nuova: quella vecchia non serve più
     // iPhone: se il campo del nome era ancora attivo, tenendo premuto comparivano «Copia / Incolla»
     try {
       if (document.activeElement && document.activeElement.blur) document.activeElement.blur();
@@ -386,9 +605,9 @@ export const CraneGame = ({ onClose, me = "" }) => {
     } catch (e) {
       // niente
     }
-    setScore(0);
-    setLives(3);
-    setLevel(0);
+    setScore(snap ? Number(snap.score) || 0 : 0);
+    setLives(snap ? Math.max(1, Math.min(5, Number(snap.lives) || 3)) : 3);
+    setLevel(snap ? Number(snap.level) || 0 : 0);
     setStage(st);
     setResult(null);
     setHold(false);
@@ -402,6 +621,7 @@ export const CraneGame = ({ onClose, me = "" }) => {
     if (eng.current) eng.current.press(false);
     setHold(false);
     setPhase("pause");
+    saveProgress();
   };
   const stop = (ev) => ev.stopPropagation();
   const toggleSound = () => {
@@ -453,7 +673,7 @@ export const CraneGame = ({ onClose, me = "" }) => {
               {sound ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
             </button>
           )}
-          <button type="button" aria-label="Chiudi" onClick={onClose} className="w-12 h-12 rounded-full bg-slate-900/80 text-white shadow flex items-center justify-center">
+          <button type="button" aria-label="Chiudi" onClick={close} data-game-btn="close" className="w-12 h-12 rounded-full bg-slate-900/80 text-white shadow flex items-center justify-center">
             <X className="w-6 h-6" />
           </button>
         </div>
@@ -500,9 +720,10 @@ export const CraneGame = ({ onClose, me = "" }) => {
             <button type="button" onClick={() => setPhase("play")} data-action="game-resume" className="w-full h-12 rounded-full bg-amber-500 text-white font-black text-lg flex items-center justify-center gap-2">
               <Play className="w-5 h-5" /> Riprendi
             </button>
-            <button type="button" onClick={onClose} className="w-full h-12 rounded-full bg-slate-100 text-slate-700 font-bold">
+            <button type="button" onClick={close} data-action="game-exit" className="w-full h-12 rounded-full bg-slate-100 text-slate-700 font-bold">
               Esci dal gioco
             </button>
+            <p className="text-xs text-slate-400">Uscendo la partita resta salvata: la riprendi quando vuoi.</p>
           </div>
         </div>
       )}
@@ -567,126 +788,195 @@ export const CraneGame = ({ onClose, me = "" }) => {
         </div>
       )}
 
-      {/* inizio */}
+      {/* inizio: titolo, «Gioca» / «Classifica» */}
       {phase === "intro" && (
-        <div className="absolute inset-0 flex items-center justify-center p-5 bg-slate-900/50 overflow-y-auto" data-game-intro>
-          <div className="bg-white rounded-3xl shadow-2xl p-5 max-w-sm w-full space-y-3 text-center my-auto">
-            <h2 className="text-2xl font-black text-slate-800">Carroponte Mora</h2>
-            <ul className="text-left text-sm text-slate-600 space-y-1.5">
-              <li>🎮 Tasti come un <b>Game Boy</b>: <b>◀ ▶</b> muovi il carrello, <b>B</b> lo fermi</li>
-              <li>🅰️ <b>Tieni premuto A</b> (o ▼): il gancio scende e aggancia da solo il pezzo che tocca. Lascia: risale</li>
-              <li>⏸️ <b>START</b> = pausa · <b>SELECT</b> = suoni. Puoi anche trascinare il dito sul capannone</li>
-              <li>🚚 Ogni camion vuole <b>pezzi precisi</b>: li vedi disegnati sul cassone</li>
-              <li>✨ Appoggia <b>piano e senza dondolare</b>: «Perfetto!» vale di più (e di fila moltiplica)</li>
-              <li>💥 Se sbatti è una «Botta!», se sbagli pezzo perdi punti</li>
-              <li>❤️ 3 vite: ne perdi una se un camion riparte senza tutto</li>
-              <li>📈 Si parte facile, con la freccia verde che ti guida. Ogni {TRUCKS_PER_STAGE} camion si passa di livello: più pezzi, meno tempo, vento e il vetro fragile. Ogni 3 livelli una vita in più</li>
-            </ul>
-            <div className="rounded-2xl border border-slate-200 p-3 text-left" data-game-look>
-              <button type="button" onClick={() => setCustom(!custom)} className="w-full flex items-center gap-2" data-action="game-look">
-                <span className="w-9 h-5 rounded border border-black/10" style={{ background: `linear-gradient(${lookById(look.id).top}, ${lookById(look.id).bottom})` }} />
-                <span className="flex-1 text-sm font-black text-slate-700">Il tuo carroponte{look.name ? ` · ${look.name}` : ""}</span>
-                <Paintbrush className="w-4 h-4 text-slate-400" />
-              </button>
-              {custom && (
-                <div className="mt-3 space-y-3">
-                  <div className="grid grid-cols-4 gap-2">
-                    {LOOKS.map((l) => {
-                      const ok = unlocked(l, best);
-                      const on = look.id === l.id;
-                      return (
-                        <button
-                          key={l.id}
-                          type="button"
-                          disabled={!ok}
-                          onClick={() => chooseLook(l.id)}
-                          data-look={l.id}
-                          aria-label={ok ? l.label : `${l.label}: si sblocca a ${l.need} punti`}
-                          className={`rounded-xl p-1.5 border-2 text-center ${on ? "border-amber-500 bg-amber-50" : "border-slate-200"} ${ok ? "" : "opacity-60"}`}
-                        >
-                          <span className="relative block h-6 rounded-md border border-black/10" style={{ background: l.stripes ? `repeating-linear-gradient(-45deg, ${l.top} 0 6px, #111827 6px 12px)` : `linear-gradient(${l.top}, ${l.bottom})` }}>
-                            {!ok && <Lock className="w-3.5 h-3.5 text-slate-700 absolute inset-0 m-auto" />}
-                          </span>
-                          <span className="block text-[11px] font-bold text-slate-600 mt-1 leading-tight">{ok ? l.label : `${l.need} punti`}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                  <label className="block">
-                    <span className="text-xs font-black text-slate-500">Nome sulla trave (max 10 lettere)</span>
-                    <input
-                      value={look.name}
-                      onChange={(e) => setBeamName(e.target.value)}
-                      placeholder="Es. LUCA 1"
-                      maxLength={10}
-                      className="mt-1 w-full h-11 px-3 rounded-xl border border-slate-200 bg-slate-50 font-black tracking-wide text-slate-800 uppercase outline-none"
-                      data-look-name
-                    />
-                  </label>
-                  <p className="text-xs text-slate-500">I colori si sbloccano col tuo record. Il tuo: {best} punti.</p>
-                </div>
+        <div className="absolute inset-0 flex items-center justify-center p-4 bg-slate-900/55 overflow-y-auto" data-game-intro>
+          <div className="bg-white rounded-3xl shadow-2xl max-w-sm w-full overflow-hidden my-auto animate-in zoom-in-95">
+            <div className="relative px-5 pt-5 pb-4 text-center text-slate-900 bg-gradient-to-br from-amber-300 via-amber-400 to-orange-500">
+              <div className="absolute inset-x-0 bottom-0 h-2 opacity-80" style={{ background: "repeating-linear-gradient(-45deg, #111827 0 10px, #facc15 10px 20px)" }} />
+              <p className="text-[11px] font-black tracking-[0.3em] opacity-70">IL GIOCO DEL</p>
+              <h2 className="text-[34px] font-black leading-[0.95] tracking-tight drop-shadow-sm">
+                CARROPONTE
+                <br />
+                MORA
+              </h2>
+              {(record > 0 || bestStage > 1) && (
+                <p className="mt-2 inline-flex items-center gap-1.5 bg-white/75 rounded-full px-3 py-1 text-xs font-black" data-game-record>
+                  <Trophy className="w-3.5 h-3.5 text-amber-600" /> Record {best} punti · livello {Math.max(1, bestStage)}
+                </p>
               )}
             </div>
-            <div className="space-y-1.5">
-              <p className="text-xs font-black text-slate-500 flex items-center justify-center gap-1"><Medal className="w-4 h-4" /> CLASSIFICA</p>
-              <Board rows={board} me={me} loading={boardLoading} />
-              {record > 0 && <p className="text-xs font-bold text-amber-700">Il tuo record su questo telefono: {record} punti{bestStage > 1 ? ` · livello ${bestStage}` : ""}</p>}
+            <div className="flex px-3 pt-3 gap-2" role="tablist">
+              {[
+                ["play", "Gioca", Play],
+                ["board", "Classifica", Medal],
+              ].map(([id, label, Icon]) => (
+                <button
+                  key={id}
+                  type="button"
+                  role="tab"
+                  aria-selected={view === id}
+                  onClick={() => setView(id)}
+                  data-game-view={id}
+                  className={`flex-1 h-11 rounded-2xl text-sm font-black flex items-center justify-center gap-1.5 ${view === id ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-500"}`}
+                >
+                  <Icon className="w-4 h-4" /> {label}
+                </button>
+              ))}
             </div>
-            {bestStage > 1 ? (
-              <div className="space-y-2">
-                <button type="button" onClick={() => start(bestStage)} data-action="game-continue" className="w-full h-12 rounded-full bg-amber-500 text-white font-black text-lg">
-                  Continua dal livello {bestStage}
-                </button>
-                <button type="button" onClick={() => start(1)} data-action="game-start" className="w-full h-11 rounded-full bg-slate-100 text-slate-700 font-bold">
-                  Ricomincia dal livello 1
-                </button>
-              </div>
-            ) : (
-              <button type="button" onClick={() => start(1)} data-action="game-start" className="w-full h-12 rounded-full bg-amber-500 text-white font-black text-lg">
-                Gioca
-              </button>
-            )}
+            <div className="p-5 pt-4 space-y-3 text-center">
+              {view === "board" ? (
+                <Leaderboard rows={board} me={me} loading={boardLoading} mode={boardMode} setMode={setBoardMode} />
+              ) : (
+                <>
+                  {saved ? (
+                    <div className="space-y-2">
+                      <button type="button" onClick={() => start(1, saved)} data-action="game-resume-saved" className="w-full rounded-2xl bg-amber-500 text-white px-4 py-3 shadow-[0_5px_0_#b45309] active:translate-y-[3px] active:shadow-none">
+                        <span className="block text-lg font-black leading-tight">▶ Riprendi la partita</span>
+                        <span className="block text-sm font-bold text-white/90" data-saved-info>
+                          Livello {saved.stage} · {saved.score} punti · {"❤️".repeat(Math.max(1, Math.min(5, Number(saved.lives) || 1)))}
+                        </span>
+                      </button>
+                      <button type="button" onClick={() => start(1)} data-action="game-start" className="w-full h-11 rounded-full bg-slate-100 text-slate-700 font-bold">
+                        Nuova partita dal livello 1
+                      </button>
+                    </div>
+                  ) : bestStage > 1 ? (
+                    <div className="space-y-2">
+                      <button type="button" onClick={() => start(bestStage)} data-action="game-continue" className="w-full h-12 rounded-full bg-amber-500 text-white font-black text-lg shadow-[0_5px_0_#b45309] active:translate-y-[3px] active:shadow-none">
+                        Continua dal livello {bestStage}
+                      </button>
+                      <button type="button" onClick={() => start(1)} data-action="game-start" className="w-full h-11 rounded-full bg-slate-100 text-slate-700 font-bold">
+                        Ricomincia dal livello 1
+                      </button>
+                    </div>
+                  ) : (
+                    <button type="button" onClick={() => start(1)} data-action="game-start" className="w-full h-12 rounded-full bg-amber-500 text-white font-black text-lg shadow-[0_5px_0_#b45309] active:translate-y-[3px] active:shadow-none">
+                      Gioca
+                    </button>
+                  )}
+                  <button type="button" onClick={() => setView("board")} className="w-full flex items-center justify-center gap-2 text-sm font-bold text-slate-600" data-action="game-board">
+                    <Medal className="w-4 h-4 text-amber-500" /> {myLine || "Guarda la classifica"}
+                  </button>
+                <div className="rounded-2xl border border-slate-200 p-3 text-left" data-game-look>
+                  <button type="button" onClick={() => setCustom(!custom)} className="w-full flex items-center gap-2" data-action="game-look">
+                    <span className="w-9 h-5 rounded border border-black/10" style={{ background: `linear-gradient(${lookById(look.id).top}, ${lookById(look.id).bottom})` }} />
+                    <span className="flex-1 text-sm font-black text-slate-700">Il tuo carroponte{look.name ? ` · ${look.name}` : ""}</span>
+                    <Paintbrush className="w-4 h-4 text-slate-400" />
+                  </button>
+                  {custom && (
+                    <div className="mt-3 space-y-3">
+                      <div className="grid grid-cols-4 gap-2">
+                        {LOOKS.map((l) => {
+                          const ok = unlocked(l, best);
+                          const on = look.id === l.id;
+                          return (
+                            <button
+                              key={l.id}
+                              type="button"
+                              disabled={!ok}
+                              onClick={() => chooseLook(l.id)}
+                              data-look={l.id}
+                              aria-label={ok ? l.label : `${l.label}: si sblocca a ${l.need} punti`}
+                              className={`rounded-xl p-1.5 border-2 text-center ${on ? "border-amber-500 bg-amber-50" : "border-slate-200"} ${ok ? "" : "opacity-60"}`}
+                            >
+                              <span className="relative block h-6 rounded-md border border-black/10" style={{ background: l.stripes ? `repeating-linear-gradient(-45deg, ${l.top} 0 6px, #111827 6px 12px)` : `linear-gradient(${l.top}, ${l.bottom})` }}>
+                                {!ok && <Lock className="w-3.5 h-3.5 text-slate-700 absolute inset-0 m-auto" />}
+                              </span>
+                              <span className="block text-[11px] font-bold text-slate-600 mt-1 leading-tight">{ok ? l.label : `${l.need} punti`}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                      <label className="block">
+                        <span className="text-xs font-black text-slate-500">Nome sulla trave (max 10 lettere)</span>
+                        <input
+                          value={look.name}
+                          onChange={(e) => setBeamName(e.target.value)}
+                          placeholder="Es. LUCA 1"
+                          maxLength={10}
+                          className="mt-1 w-full h-11 px-3 rounded-xl border border-slate-200 bg-slate-50 font-black tracking-wide text-slate-800 uppercase outline-none"
+                          data-look-name
+                        />
+                      </label>
+                      <p className="text-xs text-slate-500">I colori si sbloccano col tuo record. Il tuo: {best} punti.</p>
+                    </div>
+                  )}
+                </div>
+                  <div className="rounded-2xl border border-slate-200 p-3 text-left">
+                    <button type="button" onClick={() => setHowTo(!howTo)} className="w-full flex items-center gap-2" data-action="game-howto">
+                      <span className="flex-1 text-sm font-black text-slate-700">Come si gioca</span>
+                      <ChevronDown className={`w-4 h-4 text-slate-400 transition-transform ${howTo ? "rotate-180" : ""}`} />
+                    </button>
+                    {howTo && (
+                  <ul className="text-left text-sm text-slate-600 space-y-1.5 mt-2" data-game-howto>
+                    <li>🎮 Tasti come un <b>Game Boy</b>: <b>◀ ▶</b> muovi il carrello, <b>B</b> lo fermi</li>
+                    <li>🅰️ <b>Tieni premuto A</b> (o ▼): il gancio scende e aggancia da solo il pezzo che tocca. Lascia: risale</li>
+                    <li>⏸️ <b>START</b> = pausa · <b>SELECT</b> = suoni. Puoi anche trascinare il dito sul capannone</li>
+                    <li>🚚 Ogni camion vuole <b>pezzi precisi</b>: li vedi disegnati sul cassone</li>
+                    <li>✨ Appoggia <b>piano e senza dondolare</b>: «Perfetto!» vale di più (e di fila moltiplica)</li>
+                    <li>💥 Se sbatti è una «Botta!», se sbagli pezzo perdi punti</li>
+                    <li>❤️ 3 vite: ne perdi una se un camion riparte senza tutto</li>
+                    <li>📈 Si parte facile, con la freccia verde che ti guida. Ogni {TRUCKS_PER_STAGE} camion si passa di livello: più pezzi, meno tempo, vento e il vetro fragile. Ogni 3 livelli una vita in più</li>
+                  </ul>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </div>
       )}
 
-      {/* fine */}
+      {/* fine: punti che salgono, posto in classifica */}
       {phase === "end" && result && (
-        <div className="absolute inset-0 flex items-center justify-center p-5 bg-slate-900/60 overflow-y-auto" data-game-end>
-          <div className="bg-white rounded-3xl shadow-2xl p-5 max-w-sm w-full space-y-3 text-center my-auto">
-            <Trophy className={`w-12 h-12 mx-auto ${result.score > 0 && result.score >= record ? "text-amber-500" : "text-slate-300"}`} />
-            <h2 className="text-3xl font-black text-slate-800 tabular-nums">{result.score} punti</h2>
-            <p className="font-black text-slate-600" data-game-end-stage>Sei arrivato al livello {result.stage || 1}</p>
-            {result.score > 0 && result.score >= record && <p className="font-bold text-amber-600">Nuovo record!</p>}
-            <div className="grid grid-cols-4 gap-2 text-center">
-              {[
-                ["Livello", result.stage || 1],
-                ["Camion", result.stats.trucks],
-                ["Pezzi", result.stats.pieces],
-                ["Perfetti", result.stats.perfect],
-              ].map(([l, v]) => (
-                <div key={l} className="rounded-2xl bg-slate-50 py-2">
-                  <p className="text-xl font-black text-slate-800 tabular-nums">{v}</p>
-                  <p className="text-[11px] font-bold text-slate-500">{l}</p>
-                </div>
-              ))}
+        <div className="absolute inset-0 flex items-center justify-center p-4 bg-slate-900/60 overflow-y-auto" data-game-end>
+          <div className="bg-white rounded-3xl shadow-2xl max-w-sm w-full overflow-hidden my-auto animate-in zoom-in-95">
+            <div className={`px-5 pt-5 pb-4 text-center ${newRecord ? "bg-gradient-to-br from-amber-300 via-amber-400 to-orange-500" : "bg-gradient-to-br from-slate-700 to-slate-900 text-white"}`}>
+              <Trophy className={`w-12 h-12 mx-auto ${newRecord ? "text-white drop-shadow" : "text-amber-400"}`} />
+              <p className="text-xs font-black tracking-[0.25em] opacity-70 mt-1">PARTITA FINITA</p>
+              <h2 className="text-5xl font-black tabular-nums leading-none mt-1" data-game-end-score>
+                {shown}
+              </h2>
+              <p className="text-sm font-black opacity-80">punti</p>
+              {newRecord && <p className="mt-2 inline-block bg-white/80 text-amber-700 rounded-full px-3 py-1 text-sm font-black">🎉 Nuovo record!</p>}
             </div>
-            <div className="space-y-1.5">
-              <p className="text-xs font-black text-slate-500 flex items-center justify-center gap-1"><Medal className="w-4 h-4" /> CLASSIFICA</p>
-              <Board rows={board} me={me} loading={boardLoading} />
-            </div>
-            {Math.max(bestStage, result.stage || 1) > 1 && (
-              <button type="button" onClick={() => start(Math.max(bestStage, result.stage || 1))} data-action="game-continue" className="w-full h-12 rounded-full bg-amber-500 text-white font-black">
-                Continua dal livello {Math.max(bestStage, result.stage || 1)}
-              </button>
-            )}
-            <div className="flex gap-3">
-              <button type="button" onClick={onClose} className="flex-1 h-12 rounded-full bg-slate-100 text-slate-700 font-bold">
-                Esci
-              </button>
-              <button type="button" onClick={() => start(1)} data-action="game-again" className={`flex-1 h-12 rounded-full font-black flex items-center justify-center gap-2 ${Math.max(bestStage, result.stage || 1) > 1 ? "bg-slate-100 text-slate-700" : "bg-amber-500 text-white"}`}>
-                <RotateCcw className="w-4 h-4" /> {Math.max(bestStage, result.stage || 1) > 1 ? "Dal livello 1" : "Rigioca"}
-              </button>
+            <div className="p-5 space-y-3 text-center">
+              <p className="font-black text-slate-600" data-game-end-stage>
+                Sei arrivato al livello {result.stage || 1}
+              </p>
+              <div className="grid grid-cols-4 gap-2 text-center">
+                {[
+                  ["Livello", result.stage || 1],
+                  ["Camion", result.stats.trucks],
+                  ["Pezzi", result.stats.pieces],
+                  ["Perfetti", result.stats.perfect],
+                ].map(([l, v]) => (
+                  <div key={l} className="rounded-2xl bg-slate-50 py-2">
+                    <p className="text-xl font-black text-slate-800 tabular-nums">{v}</p>
+                    <p className="text-[11px] font-bold text-slate-500">{l}</p>
+                  </div>
+                ))}
+              </div>
+              {myLine && (
+                <p className="text-sm font-black text-amber-700" data-game-end-rank>
+                  🏅 {myLine}
+                </p>
+              )}
+              <Leaderboard rows={board} me={me} loading={boardLoading} mode={boardMode} setMode={setBoardMode} compact />
+              {Math.max(bestStage, result.stage || 1) > 1 && (
+                <button type="button" onClick={() => start(Math.max(bestStage, result.stage || 1))} data-action="game-continue" className="w-full h-12 rounded-full bg-amber-500 text-white font-black shadow-[0_5px_0_#b45309] active:translate-y-[3px] active:shadow-none">
+                  Continua dal livello {Math.max(bestStage, result.stage || 1)}
+                </button>
+              )}
+              <div className="flex gap-3">
+                <button type="button" onClick={onClose} className="flex-1 h-12 rounded-full bg-slate-100 text-slate-700 font-bold">
+                  Esci
+                </button>
+                <button type="button" onClick={() => start(1)} data-action="game-again" className={`flex-1 h-12 rounded-full font-black flex items-center justify-center gap-2 ${Math.max(bestStage, result.stage || 1) > 1 ? "bg-slate-100 text-slate-700" : "bg-amber-500 text-white"}`}>
+                  <RotateCcw className="w-4 h-4" /> {Math.max(bestStage, result.stage || 1) > 1 ? "Dal livello 1" : "Rigioca"}
+                </button>
+              </div>
             </div>
           </div>
         </div>
