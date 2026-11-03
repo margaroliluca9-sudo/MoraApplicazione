@@ -12,6 +12,8 @@
 //   scarto se dm < 0,9·d nominale (usura > 10%) — EN 818-6 (imbracature) e criteri dei costruttori delle catene
 //   da paranco (EN 818-7). Passo di una maglia +5%; catena da paranco: su 11 maglie +2%.
 
+import { fasFamily, fasRange, fasItem, fasLabel } from "./fasRopes";
+
 // ---------------------------------------------------------------- FUNI
 // n = fili portanti dei trefoli esterni (si contano solo i fili esterni portanti, non quelli di riempimento)
 export const ROPES = [
@@ -120,14 +122,22 @@ export const guessRope = (x) => {
 export const checkRope = (x0) => {
   const auto = x0.mode !== "so";
   const g = auto ? guessRope(x0) : null;
-  const x = auto ? { ...x0, lay: g.lay, core: g.core, layers: g.layers } : x0;
-  const rope = auto ? { n: g.n, rr: g.rr, label: g.label } : ROPES.find((r) => r.id === x.rope) || ROPES[0];
+  // fune del catalogo FAS («fas:FZ636AC»): limiti di scarto scritti nel catalogo per quel diametro
+  const fam = !auto && String(x0.rope || "").startsWith("fas:") ? fasFamily(String(x0.rope).slice(4)) : null;
+  const x = auto ? { ...x0, lay: g.lay, core: g.core, layers: g.layers } : fam ? { ...x0, lay: fam.lay, core: fam.core } : x0;
+  const d = Number(String(x.d || "").replace(",", ".")) || 0;
+  const fr = fam ? fasRange(fam, d) : null;
+  const rope = auto ? { n: g.n, rr: g.rr, label: g.label } : fam ? { n: fr ? fr.n : fam.r[0][3], rr: fam.rr, label: fasLabel(fam) } : ROPES.find((r) => r.id === x.rope) || ROPES[0];
   const n = rope.n || Number(x.n) || 0;
   const rr = rope.rr;
-  const d = Number(String(x.d || "").replace(",", ".")) || 0;
   const dRef = Number(String(x.dRef || "").replace(",", ".")) || d;
   const dMis = Number(String(x.dMis || "").replace(",", ".")) || 0;
-  const lim = wireLimits({ n, rr, lay: x.lay, layers: x.layers });
+  const multi = x.layers === "piu";
+  const lim = fam
+    ? fr
+      ? { rcn: fr.rcn, six: multi ? fr.m6 : fr.s6, thirty: multi ? fr.m30 : fr.s30, fas: true }
+      : { rcn: fam.r[0][2], six: multi ? fam.r[0][5] : fam.r[0][4], thirty: multi ? fam.r[0][7] : fam.r[0][6], fas: true, noDiam: true }
+    : wireLimits({ n, rr, lay: x.lay, layers: x.layers });
   const b6 = Math.max(0, Number(x.b6) || 0);
   const b30 = Math.max(0, Number(x.b30) || 0);
   const s6 = wireSeverity(b6, lim.six);
@@ -145,6 +155,8 @@ export const checkRope = (x0) => {
   const limCross = auto && !rr && x0.lay !== "crociata" ? wireLimits({ n, rr, lay: "crociata", layers: x.layers }) : null;
   return {
     auto,
+    fam,
+    fasItem: fam ? fasItem(fam, d) : null,
     guess: g,
     limCross,
     n,

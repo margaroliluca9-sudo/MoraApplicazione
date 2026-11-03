@@ -2,6 +2,7 @@ import React from "react";
 import { AlertTriangle } from "lucide-react";
 import { PRO_INPUT } from "../ui";
 import { ROPE_ITEMS, emptyRope, ROPE_TYPES } from "../ropes";
+import { FAS_ROPES, FAS_GROUPS, fasFamily, fasItem, fasSearch } from "../fasRopes";
 
 // Dati FUNE / CATENA sostituita.
 // Non c'è nessuna casella da spuntare: la sezione compare da sola quando la
@@ -68,45 +69,90 @@ export const RopeFields = ({ ropes, onChange }) => {
               />
             </div>
             {/* dal certificato (facoltativi): servono al controllo «Fune e catena» della prossima volta */}
-            <p className="text-[11px] font-bold text-amber-800/80 pt-1">Dal certificato (se ce l'hai): così la prossima volta l'app sa che {label} c'è montata</p>
+            <p className="text-[11px] font-bold text-amber-800/80 pt-1">{id === "fune" ? "Dal certificato: così la prossima volta l'app sa che fune c'è montata e quanti fili rotti sono ammessi" : "Dal certificato (se ce l'hai)"}</p>
             {id === "fune" ? (
               <>
+                <p className="text-[11px] font-black text-amber-900">Tipo di fune (obbligatorio)</p>
+                <input
+                  type="text"
+                  className={PRO_INPUT}
+                  placeholder="Codice FAS dal certificato (es. FZ636A12)"
+                  aria-label="Codice della fune dal certificato"
+                  data-rope-field="codice"
+                  value={r.codice || ""}
+                  onChange={(e) => {
+                    const v = e.target.value.toUpperCase();
+                    const hit = fasSearch(v).find((h) => h.item);
+                    if (hit)
+                      set(id, {
+                        codice: v,
+                        fas: hit.fam.id,
+                        costruzione: "",
+                        diametro: r.diametro || String(hit.item.d).replace(".", ","),
+                      });
+                    else set(id, { codice: v });
+                  }}
+                />
                 <select
                   className={PRO_INPUT}
-                  aria-label="Costruzione della fune"
-                  data-rope-field="costruzione"
-                  value={r.costruzione || ""}
-                  onChange={(e) => set(id, { costruzione: e.target.value })}
+                  aria-label="Tipo di fune"
+                  data-rope-field="tipo"
+                  value={r.fas ? "fas:" + r.fas : r.costruzione || ""}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    if (v.startsWith("fas:")) set(id, { fas: v.slice(4), costruzione: "" });
+                    else set(id, { fas: "", costruzione: v });
+                  }}
                 >
-                  <option value="">Costruzione (es. 6×36 WS)…</option>
-                  {ROPE_TYPES.map(([v, l]) => (
-                    <option key={v} value={v}>
-                      {l}
-                    </option>
+                  <option value="">…oppure scegli dall'elenco</option>
+                  {FAS_GROUPS.map(([g, gl]) => (
+                    <optgroup key={g} label={gl}>
+                      {FAS_ROPES.filter((f) => f.grp === g).map((f) => (
+                        <option key={f.id} value={"fas:" + f.id}>
+                          {f.id} · {f.cons.join(" / ")}
+                        </option>
+                      ))}
+                    </optgroup>
                   ))}
+                  <optgroup label="Altre marche (per costruzione)">
+                    {ROPE_TYPES.map(([v, l]) => (
+                      <option key={v} value={v}>
+                        {l}
+                      </option>
+                    ))}
+                  </optgroup>
                 </select>
-                <div className="grid grid-cols-2 gap-2">
-                  <input
-                    type="text"
-                    list="rope-brands"
-                    className={PRO_INPUT}
-                    placeholder="Marca (FAS, Teci…)"
-                    aria-label="Marca della fune"
-                    data-rope-field="marca"
-                    value={r.marca || ""}
-                    onChange={(e) => set(id, { marca: e.target.value })}
-                  />
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    className={PRO_INPUT}
-                    placeholder="Carico rottura (kN)"
-                    aria-label="Carico di rottura minimo in kN"
-                    data-rope-field="rottura"
-                    value={r.rottura || ""}
-                    onChange={(e) => set(id, { rottura: e.target.value })}
-                  />
-                </div>
+                {r.fas && (
+                  <p className="text-[11px] font-bold text-slate-600" data-rope-fas>
+                    FAS {r.fas}
+                    {fasFamily(r.fas) ? " · " + fasFamily(r.fas).cons.join(" / ") : ""}
+                    {fasItem(fasFamily(r.fas), r.diametro) ? ` · carico di rottura ${String(fasItem(fasFamily(r.fas), r.diametro).kN).replace(".", ",")} kN (dal catalogo)` : r.diametro ? " · diametro non presente nel catalogo: controlla" : ""}
+                  </p>
+                )}
+                {!r.fas && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <input
+                      type="text"
+                      list="rope-brands"
+                      className={PRO_INPUT}
+                      placeholder="Marca (Teci…)"
+                      aria-label="Marca della fune"
+                      data-rope-field="marca"
+                      value={r.marca || ""}
+                      onChange={(e) => set(id, { marca: e.target.value })}
+                    />
+                    <input
+                      type="text"
+                      inputMode="decimal"
+                      className={PRO_INPUT}
+                      placeholder="Carico rottura (kN)"
+                      aria-label="Carico di rottura minimo in kN"
+                      data-rope-field="rottura"
+                      value={r.rottura || ""}
+                      onChange={(e) => set(id, { rottura: e.target.value })}
+                    />
+                  </div>
+                )}
                 <datalist id="rope-brands">
                   <option value="FAS" />
                   <option value="Teci" />

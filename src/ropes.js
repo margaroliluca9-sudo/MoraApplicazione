@@ -1,4 +1,5 @@
-// FUNE e CATENA sostituite: dati obbligatori (certificato, diametro, lunghezza).
+// FUNE e CATENA sostituite: dati obbligatori (certificato, diametro, lunghezza; per la fune anche il tipo).
+import { fasFamily, fasItem, fasCode } from "./fasRopes";
 // Salvati nel rapporto come  fune: {...}  e  catena: {...}  (solo se sostituite).
 // Dal certificato (facoltativi): costruzione (es. "6x36", vedi wearRules.ROPES), marca (FAS, Teci…), rottura
 // (carico di rottura minimo, kN); per la catena grado e passo (mm). Servono al controllo «Fune e catena».
@@ -18,6 +19,8 @@ export const emptyRope = () => ({
   lunghezza: "",
   nonDisponibile: false,
   motivo: "",
+  fas: "", // famiglia del catalogo FAS (es. "FZ636AC")
+  codice: "", // codice articolo dal certificato (es. "FZ636A12")
   costruzione: "",
   marca: "",
   rottura: "",
@@ -85,6 +88,7 @@ export const validateRopes = (ropes) => {
       continue;
     }
     const missing = [];
+    if (id === "fune" && !r.fas && !String(r.costruzione || "").trim()) missing.push("tipo di fune (codice FAS del certificato o costruzione)");
     if (!String(r.certificato || "").trim()) missing.push("numero certificato");
     if (!parseNum(r.diametro)) missing.push("diametro");
     if (!parseNum(r.lunghezza)) missing.push("lunghezza");
@@ -97,8 +101,17 @@ export const validateRopes = (ropes) => {
 // dati del certificato in più (solo quelli scritti)
 const extras = (r) => {
   const o = {};
+  const fam = r.fas ? fasFamily(r.fas) : null;
+  if (fam) {
+    o.fas = fam.id;
+    o.marca = "FAS";
+    const it = fasItem(fam, parseNum(r.diametro));
+    if (String(r.codice || "").trim()) o.codice = String(r.codice).trim().toUpperCase();
+    else if (it) o.codice = fasCode(fam, it);
+    if (!parseNum(r.rottura) && it) o.rottura = it.kN;
+  }
   if (String(r.costruzione || "").trim()) o.costruzione = String(r.costruzione).trim();
-  if (String(r.marca || "").trim()) o.marca = String(r.marca).trim();
+  if (!fam && String(r.marca || "").trim()) o.marca = String(r.marca).trim();
   if (parseNum(r.rottura)) o.rottura = parseNum(r.rottura);
   if (String(r.grado || "").trim()) o.grado = String(r.grado).trim();
   if (parseNum(r.passo)) o.passo = parseNum(r.passo);
@@ -124,6 +137,8 @@ export const fromSavedRope = (saved) =>
         lunghezza: saved.lunghezza ? String(saved.lunghezza).replace(".", ",") : "",
         nonDisponibile: !!saved.nonDisponibile,
         motivo: saved.motivo || "",
+        fas: saved.fas || "",
+        codice: saved.codice || "",
         costruzione: saved.costruzione || "",
         marca: saved.marca || "",
         rottura: saved.rottura ? String(saved.rottura).replace(".", ",") : "",
@@ -171,9 +186,10 @@ export const formatRopeLong = (saved) => {
   if (all || saved.certificato) parts.push(`Certificato ${saved.certificato || "-"}`);
   if (all || saved.diametro) parts.push(`Diametro ${saved.diametro ? fmt(saved.diametro) + " mm" : "-"}`);
   if (all || saved.lunghezza) parts.push(`Lunghezza ${saved.lunghezza ? fmt(saved.lunghezza) + " m" : "-"}`);
+  if (saved.fas) parts.push(`FAS ${saved.fas}${saved.codice ? " (" + saved.codice + ")" : ""}${fasFamily(saved.fas) ? " " + fasFamily(saved.fas).cons.join("/") : ""}`);
   if (saved.costruzione) parts.push(`Costruzione ${ropeName(saved.costruzione)}`);
   if (saved.grado) parts.push(`Grado ${saved.grado}`);
-  if (saved.marca) parts.push(saved.marca);
+  if (saved.marca && !saved.fas) parts.push(saved.marca);
   if (saved.rottura) parts.push(`Carico di rottura ${fmt(saved.rottura)} kN`);
   if (saved.nonDisponibile)
     parts.push(`dati non disponibili${saved.motivo ? ": " + saved.motivo : ""}`);
