@@ -138,6 +138,17 @@ export default function App() {
   useEffect(() => {
     if (activeTab !== "new") setNewPrefill(null);
   }, [activeTab]);
+  // «Nuovo rapporto con questo controllo» (Mia area → Fune e catena): rapporto già compilato
+  useEffect(() => {
+    const on = (e) => {
+      if (!e || !e.detail) return;
+      setNewPrefill({ key: Date.now(), data: e.detail });
+      setActiveTab("new");
+      window.scrollTo(0, 0);
+    };
+    window.addEventListener("mora-new-report", on);
+    return () => window.removeEventListener("mora-new-report", on);
+  }, []);
   const [logs, setLogs] = useState([]);
   // ripresa da sola dopo un errore del database (vedi watch qui sopra): cambiando syncEpoch
   // si riaprono tutti i collegamenti

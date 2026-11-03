@@ -46,6 +46,7 @@ const MONTH_SHORT = ["gen", "feb", "mar", "apr", "mag", "giu", "lug", "ago", "se
 export const PersonalAreaModal = ({
   me,
   logs = [],
+  machines = [],
   events = [],
   notes = [],
   reminders = [],
@@ -119,7 +120,14 @@ export const PersonalAreaModal = ({
     body = <HoursPanel me={me} hours={hours} reminder={hoursReminder} color={color} onBack={back} onClose={closeX} />;
   else if (panel === "parts" && on("parts"))
     body = <PartsPanel me={me} logs={logs} color={color} onBack={back} onClose={closeX} onOpenMachine={onOpenMachine} />;
-  else if (panel === "wear" && on("wear")) body = <WearPanel color={color} onBack={back} onClose={closeX} />;
+  else if (panel === "wear" && on("wear")) body = <WearPanel
+        color={color}
+        onBack={back}
+        onClose={closeX}
+        machines={machines}
+        logs={logs}
+        onNewReport={(data) => window.dispatchEvent(new CustomEvent("mora-new-report", { detail: data }))}
+      />;
   else if (panel === "profile") body = <ProfilePanel me={me} technicians={technicians} color={color} onBack={back} onClose={closeX} />;
   else if (panel === "settings") body = <SettingsPanel me={me} color={color} onBack={back} onClose={closeX} hoursAllowed={on("hours")} />;
   else if (panel === "notes" && on("notes")) body = <NotesPanel me={me} notes={notes} color={color} onBack={back} onClose={closeX} />;

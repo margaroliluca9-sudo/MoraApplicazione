@@ -815,11 +815,24 @@ export const NewEntryForm = ({
         );
       case "ropes":
         return (
-          <RopeFields
-            key="ropes"
-            ropes={formData.ropes}
-            onChange={(ropes) => setFormData((p) => ({ ...p, ropes }))}
-          />
+          <React.Fragment key="ropes">
+            {/* controllo fatto in Mia area → Fune e catena: resta salvato sulla gru (la prossima volta si vede) */}
+            {formData.ropeCheck && (
+              <div className="rounded-xl border border-blue-200 bg-blue-50 p-3 flex items-start gap-2 text-sm" data-section="rope-check">
+                <span className="flex-1 min-w-0">
+                  <span className="block text-[11px] font-black text-blue-700">CONTROLLO {formData.ropeCheck.type === "catena" ? "CATENA" : "FUNE"} ALLEGATO</span>
+                  <span className="block font-bold text-slate-700">{formData.ropeCheck.title}</span>
+                </span>
+                <button type="button" onClick={() => setFormData((p) => ({ ...p, ropeCheck: null }))} className="text-xs font-bold text-slate-500 underline shrink-0">
+                  Togli
+                </button>
+              </div>
+            )}
+            <RopeFields
+              ropes={formData.ropes}
+              onChange={(ropes) => setFormData((p) => ({ ...p, ropes }))}
+            />
+          </React.Fragment>
         );
       case "photos":
         return (

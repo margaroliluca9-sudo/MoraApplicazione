@@ -2,9 +2,15 @@
 // Funi: ISO 4309:2017 (fili rotti su 6d e 30d, diminuzione del diametro). Catene: usura della maglia e allungamento
 // (EN 818-6 imbracature, criteri dei costruttori per le catene da paranco). Le regole stanno in src/wearRules.js.
 import React, { useMemo, useState } from "react";
-import { CheckCircle2, AlertTriangle, XCircle, Copy, Check, Info, X, ExternalLink } from "lucide-react";
+import { CheckCircle2, AlertTriangle, XCircle, Copy, Check, Info, X, ExternalLink, Search, FilePlus2, History } from "lucide-react";
 import { PanelHeader, INPUT } from "./PersonalUi";
 import { ROPES, ROPE_FLAGS, CHAIN_FLAGS, checkRope, checkChain } from "../../wearRules";
+import { lastRopeOf, formatRopeLong } from "../../ropes";
+import { getSafeMatricola } from "../../utils";
+import { DriveCraneInfo } from "../DriveCraneInfo";
+
+// catalogo FAS delle funi (si apre sul loro sito)
+const FAS_CATALOG = "https://www.fasitaly.com/sottofamiglia/0107.pdf";
 
 const fmt = (v, dec = 1) => (v == null || Number.isNaN(v) ? "—" : Number(v).toLocaleString("it-IT", { maximumFractionDigits: dec, minimumFractionDigits: 0 }));
 
@@ -53,7 +59,7 @@ const Bar = ({ sev }) => (
   </span>
 );
 
-const Verdict = ({ level, title, lines, onCopy, copied }) => {
+const Verdict = ({ level, title, lines, onCopy, copied, onReport }) => {
   const tone = level === "scarto" ? ["bg-red-50 border-red-300 text-red-800", XCircle] : level === "attenzione" ? ["bg-amber-50 border-amber-300 text-amber-900", AlertTriangle] : ["bg-emerald-50 border-emerald-300 text-emerald-800", CheckCircle2];
   const Icon = tone[1];
   return (
@@ -69,6 +75,11 @@ const Verdict = ({ level, title, lines, onCopy, copied }) => {
       <button type="button" onClick={onCopy} className="mt-3 h-10 px-3 rounded-xl bg-white/80 border border-black/10 text-sm font-bold text-slate-700 flex items-center gap-1.5" data-action="wear-copy">
         {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />} {copied ? "Copiato: incollalo nel rapporto" : "Copia per il rapporto"}
       </button>
+      {onReport && (
+        <button type="button" onClick={onReport} className="mt-2 w-full h-11 px-3 rounded-xl bg-blue-600 text-white text-sm font-bold flex items-center justify-center gap-1.5" data-action="wear-report">
+          <FilePlus2 className="w-4 h-4" /> Nuovo rapporto con questo controllo
+        </button>
+      )}
     </div>
   );
 };
@@ -255,8 +266,11 @@ const Pick = ({ value, onChange, options, id }) => {
 };
 
 // ---------------------------------------------------------------- FUNE
-const RopeCheck = () => {
-  const [x, setX] = useState({ mode: "auto", strands: "6", rope: "6x36", n: "", core: "metallica", lay: "nonso", layers: "nonso", d: "", dRef: "", dMis: "", b6: "", b30: "", flags: {} });
+const RopeCheck = ({ known = null, onReport = null }) => {
+  // fune montata con un rapporto dell'app (con la costruzione dal certificato): si parte già da quella
+  const kc = known && ROPES.find((r) => r.id === known.costruzione);
+  const kd = known && known.diametro ? String(known.diametro).replace(".", ",") : "";
+  const [x, setX] = useState({ mode: kc ? "so" : "auto", strands: "6", rope: kc ? kc.id : "6x36", n: "", core: "metallica", lay: "nonso", layers: "nonso", d: kd, dRef: kd, dMis: "", b6: "", b30: "", flags: {} });
   const set = (k) => (v) => setX((o) => ({ ...o, [k]: v }));
   const rope = ROPES.find((r) => r.id === x.rope) || ROPES[0];
   const r = useMemo(() => checkRope(x), [x]);
@@ -373,7 +387,16 @@ const RopeCheck = () => {
         <Flags list={ROPE_FLAGS} value={x.flags} onChange={set("flags")} />
       </section>
 
-      {ready && <Verdict level={r.level} title={title} lines={lines} onCopy={() => copy(report)} copied={copied} />}
+      {ready && (
+        <Verdict
+          level={r.level}
+          title={title}
+          lines={lines}
+          onCopy={() => copy(report)}
+          copied={copied}
+          onReport={onReport ? () => onReport({ type: "fune", level: r.level, title, text: report, d: x.d, b6: x.b6, b30: x.b30, dMis: x.dMis, rope: r.auto ? "" : x.rope }) : null}
+        />
+      )}
       <p className="text-[11px] text-slate-400 leading-snug">
         Norma ISO 4309:2017 (Tab. 3, 4 e 5; valutazione combinata Allegato G). Valori per meccanismi M1–M4 o di classe non nota, i più prudenti. Fa sempre fede il
         manuale del costruttore della gru e della fune (es. FAS, Teci).
@@ -383,8 +406,10 @@ const RopeCheck = () => {
 };
 
 // ---------------------------------------------------------------- CATENA
-const ChainCheck = () => {
-  const [x, setX] = useState({ kind: "paranco", d: "", d1: "", d2: "", t: "", t1: "", t11: "", flags: {} });
+const ChainCheck = ({ known = null, onReport = null }) => {
+  const kd = known && known.diametro ? String(known.diametro).replace(".", ",") : "";
+  const kp = known && known.passo ? String(known.passo).replace(".", ",") : "";
+  const [x, setX] = useState({ kind: "paranco", d: kd, d1: "", d2: "", t: kp, t1: "", t11: "", flags: {} });
   const set = (k) => (v) => setX((o) => ({ ...o, [k]: v }));
   const r = useMemo(() => checkChain(x), [x]);
   const [copied, copy] = useCopy();
@@ -427,7 +452,16 @@ const ChainCheck = () => {
         <Flags list={CHAIN_FLAGS} value={x.flags} onChange={set("flags")} />
       </section>
 
-      {ready && <Verdict level={r.level} title={title} lines={lines} onCopy={() => copy(report)} copied={copied} />}
+      {ready && (
+        <Verdict
+          level={r.level}
+          title={title}
+          lines={lines}
+          onCopy={() => copy(report)}
+          copied={copied}
+          onReport={onReport ? () => onReport({ type: "catena", level: r.level, title, text: report, d: x.d, d1: x.d1, d2: x.d2 }) : null}
+        />
+      )}
       <p className="text-[11px] text-slate-400 leading-snug">
         Usura: diametro medio dm = (d1+d2)/2 non sotto 0,9·d (EN 818-6 per le imbracature; stesso criterio dei costruttori per le catene da paranco, EN 818-7). Allungamento: una maglia +5%;
         catena da paranco su 11 maglie +2%. Fa sempre fede il manuale del costruttore del paranco.
@@ -436,12 +470,88 @@ const ChainCheck = () => {
   );
 };
 
-export const WearPanel = ({ color = "blue", onBack, onClose }) => {
+// controllo salvato in un rapporto (ropeCheck) — il più recente di quel tipo
+const lastCheckOf = (logs, type) => {
+  const key = (ds) => {
+    const p = String(ds || "").split("/").map(Number);
+    return p.length === 3 ? p[2] * 10000 + p[1] * 100 + p[0] : 0;
+  };
+  return [...logs].filter((l) => l.ropeCheck && l.ropeCheck.type === type).sort((a, b) => key(b.dateString) - key(a.dateString) || (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0))[0] || null;
+};
+const norm = (v) => String(v || "").trim().toUpperCase();
+
+// SU QUALE GRU? cerca per cliente o matricola
+const CranePicker = ({ machines, crane, onPick, color }) => {
+  const [q, setQ] = useState("");
+  const words = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const found = words.length
+    ? machines.filter((m) => words.every((w) => `${getSafeMatricola(m)} ${m.customerName} ${m.type || ""}`.toLowerCase().includes(w))).slice(0, 6)
+    : [];
+  if (crane)
+    return (
+      <div className="bg-white rounded-3xl border border-slate-200 p-3 flex items-center gap-3" data-wear-crane>
+        <div className="flex-1 min-w-0">
+          <p className="text-[11px] font-black text-slate-400">GRU</p>
+          <p className="font-black text-slate-800 truncate">
+            {crane.customerName} · {getSafeMatricola(crane)}
+          </p>
+          {crane.type && <p className="text-xs text-slate-500 truncate">{crane.type}</p>}
+        </div>
+        <button type="button" onClick={() => onPick(null)} className={`h-9 px-3 rounded-full border border-slate-200 text-sm font-bold text-${color}-700`} data-action="wear-crane-change">
+          Cambia
+        </button>
+      </div>
+    );
+  return (
+    <div className="bg-white rounded-3xl border border-slate-200 p-3 space-y-2" data-wear-picker>
+      <p className="text-xs font-black text-slate-500">Su quale gru? (facoltativo: così vedi la fune montata e il controllo precedente)</p>
+      <div className="relative">
+        <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+        <input className={`${INPUT} pl-9`} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cliente o matricola…" data-wear-input="crane" />
+      </div>
+      {found.map((m) => (
+        <button key={m.id} type="button" onClick={() => onPick(m)} className="w-full text-left px-3 py-2 rounded-xl bg-slate-50 hover:bg-slate-100" data-wear-crane-option={getSafeMatricola(m)}>
+          <span className="block text-sm font-black text-slate-800">{getSafeMatricola(m)}</span>
+          <span className="block text-xs text-slate-500">
+            {m.customerName}
+            {m.type ? ` · ${m.type}` : ""}
+          </span>
+        </button>
+      ))}
+      {words.length > 0 && !found.length && <p className="text-xs text-slate-400">Nessuna gru trovata.</p>}
+    </div>
+  );
+};
+
+export const WearPanel = ({ color = "blue", onBack, onClose, machines = [], logs = [], onNewReport = null }) => {
   const [tab, setTab] = useState("rope");
+  const [crane, setCrane] = useState(null);
+  const craneLogs = useMemo(() => {
+    if (!crane) return [];
+    const mat = norm(getSafeMatricola(crane));
+    const cust = norm(crane.customerName);
+    return logs.filter((l) => norm(l.machineId) === mat && norm(l.customer) === cust);
+  }, [crane, logs]);
+  const type = tab === "rope" ? "fune" : "catena";
+  const mounted = crane ? lastRopeOf(craneLogs, type) : null;
+  const prev = crane ? lastCheckOf(craneLogs, type) : null;
+  const report =
+    crane && onNewReport
+      ? (rc) =>
+          onNewReport({
+            customer: crane.customerName,
+            machineId: getSafeMatricola(crane),
+            machineType: crane.type || "",
+            capacity: crane.capacity || "",
+            description: rc.text,
+            ropeCheck: { ...rc, at: Date.now() },
+          })
+      : null;
   return (
     <div className="flex flex-col h-full" data-section="wear">
       <PanelHeader title="Fune e catena" sub="Cosa dice la norma" onBack={onBack} onClose={onClose} color={color} />
       <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50">
+        <CranePicker machines={machines} crane={crane} onPick={setCrane} color={color} />
         <div className="flex bg-slate-200/70 p-1 rounded-2xl" role="tablist">
           {[
             ["rope", "Fune"],
@@ -452,7 +562,38 @@ export const WearPanel = ({ color = "blue", onBack, onClose }) => {
             </button>
           ))}
         </div>
-        {tab === "rope" ? <RopeCheck /> : <ChainCheck />}
+        {crane && (
+          <div className="space-y-2" data-wear-history>
+            {mounted ? (
+              <div className="rounded-2xl bg-white border border-slate-200 p-3 text-sm" data-wear-mounted>
+                <p className="text-[11px] font-black text-slate-400">{type === "fune" ? "FUNE MONTATA" : "CATENA MONTATA"} · {mounted.dateString}{mounted.technician ? ` · ${mounted.technician}` : ""}</p>
+                <p className="font-bold text-slate-700">{formatRopeLong(mounted[type])}</p>
+                {type === "fune" && !(mounted[type] && mounted[type].costruzione) && <p className="text-xs text-slate-400 mt-0.5">La costruzione non è stata scritta nel rapporto: rispondi alle domande qui sotto.</p>}
+              </div>
+            ) : (
+              <p className="text-xs text-slate-400 px-1" data-wear-mounted-none>Nessuna {type} sostituita con l'app su questa gru.</p>
+            )}
+            {prev && (
+              <div className="rounded-2xl bg-white border border-slate-200 p-3 text-sm" data-wear-prev>
+                <p className="text-[11px] font-black text-slate-400 flex items-center gap-1">
+                  <History className="w-3.5 h-3.5" /> CONTROLLO PRECEDENTE · {prev.dateString}
+                  {prev.technician ? ` · ${prev.technician}` : ""}
+                </p>
+                <p className={`font-black ${prev.ropeCheck.level === "scarto" ? "text-red-700" : prev.ropeCheck.level === "attenzione" ? "text-amber-700" : "text-emerald-700"}`}>{prev.ropeCheck.title}</p>
+                <p className="text-xs text-slate-500 leading-snug">{String(prev.ropeCheck.text || "").replace(/^[^:]*:\s*[^.]*\.\s*/, "")}</p>
+              </div>
+            )}
+            {type === "fune" && <DriveCraneInfo matricola={getSafeMatricola(crane)} customerName={crane.customerName} />}
+          </div>
+        )}
+        {tab === "rope" ? (
+          <RopeCheck key={`r${crane ? crane.id : ""}`} known={mounted && mounted.fune} onReport={report} />
+        ) : (
+          <ChainCheck key={`c${crane ? crane.id : ""}`} known={mounted && mounted.catena} onReport={report} />
+        )}
+        <a href={FAS_CATALOG} target="_blank" rel="noopener noreferrer" className="block text-center text-sm font-bold text-blue-700 underline" data-fas-catalog>
+          Catalogo delle funi FAS
+        </a>
       </div>
     </div>
   );

@@ -1,5 +1,7 @@
 // FUNE e CATENA sostituite: dati obbligatori (certificato, diametro, lunghezza).
 // Salvati nel rapporto come  fune: {...}  e  catena: {...}  (solo se sostituite).
+// Dal certificato (facoltativi): costruzione (es. "6x36", vedi wearRules.ROPES), marca (FAS, Teci…), rottura
+// (carico di rottura minimo, kN); per la catena grado e passo (mm). Servono al controllo «Fune e catena».
 
 export const ROPE_ITEMS = [
   { id: "fune", label: "fune", title: "Fune", keyword: /\bfun[ei]\b/i },
@@ -16,6 +18,11 @@ export const emptyRope = () => ({
   lunghezza: "",
   nonDisponibile: false,
   motivo: "",
+  costruzione: "",
+  marca: "",
+  rottura: "",
+  grado: "",
+  passo: "",
 });
 
 // --- riconoscimento nella descrizione ("sostituita fune", non "fune da sostituire") ---
@@ -87,12 +94,22 @@ export const validateRopes = (ropes) => {
   return "";
 };
 
+// dati del certificato in più (solo quelli scritti)
+const extras = (r) => {
+  const o = {};
+  if (String(r.costruzione || "").trim()) o.costruzione = String(r.costruzione).trim();
+  if (String(r.marca || "").trim()) o.marca = String(r.marca).trim();
+  if (parseNum(r.rottura)) o.rottura = parseNum(r.rottura);
+  if (String(r.grado || "").trim()) o.grado = String(r.grado).trim();
+  if (parseNum(r.passo)) o.passo = parseNum(r.passo);
+  return o;
+};
 // da modulo a dati salvati (null = non sostituita)
 export const toSavedRope = (r) => {
   if (!r || !r.on) return null;
   if (r.nonDisponibile)
-    return { nonDisponibile: true, motivo: String(r.motivo || "").trim(), certificato: String(r.certificato || "").trim(), diametro: parseNum(r.diametro), lunghezza: parseNum(r.lunghezza) };
-  return { nonDisponibile: false, motivo: "", certificato: String(r.certificato || "").trim(), diametro: parseNum(r.diametro), lunghezza: parseNum(r.lunghezza) };
+    return { nonDisponibile: true, motivo: String(r.motivo || "").trim(), certificato: String(r.certificato || "").trim(), diametro: parseNum(r.diametro), lunghezza: parseNum(r.lunghezza), ...extras(r) };
+  return { nonDisponibile: false, motivo: "", certificato: String(r.certificato || "").trim(), diametro: parseNum(r.diametro), lunghezza: parseNum(r.lunghezza), ...extras(r) };
 };
 
 // da dati salvati a modulo (per Modifica intervento)
@@ -107,10 +124,31 @@ export const fromSavedRope = (saved) =>
         lunghezza: saved.lunghezza ? String(saved.lunghezza).replace(".", ",") : "",
         nonDisponibile: !!saved.nonDisponibile,
         motivo: saved.motivo || "",
+        costruzione: saved.costruzione || "",
+        marca: saved.marca || "",
+        rottura: saved.rottura ? String(saved.rottura).replace(".", ",") : "",
+        grado: saved.grado || "",
+        passo: saved.passo ? String(saved.passo).replace(".", ",") : "",
       }
     : emptyRope();
 
 const fmt = (n) => String(n).replace(".", ",");
+// nome della costruzione (stesso elenco del controllo Fune e catena)
+export const ROPE_TYPES = [
+  ["6x7", "6×7"],
+  ["6x19", "6×19 (Seale, Warrington, Filler)"],
+  ["6x26", "6×26 WS"],
+  ["6x31", "6×31 WS"],
+  ["6x36", "6×36 WS"],
+  ["6x41", "6×41 WS"],
+  ["8x19", "8×19 (Seale, Warrington, Filler)"],
+  ["8x26", "8×26 WS"],
+  ["8x31", "8×31 WS"],
+  ["8x36", "8×36 WS"],
+  ["18x7", "18×7 / 19×7 antigiro"],
+  ["35x7", "35×7 / 35(W)×7 antigiro"],
+];
+export const ropeName = (id) => (ROPE_TYPES.find((r) => r[0] === id) || [id, id])[1];
 
 // testo breve per schede, ricerca e stampa
 export const formatRope = (saved) => {
@@ -133,6 +171,10 @@ export const formatRopeLong = (saved) => {
   if (all || saved.certificato) parts.push(`Certificato ${saved.certificato || "-"}`);
   if (all || saved.diametro) parts.push(`Diametro ${saved.diametro ? fmt(saved.diametro) + " mm" : "-"}`);
   if (all || saved.lunghezza) parts.push(`Lunghezza ${saved.lunghezza ? fmt(saved.lunghezza) + " m" : "-"}`);
+  if (saved.costruzione) parts.push(`Costruzione ${ropeName(saved.costruzione)}`);
+  if (saved.grado) parts.push(`Grado ${saved.grado}`);
+  if (saved.marca) parts.push(saved.marca);
+  if (saved.rottura) parts.push(`Carico di rottura ${fmt(saved.rottura)} kN`);
   if (saved.nonDisponibile)
     parts.push(`dati non disponibili${saved.motivo ? ": " + saved.motivo : ""}`);
   return parts.join(" · ");

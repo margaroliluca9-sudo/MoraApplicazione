@@ -608,6 +608,7 @@ export const DashboardView = ({
           key={area}
           me={currentTechName}
           logs={logs}
+          machines={machines}
           events={personal.events || []}
           notes={personal.notes || []}
           reminders={personal.reminders || []}
