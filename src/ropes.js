@@ -234,16 +234,25 @@ const consInText = (text) => {
   if (id === "8x25") id = "8x19";
   return CONS_IDS.includes(id) ? { costruzione: id } : null;
 };
+// rapporti di prima (senza i campi della fune): «sostituita fune 6x36 Ø12», «montata fune nuova FZ636A12»…
+const ROPE_DONE = /(sostitu\w*|cambi\w*|montat\w*|messa|mess[oa] su|rifatt\w*)\s+(?:anche\s+)?(?:la\s+|della\s+|di\s+|una\s+)?(?:nuova\s+)?fun[ei]\b|\bfun[ei]\s+(?:nuova|sostituita|cambiata|montata)/i;
+export const ropeReplacedInText = (text) => ROPE_DONE.test(String(text || ""));
+const diamInText = (text) => {
+  const t = String(text || "");
+  const m = t.match(/(?:ø|⌀|diam\.?|diametro|\bd\.?)\s*=?\s*(\d{1,2}(?:[.,]\d)?)/i) || t.match(/\b(\d{1,2}(?:[.,]\d)?)\s*mm\b/i);
+  const d = m ? Number(m[1].replace(",", ".")) : 0;
+  return d >= 3 && d <= 60 ? d : null;
+};
 export const ropeTypeOfLog = (log) => {
-  const f = log && log.fune;
+  const f = log && (log.fune || (ropeReplacedInText(log.description) ? {} : null));
   if (!f) return null;
   if (f.fas) return { fas: f.fas, diametro: f.diametro, from: "rapporto" };
   if (f.costruzione) return { costruzione: f.costruzione, diametro: f.diametro, from: "rapporto" };
   const text = `${f.certificato || ""} ${f.codice || ""} ${log.description || ""}`;
   const fx = fasInText(text);
-  if (fx) return { fas: fx.fas, diametro: f.diametro || fx.d, from: "testo" };
+  if (fx) return { fas: fx.fas, diametro: f.diametro || fx.d || diamInText(log.description), from: "testo" };
   const cx = consInText(text);
-  if (cx) return { ...cx, diametro: f.diametro, from: "testo" };
+  if (cx) return { ...cx, diametro: f.diametro || diamInText(log.description), from: "testo" };
   return null;
 };
 // le gru di cui si sa la fune montata: { "CLIENTE|MATRICOLA": { log, type } } (l'ultima sostituzione per gru)
@@ -254,14 +263,18 @@ export const knownRopes = (logs) => {
   };
   const last = {};
   (logs || []).forEach((l) => {
-    if (!l || !l.fune) return;
+    // sostituita con i campi della fune, oppure (rapporti di prima) scritto nella descrizione
+    if (!l || !(l.fune || ropeReplacedInText(l.description))) return;
     const k = `${String(l.customer || "").trim().toUpperCase()}|${String(l.machineId || "").trim().toUpperCase()}`;
     if (!last[k] || key(l.dateString) > key(last[k].dateString)) last[k] = l;
   });
   const out = {};
   Object.keys(last).forEach((k) => {
     const t = ropeTypeOfLog(last[k]);
-    if (t) out[k] = { log: last[k], type: t };
+    if (!t) return;
+    const l = last[k];
+    // rapporto senza i campi della fune: la fune la ricostruisco dalla descrizione (solo per mostrarla)
+    out[k] = { log: l.fune ? l : { ...l, fune: { diametro: t.diametro || null, certificato: "", lunghezza: null } }, type: t };
   });
   return out;
 };

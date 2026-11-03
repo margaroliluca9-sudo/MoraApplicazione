@@ -2,6 +2,7 @@
 // Funi: ISO 4309:2017 (fili rotti su 6d e 30d, diminuzione del diametro). Catene: usura della maglia e allungamento
 // (EN 818-6 imbracature, criteri dei costruttori per le catene da paranco). Le regole stanno in src/wearRules.js.
 import React, { useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { CheckCircle2, AlertTriangle, XCircle, Copy, Check, Info, X, ExternalLink, Search, FilePlus2, History } from "lucide-react";
 import { PanelHeader, INPUT } from "./PersonalUi";
 import { ROPES, ROPE_FLAGS, CHAIN_FLAGS, checkRope, checkChain } from "../../wearRules";
@@ -16,9 +17,35 @@ const FAS_CATALOG = "https://www.fasitaly.com/sottofamiglia/0107.pdf";
 
 const fmt = (v, dec = 1) => (v == null || Number.isNaN(v) ? "—" : Number(v).toLocaleString("it-IT", { maximumFractionDigits: dec, minimumFractionDigits: 0 }));
 
-const Num = ({ label, value, onChange, unit = "mm", hint, id }) => (
+// tasto «i» accanto a un campo: apre la spiegazione (come misurare, dove guardare)
+export const InfoBtn = ({ id, label = "" }) => {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setOpen(true);
+        }}
+        aria-label={`Spiegazione${label ? ": " + label : ""}`}
+        data-wear-i={id}
+        className="w-7 h-7 rounded-full bg-white border border-slate-300 shadow-sm text-blue-700 inline-flex items-center justify-center shrink-0"
+      >
+        <Info className="w-4 h-4" />
+      </button>
+      {open && createPortal(<InfoSheet id={id} onClose={() => setOpen(false)} />, document.body)}
+    </>
+  );
+};
+
+const Num = ({ label, value, onChange, unit = "mm", hint, id, info = "" }) => (
   <label className="block space-y-1">
-    <span className="text-xs font-black text-slate-500">{label}</span>
+    <span className="text-xs font-black text-slate-500 flex items-center gap-1.5 min-h-7">
+      <span>{label}</span>
+      {info && <InfoBtn id={info} label={label} />}
+    </span>
     <span className="relative block">
       <input
         className={`${INPUT} pr-12`}
@@ -61,29 +88,62 @@ const Bar = ({ sev }) => (
   </span>
 );
 
-const Verdict = ({ level, title, lines, onCopy, copied, onReport }) => {
-  const tone = level === "scarto" ? ["bg-red-50 border-red-300 text-red-800", XCircle] : level === "attenzione" ? ["bg-amber-50 border-amber-300 text-amber-900", AlertTriangle] : ["bg-emerald-50 border-emerald-300 text-emerald-800", CheckCircle2];
+// verdetto: in cima, grande e colorato, il numero che conta (usura, calo del diametro, fili rotti)
+const Verdict = ({ level, title, lines, onCopy, copied, onReport, big = null }) => {
+  const tone = level === "scarto" ? ["bg-red-600", XCircle] : level === "attenzione" ? ["bg-amber-600", AlertTriangle] : ["bg-emerald-600", CheckCircle2];
   const Icon = tone[1];
   return (
-    <div className={`rounded-2xl border-2 p-4 ${tone[0]}`} data-wear-verdict={level}>
-      <p className="font-black text-lg flex items-center gap-2">
-        <Icon className="w-6 h-6 shrink-0" /> {title}
-      </p>
-      <ul className="mt-2 space-y-1 text-sm font-semibold">
-        {lines.map((l, i) => (
-          <li key={i}>{l}</li>
-        ))}
-      </ul>
-      <button type="button" onClick={onCopy} className="mt-3 h-10 px-3 rounded-xl bg-white/80 border border-black/10 text-sm font-bold text-slate-700 flex items-center gap-1.5" data-action="wear-copy">
-        {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />} {copied ? "Copiato: incollalo nel rapporto" : "Copia per il rapporto"}
-      </button>
-      {onReport && (
-        <button type="button" onClick={onReport} className="mt-2 w-full h-11 px-3 rounded-xl bg-blue-600 text-white text-sm font-bold flex items-center justify-center gap-1.5" data-action="wear-report">
-          <FilePlus2 className="w-4 h-4" /> Nuovo rapporto con questo controllo
+    <div className="rounded-3xl overflow-hidden border border-slate-200 bg-white shadow-lg" data-wear-verdict={level}>
+      <div className={`${tone[0]} text-white p-5`}>
+        {big && (
+          <>
+            <p className="text-sm font-black uppercase tracking-wider opacity-90">{big.label}</p>
+            <p className="flex items-end gap-1 mt-1" data-wear-big>
+              <span className="font-black tabular-nums leading-none" style={{ fontSize: "clamp(56px, 18vw, 88px)", letterSpacing: "-2px" }}>
+                {big.value}
+              </span>
+              {big.unit && <span className="text-3xl font-black pb-1">{big.unit}</span>}
+            </p>
+            {big.sub && <p className="text-sm font-bold opacity-95 mt-1">{big.sub}</p>}
+          </>
+        )}
+        <p className={`font-black flex items-center gap-2 ${big ? "text-xl mt-3" : "text-2xl"}`}>
+          <Icon className="w-7 h-7 shrink-0" /> {title}
+        </p>
+      </div>
+      <div className="p-4">
+        <ul className="space-y-1 text-sm font-semibold text-slate-700">
+          {lines.map((l, i) => (
+            <li key={i}>{l}</li>
+          ))}
+        </ul>
+        <button type="button" onClick={onCopy} className="mt-3 h-10 px-3 rounded-xl bg-slate-100 border border-slate-200 text-sm font-bold text-slate-700 flex items-center gap-1.5" data-action="wear-copy">
+          {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />} {copied ? "Copiato: incollalo nel rapporto" : "Copia per il rapporto"}
         </button>
-      )}
+        {onReport && (
+          <button type="button" onClick={onReport} className="mt-2 w-full h-11 px-3 rounded-xl bg-blue-600 text-white text-sm font-bold flex items-center justify-center gap-1.5" data-action="wear-report">
+            <FilePlus2 className="w-4 h-4" /> Nuovo rapporto con questo controllo
+          </button>
+        )}
+      </div>
     </div>
   );
+};
+
+// il numero grande del verdetto
+const chainBig = (r) => {
+  if (r.wear != null) return { label: "Usura della maglia", value: fmt(r.wear), unit: "%", sub: `Scarto oltre il 10% · minimo ${fmt(r.minDm, 2)} mm` };
+  const c = r.checks[0];
+  return c ? { label: c.label, value: fmt(c.value), unit: "%", sub: `Scarto oltre il ${c.limit}%` } : null;
+};
+const ropeBig = (r) => {
+  const wireWorse = Math.max(r.s6, r.s30) > (r.dia ? r.dia.sev : -1);
+  if (r.dec != null && !wireWorse) return { label: "Calo del diametro", value: fmt(r.dec), unit: "%", sub: `Scarto al ${fmt(r.dia.limit)}%` };
+  if (r.b6 > 0 || r.b30 > 0) {
+    const six = r.s6 >= r.s30;
+    return { label: `Fili rotti su ${six ? "6d" : "30d"}`, value: String(six ? r.b6 : r.b30), unit: (six ? r.b6 : r.b30) === 1 ? "filo" : "fili", sub: `Scarto a ${six ? r.lim.six : r.lim.thirty} fili` };
+  }
+  return null;
 };
 
 const useCopy = () => {
@@ -162,7 +222,90 @@ const Side = ({ strands = 6, kind = "crociata" }) => {
 };
 
 // SCHEDE «i»: come riconoscerla, con i disegni e il link al catalogo FAS (le foto sono di FAS: si aprono sul loro sito)
-const INFO = {
+
+// disegni delle schede «i» sulle misure
+const RopeBand = ({ y = 10, w = 260, broken = false }) => (
+  <g>
+    <rect x="10" y={y} width={w} height="22" rx="11" fill="#94a3b8" />
+    {Array.from({ length: Math.round(w / 14) }).map((_, i) => (
+      <path key={i} d={`M${14 + i * 14} ${y + 1} l10 20`} stroke="#475569" strokeWidth="3" strokeLinecap="round" />
+    ))}
+    {broken && (
+      <g stroke="#dc2626" strokeWidth="2.5" strokeLinecap="round">
+        <path d={`M120 ${y + 4} l10 -9`} />
+        <path d={`M126 ${y + 6} l14 -6`} />
+        <path d={`M190 ${y + 18} l9 9`} />
+      </g>
+    )}
+  </g>
+);
+const TrattoArt = () => (
+  <svg viewBox="0 0 280 92" className="w-full max-w-xs" aria-hidden="true">
+    <RopeBand />
+    <g stroke="#1d4ed8" strokeWidth="2.5" fill="none">
+      <path d="M20 42 v8 h44 v-8" />
+      <path d="M20 62 v8 h240 v-8" />
+    </g>
+    <text x="42" y="60" textAnchor="middle" fontSize="11" fontWeight="900" fill="#1d4ed8">6d</text>
+    <text x="140" y="86" textAnchor="middle" fontSize="11" fontWeight="900" fill="#1d4ed8">30d (5 volte più lungo)</text>
+  </svg>
+);
+const FiliArt = () => (
+  <svg viewBox="0 0 280 50" className="w-full max-w-xs" aria-hidden="true">
+    <RopeBand y={14} broken />
+    <text x="150" y="10" fontSize="11" fontWeight="900" fill="#dc2626">fili rotti</text>
+  </svg>
+);
+const CaliperArt = () => (
+  <svg viewBox="0 0 220 110" className="w-full max-w-[16rem]" aria-hidden="true">
+    {[0, 1].map((k) => {
+      const cx = 55 + k * 110;
+      return (
+        <g key={k} transform={k ? `rotate(90 ${cx} 55)` : undefined}>
+          <circle cx={cx} cy="55" r="30" fill="#e2e8f0" />
+          {Array.from({ length: 6 }).map((_, i) => (
+            <circle key={i} cx={cx + 19 * Math.cos((i * Math.PI) / 3 + Math.PI / 6)} cy={55 + 19 * Math.sin((i * Math.PI) / 3 + Math.PI / 6)} r="11" fill="#94a3b8" stroke="#475569" strokeWidth="1.5" />
+          ))}
+          <rect x={cx - 40} y="18" width="80" height="6" fill="#1d4ed8" />
+          <rect x={cx - 40} y="86" width="80" height="6" fill="#1d4ed8" />
+        </g>
+      );
+    })}
+    <text x="55" y="108" textAnchor="middle" fontSize="10" fontWeight="900" fill="#1d4ed8">1ª misura</text>
+    <text x="165" y="108" textAnchor="middle" fontSize="10" fontWeight="900" fill="#1d4ed8">2ª girata di 90°</text>
+  </svg>
+);
+const ChainArt = ({ where = "contatto" }) => (
+  <svg viewBox="0 0 260 90" className="w-full max-w-xs" aria-hidden="true">
+    <rect x="14" y="24" width="120" height="42" rx="21" fill="none" stroke="#64748b" strokeWidth="11" />
+    <rect x="112" y="38" width="120" height="14" rx="7" fill="#64748b" />
+    <rect x="112" y="38" width="120" height="14" rx="7" fill="none" stroke="#334155" strokeWidth="1.5" />
+    {where === "contatto" ? (
+      <g>
+        <circle cx="128" cy="45" r="14" fill="none" stroke="#dc2626" strokeWidth="3" />
+        <path d="M128 8 v16" stroke="#dc2626" strokeWidth="3" markerEnd="" />
+        <text x="128" y="7" textAnchor="middle" fontSize="11" fontWeight="900" fill="#dc2626">misura qui</text>
+      </g>
+    ) : (
+      <g>
+        <path d="M60 4 v14 M60 72 v14" stroke="#1d4ed8" strokeWidth="3" />
+        <text x="60" y="88" textAnchor="middle" fontSize="0" fill="#1d4ed8" />
+        <text x="96" y="14" fontSize="11" fontWeight="900" fill="#1d4ed8">d = spessore del tondino</text>
+      </g>
+    )}
+  </svg>
+);
+const PassoArt = () => (
+  <svg viewBox="0 0 260 70" className="w-full max-w-xs" aria-hidden="true">
+    <rect x="14" y="14" width="120" height="42" rx="21" fill="none" stroke="#64748b" strokeWidth="11" />
+    <path d="M26 35 h96" stroke="#1d4ed8" strokeWidth="2.5" />
+    <path d="M26 29 v12 M122 29 v12" stroke="#1d4ed8" strokeWidth="2.5" />
+    <text x="74" y="31" textAnchor="middle" fontSize="11" fontWeight="900" fill="#1d4ed8">t</text>
+    <text x="150" y="40" fontSize="11" fontWeight="900" fill="#1d4ed8">passo = dentro la maglia</text>
+  </svg>
+);
+
+export const INFO = {
   6: {
     title: "Fune a 6 trefoli",
     text: "Girando intorno alla fune conti 6 trefoli (i «cordoni» attorcigliati), belli grossi. In mezzo c'è l'anima, tessile o metallica. È la più comune sui paranchi e sui carriponte piccoli e medi.",
@@ -204,13 +347,48 @@ const INFO = {
     text: "I trefoli vanno in un verso e i fili dentro ogni trefolo nel verso opposto: guardando la fune da vicino i fili sembrano quasi dritti, paralleli alla fune. È la cordatura più comune.",
     art: <Side strands={6} kind="crociata" />,
   },
+  tratto: {
+    title: "Cosa sono 6d e 30d",
+    text: "d è il diametro nominale della fune. 6d è un tratto lungo 6 volte il diametro, 30d un tratto lungo 30 volte: con una fune da 12 mm sono 72 mm (7 cm) e 360 mm (36 cm); l'app te li calcola appena scrivi il diametro. Scorri tutta la fune e cerca il tratto messo peggio (di solito dove passa sulle pulegge, dove si avvolge sul tamburo o vicino agli attacchi): lì conti i fili rotti dentro 6d e dentro 30d.",
+    art: <TrattoArt />,
+  },
+  fili: {
+    title: "Come contare i fili rotti",
+    text: "Conta i fili spezzati che vedi sulla superficie della fune (le punte che escono o i fili interrotti) dentro il tratto di 6d e di 30d. Fai scorrere la fune piano con uno straccio in mano: i fili rotti lo agganciano. Sono più gravi i fili rotti nella valle, cioè tra due trefoli dove i trefoli si toccano: per la ISO 4309 già 2 fili rotti nella valle in un passo di cordatura (circa 6d) portano allo scarto, anche se il numero totale è sotto il limite. Scarta sempre anche con un trefolo rotto, schiacciamenti, «gabbia» (trefoli che si aprono) o nodi.",
+    art: <FiliArt />,
+  },
+  diamfune: {
+    title: "Come misurare il diametro della fune",
+    text: "Usa il calibro con i becchi larghi, che appoggino su almeno due trefoli: si misura sulle creste dei trefoli, mai nella valle. Fai due misure nello stesso punto, la seconda girata di 90°, e prendi la media. Misura nel tratto più consumato (dove passa sulle pulegge). Il confronto giusto è col diametro di riferimento, misurato a fune nuova dopo il rodaggio; se non ce l'hai usi il nominale, ma la fune nuova di solito è un po' più grossa del nominale (fino al 4-5%) e quindi il calo vero può essere un po' più alto di quello che vedi.",
+    art: <CaliperArt />,
+  },
+  nomfune: {
+    title: "Diametro nominale della fune",
+    text: "È il diametro scritto sul certificato o sul cartellino della fune (es. Ø12; nel codice FAS è il numero finale: FZ636A12 = 12 mm). Se non lo trovi, misura la fune in un tratto che non lavora (vicino all'attacco fisso, dove non passa sulle pulegge) e prendi il diametro standard più vicino.",
+    art: <CaliperArt />,
+  },
+  catmisura: {
+    title: "Dove misurare la catena",
+    text: "La catena si consuma dove una maglia tocca l'altra, all'interno della curva. Allenta la catena, apri un po' le maglie e misura lo spessore del tondino proprio in quel punto; poi gira il calibro di 90° e misura di nuovo: si guarda la media delle due misure. Controlla le maglie che lavorano di più: quelle che passano sulla noce del paranco e quelle vicino al gancio con il carico che solleva di solito. Scarto se l'usura supera il 10% del diametro nominale.",
+    art: <ChainArt />,
+  },
+  catnominale: {
+    title: "Diametro nominale della catena",
+    text: "È lo spessore del tondino della maglia nuova: una catena «10×30» ha diametro 10 mm e passo 30 mm. Lo trovi sul certificato, sulla targhetta o sul manuale del paranco, a volte stampato sulle maglie. Se non c'è, misuralo sul tratto dritto di una maglia che non lavora (verso il capo libero della catena), lontano dai punti di contatto.",
+    art: <ChainArt where="nominale" />,
+  },
+  passo: {
+    title: "Passo e allungamento",
+    text: "Il passo t è la lunghezza interna di una maglia (catena 10×30: passo 30 mm). Misura una maglia all'interno: scarto se è più lunga del 5%. Per la catena del paranco misura anche 11 maglie di fila con la catena tesa e confrontale con 11 volte il passo: scarto oltre il 2%. Una catena allungata non ingrana più bene nella noce e può saltare.",
+    art: <PassoArt />,
+  },
   parallela: {
     title: "Cordatura parallela (Lang)",
     text: "Trefoli e fili vanno nello stesso verso: i fili si vedono inclinati in diagonale, come i trefoli. Si consuma più piano, ma la norma ammette circa la metà dei fili rotti.",
     art: <Side strands={6} kind="parallela" />,
   },
 };
-const InfoSheet = ({ id, onClose }) => {
+export const InfoSheet = ({ id, onClose }) => {
   const it = INFO[id];
   if (!it) return null;
   return (
@@ -379,10 +557,10 @@ const RopeCheck = ({ known = null, onReport = null }) => {
       )}
       <section className="bg-white rounded-3xl border border-slate-200 p-4 space-y-3">
         <h4 className="font-black text-slate-800">Fili rotti</h4>
-        <Num id="d" label="Diametro nominale" value={x.d} onChange={set("d")} hint={x.d ? `6d = ${r.len6} mm (${fmt(r.len6 / 10)} cm) · 30d = ${r.len30} mm (${fmt(r.len30 / 10)} cm): conta i fili rotti nel tratto peggiore.` : "Serve per sapere quanto è lungo il tratto da guardare (6d e 30d)."} />
+        <Num id="d" info="nomfune" label="Diametro nominale" value={x.d} onChange={set("d")} hint={x.d ? `6d = ${r.len6} mm (${fmt(r.len6 / 10)} cm) · 30d = ${r.len30} mm (${fmt(r.len30 / 10)} cm): conta i fili rotti nel tratto peggiore.` : "Serve per sapere quanto è lungo il tratto da guardare (6d e 30d)."} />
         <div className="grid grid-cols-2 gap-3">
-          <Num id="b6" label={`Fili rotti su 6d${r.len6 ? ` (${fmt(r.len6 / 10)} cm)` : ""}`} unit="fili" value={x.b6} onChange={set("b6")} />
-          <Num id="b30" label={`Fili rotti su 30d${r.len30 ? ` (${fmt(r.len30 / 10)} cm)` : ""}`} unit="fili" value={x.b30} onChange={set("b30")} />
+          <Num id="b6" info="fili" label={`Fili rotti su 6d${r.len6 ? ` (${fmt(r.len6 / 10)} cm)` : ""}`} unit="fili" value={x.b6} onChange={set("b6")} />
+          <Num id="b30" info="tratto" label={`Fili rotti su 30d${r.len30 ? ` (${fmt(r.len30 / 10)} cm)` : ""}`} unit="fili" value={x.b30} onChange={set("b30")} />
         </div>
         {(x.b6 !== "" || x.b30 !== "") && (
           <div className="text-xs font-bold text-slate-500">
@@ -395,8 +573,8 @@ const RopeCheck = ({ known = null, onReport = null }) => {
       <section className="bg-white rounded-3xl border border-slate-200 p-4 space-y-3">
         <h4 className="font-black text-slate-800">Diametro</h4>
         <div className="grid grid-cols-2 gap-3">
-          <Num id="dRef" label="Di riferimento" value={x.dRef} onChange={set("dRef")} hint="Misurato a fune nuova (dopo il rodaggio). Se non c'è vale il nominale." />
-          <Num id="dMis" label="Misurato adesso" value={x.dMis} onChange={set("dMis")} hint="Nel punto più consumato, media di due misure a 90°." />
+          <Num id="dRef" info="diamfune" label="Di riferimento" value={x.dRef} onChange={set("dRef")} hint="Misurato a fune nuova (dopo il rodaggio). Se non c'è vale il nominale." />
+          <Num id="dMis" info="diamfune" label="Misurato adesso" value={x.dMis} onChange={set("dMis")} hint="Nel punto più consumato, media di due misure a 90°." />
         </div>
         {r.dec != null && (
           <div className="text-xs font-bold text-slate-500">
@@ -419,6 +597,7 @@ const RopeCheck = ({ known = null, onReport = null }) => {
           onCopy={() => copy(report)}
           copied={copied}
           onReport={onReport ? () => onReport({ type: "fune", level: r.level, title, text: report, d: x.d, b6: x.b6, b30: x.b30, dMis: x.dMis, rope: r.auto ? "" : x.rope }) : null}
+          big={ropeBig(r)}
         />
       )}
       <p className="text-[11px] text-slate-400 leading-snug">
@@ -448,9 +627,9 @@ const ChainCheck = ({ known = null, onReport = null }) => {
       <section className="bg-white rounded-3xl border border-slate-200 p-4 space-y-3">
         <h4 className="font-black text-slate-800">La catena</h4>
         <Choice id="kind" value={x.kind} onChange={set("kind")} options={[["paranco", "Del paranco"], ["imbracatura", "Di imbracatura"]]} />
-        <Num id="d" label="Diametro nominale (d)" value={x.d} onChange={set("d")} />
+        <Num id="d" info="catnominale" label="Diametro nominale (d)" value={x.d} onChange={set("d")} />
         <div className="grid grid-cols-2 gap-3">
-          <Num id="d1" label="Misura d1" value={x.d1} onChange={set("d1")} />
+          <Num id="d1" info="catmisura" label="Misura d1" value={x.d1} onChange={set("d1")} />
           <Num id="d2" label="Misura d2 (a 90°)" value={x.d2} onChange={set("d2")} />
         </div>
         <p className="text-[11px] text-slate-400 leading-snug">Misura nel punto dove le maglie si toccano (dove si consuma), con la catena allentata: due misure a 90° tra loro. Si guarda la media.</p>
@@ -464,10 +643,10 @@ const ChainCheck = ({ known = null, onReport = null }) => {
 
       <section className="bg-white rounded-3xl border border-slate-200 p-4 space-y-3">
         <h4 className="font-black text-slate-800">Allungamento (se lo misuri)</h4>
-        <Num id="t" label="Passo nominale (t)" value={x.t} onChange={set("t")} hint="Lunghezza interna di una maglia, dalla scheda della catena." />
+        <Num id="t" info="passo" label="Passo nominale (t)" value={x.t} onChange={set("t")} hint="Lunghezza interna di una maglia, dalla scheda della catena." />
         <div className="grid grid-cols-2 gap-3">
           <Num id="t1" label="Una maglia misurata" value={x.t1} onChange={set("t1")} />
-          {x.kind !== "imbracatura" && <Num id="t11" label="11 maglie misurate" value={x.t11} onChange={set("t11")} hint={Number(String(x.t).replace(",", ".")) ? `Nuova: ${fmt(Number(String(x.t).replace(",", ".")) * 11)} mm` : ""} />}
+          {x.kind !== "imbracatura" && <Num id="t11" info="passo" label="11 maglie misurate" value={x.t11} onChange={set("t11")} hint={Number(String(x.t).replace(",", ".")) ? `Nuova: ${fmt(Number(String(x.t).replace(",", ".")) * 11)} mm` : ""} />}
         </div>
       </section>
 
@@ -484,6 +663,7 @@ const ChainCheck = ({ known = null, onReport = null }) => {
           onCopy={() => copy(report)}
           copied={copied}
           onReport={onReport ? () => onReport({ type: "catena", level: r.level, title, text: report, d: x.d, d1: x.d1, d2: x.d2 }) : null}
+          big={chainBig(r)}
         />
       )}
       <p className="text-[11px] text-slate-400 leading-snug">
@@ -550,8 +730,8 @@ const CranePicker = ({ machines, crane, onPick, color, type }) => {
   );
 };
 
-export const WearPanel = ({ color = "blue", onBack, onClose, machines = [], logs = [], onNewReport = null }) => {
-  const [tab, setTab] = useState("rope");
+export const WearPanel = ({ color = "blue", onBack, onClose, machines = [], logs = [], onNewReport = null, initialTab = "rope" }) => {
+  const [tab, setTab] = useState(initialTab === "chain" ? "chain" : "rope");
   const [crane, setCrane] = useState(null);
   const craneLogs = useMemo(() => {
     if (!crane) return [];

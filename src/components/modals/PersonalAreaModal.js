@@ -70,7 +70,9 @@ export const PersonalAreaModal = ({
 }) => {
   // parti accese o spente dall'admin
   const on = (id) => areaOn({ areaTiles }, id);
-  const [panel, setPanel] = useState(initialPanel);
+  // «wear-chain»: Fune e catena aperto sulla catena (dalla misura rapida)
+  const [panel, setPanel] = useState(initialPanel === "wear-chain" ? "wear" : initialPanel);
+  const wearTab = initialPanel === "wear-chain" ? "chain" : "rope";
   // "Le mie ore" si vede solo se acceso in Impostazioni
   const [showHours, setShowHours] = useState(() => getSettings().hours === true);
   useEffect(() => {
@@ -122,6 +124,7 @@ export const PersonalAreaModal = ({
     body = <PartsPanel me={me} logs={logs} color={color} onBack={back} onClose={closeX} onOpenMachine={onOpenMachine} />;
   else if (panel === "wear" && on("wear")) body = <WearPanel
         color={color}
+        initialTab={wearTab}
         onBack={back}
         onClose={closeX}
         machines={machines}

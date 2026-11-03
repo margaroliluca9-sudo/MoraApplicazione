@@ -1,12 +1,11 @@
 // SERVICE WORKER DELL'APP
 //  1) SENZA RETE: tiene una copia dell'app sul telefono, così si apre anche in un capannone senza
 //     internet e mostra i dati già salvati (La mia area, interventi, clienti: li tiene Firebase).
-//     Con la rete prende SEMPRE la versione nuova dal sito (prima la rete, poi la copia):
-//     così l'app resta l'ultima pubblicata.
+//     L'app si apre SUBITO dalla copia (veloce anche con poco campo) e intanto scarica la versione nuova:
+//     se è uscita una versione nuova compare «Aggiorna» (vedi UpdateBanner) e la volta dopo è già quella.
 //  2) Notifiche della chat e dei promemoria.
 const SHELL = "mora-offline-v1";
 const CDN_HOSTS = ["cdn.tailwindcss.com", "fonts.googleapis.com", "fonts.gstatic.com"];
-const WAIT_NETWORK_MS = 1500; // rete lenta: dopo 1,5 secondi apro la copia (intanto scarico la nuova per la prossima volta)
 
 const putSafe = async (key, res) => {
   try {
@@ -61,22 +60,30 @@ self.addEventListener("activate", (event) => {
   );
 });
 
-// la pagina: prima la rete (versione nuova), se non c'è o è troppo lenta la copia salvata
-const openPage = async (request) => {
-  const fromNet = fetch(request).then((res) => {
+// la pagina: SUBITO la copia salvata sul telefono (l'app si apre all'istante, anche con poco campo) e intanto
+// scarico dal sito la versione nuova per la volta dopo; se c'è una versione nuova compare «Aggiorna» (UpdateBanner),
+// che riapre con ?aggiorna=… : allora prima la rete (versione nuova), la copia solo se manca la rete.
+const fromNetwork = (request) =>
+  fetch(request).then((res) => {
     if (res && res.ok) putSafe("/", res.clone());
     return res;
   });
-  const timeout = new Promise((resolve) => setTimeout(() => resolve(null), WAIT_NETWORK_MS));
+const openPage = async (event) => {
+  const request = event.request;
+  const fresh = new URL(request.url).searchParams.has("aggiorna");
+  const cached = await caches.match("/");
+  if (cached && !fresh) {
+    event.waitUntil(fromNetwork(request).catch(() => null));
+    return cached;
+  }
   try {
-    const res = await Promise.race([fromNet, timeout]);
+    const res = await fromNetwork(request);
     if (res) return res;
   } catch (e) {
     // senza rete
   }
-  const cached = await caches.match("/");
   if (cached) return cached;
-  return fromNet; // mai aperta prima: errore normale del browser
+  return fetch(request); // mai aperta prima: errore normale del browser
 };
 
 // file (programma, grafica, caratteri, icone): la copia subito se c'è, e intanto la aggiorno
@@ -102,7 +109,7 @@ self.addEventListener("fetch", (event) => {
   if (own && url.searchParams.has("__ver")) return; // controllo «versione nuova» (UpdateBanner): sempre in rete, mai salvato
   if (own && url.pathname.startsWith("/guida/")) return; // video della Guida: direttamente dal sito (pesano e vanno a pezzi)
   if (req.mode === "navigate" && own) {
-    event.respondWith(openPage(req));
+    event.respondWith(openPage(event));
     return;
   }
   if (own || CDN_HOSTS.includes(url.hostname)) {

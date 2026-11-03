@@ -26,7 +26,7 @@ import { getSafeMatricola } from "./utils";
 import { PRO_BUTTON_SECONDARY } from "./ui";
 import { GlobalLoginScreen } from "./components/GlobalLoginScreen";
 import { SplashScreen } from "./components/SplashScreen";
-import { readLastSync, syncWhen, focusSection, splashSeason } from "./appHelpers";
+import { readLastSync, syncWhen, focusSection, splashSeason, splashShownToday, markSplashShown } from "./appHelpers";
 import { CraneMark } from "./components/CraneMark";
 import {
   THEME_MODES,
@@ -66,6 +66,7 @@ import { lazyNamed, preloadLazy } from "./lazy";
 import { installErrorLog, setErrorContext } from "./errorLog";
 import { NewEntryForm } from "./views/NewEntryForm";
 import { HistoryView } from "./views/HistoryView";
+import { QuickWear } from "./components/QuickWear";
 const DatabaseView = lazyNamed(() => import("./views/DatabaseView"), "DatabaseView");
 const OfficeView = lazyNamed(() => import("./views/OfficeView"), "OfficeView");
 const AdminPanel = lazyNamed(() => import("./views/AdminPanel"), "AdminPanel");
@@ -117,7 +118,7 @@ export default function App() {
     try {
       const q = new URLSearchParams(window.location.search);
       const t = q.get("tab");
-      if (["office", "history", "explore"].includes(t)) {
+      if (["office", "history", "explore", "new"].includes(t)) {
         if (q.get("focus")) setTimeout(() => focusSection(q.get("focus")), 1500);
         window.history.replaceState(null, "", window.location.pathname);
         return t;
@@ -127,6 +128,24 @@ export default function App() {
     }
     return "dashboard";
   });
+  // MISURA RAPIDA di catena e fune: dal riquadro «Misura» della Home o dal collegamento sull'icona (/?misura=catena)
+  const [quickWear, setQuickWear] = useState(() => {
+    try {
+      const m = new URLSearchParams(window.location.search).get("misura");
+      if (m == null) return null;
+      window.history.replaceState(null, "", window.location.pathname);
+      return m === "fune" ? "fune" : "catena";
+    } catch (e) {
+      return null;
+    }
+  });
+  const quickAtStart = useRef(quickWear != null);
+  const splashSeenEarlier = useRef(splashShownToday());
+  useEffect(() => {
+    const on = (e) => setQuickWear((e && e.detail) || "ultimo");
+    window.addEventListener("mora-quick-wear", on);
+    return () => window.removeEventListener("mora-quick-wear", on);
+  }, []);
   // schermo per la TV dell'ufficio (Ufficio → «Schermo TV», oppure indirizzo con ?tv=1)
   const [tvOpen, setTvOpen] = useState(() => {
     try {
@@ -355,9 +374,11 @@ export default function App() {
 
     onAuthStateChanged(auth, (u) => {
       setUser(u);
-      // con l'animazione di avvio attiva si aspetta che finisca (~2,4 s)
-      const splashOn = getCachedLayout().showSplash !== false && getSettings().splash !== false;
-      setTimeout(() => setIsAppLoading(false), splashOn ? 2500 : 300);
+      // l'animazione di avvio (~2,4 s) solo la prima volta del giorno: le altre volte l'app si apre subito
+      // (e mai quando si apre la misura rapida dall'icona)
+      const splashOn = getCachedLayout().showSplash !== false && getSettings().splash !== false && !quickAtStart.current && !splashSeenEarlier.current;
+      if (splashOn) markSplashShown();
+      setTimeout(() => setIsAppLoading(false), splashOn ? 2500 : 0);
     });
   }, []);
 
@@ -1029,7 +1050,7 @@ export default function App() {
 
   const color = viewConfig.themeColor || "blue";
 
-  if (isAppLoading && (layoutConfig.showSplash === false || mySettings.splash === false))
+  if (isAppLoading && (layoutConfig.showSplash === false || mySettings.splash === false || quickAtStart.current || splashSeenEarlier.current))
     return <div className="mora-app min-h-screen bg-slate-100" />;
 
   if (isAppLoading)
@@ -1371,6 +1392,16 @@ export default function App() {
           </div>
         )}
       </main>
+      {quickWear && (
+        <QuickWear
+          initial={quickWear}
+          onClose={() => setQuickWear(null)}
+          onFull={(t) => {
+            setQuickWear(null);
+            openAreaTab(t === "catena" ? "wear-chain" : "wear");
+          }}
+        />
+      )}
       {tvOpen && user && <TvScreen logs={logs} users={visibleUsers} notices={activeNotices()} color={color} onClose={() => setTvOpen(false)} />}
 
       {/* Visualizzatore Foto Globale */}

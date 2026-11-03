@@ -82,15 +82,20 @@ export const cachePrefs = (me, prefs) => {
 
 // Home effettiva: riquadri visibili in ordine + quelli nascosti che si possono aggiungere
 // base = ordine standard (admin); available = tutti gli id che esistono per questo tecnico
+// riquadri nuovi che compaiono subito dopo «Nuovo rapporto» anche a chi ha già sistemato la sua Home
+const FIRST = ["misura"];
 export const resolveHome = (base, prefs, available) => {
   const p = prefs || {};
   const ok = (id) => available.includes(id);
   const hidden = (p.hidden || []).filter((id) => ok(id) && id !== "new");
   let order = (p.order || []).filter((id, i, a) => ok(id) && !hidden.includes(id) && a.indexOf(id) === i);
   if (!p.order) order = base.filter(ok);
-  // riquadri standard nuovi (non ancora scelti né nascosti): in fondo
+  // riquadri standard nuovi (non ancora scelti né nascosti): in fondo, tranne quelli da tenere a portata di mano
   base.forEach((id) => {
-    if (ok(id) && !order.includes(id) && !hidden.includes(id)) order.push(id);
+    if (!ok(id) || order.includes(id) || hidden.includes(id)) return;
+    const k = order.indexOf("new");
+    if (FIRST.includes(id) && k !== -1) order.splice(k + 1, 0, id);
+    else order.push(id);
   });
   if (!order.includes("new") && ok("new")) order.unshift("new");
   const sizes = {};

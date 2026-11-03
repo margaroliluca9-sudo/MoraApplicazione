@@ -1,7 +1,7 @@
 import { parseTicketQuery, matchTicket, ticketLabel } from "../ticket";
 import React, { useEffect, useMemo, useState } from "react";
 import { EmptyState } from "../components/EmptyState";
-import {
+import { Ruler,
   PlusCircle,
   Search,
   X,
@@ -131,6 +131,7 @@ export const DashboardView = ({
     else if (to === "van") setArea("van");
     else if (to === "print") setArea("print");
     else if (to === "practice") setShowPractice(true);
+    else if (to === "misura") window.dispatchEvent(new CustomEvent("mora-quick-wear", { detail: "" }));
     else if (to === "history") onNavigate("history");
     else if (to === "explore") onNavigate("explore");
     else if (to === "chat") {
@@ -219,6 +220,11 @@ export const DashboardView = ({
     const k = order.indexOf("new");
     order.splice(k === -1 ? 0 : k + 1, 0, "area");
   }
+  // «Misura catena e fune» (calcolo rapido dell'usura): subito dopo "Nuovo Rapporto"
+  if (!order.includes("misura")) {
+    const k = order.indexOf("new");
+    order.splice(k === -1 ? 0 : k + 1, 0, "misura");
+  }
 
   const todayCount = useMemo(
     () => todayItems(personal.events || [], personal.reminders || []).length,
@@ -274,6 +280,13 @@ export const DashboardView = ({
       desc: "Registra nuovo intervento",
       action: () => onNavigate("new"),
       primary: true,
+    },
+    misura: {
+      id: "misura",
+      label: "Misura catena e fune",
+      icon: Ruler,
+      desc: "L'usura in un attimo, col calibro in mano",
+      action: () => window.dispatchEvent(new CustomEvent("mora-quick-wear", { detail: "" })),
     },
     explore: {
       id: "explore",

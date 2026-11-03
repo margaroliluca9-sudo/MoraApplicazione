@@ -13,6 +13,13 @@ import { installErrorLog } from "./errorLog";
 import { applyTheme, getThemeMode, setStatusColor } from "./theme";
 import { applyAppearance, getCachedLayout } from "./appearance";
 
+// dopo «Aggiorna» (UpdateBanner) tolgo ?aggiorna=… dall'indirizzo
+try {
+  if (new URLSearchParams(window.location.search).has("aggiorna")) window.history.replaceState(null, "", window.location.pathname);
+} catch (e) {
+  // niente
+}
+
 // tema e opzioni grafiche applicati subito, prima del primo disegno
 applyTheme(getThemeMode());
 applyAppearance(getCachedLayout());

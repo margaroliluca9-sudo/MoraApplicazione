@@ -25,5 +25,45 @@
   "display": "standalone",
   "theme_color": "#1d4ed8",
   "background_color": "#0b1220",
-  "orientation": "any"
+  "orientation": "any",
+  "shortcuts": [
+    {
+      "name": "Misura catena",
+      "short_name": "Catena",
+      "description": "Usura della catena in un attimo",
+      "url": "/?misura=catena",
+      "icons": [
+        {
+          "src": "icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Misura fune",
+      "short_name": "Fune",
+      "description": "Fili rotti e calo del diametro della fune",
+      "url": "/?misura=fune",
+      "icons": [
+        {
+          "src": "icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Nuovo rapporto",
+      "short_name": "Rapporto",
+      "url": "/?tab=new",
+      "icons": [
+        {
+          "src": "icons/icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
+  ]
 }

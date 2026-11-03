@@ -38,3 +38,21 @@ export const splashSeason = (cfg) => {
   }
   return seasonNow(cfg); // automatica, fissa (Admin → Design) o spenta
 };
+
+// animazione di avvio: solo alla prima apertura del giorno (le altre volte l'app si apre subito)
+const SPLASH_DAY = "mora_splash_day";
+const today = () => new Date().toDateString();
+export const splashShownToday = () => {
+  try {
+    return localStorage.getItem(SPLASH_DAY) === today();
+  } catch (e) {
+    return false;
+  }
+};
+export const markSplashShown = () => {
+  try {
+    localStorage.setItem(SPLASH_DAY, today());
+  } catch (e) {
+    // niente
+  }
+};
