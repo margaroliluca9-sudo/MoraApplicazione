@@ -261,7 +261,7 @@ export const PersonalAreaModal = ({
 
   if (inline)
     return (
-      <div className="max-w-3xl mx-auto h-[calc(100vh-180px)] min-h-[560px] flex flex-col rounded-3xl overflow-hidden bg-white shadow-sm border border-slate-200" data-section="personal-area" data-inline="1">
+      <div className="max-w-3xl mx-auto h-[calc(100dvh-215px)] min-h-[440px] md:h-[calc(100vh-180px)] md:min-h-[560px] flex flex-col rounded-3xl overflow-hidden bg-white shadow-sm border border-slate-200" data-section="personal-area" data-inline="1">
         {body}
       </div>
     );

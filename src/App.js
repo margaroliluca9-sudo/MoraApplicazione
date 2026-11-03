@@ -188,9 +188,14 @@ export default function App() {
   const [openTabs, setOpenTabs] = useState(["dashboard"]);
   // tablet/computer: «La mia area» in una scheda (con la parte da aprire: calendario, note…)
   const [areaPanel, setAreaPanel] = useState({ panel: "home", n: 0 });
+  // da dove sono arrivato (sul telefono la X della mia area riporta lì)
+  const beforeArea = useRef("dashboard");
   const openAreaTab = (panel) => {
     setAreaPanel((a) => ({ panel: panel || "home", n: a.n + 1 }));
-    setActiveTab("area");
+    setActiveTab((t) => {
+      if (t !== "area") beforeArea.current = t;
+      return "area";
+    });
   };
   const [currentTechName, setCurrentTechName] = useState(
     localStorage.getItem("mora_tech_last_name") || ""
@@ -932,15 +937,9 @@ export default function App() {
           setShowOnlineDropdown(true);
           return;
         }
-        if (panel && window.innerWidth >= 768) {
-          openAreaTab(panel);
-          return;
-        }
+        // «La mia area» è una pagina come lo Storico (anche sul telefono): la barra in basso resta
         if (panel) {
-          setTimeout(
-            () => window.dispatchEvent(new CustomEvent("mora-open-area", { detail: { panel } })),
-            50
-          );
+          openAreaTab(panel);
           return;
         }
         setTimeout(
@@ -1228,8 +1227,8 @@ export default function App() {
                 key={activeTab === "area" ? `area${areaPanel.n}` : "home"}
                 areaTab={activeTab === "area"}
                 areaPanel={areaPanel.panel}
-                onOpenAreaTab={isMobileView ? null : openAreaTab}
-                onCloseArea={() => closeTab("area")}
+                onOpenAreaTab={openAreaTab}
+                onCloseArea={() => (isMobileView ? setActiveTab(beforeArea.current || "dashboard") : closeTab("area"))}
                 onNavigate={setActiveTab}
                 layoutConfig={viewConfig}
                 onAdminAccess={handleAdminAccess}
@@ -1439,11 +1438,8 @@ export default function App() {
                 id="area"
                 icon={UserCircle}
                 label="Mia area"
-                active={false}
-                onClick={() => {
-                  setActiveTab("dashboard");
-                  setTimeout(() => window.dispatchEvent(new CustomEvent("mora-open-area", { detail: { panel: "home" } })), 60);
-                }}
+                active={activeTab === "area"}
+                onClick={() => openAreaTab("home")}
                 color={color}
               />
               <NavButton id="admin" icon={Settings} label="Admin" active={activeTab === "admin"} onClick={handleAdminAccess} color={color} />
