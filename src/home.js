@@ -83,7 +83,7 @@ export const cachePrefs = (me, prefs) => {
 // Home effettiva: riquadri visibili in ordine + quelli nascosti che si possono aggiungere
 // base = ordine standard (admin); available = tutti gli id che esistono per questo tecnico
 // riquadri nuovi che compaiono subito dopo «Nuovo rapporto» anche a chi ha già sistemato la sua Home
-const FIRST = ["misura"];
+const FIRST = [];
 export const resolveHome = (base, prefs, available) => {
   const p = prefs || {};
   const ok = (id) => available.includes(id);

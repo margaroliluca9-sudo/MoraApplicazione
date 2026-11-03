@@ -119,6 +119,24 @@ export const guessRope = (x) => {
   return { n: g.n, rr: g.rr, lay: x.lay === "crociata" ? "crociata" : "parallela", core: "metallica", layers: x.layers === "piu" ? "piu" : "uno", label: g.label };
 };
 
+// MISURA SCRITTA SENZA VIRGOLA (solo fune e catena): con una catena del 10, «950» o «95» vuol dire 9,5 mm.
+// Se il numero è troppo grande rispetto al nominale (riferimento) lo divido per 10 finché torna plausibile
+// (tra metà e 1,3 volte il riferimento); se ha già la virgola o non torna, resta com'è.
+export const readMeasure = (raw, ref) => {
+  const s = String(raw == null ? "" : raw).trim();
+  const v = Number(s.replace(",", ".")) || 0;
+  if (!v || !(ref > 0) || /[.,]/.test(s)) return v;
+  let x = v;
+  while (x > ref * 1.3 && x >= 10) x /= 10;
+  return x >= ref * 0.5 && x <= ref * 1.3 ? Math.round(x * 1000) / 1000 : v;
+};
+// la misura è stata letta in modo diverso da come è scritta? (per mostrare «letto come 9,5 mm»)
+export const measureFixed = (raw, ref) => {
+  const v = Number(String(raw == null ? "" : raw).replace(",", ".")) || 0;
+  const r = readMeasure(raw, ref);
+  return v > 0 && r !== v ? r : null;
+};
+
 export const checkRope = (x0) => {
   const auto = x0.mode !== "so";
   const g = auto ? guessRope(x0) : null;
@@ -130,8 +148,8 @@ export const checkRope = (x0) => {
   const rope = auto ? { n: g.n, rr: g.rr, label: g.label } : fam ? { n: fr ? fr.n : fam.r[0][3], rr: fam.rr, label: fasLabel(fam) } : ROPES.find((r) => r.id === x.rope) || ROPES[0];
   const n = rope.n || Number(x.n) || 0;
   const rr = rope.rr;
-  const dRef = Number(String(x.dRef || "").replace(",", ".")) || d;
-  const dMis = Number(String(x.dMis || "").replace(",", ".")) || 0;
+  const dRef = readMeasure(x.dRef, d) || d;
+  const dMis = readMeasure(x.dMis, dRef);
   const multi = x.layers === "piu";
   const lim = fam
     ? fr
@@ -162,6 +180,8 @@ export const checkRope = (x0) => {
     n,
     rr,
     lim,
+    dRef,
+    dMis,
     len6: d ? Math.round(6 * d) : null,
     len30: d ? Math.round(30 * d) : null,
     b6,
@@ -189,13 +209,13 @@ export const ROPE_FLAGS = [
 export const checkChain = (x) => {
   const num = (v) => Number(String(v || "").replace(",", ".")) || 0;
   const d = num(x.d);
-  const d1 = num(x.d1);
-  const d2 = num(x.d2) || d1;
+  const d1 = readMeasure(x.d1, d);
+  const d2 = readMeasure(x.d2, d) || d1;
   const dm = d1 ? (d1 + d2) / 2 : 0;
   const wear = d && dm ? Math.max(0, Math.round(((d - dm) / d) * 10000) / 100) : null;
   const t = num(x.t);
-  const t1 = num(x.t1);
-  const t11 = num(x.t11);
+  const t1 = readMeasure(x.t1, t);
+  const t11 = readMeasure(x.t11, 11 * t);
   const p1 = t && t1 ? Math.round(((t1 - t) / t) * 10000) / 100 : null;
   const p11 = t && t11 ? Math.round(((t11 - 11 * t) / (11 * t)) * 10000) / 100 : null;
   const hoist = x.kind !== "imbracatura";

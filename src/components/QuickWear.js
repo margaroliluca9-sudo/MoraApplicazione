@@ -4,7 +4,7 @@
 // Le regole sono quelle di src/wearRules.js (le stesse del controllo completo nella Mia area).
 import React, { useMemo, useRef, useState } from "react";
 import { X, Minus, Plus, Copy, Check, ChevronRight } from "lucide-react";
-import { checkChain, checkRope } from "../wearRules";
+import { checkChain, checkRope, measureFixed } from "../wearRules";
 import { InfoBtn } from "./personal/WearPanel";
 
 const KEY = "mora_quick_wear_v1";
@@ -25,6 +25,11 @@ const store = (v) => {
 const num = (v) => Number(String(v || "").replace(",", ".")) || 0;
 const fmt = (v, dec = 1) => (v == null || Number.isNaN(v) ? "—" : Number(v).toLocaleString("it-IT", { maximumFractionDigits: dec, minimumFractionDigits: 0 }));
 const clean = (v) => String(v).replace(/[^0-9.,]/g, "").replace(".", ",");
+// «950» con nominale 10 → «letto come 9,5 mm»
+const readAs = (raw, ref) => {
+  const f = measureFixed(raw, ref);
+  return f != null ? `Letto come ${fmt(f, 2)} mm` : "";
+};
 
 // diametri più comuni (un tocco e il nominale è scritto)
 const CHAIN_D = ["4", "5", "6", "7", "8", "9", "10", "11,3", "13", "16"];
@@ -208,9 +213,9 @@ const QuickChain = ({ saved, onSave }) => {
         <BigNum id="d" info="catnominale" label="Diametro nominale" value={d} autoFocus={!startOnM} onChange={(v) => { setD(v); onSave({ cd: v }); }} />
         <Presets list={CHAIN_D} value={d} onPick={pickD} />
       </div>
-      <BigNum id="m1" info="catmisura" label={two ? "Misura 1" : "Misura (dove le maglie si toccano)"} value={m1} inputRef={mRef} autoFocus={startOnM} onChange={setM1} />
+      <BigNum id="m1" info="catmisura" label={two ? "Misura 1" : "Misura (dove le maglie si toccano)"} value={m1} inputRef={mRef} autoFocus={startOnM} onChange={setM1} hint={readAs(m1, num(d))} />
       {two ? (
-        <BigNum id="m2" info="catmisura" label="Misura 2 (girata di 90°)" value={m2} onChange={setM2} hint="Si guarda la media delle due misure." />
+        <BigNum id="m2" info="catmisura" label="Misura 2 (girata di 90°)" value={m2} onChange={setM2} hint={[readAs(m2, num(d)), "Si guarda la media delle due misure."].filter(Boolean).join(" · ")} />
       ) : (
         <button type="button" onClick={() => setTwo(true)} data-action="quick-two" className="w-full h-12 rounded-2xl border-2 border-dashed border-slate-300 text-sm font-black text-slate-600">
           + Seconda misura a 90° (più preciso)
@@ -251,7 +256,7 @@ const QuickRope = ({ saved, onSave }) => {
   const wireBig = r.s6 >= r.s30 ? [b6, r.lim.six, "su 6d"] : [b30, r.lim.thirty, "su 30d"];
   const showWireBig = hasWire && (!hasDia || Math.max(r.s6, r.s30) > (r.dia ? r.dia.sev : 0));
   const text = ready
-    ? `Controllo fune Ø${d} mm (${(STRANDS.find((s) => s[0] === strands) || STRANDS[0])[1]}, valori prudenti): ${hasDia ? `diametro misurato ${fmt(num(mis), 2)} mm, calo ${fmt(r.dec)}% (scarto oltre il ${fmt(limD)}%)` : "diametro non misurato"}; fili rotti ${b6} su 6d (scarto a ${r.lim.six}) e ${b30} su 30d (scarto a ${r.lim.thirty}): ${WORD[r.level].toLowerCase()}.`
+    ? `Controllo fune Ø${d} mm (${(STRANDS.find((s) => s[0] === strands) || STRANDS[0])[1]}, valori prudenti): ${hasDia ? `diametro misurato ${fmt(r.dMis, 2)} mm, calo ${fmt(r.dec)}% (scarto oltre il ${fmt(limD)}%)` : "diametro non misurato"}; fili rotti ${b6} su 6d (scarto a ${r.lim.six}) e ${b30} su 30d (scarto a ${r.lim.thirty}): ${WORD[r.level].toLowerCase()}.`
     : "";
   return (
     <div className="space-y-4" data-section="quick-rope">
@@ -264,7 +269,7 @@ const QuickRope = ({ saved, onSave }) => {
         gauge={ready ? (showWireBig ? <Gauge value={wireBig[0]} limit={wireBig[1]} /> : <Gauge value={r.dec} limit={limD} />) : null}
         sub={
           ready
-            ? [hasDia && !showWireBig ? `Misura ${fmt(num(mis), 2)} mm · scarto sotto ${fmt(minD, 2)} mm` : "", showWireBig ? `Scarto a ${wireBig[1]} fili ${wireBig[2]}` : "", showWireBig && hasDia ? `Calo del diametro ${fmt(r.dec)}% (scarto oltre il ${fmt(limD)}%)` : "", !showWireBig && hasWire ? `Fili rotti ${b6}/${r.lim.six} su 6d · ${b30}/${r.lim.thirty} su 30d` : ""]
+            ? [hasDia && !showWireBig ? `Misura ${fmt(r.dMis, 2)} mm · scarto sotto ${fmt(minD, 2)} mm` : "", showWireBig ? `Scarto a ${wireBig[1]} fili ${wireBig[2]}` : "", showWireBig && hasDia ? `Calo del diametro ${fmt(r.dec)}% (scarto oltre il ${fmt(limD)}%)` : "", !showWireBig && hasWire ? `Fili rotti ${b6}/${r.lim.six} su 6d · ${b30}/${r.lim.thirty} su 30d` : ""]
                 .filter(Boolean)
                 .join(" · ")
             : minD
@@ -311,7 +316,7 @@ const QuickRope = ({ saved, onSave }) => {
         <BigNum id="d" info="nomfune" label="Diametro nominale" value={d} autoFocus={!startOnM} onChange={(v) => { setD(v); onSave({ rd: v }); }} hint={dn ? `Tratto da guardare: 6d = ${Math.round(6 * dn)} mm · 30d = ${Math.round(30 * dn)} mm (tocca la «i» di «Fili rotti su 30d»)` : ""} />
         <Presets list={ROPE_D} value={d} onPick={pickD} />
       </div>
-      <BigNum id="mis" info="diamfune" label="Diametro misurato" value={mis} inputRef={mRef} autoFocus={startOnM} onChange={setMis} />
+      <BigNum id="mis" info="diamfune" label="Diametro misurato" value={mis} inputRef={mRef} autoFocus={startOnM} onChange={setMis} hint={readAs(mis, num(d))} />
       <div className="grid grid-cols-2 gap-3">
         <Counter id="b6" info="fili" label="Fili rotti su 6d" value={b6} onChange={setB6} limit={r.lim.six} />
         <Counter id="b30" info="tratto" label="Fili rotti su 30d" value={b30} onChange={setB30} limit={r.lim.thirty} />
@@ -464,7 +469,7 @@ export const MiniWear = ({ onOpen }) => {
         </div>
       </div>
       <p className="text-xs font-bold text-slate-500 truncate" data-mini-sub>
-        {sub}
+        {[readAs(mis, num(d)), sub].filter(Boolean).join(" · ")}
       </p>
     </div>
   );

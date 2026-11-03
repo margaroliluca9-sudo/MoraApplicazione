@@ -5,7 +5,7 @@ import React, { useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { CheckCircle2, AlertTriangle, XCircle, Copy, Check, Info, X, ExternalLink, Search, FilePlus2, History } from "lucide-react";
 import { PanelHeader, INPUT } from "./PersonalUi";
-import { ROPES, ROPE_FLAGS, CHAIN_FLAGS, checkRope, checkChain } from "../../wearRules";
+import { ROPES, ROPE_FLAGS, CHAIN_FLAGS, checkRope, checkChain, measureFixed } from "../../wearRules";
 import { lastRopeOf, formatRopeLong, knownRopes, ropeName } from "../../ropes";
 import { fasFamily } from "../../fasRopes";
 import { getSafeMatricola } from "../../utils";
@@ -15,6 +15,12 @@ import { FAS_ROPES, FAS_GROUPS, fasCode } from "../../fasRopes";
 // catalogo FAS delle funi (si apre sul loro sito)
 const FAS_CATALOG = "https://www.fasitaly.com/sottofamiglia/0107.pdf";
 
+// «950» con nominale 10 → «Letto come 9,5 mm» (misura scritta senza virgola)
+const readAs = (raw, ref) => {
+  const f = measureFixed(raw, ref);
+  return f != null ? `Letto come ${fmt(f, 2)} mm` : "";
+};
+const nOf = (v) => Number(String(v || "").replace(",", ".")) || 0;
 const fmt = (v, dec = 1) => (v == null || Number.isNaN(v) ? "—" : Number(v).toLocaleString("it-IT", { maximumFractionDigits: dec, minimumFractionDigits: 0 }));
 
 // tasto «i» accanto a un campo: apre la spiegazione (come misurare, dove guardare)
@@ -573,8 +579,8 @@ const RopeCheck = ({ known = null, onReport = null }) => {
       <section className="bg-white rounded-3xl border border-slate-200 p-4 space-y-3">
         <h4 className="font-black text-slate-800">Diametro</h4>
         <div className="grid grid-cols-2 gap-3">
-          <Num id="dRef" info="diamfune" label="Di riferimento" value={x.dRef} onChange={set("dRef")} hint="Misurato a fune nuova (dopo il rodaggio). Se non c'è vale il nominale." />
-          <Num id="dMis" info="diamfune" label="Misurato adesso" value={x.dMis} onChange={set("dMis")} hint="Nel punto più consumato, media di due misure a 90°." />
+          <Num id="dRef" info="diamfune" label="Di riferimento" value={x.dRef} onChange={set("dRef")} hint={readAs(x.dRef, nOf(x.d)) || "Misurato a fune nuova (dopo il rodaggio). Se non c'è vale il nominale."} />
+          <Num id="dMis" info="diamfune" label="Misurato adesso" value={x.dMis} onChange={set("dMis")} hint={readAs(x.dMis, r.dRef) || "Nel punto più consumato, media di due misure a 90°."} />
         </div>
         {r.dec != null && (
           <div className="text-xs font-bold text-slate-500">
@@ -596,7 +602,7 @@ const RopeCheck = ({ known = null, onReport = null }) => {
           lines={lines}
           onCopy={() => copy(report)}
           copied={copied}
-          onReport={onReport ? () => onReport({ type: "fune", level: r.level, title, text: report, d: x.d, b6: x.b6, b30: x.b30, dMis: x.dMis, rope: r.auto ? "" : x.rope }) : null}
+          onReport={onReport ? () => onReport({ type: "fune", level: r.level, title, text: report, d: x.d, b6: x.b6, b30: x.b30, dMis: r.dMis || x.dMis, rope: r.auto ? "" : x.rope }) : null}
           big={ropeBig(r)}
         />
       )}
@@ -629,8 +635,8 @@ const ChainCheck = ({ known = null, onReport = null }) => {
         <Choice id="kind" value={x.kind} onChange={set("kind")} options={[["paranco", "Del paranco"], ["imbracatura", "Di imbracatura"]]} />
         <Num id="d" info="catnominale" label="Diametro nominale (d)" value={x.d} onChange={set("d")} />
         <div className="grid grid-cols-2 gap-3">
-          <Num id="d1" info="catmisura" label="Misura d1" value={x.d1} onChange={set("d1")} />
-          <Num id="d2" label="Misura d2 (a 90°)" value={x.d2} onChange={set("d2")} />
+          <Num id="d1" info="catmisura" label="Misura d1" value={x.d1} onChange={set("d1")} hint={readAs(x.d1, nOf(x.d))} />
+          <Num id="d2" label="Misura d2 (a 90°)" value={x.d2} onChange={set("d2")} hint={readAs(x.d2, nOf(x.d))} />
         </div>
         <p className="text-[11px] text-slate-400 leading-snug">Misura nel punto dove le maglie si toccano (dove si consuma), con la catena allentata: due misure a 90° tra loro. Si guarda la media.</p>
         {r.wear != null && (
@@ -645,8 +651,8 @@ const ChainCheck = ({ known = null, onReport = null }) => {
         <h4 className="font-black text-slate-800">Allungamento (se lo misuri)</h4>
         <Num id="t" info="passo" label="Passo nominale (t)" value={x.t} onChange={set("t")} hint="Lunghezza interna di una maglia, dalla scheda della catena." />
         <div className="grid grid-cols-2 gap-3">
-          <Num id="t1" label="Una maglia misurata" value={x.t1} onChange={set("t1")} />
-          {x.kind !== "imbracatura" && <Num id="t11" info="passo" label="11 maglie misurate" value={x.t11} onChange={set("t11")} hint={Number(String(x.t).replace(",", ".")) ? `Nuova: ${fmt(Number(String(x.t).replace(",", ".")) * 11)} mm` : ""} />}
+          <Num id="t1" label="Una maglia misurata" value={x.t1} onChange={set("t1")} hint={readAs(x.t1, nOf(x.t))} />
+          {x.kind !== "imbracatura" && <Num id="t11" info="passo" label="11 maglie misurate" value={x.t11} onChange={set("t11")} hint={[readAs(x.t11, nOf(x.t) * 11), nOf(x.t) ? `Nuova: ${fmt(nOf(x.t) * 11)} mm` : ""].filter(Boolean).join(" · ")} />}
         </div>
       </section>
 
