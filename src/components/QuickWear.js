@@ -369,3 +369,103 @@ export const QuickWear = ({ initial = "catena", onClose, onFull }) => {
     </div>
   );
 };
+
+// IN HOME, scorrendo la scheda del carroponte: la misura veloce dentro la Home (catena o fune, nominale e misura).
+// Per i fili rotti, la seconda misura e le spiegazioni si apre la misura grande («Apri»).
+const MiniField = ({ label, value, onChange, id }) => (
+  <label className="block min-w-0">
+    <span className="block text-[10px] font-black text-slate-500 uppercase tracking-wider truncate">{label}</span>
+    <input
+      className="qw-in w-full h-14 px-3 mt-0.5 bg-white border-2 border-slate-300 rounded-2xl text-slate-900 outline-none focus:border-blue-500"
+      style={{ fontSize: 24 }}
+      inputMode="decimal"
+      autoComplete="off"
+      value={value}
+      onChange={(e) => onChange(clean(e.target.value))}
+      onFocus={(e) => e.target.select()}
+      data-mini-input={id}
+      placeholder="mm"
+    />
+  </label>
+);
+export const MiniWear = ({ onOpen }) => {
+  const [saved, setSaved] = useState(load);
+  const [tab, setTab] = useState(() => (saved.tab === "fune" ? "fune" : "catena"));
+  const [m, setM] = useState({ catena: "", fune: "" });
+  const save = (v) =>
+    setSaved((o) => {
+      const n = { ...o, ...v };
+      store(n);
+      return n;
+    });
+  const dk = tab === "catena" ? "cd" : "rd";
+  const d = saved[dk] || "";
+  const mis = m[tab];
+  let level = null;
+  let big = "";
+  let sub = "";
+  if (tab === "catena") {
+    const r = checkChain({ kind: "paranco", d, d1: mis, flags: {} });
+    if (r.wear != null) {
+      level = r.level;
+      big = fmt(r.wear);
+    }
+    sub = num(d) ? `Scarto sotto ${fmt(0.9 * num(d), 2)} mm` : "Scrivi il diametro nominale";
+  } else {
+    const r = checkRope({ mode: "auto", strands: saved.rs || "6", lay: "", layers: "uno", d, dRef: d, dMis: mis, b6: 0, b30: 0, flags: {} });
+    const lim = r.dia ? r.dia.limit : r.rr ? 5 : 7.5;
+    if (r.dec != null) {
+      level = r.level;
+      big = fmt(r.dec);
+    }
+    sub = num(d) ? `Scarto sotto ${fmt(num(d) * (1 - lim / 100), 2)} mm · fili rotti: «Apri»` : "Scrivi il diametro nominale";
+  }
+  return (
+    <div className="h-full rounded-3xl bg-slate-100 border border-slate-200 p-3 flex flex-col justify-between gap-2" data-section="mini-wear">
+      <style>{QW_CSS}</style>
+      <div className="flex items-center gap-2">
+        <div className="flex-1 flex bg-slate-200 p-1 rounded-2xl">
+          {[
+            ["catena", "Catena"],
+            ["fune", "Fune"],
+          ].map(([id, l]) => (
+            <button
+              key={id}
+              type="button"
+              onClick={() => {
+                setTab(id);
+                save({ tab: id });
+              }}
+              data-mini-tab={id}
+              className={`flex-1 h-10 rounded-xl text-sm font-black ${tab === id ? "bg-white text-slate-900 shadow" : "text-slate-500"}`}
+            >
+              {l}
+            </button>
+          ))}
+        </div>
+        <button type="button" onClick={() => onOpen(tab)} data-action="mini-open" className="h-11 px-3 rounded-2xl bg-white border border-slate-300 text-sm font-black text-slate-700 shrink-0">
+          Apri
+        </button>
+      </div>
+      <div className="grid grid-cols-3 gap-2 items-end">
+        <MiniField id="d" label="Nominale" value={d} onChange={(v) => save({ [dk]: v })} />
+        <MiniField id="m" label={tab === "catena" ? "Misura" : "Misurato"} value={mis} onChange={(v) => setM((o) => ({ ...o, [tab]: v }))} />
+        <div className={`h-14 rounded-2xl flex flex-col items-center justify-center px-1 ${level ? TONE[level] : "qw-idle"}`} data-mini-result={level || "vuoto"}>
+          {level ? (
+            <>
+              <span className="font-black tabular-nums leading-none" style={{ fontSize: 26 }} data-mini-value>
+                {big}%
+              </span>
+              <span className="text-[10px] font-black leading-tight text-center">{WORD[level]}</span>
+            </>
+          ) : (
+            <span className="text-[11px] font-bold text-center leading-tight">{tab === "catena" ? "usura" : "calo"} %</span>
+          )}
+        </div>
+      </div>
+      <p className="text-xs font-bold text-slate-500 truncate" data-mini-sub>
+        {sub}
+      </p>
+    </div>
+  );
+};
