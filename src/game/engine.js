@@ -9,9 +9,12 @@
 //  - MAGAZZINO: un pezzo appoggiato a terra (es. preso per sbaglio) va sempre nella piazzola libera più vicina
 //    (al massimo 2 uno sopra l'altro, ben dritti): mentre lo porti vedi il riquadro tratteggiato di dove andrà.
 //    Nella corsia del camion, quando il camion non c'è, il gancio col pezzo non scende.
+//  - GRU: livelli 1-3 la gru a bandiera nel capannone, 4-7 il carroponte, dall'8 la gru del porto (sul molo).
+//  - TELEFONO IN ORIZZONTALE (wide): il gioco si vede più grande (meno spazio sotto per i tasti, che stanno ai lati).
 
 import { lookById } from "./looks";
-import { paintBackground, paintVignette, paintItem, paintTruck, paintCrane, paintDust, softShadow } from "./art";
+import { paintBackground, paintVignette, paintItem, paintTruck, paintBridge, paintHoist, paintDust, softShadow } from "./art";
+import { paintJib, paintPortal, paintCab, paintPortBackground, makePeople, movePeople, paintPeople } from "./art2";
 
 const VW = 360;
 const G = 1500; // gravità (unità virtuali/s²)
@@ -54,15 +57,18 @@ export const stageRules = (st) => {
     help: st <= 2, // freccia che indica il pezzo da prendere e dove metterlo
   };
 };
+// che gru si usa a ogni livello
+export const stageCrane = (st) => (st <= 3 ? "bandiera" : st <= 7 ? "ponte" : "porto");
+export const CRANE_NAMES = { bandiera: "Gru a bandiera", ponte: "Carroponte", porto: "Gru del porto" };
 const NEWS = {
-  1: "Carica il pezzo sul camion",
+  1: "Gru a bandiera: carica il pezzo sul camion",
   2: "Ora i camion chiedono anche 2 pezzi",
   3: "Si alza un po' di vento",
-  4: "Arriva la trave lunga",
+  4: "Ora c'è il carroponte! E arriva la trave lunga",
   5: "Meno tempo per ogni camion",
   6: "Vetro fragile: se lo sbatti si rompe!",
   7: "3 pezzi per camion",
-  8: "Il gancio dondola di più",
+  8: "Gru del porto! Il gancio dondola di più",
   10: "Livello esperto",
 };
 export const stageNews = (st) => NEWS[st] || (st > 16 ? "Sei un campione: tieni duro!" : "Più vento e meno tempo");
@@ -107,6 +113,8 @@ export class CraneEngine {
     this.lockL = null; // dopo un appoggio il gancio resta lì finché non si lascia il tasto
     this.look = lookById("giallo"); // colori della trave (vedi looks.js)
     this.beamName = "";
+    this.kind = stageCrane(1); // bandiera | ponte | porto
+    this.wide = false; // telefono in orizzontale
     // magazzino iniziale
     [["cassa", 0], ["bobina", 1], ["motore", 2]].forEach(([k, s]) => this.putOnSpot(item(k), s));
   }
@@ -114,11 +122,12 @@ export class CraneEngine {
   layout(vh) {
     const old = this.floorY;
     this.vh = vh;
-    this.floorY = Math.max(430, vh - 175);
+    // in orizzontale i tasti sono ai lati: sotto il pavimento basta poco spazio
+    this.floorY = this.wide ? Math.max(430, vh - 30) : Math.max(430, vh - 175);
     // schermo cambiato (o prima misura): i pezzi seguono il pavimento
     if (old != null && this.items) this.items.forEach((o) => (o.y += this.floorY - old));
     // trave non troppo alta: fune più corta = gru più docile (sopra: tetto, finestroni, lampade)
-    this.beamY = Math.max(150, this.floorY - 330);
+    this.beamY = Math.max(this.wide ? 104 : 150, this.floorY - 330);
     this.bedY = this.floorY - 30; // piano del cassone
     this.Lmin = 34;
     this.Lmax = this.floorY - this.beamY - HOOK - 2;
@@ -558,6 +567,7 @@ export class CraneEngine {
     this.stage = st;
     this.stageTrucks = 0;
     this.rules = stageRules(st);
+    this.kind = stageCrane(st);
   }
 
   // PARTITA SALVATA: quello che serve per riprendere (livello, camion fatti nel livello, punti, vite, statistiche).
@@ -587,6 +597,7 @@ export class CraneEngine {
     this.stage += 1;
     this.stageTrucks = 0;
     this.rules = stageRules(this.stage);
+    this.kind = stageCrane(this.stage);
     this.nextTruck = 3.2; // un attimo di respiro per leggere la novità
     let life = false;
     // ogni 3 livelli una vita in più (massimo 5)
@@ -648,17 +659,28 @@ export class CraneEngine {
 
   // ---------- disegno ----------
   draw(c, W, H, dpr) {
-    const s = Math.min(W / VW, H / 560);
+    // in orizzontale più grande (fino a +20% circa), lasciando ai lati lo spazio per i tasti
+    const wide = W > H * 1.15;
+    const s = wide ? Math.min(H / 462, (W - 270) / VW, 2.4) : Math.min(W / VW, H / 560);
     const vw = W / s;
     const ox = (vw - VW) / 2;
-    if (Math.abs(H / s - this.vh) > 1) this.layout(H / s);
+    if (wide !== this.wide || Math.abs(H / s - this.vh) > 1) {
+      this.wide = wide;
+      this.layout(H / s);
+    }
+    // orologio suo (le persone camminano anche a gioco fermo)
+    const now = (typeof performance !== "undefined" ? performance.now() : Date.now()) / 1000;
+    const pdt = this.pT ? Math.min(0.05, now - this.pT) : 0;
+    this.pT = now;
+    this.clock = (this.clock || 0) + pdt;
     this.view = { s, ox };
     const L = -ox - 20;
     const R = VW + ox + 20;
     const fy = this.floorY;
     const by = this.beamY;
     // SFONDO FERMO: disegnato una volta sola (in alta risoluzione) e poi solo copiato
-    const key = `${W}x${H}@${dpr}|${fy}|${by}`;
+    const port = this.kind === "porto";
+    const key = `${W}x${H}@${dpr}|${fy}|${by}|${port ? "porto" : "capannone"}`;
     if (this.bgKey !== key && typeof document !== "undefined") {
       const mk = () => {
         const cv = document.createElement("canvas");
@@ -669,7 +691,11 @@ export class CraneEngine {
       this.bg = mk();
       const b = this.bg.getContext("2d");
       b.setTransform(dpr * s, 0, 0, dpr * s, dpr * ox * s, 0);
-      paintBackground(b, { L, R, fy, by, vh: this.vh });
+      (port ? paintPortBackground : paintBackground)(b, { L, R, fy, by, vh: this.vh });
+      if (!this.people || this.peopleKey !== `${Math.round(L)}|${Math.round(R)}`) {
+        this.people = makePeople(L, R, fy);
+        this.peopleKey = `${Math.round(L)}|${Math.round(R)}`;
+      }
       // piazzole del magazzino dipinte a terra
       this.spots.forEach((x) => {
         b.fillStyle = "rgba(255,255,255,.22)";
@@ -689,6 +715,11 @@ export class CraneEngine {
     if (this.bg) c.drawImage(this.bg, dpr * jx * s, dpr * jy * s);
     c.setTransform(dpr * s, 0, 0, dpr * s, dpr * (ox * s + jx * s), dpr * jy * s);
 
+    // gente che lavora: in orizzontale sul fondo (ai lati c'è spazio), in verticale sulla passerella davanti (dopo)
+    if (this.people) {
+      movePeople(this.people, pdt);
+      if (this.wide) paintPeople(c, this.people, fy - 3, this.clock);
+    }
     // camion (dietro ai pezzi) e il suo riflesso sul pavimento lucido
     const t = this.truck;
     if (t) {
@@ -716,6 +747,7 @@ export class CraneEngine {
     if (this.load && !this.over) this.drawDrop(c);
     // carroponte: colonne, trave, carrello, funi, gancio (e pezzo appeso)
     this.drawCrane(c);
+    if (this.people && !this.wide) paintPeople(c, this.people, fy + 46, this.clock, 1);
     // polvere nella luce
     if (this.motes) paintDust(c, this.motes, this.t);
 
@@ -790,7 +822,7 @@ export class CraneEngine {
     const by = this.beamY;
     const tr = this.trolley;
     const hook = this.hookPos();
-    paintCrane(c, {
+    const o0 = {
       by,
       floorY: this.floorY,
       VW,
@@ -799,9 +831,15 @@ export class CraneEngine {
       trolley: tr,
       hook,
       th: this.th,
-      t: this.t,
+      t: this.clock || this.t,
       moving: Math.abs(tr.v) > 8,
-    });
+    };
+    // la gru del livello: bandiera, carroponte o gru del porto (stesso carrello e gancio)
+    if (this.kind === "bandiera") paintJib(c, o0);
+    else if (this.kind === "porto") paintPortal(c, o0);
+    else paintBridge(c, o0);
+    paintHoist(c, o0);
+    if (this.kind === "porto") paintCab(c, o0);
     // pezzo appeso: sulla stessa linea della fune, con le brache
     const o = this.load;
     if (o) {

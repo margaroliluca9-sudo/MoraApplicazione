@@ -52,6 +52,7 @@ const bolt = (c, x, y, r = 1.1) => {
 };
 
 // ---------------------------------------------------------------- SFONDO (fermo)
+export { seeded, lin, rad, rr, bolt, TAU, FONT };
 export const paintBackground = (c, { L, R, fy, by, vh }) => {
   const rnd = seeded(7);
   const top = -60;
@@ -327,11 +328,17 @@ export const paintBackground = (c, { L, R, fy, by, vh }) => {
     c.fill();
   }
 
+  paintFloor(c, { L, R, fy, vh }, rnd);
+};
+
+// PAVIMENTO con la zona magazzino e le scritte (capannone; sul molo cambia solo il colore)
+export const paintFloor = (c, { L, R, fy, vh, colors }, rnd = seeded(11)) => {
+  const col = colors || ["#aab3bf", "#8d97a5", "#5d6775"];
   // PAVIMENTO in cemento lucidato (con granelli e lucido)
   c.fillStyle = lin(c, 0, fy, 0, vh + 40, [
-    [0, "#aab3bf"],
-    [0.25, "#8d97a5"],
-    [1, "#5d6775"],
+    [0, col[0]],
+    [0.25, col[1]],
+    [1, col[2]],
   ]);
   c.fillRect(L, fy, R - L, vh - fy + 40);
   for (let i = 0; i < 260; i++) {
@@ -777,7 +784,12 @@ export const shade = (hex, amt) => {
 };
 
 // ---------------------------------------------------------------- CARROPONTE
-export const paintCrane = (c, { by, floorY, VW, look, name, trolley, hook, th, t, moving }) => {
+// CARROPONTE: struttura (colonne, trave, testate, targa) + carrello e gancio (paintHoist)
+export const paintCrane = (c, o) => {
+  paintBridge(c, o);
+  paintHoist(c, o);
+};
+export const paintBridge = (c, { by, floorY, VW, look, name }) => {
   const lk = look;
   // colonne (profilati HEA) con mensole delle vie di corsa
   [2, VW - 12].forEach((cx) => {
@@ -879,7 +891,11 @@ export const paintCrane = (c, { by, floorY, VW, look, name, trolley, hook, th, t
   c.textAlign = "center";
   c.fillText(label, 180, gy + 14.2);
   c.restore();
+};
 
+// CARRELLO, FUNI, BOZZELLO e GANCIO (uguali per tutte le gru: corre sotto la trave a quota by)
+export const paintHoist = (c, { by, look, trolley, hook, th, t, moving }) => {
+  const lk = look;
   // CARRELLO: telaio, ruote sulla trave, motore e tamburo della fune
   const tx = trolley.x;
   c.fillStyle = lin(c, 0, by - 6, 0, by + 12, [

@@ -8,7 +8,7 @@
 // altro telefono. CLASSIFICA: della settimana e di sempre, con il podio; i punti contano anche se esci a metà.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { X, Trophy, RotateCcw, Heart, Volume2, VolumeX, Medal, Pause, Play, Lock, Paintbrush, ChevronDown, Crown } from "lucide-react";
-import { CraneEngine, stageNews, TRUCKS_PER_STAGE } from "../game/engine";
+import { CraneEngine, stageNews, TRUCKS_PER_STAGE, stageCrane, CRANE_NAMES } from "../game/engine";
 import { play, soundOn, setSoundOn } from "../game/sound";
 import { allScores, rank, saveScore, myData, saveGame, weekKey } from "../game/scores";
 import { LOOKS, lookById, unlocked, readLook, saveLook, cleanName } from "../game/looks";
@@ -16,7 +16,7 @@ import { RowsSkeleton } from "./Skeleton";
 import { key } from "../chat";
 
 // partita lasciata a metà, su questo telefono (di chi: me)
-const SAVE = "mora_crane_game_save_v1";
+const SAVE = "mora_crane_game_save_s2";
 const readSave = () => {
   try {
     const j = JSON.parse(localStorage.getItem(SAVE) || "null");
@@ -35,7 +35,7 @@ const writeSave = (snap) => {
 };
 const mineSave = (snap, me) => (snap && (!snap.me || snap.me === key(me)) ? snap : null);
 
-const REC = "mora_crane_game_record";
+const REC = "mora_crane_game_record_s2"; // record di questa stagione (vedi game/scores.js SEASON)
 const readRec = () => {
   try {
     return Number(localStorage.getItem(REC) || 0);
@@ -51,7 +51,7 @@ const saveRec = (n) => {
   }
 };
 
-const STAGE_REC = "mora_crane_game_stage";
+const STAGE_REC = "mora_crane_game_stage_s2";
 const readStage = () => {
   try {
     return Number(localStorage.getItem(STAGE_REC) || 0);
@@ -175,6 +175,7 @@ export const CraneGame = ({ onClose, me = "" }) => {
   const [banner, setBanner] = useState(null); // { stage, news, life }
   const [bestStage, setBestStage] = useState(readStage);
   const [hold, setHold] = useState(false);
+  const [wide, setWide] = useState(false); // telefono/tablet in orizzontale
   const [sound, setSound] = useState(soundOn);
   const [record, setRecord] = useState(readRec);
   const [result, setResult] = useState(null);
@@ -338,6 +339,7 @@ export const CraneGame = ({ onClose, me = "" }) => {
       H = Math.max(1, r.height);
       cv.width = Math.round(W * dpr);
       cv.height = Math.round(H * dpr);
+      setWide(W > H * 1.15);
     };
     size();
     const e = new CraneEngine({
@@ -703,7 +705,7 @@ export const CraneGame = ({ onClose, me = "" }) => {
       {phase === "play" && !banner && level > 0 && (
         <div className="absolute inset-x-0 flex justify-center pointer-events-none" style={{ top: "calc(max(10px, env(safe-area-inset-top)) + 58px)" }}>
           <span className="px-3 py-1 rounded-full bg-slate-900/60 text-white text-xs font-bold tabular-nums" data-game-progress>
-            Camion {level} · prossimo livello tra {TRUCKS_PER_STAGE - (level % TRUCKS_PER_STAGE)}
+            {CRANE_NAMES[stageCrane(stage)]} · camion {level} · prossimo livello tra {TRUCKS_PER_STAGE - (level % TRUCKS_PER_STAGE)}
           </span>
         </div>
       )}
@@ -753,7 +755,7 @@ export const CraneGame = ({ onClose, me = "" }) => {
             ))}
           </div>
           {/* SELECT / START */}
-          <div className="flex gap-2 mb-1 pointer-events-auto">
+          <div className={`flex gap-2 mb-1 pointer-events-auto ${wide ? "hidden" : ""}`}>
             {[
               ["select", "SELECT", toggleSound, sound ? "Spegni i suoni" : "Accendi i suoni"],
               ["start", "START", pause, "Pausa"],
@@ -917,7 +919,8 @@ export const CraneGame = ({ onClose, me = "" }) => {
                     <li>✨ Appoggia <b>piano e senza dondolare</b>: «Perfetto!» vale di più (e di fila moltiplica)</li>
                     <li>💥 Se sbatti è una «Botta!», se sbagli pezzo perdi punti</li>
                     <li>❤️ 3 vite: ne perdi una se un camion riparte senza tutto</li>
-                    <li>📈 Si parte facile, con la freccia verde che ti guida. Ogni {TRUCKS_PER_STAGE} camion si passa di livello: più pezzi, meno tempo, vento e il vetro fragile. Ogni 3 livelli una vita in più</li>
+                    <li>🏗️ Si comincia con la <b>gru a bandiera</b>, dal livello 4 c'è il <b>carroponte</b> e dall'8 la <b>gru del porto</b></li>
+              <li>📈 Si parte facile, con la freccia verde che ti guida. Ogni {TRUCKS_PER_STAGE} camion si passa di livello: più pezzi, meno tempo, vento e il vetro fragile. Ogni 3 livelli una vita in più</li>
                   </ul>
                     )}
                   </div>

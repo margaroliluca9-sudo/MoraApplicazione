@@ -3,6 +3,8 @@
 //   week / weekBest   record della settimana (week = «2026-W45»: lunedì → domenica)
 //   games             partite finite
 //   save / saveAt     la partita lasciata a metà (JSON: livello, punti, vite…), così riprendi anche da un altro telefono
+//   season           stagione della classifica: quando la si azzera si passa alla stagione dopo e tutto quello
+//                    della stagione prima non conta più (record, livello, partita salvata). Stagione 2: dal 3/11/2026.
 // Si legge solo aprendo il gioco e a fine partita (pochi documenti: uno per tecnico).
 import { doc, collection, query, limit } from "firebase/firestore";
 import { setDoc } from "../tracked";
@@ -11,6 +13,8 @@ import { db, appId } from "../firebase";
 import { key } from "../chat";
 
 const COLL = "game_scores";
+export const SEASON = 2;
+const cur = (d) => (d && Number(d.season) === SEASON ? d : {});
 const ref = () => collection(db, "artifacts", appId, "public", "data", COLL);
 const myDoc = (k) => doc(ref(), k.replace(/[^a-z0-9_-]/gi, "_"));
 
@@ -27,7 +31,9 @@ export const weekKey = (d = new Date()) => {
 // tutti i tecnici in classifica (righe con almeno un punto)
 export const allScores = async () => {
   const s = await getDocs(query(ref(), limit(60)));
-  return s.docs.map((d) => ({ id: d.id, ...d.data() })).filter((r) => r.name && (Number(r.best) > 0 || Number(r.stage) > 1));
+  return s.docs
+    .map((d) => ({ id: d.id, ...d.data() }))
+    .filter((r) => Number(r.season) === SEASON && r.name && (Number(r.best) > 0 || Number(r.stage) > 1));
 };
 // classifica di sempre (per punti, poi livello) o della settimana
 export const rank = (rows = [], mode = "all", now = new Date()) => {
@@ -44,16 +50,19 @@ export const topScores = async () => rank(await allScores()).slice(0, 10);
 export const myData = async (me) => {
   const k = key(me);
   if (!k) return null;
-  const cur = await getDoc(myDoc(k));
-  if (!cur.exists()) return null;
-  const d = cur.data() || {};
+  const snap = await getDoc(myDoc(k));
+  if (!snap.exists()) return null;
+  const raw = snap.data() || {};
+  const d = cur(raw);
+  // la partita salvata ha la sua stagione (si salva anche prima del primo record della stagione)
   let save = null;
   try {
-    save = d.save ? JSON.parse(d.save) : null;
+    save = raw.save ? JSON.parse(raw.save) : null;
   } catch (e) {
     save = null;
   }
-  return { stage: Number(d.stage) || 0, best: Number(d.best) || 0, save, saveAt: Number(d.saveAt) || 0 };
+  if (save && Number(save.season) !== SEASON) save = null;
+  return { stage: Number(d.stage) || 0, best: Number(d.best) || 0, save, saveAt: save ? Number(raw.saveAt) || 0 : 0 };
 };
 export const myStage = async (me) => ((await myData(me)) || {}).stage || 0;
 
@@ -63,8 +72,8 @@ export const saveScore = async (me, score, look = "", stage = 0, ended = true) =
   const k = key(me);
   if (!k || !(score > 0 || stage > 1)) return false;
   const d = myDoc(k);
-  const cur = await getDoc(d);
-  const old = cur.exists() ? cur.data() : {};
+  const snap = await getDoc(d);
+  const old = snap.exists() ? cur(snap.data()) : {};
   const best = Number(old.best) || 0;
   const oldStage = Number(old.stage) || 0;
   const wk = weekKey();
@@ -82,6 +91,7 @@ export const saveScore = async (me, score, look = "", stage = 0, ended = true) =
       week: wk,
       weekBest: Math.max(oldWeek, score),
       games: (Number(old.games) || 0) + (ended ? 1 : 0),
+      season: SEASON,
     },
     { merge: true }
   );
@@ -92,6 +102,6 @@ export const saveScore = async (me, score, look = "", stage = 0, ended = true) =
 export const saveGame = async (me, snap) => {
   const k = key(me);
   if (!k) return false;
-  await setDoc(myDoc(k), { name: String(me).trim(), owner: k, save: snap ? JSON.stringify(snap) : "", saveAt: snap ? Date.now() : 0 }, { merge: true });
+  await setDoc(myDoc(k), { name: String(me).trim(), owner: k, save: snap ? JSON.stringify({ ...snap, season: SEASON }) : "", saveAt: snap ? Date.now() : 0 }, { merge: true });
   return true;
 };
