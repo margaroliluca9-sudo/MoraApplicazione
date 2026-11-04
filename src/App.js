@@ -225,7 +225,7 @@ export default function App() {
   // «Fune e catena»: pagina a sé (dalla Home, vicino allo Storico); «chain» = aperta sulla catena
   const [wearPage, setWearPage] = useState({ tab: "rope", n: 0 });
   const openWear = (tab) => {
-    setWearPage((w) => ({ tab: tab === "chain" ? "chain" : "rope", n: w.n + 1 }));
+    setWearPage((w) => ({ tab: tab === "chain" ? "chain" : tab === "choose" ? "choose" : "rope", n: w.n + 1 }));
     setActiveTab("wear");
     window.scrollTo(0, 0);
   };

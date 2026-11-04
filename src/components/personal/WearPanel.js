@@ -1348,6 +1348,8 @@ const CranePicker = ({ machines, crane, onPick, color, type }) => {
 
 export const WearPanel = ({ color = "blue", onBack, onClose, machines = [], logs = [], onNewReport = null, initialTab = "rope", isAdmin = false }) => {
   const [tab, setTab] = useState(initialTab === "chain" ? "chain" : "rope");
+  // dalla Home: prima «Cosa controlli?» (fune, catena o braca), poi la scheda giusta
+  const [choosing, setChoosing] = useState(initialTab === "choose");
   // da «Brache di catena» → «Controlla l'usura»: catena dei sottoganci con diametro e passo già scritti
   const [chainPreset, setChainPreset] = useState(null);
   const [crane, setCrane] = useState(null);
@@ -1379,6 +1381,29 @@ export const WearPanel = ({ color = "blue", onBack, onClose, machines = [], logs
             ropeCheck: { ...rc, at: Date.now() },
           })
       : null;
+  if (choosing)
+    return (
+      <div className="flex flex-col h-full" data-section="wear">
+        <PanelHeader title="Fune e catena" sub="Cosa dice la norma" onBack={onBack} onClose={onClose} color={color} />
+        <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50" data-wear-choose>
+          <h3 className="text-2xl font-black text-slate-800 px-1">Cosa controlli?</h3>
+          {[
+            ["rope", "La fune", "Gru e paranchi a fune: fili rotti, diametro", <svg key="r" viewBox="0 0 120 60" className="w-24 h-12"><Strands x={4} y={19} w={112} h={22} /></svg>],
+            ["chain", "La catena", "Paranco a catena o catena dei sottoganci: usura, allungamento", <svg key="c" viewBox="0 0 120 60" className="w-24 h-12">{[0, 1, 2, 3].map((k) => (k % 2 === 0 ? <rect key={k} x={8 + k * 24} y={18} width={32} height={24} rx={12} fill="none" stroke="#334155" strokeWidth={6} /> : <rect key={k} x={8 + k * 24} y={27} width={32} height={6} rx={3} fill="#cbd5e1" stroke="#334155" strokeWidth={1.5} />))}</svg>],
+            ["sling", "La braca", "Sottoganci: fasce, anelli, brache di catena", <svg key="s" viewBox="0 0 120 60" className="w-24 h-12"><path d="M60,6 L22,52 M60,6 L98,52" stroke="#7c3aed" strokeWidth="8" strokeLinecap="round" /><circle cx="60" cy="8" r="6" fill="none" stroke="#334155" strokeWidth="3" /><rect x="14" y="48" width="92" height="8" rx="2" fill="#94a3b8" /></svg>],
+          ].map(([id, title, sub, art]) => (
+            <button key={id} type="button" onClick={() => { setTab(id); setChoosing(false); }} data-wear-pick={id} className="w-full rounded-3xl bg-white border border-slate-200 shadow-sm p-4 flex items-center gap-4 text-left active:scale-[0.99]">
+              <span className="w-28 h-16 rounded-2xl bg-slate-100 flex items-center justify-center shrink-0">{art}</span>
+              <span className="min-w-0">
+                <span className="block text-xl font-black text-slate-800">{title}</span>
+                <span className="block text-sm text-slate-500 leading-snug">{sub}</span>
+              </span>
+            </button>
+          ))}
+          <PrintedReports isAdmin={isAdmin} />
+        </div>
+      </div>
+    );
   return (
     <div className="flex flex-col h-full" data-section="wear">
       <PanelHeader title="Fune e catena" sub="Cosa dice la norma" onBack={onBack} onClose={onClose} color={color} />

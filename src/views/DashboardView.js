@@ -287,7 +287,7 @@ export const DashboardView = ({
       label: "Fune e catena",
       icon: Ruler,
       desc: "Fili rotti, usura, cosa scrivere sul registro",
-      action: () => window.dispatchEvent(new CustomEvent("mora-open-wear", { detail: "rope" })),
+      action: () => window.dispatchEvent(new CustomEvent("mora-open-wear", { detail: "choose" })),
     },
     explore: {
       id: "explore",
