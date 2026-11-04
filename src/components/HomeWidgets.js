@@ -1,217 +1,219 @@
-// IN CIMA ALLA HOME, LE ALTRE PAGINE DEL CAROSELLO (dopo il carroponte e la misura veloce):
-//  - «Da ricontrollare»: funi e catene controllate con l'app più di 3 mesi fa (D.Lgs. 81/2008, All. VI, 3.1.2)
-//  - «Il mio mese»: i miei interventi del mese e degli ultimi 6 mesi
-//  - «In squadra»: gli ultimi interventi dei colleghi
-//  - «La regola del giorno»: una regola delle norme e dei cataloghi già nell'app, parola per parola
-import React, { useMemo } from "react";
-import { ShieldCheck, BarChart3, Users, BookOpenCheck, ChevronRight } from "lucide-react";
-import { MONTHS, isoFromLogDate, isMine } from "../personal";
+// IN CIMA ALLA HOME, LE ALTRE PAGINE DEL CAROSELLO (dopo il carroponte e la misura veloce), disegnate dall'app:
+//  - «Calendario»: il foglio del calendario da strappare con il giorno grande e le cose da fare oggi
+//  - «Contachilometri»: il cruscotto con la lancetta e il contatore dei miei interventi dell'anno
+//  - «Cartello»: il cartello giallo di sicurezza con la regola del giorno (testi già nell'app, parola per parola)
+// Ogni pagina riceve active = true quando è quella in vista (così le animazioni partono quando la vedi).
+import React, { useEffect, useState } from "react";
+import { MONTHS } from "../personal";
 import { SLING_TEXT, SLING_SOURCE } from "../slingRules";
 import { CHAIN_TEXT, CHAIN_SOURCE } from "../chainSlings";
+import { myYearCount } from "./HomeHero";
 
 const DAY = 86400000;
-const norm = (v) => String(v || "").trim().toUpperCase();
-const dateOfLog = (l) => {
-  if (l && l.ropeCheck && l.ropeCheck.at) return l.ropeCheck.at;
-  const iso = isoFromLogDate(l && l.dateString);
-  return iso ? new Date(iso + "T12:00:00").getTime() : 0;
-};
-const fmtDay = (t) => {
-  const d = new Date(t);
-  return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()}`;
+const DAYS = ["Domenica", "Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato"];
+const H = "h-full min-h-[184px] md:min-h-[220px] lg:min-h-[240px]";
+
+// ---------------------------------------------------------------- CALENDARIO DA STRAPPARE
+export const CalendarWidget = ({ items = [], active = false, now = new Date(), onOpen }) => {
+  const [flip, setFlip] = useState(false);
+  useEffect(() => {
+    if (!active) return undefined;
+    setFlip(true);
+    const t = setTimeout(() => setFlip(false), 700);
+    return () => clearTimeout(t);
+  }, [active]);
+  const list = items.slice(0, 2);
+  return (
+    <button type="button" onClick={onOpen} className={`${H} w-full rounded-3xl relative overflow-hidden text-left`} style={{ background: "linear-gradient(160deg,#fef3c7,#fde68a 60%,#fcd34d)" }} data-home-widget="calendar">
+      <style>{"@keyframes moraTear{0%{transform:rotate(0) translateY(0);opacity:1}100%{transform:rotate(-14deg) translate(-30px,60px);opacity:0}}"}</style>
+      {/* puntine e ombra del muro */}
+      <div className="absolute inset-0 opacity-30" style={{ backgroundImage: "radial-gradient(#b45309 1px, transparent 1px)", backgroundSize: "14px 14px" }} />
+      <div className="relative h-full flex items-stretch gap-3 p-4">
+        <div className="relative w-[132px] shrink-0">
+          {/* fogli sotto */}
+          <div className="absolute inset-x-1 top-3 bottom-[-4px] rounded-2xl bg-white/70 shadow" />
+          <div className="absolute inset-x-0.5 top-2 bottom-[-2px] rounded-2xl bg-white/85 shadow" />
+          {/* il foglio di oggi */}
+          <div className="relative h-full rounded-2xl bg-white shadow-lg overflow-hidden flex flex-col">
+            <div className="bg-red-600 text-white text-center py-1.5 relative">
+              <span className="absolute left-5 -top-1.5 w-2.5 h-4 rounded-full bg-slate-700 border-2 border-slate-300" />
+              <span className="absolute right-5 -top-1.5 w-2.5 h-4 rounded-full bg-slate-700 border-2 border-slate-300" />
+              <span className="text-xs font-black uppercase tracking-[0.2em]">{MONTHS[now.getMonth()]}</span>
+            </div>
+            <div className="flex-1 flex flex-col items-center justify-center">
+              <span className="font-black text-slate-900 tabular-nums leading-none" style={{ fontSize: 64, letterSpacing: "-3px" }} data-cal-day>
+                {now.getDate()}
+              </span>
+              <span className="text-sm font-black text-red-600 mt-1">{DAYS[now.getDay()]}</span>
+            </div>
+            <div className="h-2 border-t border-dashed border-slate-300" />
+          </div>
+          {/* il foglio di ieri che vola via */}
+          {flip && (
+            <div className="absolute inset-0 rounded-2xl bg-white shadow-lg flex items-center justify-center pointer-events-none" style={{ animation: "moraTear .7s ease-in forwards", transformOrigin: "top left" }}>
+              <span className="font-black text-slate-300 tabular-nums" style={{ fontSize: 64 }}>
+                {new Date(now.getTime() - DAY).getDate()}
+              </span>
+            </div>
+          )}
+        </div>
+        <div className="flex-1 min-w-0 flex flex-col justify-center">
+          <p className="text-[11px] font-black uppercase tracking-wider text-amber-800">Oggi</p>
+          {list.length === 0 ? (
+            <p className="text-lg font-black text-amber-950 leading-snug mt-1" data-cal-empty>
+              Niente in agenda.
+              <span className="block text-sm font-bold text-amber-800">Buon lavoro!</span>
+            </p>
+          ) : (
+            <ul className="mt-1 space-y-1.5" data-cal-items={items.length}>
+              {list.map((it, i) => (
+                <li key={it.id || i} className="flex items-start gap-2">
+                  <span className={`mt-1.5 w-2.5 h-2.5 rounded-full shrink-0 ${it.late ? "bg-red-600" : it.kind === "event" ? "bg-blue-600" : "bg-amber-600"}`} />
+                  <span className="min-w-0">
+                    <span className="block text-sm font-black text-amber-950 leading-tight line-clamp-2">{it.title}</span>
+                    <span className="block text-[11px] font-bold text-amber-800">{it.late ? "in ritardo" : it.time || (it.kind === "event" ? "tutto il giorno" : "promemoria")}</span>
+                  </span>
+                </li>
+              ))}
+              {items.length > 2 && <li className="text-[11px] font-black text-amber-800">e altre {items.length - 2}</li>}
+            </ul>
+          )}
+        </div>
+      </div>
+    </button>
+  );
 };
 
-const Shell = ({ id, bg, icon: Icon, title, sub, children }) => (
-  <div className="h-full min-h-[184px] md:min-h-[220px] lg:min-h-[240px] rounded-3xl p-4 text-white flex flex-col gap-2 shadow-sm relative overflow-hidden" style={{ background: bg }} data-home-widget={id}>
-    <div className="absolute -right-6 -top-6 w-32 h-32 rounded-full bg-white/10" />
-    <div className="absolute right-10 -bottom-10 w-24 h-24 rounded-full bg-white/10" />
-    <div className="flex items-center gap-2 relative">
-      <span className="w-9 h-9 rounded-2xl bg-white/20 flex items-center justify-center shrink-0">
-        <Icon className="w-5 h-5" />
-      </span>
-      <div className="min-w-0">
-        <p className="font-black leading-tight">{title}</p>
-        {sub && <p className="text-[11px] font-bold opacity-80 leading-tight truncate">{sub}</p>}
-      </div>
-    </div>
-    <div className="relative flex-1 min-h-0 flex flex-col">{children}</div>
-  </div>
+// ---------------------------------------------------------------- CONTACHILOMETRI DELL'ANNO
+const Roll = ({ d, active }) => (
+  <span className="relative inline-block w-[22px] h-[30px] overflow-hidden rounded-[4px] bg-slate-950 border border-slate-700 mx-[1px]">
+    <span className="absolute left-0 right-0 flex flex-col items-center transition-transform duration-[1400ms] ease-out" style={{ transform: `translateY(-${active ? d * 30 : 0}px)` }}>
+      {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((n) => (
+        <span key={n} className="h-[30px] leading-[30px] text-[19px] font-black text-white tabular-nums font-mono">
+          {n}
+        </span>
+      ))}
+    </span>
+    <span className="absolute inset-0 pointer-events-none" style={{ background: "linear-gradient(#000a,transparent 35%,transparent 65%,#000a)" }} />
+  </span>
 );
 
-// ---------------------------------------------------------------- DA RICONTROLLARE
-export const dueChecks = (logs = [], now = Date.now()) => {
-  const last = {};
-  (logs || []).forEach((l) => {
-    if (!l || !l.ropeCheck || !l.machineId) return;
-    const k = `${norm(l.customer)}|${norm(l.machineId)}`;
-    const t = dateOfLog(l);
-    if (!last[k] || t > last[k].t) last[k] = { t, customer: l.customer, machineId: l.machineId, type: l.ropeCheck.type === "catena" ? "catena" : "fune" };
-  });
-  return Object.values(last)
-    .map((x) => ({ ...x, due: x.t + 91 * DAY }))
-    .filter((x) => x.due - now < 14 * DAY)
-    .sort((a, b) => a.due - b.due);
-};
-
-export const DueWidget = ({ logs, onOpenMachine, now = Date.now() }) => {
-  const list = useMemo(() => dueChecks(logs, now), [logs, now]);
-  const late = list.filter((x) => x.due <= now).length;
+export const OdometerWidget = ({ logs = [], me = "", active = false, now = new Date() }) => {
+  const n = myYearCount(logs, me, now);
+  const goal = Math.max(50, Math.ceil((n + 1) / 50) * 50);
+  const from = goal - 50;
+  const frac = Math.min(1, (n - from) / 50);
+  const ang = -120 + 240 * (active ? frac : 0);
+  const digits = String(n).padStart(4, "0").slice(-4).split("").map(Number);
+  const R = 62;
+  const cx = 80;
+  const cy = 78;
+  const pt = (a, r) => [cx + r * Math.sin((a * Math.PI) / 180), cy - r * Math.cos((a * Math.PI) / 180)];
+  const arc = (a1, a2, r) => {
+    const [x1, y1] = pt(a1, r);
+    const [x2, y2] = pt(a2, r);
+    return `M${x1},${y1} A${r},${r} 0 ${a2 - a1 > 180 ? 1 : 0},1 ${x2},${y2}`;
+  };
   return (
-    <Shell id="due" bg="linear-gradient(135deg,#0f766e,#0e7490)" icon={ShieldCheck} title="Funi e catene da ricontrollare" sub="Controllo trimestrale · D.Lgs. 81/2008, All. VI, 3.1.2">
-      {list.length === 0 ? (
-        <div className="flex-1 flex flex-col justify-center" data-due-none>
-          <p className="text-2xl font-black">Tutto in regola</p>
-          <p className="text-sm font-semibold opacity-90 leading-snug">Nessun controllo fatto con l'app più di 3 mesi fa. Qui compaiono le gru da ricontrollare (e quelle che scadono nelle prossime 2 settimane).</p>
-        </div>
-      ) : (
-        <>
-          <p className="text-sm font-bold opacity-95" data-due-count={list.length}>
-            {late ? `${late} ${late === 1 ? "scaduta" : "scadute"}` : ""}
-            {late && list.length > late ? " · " : ""}
-            {list.length > late ? `${list.length - late} in scadenza` : ""}
-          </p>
-          <ul className="space-y-1.5 mt-1">
-            {list.slice(0, 2).map((x) => (
-              <li key={`${x.customer}|${x.machineId}`}>
-                <button type="button" onClick={() => onOpenMachine && onOpenMachine(x.machineId, x.customer)} className="w-full text-left rounded-2xl bg-white/15 px-3 py-1.5 flex items-center gap-2" data-due-item={x.machineId}>
-                  <span className="min-w-0 flex-1">
-                    <span className="block text-sm font-black truncate">
-                      {x.customer} · {x.machineId}
-                    </span>
-                    <span className="block text-[11px] font-bold opacity-90">
-                      {x.type === "catena" ? "Catena" : "Fune"} controllata il {fmtDay(x.t)} · {x.due <= now ? `scaduta da ${Math.max(1, Math.round((now - x.due) / DAY))} gg` : `scade tra ${Math.max(1, Math.round((x.due - now) / DAY))} gg`}
-                    </span>
-                  </span>
-                  <ChevronRight className="w-4 h-4 shrink-0 opacity-80" />
-                </button>
-              </li>
+    <div className={`${H} rounded-3xl relative overflow-hidden text-white`} style={{ background: "radial-gradient(120% 120% at 30% 20%,#1e293b,#020617)" }} data-home-widget="odometer" data-odo-count={n}>
+      <div className="relative h-full flex items-center gap-2 p-3">
+        <svg viewBox="0 0 160 130" className="w-[46%] max-w-[210px] shrink-0" aria-label={`Contachilometri: ${n} interventi nel ${now.getFullYear()}`}>
+          <defs>
+            <linearGradient id="odoArc" x1="0" x2="1">
+              <stop offset="0" stopColor="#22c55e" />
+              <stop offset=".6" stopColor="#facc15" />
+              <stop offset="1" stopColor="#f97316" />
+            </linearGradient>
+            <filter id="odoGlow">
+              <feGaussianBlur stdDeviation="2" />
+            </filter>
+          </defs>
+          <path d={arc(-120, 120, R)} fill="none" stroke="#334155" strokeWidth="10" strokeLinecap="round" />
+          <path d={arc(-120, 120, R)} fill="none" stroke="url(#odoArc)" strokeWidth="10" strokeLinecap="round" strokeDasharray={`${(2 * Math.PI * R * 240) / 360}`} strokeDashoffset={`${((2 * Math.PI * R * 240) / 360) * (1 - (active ? frac : 0))}`} style={{ transition: "stroke-dashoffset 1.4s ease-out" }} />
+          {Array.from({ length: 11 }).map((_, i) => {
+            const a = -120 + i * 24;
+            const [x1, y1] = pt(a, R - 12);
+            const [x2, y2] = pt(a, R - (i % 5 === 0 ? 22 : 17));
+            return <line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke="#94a3b8" strokeWidth={i % 5 === 0 ? 2.2 : 1.2} />;
+          })}
+          {[0, 5, 10].map((i) => {
+            const [x, y] = pt(-120 + i * 24, R - 32);
+            return (
+              <text key={i} x={x} y={Number(y) + 4} textAnchor="middle" fontSize="10" fontWeight="800" fill="#cbd5e1">
+                {from + i * 5}
+              </text>
+            );
+          })}
+          <g style={{ transform: `rotate(${ang}deg)`, transformOrigin: `${cx}px ${cy}px`, transition: "transform 1.4s cubic-bezier(.2,1.4,.4,1)" }}>
+            <line x1={cx} y1={cy + 8} x2={cx} y2={cy - R + 8} stroke="#f97316" strokeWidth="5" strokeLinecap="round" filter="url(#odoGlow)" opacity=".7" />
+            <line x1={cx} y1={cy + 8} x2={cx} y2={cy - R + 8} stroke="#fb923c" strokeWidth="2.5" strokeLinecap="round" />
+          </g>
+          <circle cx={cx} cy={cy} r="7" fill="#0f172a" stroke="#f97316" strokeWidth="2" />
+          <text x={cx} y="122" textAnchor="middle" fontSize="9" fontWeight="800" fill="#64748b" letterSpacing="2">
+            INTERVENTI
+          </text>
+        </svg>
+        <div className="flex-1 min-w-0">
+          <p className="text-[11px] font-black uppercase tracking-[0.2em] text-orange-400">Il tuo {now.getFullYear()}</p>
+          <div className="mt-1.5 inline-flex p-1 rounded-lg bg-slate-800 border border-slate-600 shadow-inner" data-odo-digits>
+            {digits.map((d, i) => (
+              <Roll key={i} d={d} active={active} />
             ))}
-          </ul>
-          {list.length > 2 && <p className="text-[11px] font-bold opacity-80 mt-1">e altre {list.length - 2}</p>}
-        </>
-      )}
-    </Shell>
-  );
-};
-
-// ---------------------------------------------------------------- IL MIO MESE
-export const monthBars = (logs = [], me = "", now = new Date()) => {
-  const out = [];
-  for (let i = 5; i >= 0; i--) {
-    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const prefix = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-`;
-    out.push({ m: MONTHS[d.getMonth()].slice(0, 3), n: (logs || []).filter((l) => isMine(l, me) && isoFromLogDate(l.dateString).startsWith(prefix)).length, now: i === 0 });
-  }
-  return out;
-};
-
-export const MonthWidget = ({ logs, me, now = new Date() }) => {
-  const bars = useMemo(() => monthBars(logs, me, now), [logs, me, now]);
-  const cur = bars[bars.length - 1].n;
-  const prev = bars[bars.length - 2].n;
-  const max = Math.max(1, ...bars.map((b) => b.n));
-  const day = now.getDate();
-  // a che punto era il mese scorso allo stesso giorno
-  const prevSame = useMemo(() => {
-    const d = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-    const prefix = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-`;
-    return (logs || []).filter((l) => {
-      const iso = isoFromLogDate(l.dateString);
-      return isMine(l, me) && iso.startsWith(prefix) && Number(iso.slice(8, 10)) <= day;
-    }).length;
-  }, [logs, me, now, day]);
-  return (
-    <Shell id="month" bg="linear-gradient(135deg,#4338ca,#7c3aed)" icon={BarChart3} title={`Il mio ${MONTHS[now.getMonth()].toLowerCase()}`} sub="Interventi come tecnico o in aiuto">
-      <div className="flex items-end gap-3 flex-1">
-        <div className="shrink-0">
-          <p className="font-black tabular-nums leading-none" style={{ fontSize: 56 }} data-month-count>
-            {cur}
+          </div>
+          <p className="text-sm font-bold text-slate-300 mt-2 leading-snug">
+            {n === 1 ? "intervento" : "interventi"} quest'anno
           </p>
-          <p className="text-[11px] font-bold opacity-90 leading-tight mt-1">
-            {cur === 1 ? "intervento" : "interventi"}
-            <br />
-            {prevSame || prev ? `al ${day} del mese scorso: ${prevSame}` : "il mese scorso: 0"}
+          <p className="text-[12px] font-bold text-slate-400 leading-snug" data-odo-goal={goal}>
+            {goal - n === 1 ? "Ne manca 1" : `Ne mancano ${goal - n}`} al traguardo dei {goal}
           </p>
-        </div>
-        <div className="flex-1 flex items-end gap-1.5 h-24" data-month-bars>
-          {bars.map((b, i) => (
-            <div key={i} className="flex-1 flex flex-col items-center gap-1 h-full justify-end">
-              <span className="text-[10px] font-black tabular-nums opacity-90">{b.n || ""}</span>
-              <div className={`w-full rounded-t-lg ${b.now ? "bg-white" : "bg-white/35"}`} style={{ height: `${Math.max(4, (b.n / max) * 70)}%` }} />
-              <span className="text-[10px] font-bold opacity-80">{b.m}</span>
-            </div>
-          ))}
         </div>
       </div>
-    </Shell>
+    </div>
   );
 };
 
-// ---------------------------------------------------------------- IN SQUADRA
-const stamp = (l) => (l && l.createdAt && l.createdAt.seconds ? l.createdAt.seconds * 1000 : dateOfLog(l));
-export const teamLast = (logs = [], me = "") =>
-  (logs || [])
-    .filter((l) => l && l.technician && !isMine(l, me) && l.customer)
-    .sort((a, b) => stamp(b) - stamp(a))
-    .slice(0, 2);
-
-export const TeamWidget = ({ logs, me, onOpenMachine }) => {
-  const list = useMemo(() => teamLast(logs, me), [logs, me]);
-  return (
-    <Shell id="team" bg="linear-gradient(135deg,#c2410c,#db2777)" icon={Users} title="In squadra" sub="Gli ultimi interventi dei colleghi">
-      {list.length === 0 ? (
-        <p className="text-sm font-semibold opacity-90 flex-1 flex items-center">Ancora nessun intervento dei colleghi.</p>
-      ) : (
-        <ul className="space-y-1.5 mt-1">
-          {list.map((l) => (
-            <li key={l.id || `${l.technician}${l.dateString}${l.machineId}`}>
-              <button type="button" onClick={() => onOpenMachine && l.machineId && onOpenMachine(l.machineId, l.customer)} className="w-full text-left rounded-2xl bg-white/15 px-3 py-1.5 flex items-center gap-2" data-team-item>
-                <span className="w-8 h-8 rounded-full bg-white/25 flex items-center justify-center text-sm font-black shrink-0">{String(l.technician).trim().charAt(0).toUpperCase()}</span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-black truncate">
-                    {l.technician} · {l.customer}
-                  </span>
-                  <span className="block text-[11px] font-bold opacity-90 truncate">
-                    {l.dateString}
-                    {l.machineId ? ` · gru ${l.machineId}` : ""}
-                    {l.description ? ` · ${String(l.description).split("\n")[0]}` : ""}
-                  </span>
-                </span>
-              </button>
-            </li>
-          ))}
-        </ul>
-      )}
-    </Shell>
-  );
-};
-
-// ---------------------------------------------------------------- LA REGOLA DEL GIORNO (testi già nell'app, parola per parola)
+// ---------------------------------------------------------------- CARTELLO DI SICUREZZA: LA REGOLA DEL GIORNO
 export const RULES = [
   { t: SLING_TEXT.angolo, s: SLING_SOURCE },
   { t: SLING_TEXT.spigoli, s: SLING_SOURCE },
   { t: SLING_TEXT.nodi, s: SLING_SOURCE },
   { t: SLING_TEXT.danneggiate, s: SLING_SOURCE },
   { t: SLING_TEXT.verifiche, s: SLING_SOURCE },
-  { t: SLING_TEXT.temperatura, s: SLING_SOURCE },
   { t: SLING_TEXT.chimici, s: SLING_SOURCE },
   { t: CHAIN_TEXT.perno, s: CHAIN_SOURCE },
   { t: CHAIN_TEXT.usura, s: CHAIN_SOURCE },
   { t: "Le funi e le catene debbono essere sottoposte a controlli trimestrali in mancanza di specifica indicazione da parte del fabbricante.", s: "D.Lgs. 81/2008, Allegato VI, punto 3.1.2" },
 ];
 export const ruleOfDay = (now = new Date()) => {
-  const start = new Date(now.getFullYear(), 0, 0);
-  const n = Math.floor((now - start) / DAY);
+  const n = Math.floor((now - new Date(now.getFullYear(), 0, 0)) / DAY);
   return RULES[n % RULES.length];
 };
 
-export const RuleWidget = ({ now = new Date() }) => {
+export const SignWidget = ({ active = false, now = new Date() }) => {
   const r = ruleOfDay(now);
   return (
-    <Shell id="rule" bg="linear-gradient(135deg,#1e293b,#334155)" icon={BookOpenCheck} title="La regola del giorno" sub={r.s}>
-      <p className="flex-1 flex items-center text-[15px] font-bold leading-snug" data-rule-text>
-        «{r.t}»
-      </p>
-    </Shell>
+    <div className={`${H} rounded-3xl relative overflow-hidden p-2.5`} style={{ background: "repeating-linear-gradient(-45deg,#111827 0 16px,#facc15 16px 32px)" }} data-home-widget="sign">
+      <style>{"@keyframes moraSwing{0%{transform:rotate(-2.5deg)}50%{transform:rotate(2deg)}100%{transform:rotate(0)}}"}</style>
+      <div className="relative h-full rounded-2xl bg-yellow-300 border-[3px] border-slate-900 flex items-center gap-3 p-3 shadow-inner" style={{ animation: active ? "moraSwing .9s ease-out" : "none", transformOrigin: "top center" }}>
+        {/* bulloni */}
+        {["left-1.5 top-1.5", "right-1.5 top-1.5", "left-1.5 bottom-1.5", "right-1.5 bottom-1.5"].map((p) => (
+          <span key={p} className={`absolute ${p} w-2.5 h-2.5 rounded-full bg-slate-500 border border-slate-800`} />
+        ))}
+        <svg viewBox="0 0 100 90" className="w-[30%] max-w-[110px] shrink-0" aria-hidden="true">
+          <path d="M50,6 L95,84 L5,84 Z" fill="#facc15" stroke="#111827" strokeWidth="8" strokeLinejoin="round" />
+          {/* gancio con carico */}
+          <line x1="50" y1="30" x2="50" y2="44" stroke="#111827" strokeWidth="4" />
+          <path d="M50,44 q-8,0 -8,8 q0,8 8,8 q7,0 8,-6" fill="none" stroke="#111827" strokeWidth="4.5" strokeLinecap="round" />
+          <rect x="38" y="62" width="24" height="14" rx="2" fill="#111827" />
+        </svg>
+        <div className="min-w-0 flex-1">
+          <p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-900">Regola del giorno</p>
+          <p className="text-[15px] font-black text-slate-900 leading-snug mt-1" data-rule-text>
+            «{r.t}»
+          </p>
+          <p className="text-[10px] font-bold text-slate-700 mt-1 leading-tight line-clamp-2">{r.s}</p>
+        </div>
+      </div>
+    </div>
   );
 };

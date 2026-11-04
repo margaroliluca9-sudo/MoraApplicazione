@@ -398,7 +398,7 @@ export const HomeTop = ({ mini, widgets = [], ...props }) => {
         <div className="flex transition-transform duration-500 ease-out" style={{ transform: `translateX(-${page * 100}%)` }}>
           {pages.map(([l, node], i) => (
             <div key={l} className="w-full shrink-0" aria-hidden={page !== i} data-home-slide={i}>
-              {node || <HomeHero {...props} />}
+              {node ? (React.isValidElement(node) && typeof node.type !== "string" ? React.cloneElement(node, { active: page === i }) : node) : <HomeHero {...props} />}
             </div>
           ))}
         </div>
