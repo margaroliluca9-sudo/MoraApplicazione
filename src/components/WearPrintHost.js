@@ -30,7 +30,7 @@ export const doPrintWear = ({ rep, crane = null, day = "", tech = "", again = fa
     saveWearReport({ rep, crane: c, tech: t, day: d })
       .then(() => window.dispatchEvent(new CustomEvent("mora-wear-saved")))
       .catch(() => {});
-  openPdf(() => buildWearPdf({ rep, crane: c, tech: t, today: d }), pdfFileName(rep.type === "fune" ? "Controllo fune" : rep.type === "fascia" ? "Controllo braca" : "Controllo catena", c ? c.customerName : "", c ? c.matricola : "", d));
+  openPdf(() => buildWearPdf({ rep, crane: c, tech: t, today: d }), pdfFileName(rep.type === "fune" ? "Controllo fune" : rep.type === "fascia" ? "Controllo braca" : rep.type === "paranco" ? "Controllo paranco" : "Controllo catena", c ? c.customerName : "", c ? c.matricola : "", d));
 };
 
 export const WearPrintHost = ({ machines = [], color = "blue" }) => {

@@ -764,7 +764,7 @@ export const buildWearPdf = async ({ rep, crane = null, tech = "", today }) => {
             ["Portata", crane.capacity ? formatCapacity(crane.capacity) : ""],
           ]
     );
-  flow.heading(rep.type === "fune" ? "Fune controllata" : rep.type === "fascia" ? "Braca controllata" : "Catena controllata");
+  flow.heading(rep.type === "fune" ? "Fune controllata" : rep.type === "fascia" ? "Braca controllata" : rep.type === "paranco" ? "Paranco controllato" : "Catena controllata");
   flow.details(rep.params);
   // sezione della fune (disegno indicativo dalla costruzione)
   const sec = rep.cons ? ropeSection(rep.cons) : [];
