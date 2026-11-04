@@ -20,6 +20,8 @@ import { TECI_ROPES, TECI_GROUPS, teciFamily } from "../../teciRopes";
 
 // catalogo FAS delle funi (si apre sul loro sito)
 const FAS_CATALOG = "https://www.fasitaly.com/sottofamiglia/0107.pdf";
+// funi Teci sul loro sito (lì si scaricano il catalogo e le schede)
+const TECI_CATALOG = "https://www.teci.it/en/all-products/wire-ropes/";
 
 // «950» con nominale 10 → «Letto come 9,5 mm» (misura scritta senza virgola)
 const readAs = (raw, ref) => {
@@ -1305,9 +1307,14 @@ export const WearPanel = ({ color = "blue", onBack, onClose, machines = [], logs
           <ChainCheck key={`c${crane ? crane.id : ""}`} known={mounted && mounted.catena} onReport={report} crane={crane} />
         )}
         <PrintedReports isAdmin={isAdmin} />
-        <a href={FAS_CATALOG} target="_blank" rel="noopener noreferrer" className="block text-center text-sm font-bold text-blue-700 underline" data-fas-catalog>
-          Catalogo delle funi FAS
-        </a>
+        <div className="flex justify-center gap-6">
+          <a href={FAS_CATALOG} target="_blank" rel="noopener noreferrer" className="text-sm font-bold text-blue-700 underline" data-fas-catalog>
+            Catalogo funi FAS
+          </a>
+          <a href={TECI_CATALOG} target="_blank" rel="noopener noreferrer" className="text-sm font-bold text-blue-700 underline" data-teci-catalog>
+            Catalogo funi Teci
+          </a>
+        </div>
       </div>
     </div>
   );
