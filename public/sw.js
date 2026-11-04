@@ -2,7 +2,7 @@
 //  1) SENZA RETE: tiene una copia dell'app sul telefono, così si apre anche in un capannone senza
 //     internet e mostra i dati già salvati (La mia area, interventi, clienti: li tiene Firebase).
 //     L'app si apre SUBITO dalla copia (veloce anche con poco campo) e intanto scarica la versione nuova:
-//     se è uscita una versione nuova compare «Aggiorna» (vedi UpdateBanner) e la volta dopo è già quella.
+//     la volta dopo è già quella (nessun avviso).
 //  2) Notifiche della chat e dei promemoria.
 const SHELL = "mora-offline-v1";
 const CDN_HOSTS = ["cdn.tailwindcss.com", "fonts.googleapis.com", "fonts.gstatic.com"];
@@ -61,8 +61,7 @@ self.addEventListener("activate", (event) => {
 });
 
 // la pagina: SUBITO la copia salvata sul telefono (l'app si apre all'istante, anche con poco campo) e intanto
-// scarico dal sito la versione nuova per la volta dopo; se c'è una versione nuova compare «Aggiorna» (UpdateBanner),
-// che riapre con ?aggiorna=… : allora prima la rete (versione nuova), la copia solo se manca la rete.
+// scarico dal sito la versione nuova per la volta dopo. Con ?aggiorna=… (vecchi collegamenti) prima la rete.
 const fromNetwork = (request) =>
   fetch(request).then((res) => {
     if (res && res.ok) putSafe("/", res.clone());
@@ -106,7 +105,7 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(req.url);
   const own = url.origin === self.location.origin;
   if (own && url.pathname.startsWith("/api/")) return; // notifiche, promemoria: sempre in rete
-  if (own && url.searchParams.has("__ver")) return; // controllo «versione nuova» (UpdateBanner): sempre in rete, mai salvato
+  if (own && url.searchParams.has("__ver")) return; // vecchio controllo della versione: sempre in rete, mai salvato
   if (own && url.pathname.startsWith("/guida/")) return; // video della Guida: direttamente dal sito (pesano e vanno a pezzi)
   if (req.mode === "navigate" && own) {
     event.respondWith(openPage(event));

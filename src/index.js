@@ -8,12 +8,11 @@ import "./appearance.css";
 // grafica già pronta (prima veniva costruita dal telefono mentre usavi l'app: rallentava)
 import "./tailwind.css";
 import { ErrorBoundary } from "./components/ErrorBoundary";
-import { UpdateBanner } from "./components/UpdateBanner";
 import { installErrorLog } from "./errorLog";
 import { applyTheme, getThemeMode, setStatusColor } from "./theme";
 import { applyAppearance, getCachedLayout } from "./appearance";
 
-// dopo «Aggiorna» (UpdateBanner) tolgo ?aggiorna=… dall'indirizzo
+// vecchi collegamenti con ?aggiorna=…: tolgo il pezzo dall'indirizzo
 try {
   if (new URLSearchParams(window.location.search).has("aggiorna")) window.history.replaceState(null, "", window.location.pathname);
 } catch (e) {
@@ -46,7 +45,6 @@ root.render(
   <StrictMode>
     <ErrorBoundary>
       <App />
-      <UpdateBanner />
     </ErrorBoundary>
   </StrictMode>
 );
