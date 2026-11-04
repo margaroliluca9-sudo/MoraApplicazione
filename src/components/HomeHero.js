@@ -355,18 +355,27 @@ export const HomeTop = ({ mini, ...props }) => {
   const onDown = (e) => {
     start.current = { x: e.clientX, y: e.clientY, t: Date.now() };
   };
+  // col dito il telefono può annullare il «pointer» (scorrimento): allora si usano i tocchi
+  const onTouchDown = (e) => {
+    const t = e.touches && e.touches[0];
+    if (t) onDown({ clientX: t.clientX, clientY: t.clientY });
+  };
+  const onTouchUp = (e) => {
+    const t = e.changedTouches && e.changedTouches[0];
+    if (t) onUp({ clientX: t.clientX, clientY: t.clientY });
+  };
   const onUp = (e) => {
     const s = start.current;
     start.current = null;
     if (!s) return;
     const dx = e.clientX - s.x;
     const dy = e.clientY - s.y;
-    // colpo veloce di lato = cambio pagina (piano = si guida la gru)
-    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5 && Date.now() - s.t < 450) setPage(dx < 0 ? Math.min(1, page + 1) : Math.max(0, page - 1));
+    // colpo veloce di lato = cambio pagina (piano = si guida la gru); sulla misura basta scorrere, anche piano
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5 && (page === 1 || Date.now() - s.t < 450)) setPage(dx < 0 ? Math.min(1, page + 1) : Math.max(0, page - 1));
   };
   return (
     <div className="relative" data-section="home-top" data-page={page}>
-      <div className="overflow-hidden rounded-3xl" onPointerDownCapture={onDown} onPointerUpCapture={onUp}>
+      <div className="overflow-hidden rounded-3xl" style={{ touchAction: "pan-y" }} onPointerDownCapture={onDown} onPointerUpCapture={onUp} onTouchStartCapture={onTouchDown} onTouchEndCapture={onTouchUp}>
         <div className="flex transition-transform duration-300" style={{ transform: `translateX(-${page * 100}%)` }}>
           <div className="w-full shrink-0" aria-hidden={page !== 0}>
             <HomeHero {...props} />
