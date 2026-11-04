@@ -290,7 +290,7 @@ export const HomeHero = ({ me = "", logs = [], todayCount = 0, now = new Date(),
   return (
     <div
       ref={box}
-      className="relative overflow-hidden rounded-3xl shadow-sm select-none cursor-pointer bg-sky-300"
+      className="relative overflow-hidden rounded-3xl shadow-sm select-none cursor-pointer bg-sky-300 h-full"
       style={{ touchAction: "pan-y" }}
       data-section="home-hero"
       data-sky={skyOf(hour)}
@@ -330,54 +330,81 @@ export const HomeHero = ({ me = "", logs = [], todayCount = 0, now = new Date(),
   );
 };
 
-// IN CIMA ALLA HOME, DUE PAGINE: il carroponte e, scorrendo col dito (veloce, a destra o a sinistra) o toccando
-// i pallini, la misura veloce di catena e fune. Il trascinamento lento sul cielo guida ancora la gru.
-// Si ricorda l'ultima pagina vista.
+// IN CIMA ALLA HOME, IL CAROSELLO: il carroponte, la misura veloce di catena e fune e gli altri riquadri
+// (components/HomeWidgets.js). Scorre da solo ogni 7 secondi; si ferma per 20 secondi se lo tocchi e non si
+// muove mentre scrivi una misura. Si cambia pagina anche scorrendo col dito (veloce, a destra o a sinistra) o
+// toccando i pallini. Il trascinamento lento sul cielo guida ancora la gru.
 const PAGE = "mora_hero_page";
-export const HomeTop = ({ mini, ...props }) => {
+const AUTO_MS = 7000;
+const PAUSE_MS = 20000;
+export const HomeTop = ({ mini, widgets = [], ...props }) => {
+  const pages = [
+    ["Carroponte", null],
+    ...(mini ? [["Misura catena e fune", mini]] : []),
+    ...widgets,
+  ];
+  const n = pages.length;
   const [page, setPageRaw] = useState(() => {
     try {
-      return localStorage.getItem(PAGE) === "1" ? 1 : 0;
+      const v = Number(localStorage.getItem(PAGE) || 0);
+      return v >= 0 && v < n ? v : 0;
     } catch (e) {
       return 0;
     }
   });
-  const setPage = (p) => {
+  const box = useRef(null);
+  const touched = useRef(0);
+  const setPage = (p, manual = true) => {
     setPageRaw(p);
+    if (!manual) return;
+    touched.current = Date.now();
     try {
       localStorage.setItem(PAGE, String(p));
     } catch (e) {
       // niente
     }
   };
+  // scorre da solo
+  useEffect(() => {
+    if (n < 2) return undefined;
+    const id = setInterval(() => {
+      if (document.hidden) return;
+      if (Date.now() - touched.current < PAUSE_MS) return;
+      const el = box.current;
+      if (el && document.activeElement && el.contains(document.activeElement) && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return;
+      setPageRaw((p) => (p + 1) % n);
+    }, AUTO_MS);
+    return () => clearInterval(id);
+  }, [n]);
   const start = useRef(null);
-  if (!mini) return <HomeHero {...props} />;
+  if (n < 2) return <HomeHero {...props} />;
   const onDown = (e) => {
+    touched.current = Date.now();
     start.current = { x: e.clientX, y: e.clientY, t: Date.now() };
   };
   const onUp = (e) => {
+    touched.current = Date.now();
     const s = start.current;
     start.current = null;
     if (!s) return;
     const dx = e.clientX - s.x;
     const dy = e.clientY - s.y;
     // colpo veloce di lato = cambio pagina (piano = si guida la gru)
-    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5 && Date.now() - s.t < 450) setPage(dx < 0 ? Math.min(1, page + 1) : Math.max(0, page - 1));
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 1.5 && Date.now() - s.t < 450) setPage(dx < 0 ? Math.min(n - 1, page + 1) : Math.max(0, page - 1));
   };
   return (
-    <div className="relative" data-section="home-top" data-page={page}>
+    <div className="relative" data-section="home-top" data-page={page} ref={box} onKeyDownCapture={() => (touched.current = Date.now())} onFocusCapture={() => (touched.current = Date.now())}>
       <div className="overflow-hidden rounded-3xl" onPointerDownCapture={onDown} onPointerUpCapture={onUp}>
-        <div className="flex transition-transform duration-300" style={{ transform: `translateX(-${page * 100}%)` }}>
-          <div className="w-full shrink-0" aria-hidden={page !== 0}>
-            <HomeHero {...props} />
-          </div>
-          <div className="w-full shrink-0" aria-hidden={page !== 1}>
-            {mini}
-          </div>
+        <div className="flex transition-transform duration-500 ease-out" style={{ transform: `translateX(-${page * 100}%)` }}>
+          {pages.map(([l, node], i) => (
+            <div key={l} className="w-full shrink-0" aria-hidden={page !== i} data-home-slide={i}>
+              {node || <HomeHero {...props} />}
+            </div>
+          ))}
         </div>
       </div>
       <div className="flex justify-center gap-2 mt-2">
-        {["Carroponte", "Misura catena e fune"].map((l, i) => (
+        {pages.map(([l], i) => (
           <button key={l} type="button" onClick={() => setPage(i)} aria-label={l} data-home-page={i} className={`h-2.5 rounded-full transition-all ${page === i ? "w-6 bg-slate-500" : "w-2.5 bg-slate-300"}`} />
         ))}
       </div>

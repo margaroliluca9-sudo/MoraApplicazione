@@ -33,6 +33,7 @@ import { unreadTotal } from "../chat";
 import { PersonalAreaModal } from "../components/modals/PersonalAreaModal";
 import { HomeTop } from "../components/HomeHero";
 import { MiniWear } from "../components/QuickWear";
+import { DueWidget, MonthWidget, TeamWidget, RuleWidget } from "../components/HomeWidgets";
 import { seasonNow } from "../components/DesignExtras";
 import { todayItems, monthNumbers, relDay, isoFromLogDate } from "../personal";
 import { HomeGrid } from "../components/HomeGrid";
@@ -669,7 +670,7 @@ export const DashboardView = ({
         results={searchResults}
         searchBox={
           <div className="space-y-4">
-            {!searching && <HomeTop mini={isOffice ? null : <MiniWear onOpen={(t) => window.dispatchEvent(new CustomEvent("mora-quick-wear", { detail: t }))} />} me={currentTechName} logs={logs} todayCount={isOffice ? 0 : todayCount} now={heroNow()} force={heroForce()} season={seasonNow(layoutConfig || {}, heroNow())} />}
+            {!searching && <HomeTop mini={isOffice ? null : <MiniWear onOpen={(t) => window.dispatchEvent(new CustomEvent("mora-quick-wear", { detail: t }))} />} widgets={isOffice ? [] : [["Funi e catene da ricontrollare", <DueWidget logs={logs} onOpenMachine={onOpenMachine} />], ["Il mio mese", <MonthWidget logs={logs} me={currentTechName} />], ["In squadra", <TeamWidget logs={logs} me={currentTechName} onOpenMachine={onOpenMachine} />], ["La regola del giorno", <RuleWidget />]]} me={currentTechName} logs={logs} todayCount={isOffice ? 0 : todayCount} now={heroNow()} force={heroForce()} season={seasonNow(layoutConfig || {}, heroNow())} />}
             {searchBox}
           </div>
         }
