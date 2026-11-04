@@ -1,0 +1,31 @@
+const path=require("path");const [G,OUT,DIR]=process.argv.slice(2);const {chromium}=require(path.join(G,"playwright"));
+let bad=0;const check=(n,got,exp)=>{const ok=JSON.stringify(got)===JSON.stringify(exp);if(!ok)bad++;console.log((ok?"PASS ":"FAIL ")+n+(ok?"":"  → "+JSON.stringify(got)+" atteso "+JSON.stringify(exp)));};
+const rep=JSON.stringify({type:"catena",title:"T",tiles:[],params:[],rows:[],defects:[],esito:"IDONEA",azione:"x",level:"ok",norms:[]});
+const DB={technicians:[{id:"t1",name:"Marco"}],machine_types:[],machines:[],customers:[],maintenance_logs:[],settings:[],chat_messages:[],chat_reads:[],wear_reports:[{id:"w1",at:2,day:"01/10/2026",type:"catena",esito:"IDONEA",level:"ok",rep,crane:null,tech:"Ale"},{id:"w2",at:1,day:"02/10/2026",type:"fascia",esito:"IDONEA",level:"ok",rep,crane:{customerName:"GALLI COSTRUZIONI",matricola:"M-77"},tech:"Ale"}]};
+(async()=>{const b=await chromium.launch();const errs=[];const p=await b.newPage({viewport:{width:390,height:844}});p.on("pageerror",e=>errs.push(e.message));
+await p.addInitScript((db)=>{window.__fakeDB=db;localStorage.setItem("mora_tech_last_name","Marco");},DB);
+await p.goto("file://"+path.join(OUT,"index.html"));
+await p.evaluate(()=>window.mountComponent("WearPanel",{isAdmin:true,machines:[],logs:[],onBack(){},initialTab:"chain"}));await p.waitForTimeout(800);
+check("admin: cestino sui verbali",await p.evaluate(()=>!!document.querySelector('[data-action="wear-printed-del-w1"]')),true);
+await p.click('[data-action="wear-printed-del-w1"]');check("primo tocco: «Sicuro?»",await p.evaluate(()=>document.querySelector('[data-action="wear-printed-del-w1"]').textContent),"Sicuro?");
+await p.evaluate(()=>window.__writes.length=0);await p.click('[data-action="wear-printed-del-w1"]');await p.waitForTimeout(300);
+const w=await p.evaluate(()=>window.__writes.map(x=>JSON.parse(x)));
+check("cancellato",[w.some(x=>/delete/.test(x[0])&&/wear_reports\/w1/.test(x[1])),await p.evaluate(()=>!document.querySelector('[data-wear-printed="w1"]'))],[true,true]);
+// catena dei sottoganci: numero Mora
+await p.click('[data-wear-choice="kind"] [data-choice="imbracatura"]');await p.waitForTimeout(100);
+await p.fill('[data-wear-input="mora"]',"m-123");await p.fill('[data-wear-input="d"]',"10");await p.fill('[data-wear-input="d1"]',"9,5");await p.waitForTimeout(150);
+check("numero Mora nel registro della catena dei sottoganci",await p.evaluate(()=>{return document.querySelector('[data-section="wear-chain"]')?true:false;}),true);
+const t=await p.evaluate(()=>{const W=window.__require("@/wearRules");const R=window.__require("@/wearRegister");const x={kind:"imbracatura",d:"10",d1:"9,5",mora:"M-123"};const r=W.checkChain(x);return [R.chainRegister({r,x}).includes("N. Mora M-123"),R.chainReport({r,x}).mora,R.chainReport({r,x}).sottoganci];});
+check("registro e verbale con N. Mora",t,[true,"M-123",true]);
+// fasce: targhetta mancante = scarto
+await p.evaluate(()=>{const S=window.__require("@/slingRules");window.__s=S;});
+const f=await p.evaluate(()=>{const S=window.__s;const x={kind:"fascia",wll:"2",mode:"diritto",flags:{},labelBad:true,mora:"M-9"};const r=S.checkSling(x);const v=S.slingVerdict(r);return [r.level,v.esito,v.azione,S.slingReport({r,x}).params.find(p=>p[0].startsWith("Numero Mora"))[1]];});
+check("fascia senza targhetta: da scartare",f,["scarto","DA SCARTARE","Targhetta (etichetta) mancante o illeggibile.","M-9"]);
+const p2=await b.newPage({viewport:{width:390,height:844}});p2.on("pageerror",e=>errs.push(e.message));
+await p2.addInitScript((db)=>{window.__fakeDB=db;localStorage.setItem("mora_tech_last_name","Marco");localStorage.setItem("mora_notify_asked_v1","1");localStorage.setItem("mora_hero_hint","9");},DB);
+await p2.goto("file://"+path.join(OUT,"index.html"));await p2.evaluate(()=>window.mountApp());await p2.waitForTimeout(3000);
+await p2.evaluate(()=>window.dispatchEvent(new CustomEvent("mora-open-wear",{detail:"chain"})));await p2.waitForTimeout(500);
+await p2.click('[data-wear-choice="kind"] [data-choice="imbracatura"]');await p2.fill('[data-wear-input="mora"]',"m-123");await p2.fill('[data-wear-input="d"]',"10");await p2.fill('[data-wear-input="d1"]',"9,5");await p2.waitForTimeout(150);
+await p2.click('[data-action="wear-print"]');await p2.waitForTimeout(200);
+check("stampa sottoganci: chiede il cliente, N. Mora già scritto",await p2.evaluate(()=>[document.querySelector('[data-section="wear-print"] h3').textContent,document.querySelector('[data-print-input="codice"]').value]),["Di quale cliente?","M-123"]);
+check("nessun errore",errs,[]);console.log(bad?`${bad} FALLITI`:"TUTTO OK");await b.close();})();

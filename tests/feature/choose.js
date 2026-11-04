@@ -1,0 +1,13 @@
+const path=require("path");const [G,OUT,DIR]=process.argv.slice(2);const {chromium}=require(path.join(G,"playwright"));
+let bad=0;const check=(n,got,exp)=>{const ok=JSON.stringify(got)===JSON.stringify(exp);if(!ok)bad++;console.log((ok?"PASS ":"FAIL ")+n+(ok?"":"  → "+JSON.stringify(got)+" atteso "+JSON.stringify(exp)));};
+(async()=>{const b=await chromium.launch();const p=await b.newPage({viewport:{width:390,height:844},deviceScaleFactor:2});const errs=[];p.on("pageerror",e=>errs.push(e.message));
+await p.addInitScript(()=>{window.__fakeDB={technicians:[{id:"t1",name:"Marco"}],machine_types:[],machines:[],customers:[],maintenance_logs:[],settings:[],chat_messages:[],chat_reads:[]};localStorage.setItem("mora_tech_last_name","Marco");localStorage.setItem("mora_notify_asked_v1","1");localStorage.setItem("mora_hero_hint","9");});
+await p.goto("file://"+path.join(OUT,"index.html"));await p.evaluate(()=>window.mountApp());await p.waitForSelector("[data-home-page]",{timeout:15000});
+await p.evaluate(()=>window.dispatchEvent(new CustomEvent("mora-open-wear",{detail:"choose"})));await p.waitForTimeout(500);
+check("si apre «Cosa controlli?»",await p.evaluate(()=>!!document.querySelector("[data-wear-choose]")&&!document.querySelector("[data-wear-tab]")),true);
+await p.screenshot({path:DIR+"/choose.png"});
+await p.click('[data-wear-pick="chain"]');await p.waitForTimeout(300);
+check("tocchi La catena: scheda Catena",await p.evaluate(()=>document.querySelector('[data-wear-tab="chain"]').getAttribute("aria-selected")),"true");
+await p.evaluate(()=>window.dispatchEvent(new CustomEvent("mora-open-wear",{detail:"rope"})));await p.waitForTimeout(400);
+check("dalla misura veloce («rope»): direttamente la fune",await p.evaluate(()=>!document.querySelector("[data-wear-choose]")&&document.querySelector('[data-wear-tab="rope"]').getAttribute("aria-selected")),"true");
+check("nessun errore",errs,[]);console.log(bad?`${bad} FALLITI`:"TUTTO OK");await b.close();})();

@@ -1,5 +1,6 @@
 # CONTROLLO PRIMA DI PUBBLICARE: a ogni modifica GitHub costruisce l'app e la prova da solo
 # (pagine principali, Area admin, Ufficio, schermo TV, gioco) con un database FINTO, senza toccare i dati veri.
+# Poi «Prova le funzioni»: le prove di tests/feature/ (fune e catena, verbali, Guida, rapporti, chat, ...).
 # Se qualcosa non va, il controllo diventa rosso e Vercel NON pubblica quella versione
 # (vedi scripts/vercel-wait-check.js): i tecnici restano sulla versione di prima, che funziona.
 name: Controllo app
@@ -39,3 +40,7 @@ jobs:
           node tests/build-harness.js "$PWD/.ci/node_modules" src "$PWD/.ci/pagina"
           node tests/smoke.js "$PWD/.ci/node_modules" "$PWD/.ci/pagina" > prova.log 2>&1 || { echo "::error::$(grep -v '^OK' prova.log | tail -60 | sed -e 's/%/%25/g' | sed ':a;N;$!ba;s/\n/%0A/g')"; exit 1; }
           cat prova.log
+      - name: Prova le funzioni
+        run: |
+          node tests/features.js "$PWD/.ci/node_modules" "$PWD/.ci/pagina" > funzioni.log 2>&1 || { echo "::error::$(grep -v '^OK' funzioni.log | tail -80 | sed -e 's/%/%25/g' | sed ':a;N;$!ba;s/\n/%0A/g')"; exit 1; }
+          cat funzioni.log

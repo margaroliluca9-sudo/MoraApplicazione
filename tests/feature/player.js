@@ -1,0 +1,16 @@
+const path=require("path");const [G,OUT]=process.argv.slice(2);const {chromium}=require(path.join(G,"playwright"));
+let f=0;const check=(l,a,e)=>{const ok=JSON.stringify(a)===JSON.stringify(e);if(!ok)f++;console.log((ok?"PASS ":"FAIL ")+l+(ok?"":"\n   atteso "+JSON.stringify(e)+"\n   ottenuto "+JSON.stringify(a)));};
+(async()=>{const b=await chromium.launch({args:["--use-fake-device-for-media-stream","--use-fake-ui-for-media-stream","--autoplay-policy=no-user-gesture-required"]});const p=await b.newPage();const errs=[];p.on("pageerror",e=>errs.push(e.message));
+await p.addInitScript(()=>{window.__fakeDB={};});await p.goto("file://"+path.join(OUT,"index.html"));
+const wav=await p.evaluate(async()=>{window.MediaRecorder.isTypeSupported=(t)=>/webm/.test(t);const c=window.__require("@/chat");const rec=await c.startVoice();await new Promise(r=>setTimeout(r,1500));return (await rec.stop()).data;});
+await p.evaluate((wav)=>{window.__fakeDB.chat_audio=[{id:"a1",data:wav,mime:"audio/wav"},{id:"a2",data:"data:audio/x-strano;base64,AAAAAAAAAAAAAAAA",mime:"audio/x-strano"}];
+ const R=window.__require("react");const {VoicePlayer}=window.__require("@/components/modals/ChatModal");
+ window.mountComponent("ChatPlayersTest",null);},wav).catch(()=>{});
+await p.evaluate(()=>{const R=window.__require("react");const {createRoot}=window.__require("react-dom/client");const {VoicePlayer}=window.__require("@/components/modals/ChatModal");
+ createRoot(document.getElementById("root")).render(R.createElement("div",null,R.createElement("div",{id:"v1"},R.createElement(VoicePlayer,{id:"a1",dur:1})),R.createElement("div",{id:"v2"},R.createElement(VoicePlayer,{id:"a2",dur:3}))));});
+await p.waitForTimeout(300);
+await p.evaluate(()=>document.querySelector("#v1 button").click());await p.waitForTimeout(700);
+check("WAV: si ascolta",await p.evaluate(()=>document.querySelector("#v1 button").getAttribute("aria-label")),"Pausa");
+await p.evaluate(()=>document.querySelector("#v2 button").click());await p.waitForTimeout(800);
+check("formato che il telefono non legge: lo dice chiaramente",await p.evaluate(()=>{const e=document.querySelector('#v2 [data-voice-error]');return e?e.dataset.voiceError:"";}),"format");
+check("nessun errore",errs,[]);console.log(f?f+" PROBLEMI":"TUTTO OK");await b.close();})();

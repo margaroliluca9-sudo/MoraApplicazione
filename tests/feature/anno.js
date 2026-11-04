@@ -1,0 +1,23 @@
+const path=require("path");const [G,OUT,DIR]=process.argv.slice(2);const {chromium}=require(path.join(G,"playwright"));
+let bad=0;const check=(n,got,exp)=>{const ok=JSON.stringify(got)===JSON.stringify(exp);if(!ok)bad++;console.log((ok?"PASS ":"FAIL ")+n+(ok?"":"  → "+JSON.stringify(got)+" atteso "+JSON.stringify(exp)));};
+const L=(id,ds,c,m,t,extra)=>({id,dateString:ds,customer:c,machineId:m,technician:t,additionalTechnicians:[],description:"x",createdAt:{seconds:1},...extra});
+const logs=[L("1","10/03/2026","MARIO ROSSI SRL","1","Marco"),L("2","11/03/2026","MARIO ROSSI SRL","1","Marco",{fune:{diametro:10}}),L("3","05/07/2026","BIANCHI LAMIERE","7","Ale",{additionalTechnicians:["Marco"]}),L("4","06/07/2026","COLOMBO ACCIAI","3","Marco"),L("5","07/07/2026","MARIO ROSSI SRL","2","Marco"),L("6","01/02/2025","GALLI COSTRUZIONI","9","Marco"),L("7","02/09/2026","ROMANO METALLI","4","Ale")];
+const run=async(date)=>{const b=await chromium.launch();const errs=[];const p=await b.newPage({viewport:{width:390,height:844},deviceScaleFactor:2});p.on("pageerror",e=>errs.push(e.message));
+if(p.clock)await p.clock.setFixedTime(new Date(date));
+await p.addInitScript((logs)=>{window.__fakeDB={technicians:[{id:"t1",name:"Marco"},{id:"t2",name:"Ale"}],machine_types:[],machines:[],customers:[],maintenance_logs:logs,settings:[{id:"layout",themeColor:"blue"}],chat_messages:[],chat_reads:[]};localStorage.setItem("mora_tech_last_name","Marco");localStorage.setItem("mora_theme","light");localStorage.setItem("mora_notify_asked_v1","1");localStorage.setItem("mora_hero_hint","9");},logs);
+await p.goto("file://"+path.join(OUT,"index.html"));await p.evaluate(()=>window.mountApp());await p.waitForTimeout(3500);
+await p.evaluate(()=>document.querySelector('[data-nav="area"]').click());await p.waitForTimeout(500);return {b,p,errs};};
+(async()=>{
+let {b,p,errs}=await run("2026-12-10T10:00:00");
+check("a dicembre c'è «Il mio 2026»",await p.evaluate(()=>{const e=document.querySelector('[data-area-tile="year"]');return e&&e.textContent.includes("Il mio 2026");}),true);
+await p.screenshot({path:DIR+"/anno_tile.png"});
+await p.click('[data-area-tile="year"]');await p.waitForTimeout(300);
+check("5 interventi di Marco nel 2026, luglio il mese più pieno",await p.evaluate(()=>[document.querySelector("[data-year-total]").textContent,document.querySelector("[data-year-months]").textContent.includes("Luglio")]),["5",true]);
+check("clienti: Mario Rossi primo",await p.evaluate(()=>document.querySelector('[data-section="my-year"]').textContent.includes("Mario Rossi Srl3")),true);
+await p.screenshot({path:DIR+"/anno.png",fullPage:false});
+check("nessun errore",errs,[]);await b.close();
+({b,p,errs}=await run("2026-11-03T10:00:00"));
+check("a novembre non c'è",await p.evaluate(()=>!document.querySelector('[data-area-tile="year"]')),true);await b.close();
+({b,p,errs}=await run("2027-01-15T10:00:00"));
+check("a gennaio quello appena finito",await p.evaluate(()=>{const e=document.querySelector('[data-area-tile="year"]');return e&&e.textContent.includes("Il mio 2026");}),true);await b.close();
+console.log(bad?`${bad} FALLITI`:"TUTTO OK");})();
