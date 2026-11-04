@@ -1,20 +1,119 @@
 // IN CIMA ALLA HOME, LE ALTRE PAGINE DEL CAROSELLO (dopo il carroponte e la misura veloce), disegnate dall'app:
-//  - «Calendario»: il foglio del calendario da strappare con il giorno grande e le cose da fare oggi
-//  - «Contachilometri»: il cruscotto con la lancetta e il contatore dei miei interventi dell'anno
-//  - «Cartello»: il cartello giallo di sicurezza con la regola del giorno (testi già nell'app, parola per parola)
-// Ogni pagina riceve active = true quando è quella in vista (così le animazioni partono quando la vedi).
+//  - «Calendario»: il foglio del calendario da strappare con il giorno grande e, a giro, le cose da fare oggi,
+//    la settimana, un anno fa, la prossima festa, il giorno dell'anno, il weekend
+//  - «Contachilometri»: il cruscotto con la lancetta e il contatore; a giro interventi dell'anno e del mese,
+//    clienti, gru, funi e catene sostituite, giorni con interventi
+//  - «Cartello»: il cartello giallo di sicurezza con una regola (testi già nell'app, parola per parola)
+// Ogni pagina riceve active = true quando è quella in vista: ogni volta che torna in vista mostra la cosa dopo
+// (e l'app si ricorda a che punto era, così anche alla prossima apertura è diversa).
 import React, { useEffect, useState } from "react";
-import { MONTHS } from "../personal";
+import { MONTHS, isoFromLogDate, isMine } from "../personal";
 import { SLING_TEXT, SLING_SOURCE } from "../slingRules";
 import { CHAIN_TEXT, CHAIN_SOURCE } from "../chainSlings";
 import { myYearCount } from "./HomeHero";
 
 const DAY = 86400000;
 const DAYS = ["Domenica", "Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato"];
-const H = "h-full min-h-[184px] md:min-h-[220px] lg:min-h-[240px]";
+const H = "h-full";
+
+// ogni volta che la pagina torna in vista: la cosa dopo (salvata, così riparte da lì alla prossima apertura)
+export const useTurn = (active, n, k) => {
+  const [i, setI] = useState(() => {
+    try {
+      return Number(localStorage.getItem(k) || 0) || 0;
+    } catch (e) {
+      return 0;
+    }
+  });
+  useEffect(() => {
+    if (!active) return;
+    setI((o) => {
+      const v = o + 1;
+      try {
+        localStorage.setItem(k, String(v % 1000));
+      } catch (e) {
+        // niente
+      }
+      return v;
+    });
+  }, [active, k]);
+  return n > 0 ? i % n : 0;
+};
+
+const isoOf = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const daysBetween = (a, b) => Math.round((new Date(b.getFullYear(), b.getMonth(), b.getDate()) - new Date(a.getFullYear(), a.getMonth(), a.getDate())) / DAY);
+// Pasqua (calendario gregoriano)
+const easter = (y) => {
+  const a = y % 19;
+  const b = Math.floor(y / 100);
+  const c = y % 100;
+  const d = Math.floor(b / 4);
+  const e = b % 4;
+  const f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4);
+  const k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7;
+  const m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const month = Math.floor((h + l - 7 * m + 114) / 31);
+  const day = ((h + l - 7 * m + 114) % 31) + 1;
+  return new Date(y, month - 1, day);
+};
+const holidays = (y) => {
+  const e = easter(y);
+  return [
+    [new Date(y, 0, 1), "Capodanno"],
+    [new Date(y, 0, 6), "l'Epifania"],
+    [e, "Pasqua"],
+    [new Date(y, e.getMonth(), e.getDate() + 1), "Pasquetta"],
+    [new Date(y, 3, 25), "il 25 aprile"],
+    [new Date(y, 4, 1), "il 1° maggio"],
+    [new Date(y, 5, 2), "il 2 giugno"],
+    [new Date(y, 7, 15), "Ferragosto"],
+    [new Date(y, 10, 1), "Ognissanti"],
+    [new Date(y, 11, 8), "l'Immacolata"],
+    [new Date(y, 11, 25), "Natale"],
+    [new Date(y, 11, 26), "Santo Stefano"],
+  ];
+};
+export const nextHoliday = (now = new Date()) => {
+  const t = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const list = [...holidays(now.getFullYear()), ...holidays(now.getFullYear() + 1)].filter(([d]) => d > t).sort((a, b) => a[0] - b[0]);
+  return list[0] ? { name: list[0][1], days: daysBetween(t, list[0][0]) } : null;
+};
+
+// le pagine del calendario (oltre a «Oggi»)
+export const calendarFacts = ({ logs = [], me = "", now = new Date() }) => {
+  const out = [];
+  const mine = (logs || []).filter((l) => isMine(l, me));
+  // settimana (da lunedì a oggi)
+  const dow = (now.getDay() + 6) % 7;
+  const mon = new Date(now.getFullYear(), now.getMonth(), now.getDate() - dow);
+  const week = mine.filter((l) => {
+    const iso = isoFromLogDate(l.dateString);
+    return iso && iso >= isoOf(mon) && iso <= isoOf(now);
+  }).length;
+  out.push({ k: "week", head: "Questa settimana", big: String(week), text: week === 1 ? "intervento da lunedì" : "interventi da lunedì" });
+  const yearAgo = `${now.getDate()}/${now.getMonth() + 1}/${now.getFullYear() - 1}`;
+  const ya = mine.find((l) => l.dateString === yearAgo && l.customer);
+  if (ya) out.push({ k: "yearago", head: "Un anno fa, oggi", big: "", text: `eri da ${ya.customer}${ya.machineId ? `, gru ${ya.machineId}` : ""}` });
+  const h = nextHoliday(now);
+  if (h) out.push({ k: "holiday", head: "Prossima festa", big: String(h.days), text: `${h.days === 1 ? "giorno" : "giorni"} a ${h.name}` });
+  if (dow < 4) out.push({ k: "weekend", head: "Il weekend", big: String(5 - dow), text: `${5 - dow === 1 ? "giorno" : "giorni"} al sabato` });
+  else if (dow === 4) out.push({ k: "weekend", head: "Il weekend", big: "1", text: "domani è sabato" });
+  const doy = daysBetween(new Date(now.getFullYear(), 0, 1), now) + 1;
+  const left = daysBetween(now, new Date(now.getFullYear(), 11, 31));
+  out.push({ k: "year", head: `Il ${now.getFullYear()}`, big: String(doy), text: `giorno dell'anno · ne mancano ${left} alla fine` });
+  return out;
+};
 
 // ---------------------------------------------------------------- CALENDARIO DA STRAPPARE
-export const CalendarWidget = ({ items = [], active = false, now = new Date(), onOpen }) => {
+export const CalendarWidget = ({ items = [], logs = [], me = "", active = false, now = new Date(), onOpen }) => {
+  const facts = calendarFacts({ logs, me, now });
+  // con impegni oggi: una volta «Oggi» e una volta un'altra cosa; senza impegni «Oggi» passa una volta sola nel giro
+  const turn = useTurn(active, items.length ? facts.length * 2 : facts.length + 1, "mora_w_cal");
+  const fact = items.length ? (turn % 2 === 0 ? null : facts[(turn - 1) / 2]) : turn === 0 ? null : facts[turn - 1];
   const [flip, setFlip] = useState(false);
   useEffect(() => {
     if (!active) return undefined;
@@ -25,7 +124,7 @@ export const CalendarWidget = ({ items = [], active = false, now = new Date(), o
   const list = items.slice(0, 2);
   return (
     <button type="button" onClick={onOpen} className={`${H} w-full rounded-3xl relative overflow-hidden text-left`} style={{ background: "linear-gradient(160deg,#fef3c7,#fde68a 60%,#fcd34d)" }} data-home-widget="calendar">
-      <style>{"@keyframes moraTear{0%{transform:rotate(0) translateY(0);opacity:1}100%{transform:rotate(-14deg) translate(-30px,60px);opacity:0}}"}</style>
+      <style>{"@keyframes moraTear{0%{transform:rotate(0) translateY(0);opacity:1}100%{transform:rotate(-14deg) translate(-30px,60px);opacity:0}} @keyframes moraIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}"}</style>
       {/* puntine e ombra del muro */}
       <div className="absolute inset-0 opacity-30" style={{ backgroundImage: "radial-gradient(#b45309 1px, transparent 1px)", backgroundSize: "14px 14px" }} />
       <div className="relative h-full flex items-stretch gap-3 p-4">
@@ -57,7 +156,18 @@ export const CalendarWidget = ({ items = [], active = false, now = new Date(), o
             </div>
           )}
         </div>
-        <div className="flex-1 min-w-0 flex flex-col justify-center">
+        {fact ? (
+          <div key={fact.k} className="flex-1 min-w-0 flex flex-col justify-center" style={{ animation: "moraIn .5s ease-out" }} data-cal-fact={fact.k}>
+            <p className="text-[11px] font-black uppercase tracking-wider text-amber-800">{fact.head}</p>
+            {fact.big && (
+              <p className="font-black text-amber-950 tabular-nums leading-none mt-1" style={{ fontSize: 48, letterSpacing: "-2px" }}>
+                {fact.big}
+              </p>
+            )}
+            <p className={`font-black text-amber-950 leading-snug ${fact.big ? "text-sm mt-1" : "text-lg mt-1"}`}>{fact.text}</p>
+          </div>
+        ) : (
+        <div className="flex-1 min-w-0 flex flex-col justify-center" style={{ animation: "moraIn .5s ease-out" }} data-cal-fact="today">
           <p className="text-[11px] font-black uppercase tracking-wider text-amber-800">Oggi</p>
           {list.length === 0 ? (
             <p className="text-lg font-black text-amber-950 leading-snug mt-1" data-cal-empty>
@@ -79,6 +189,7 @@ export const CalendarWidget = ({ items = [], active = false, now = new Date(), o
             </ul>
           )}
         </div>
+        )}
       </div>
     </button>
   );
@@ -98,11 +209,31 @@ const Roll = ({ d, active }) => (
   </span>
 );
 
+// i numeri del contachilometri, a giro
+export const odoMetrics = ({ logs = [], me = "", now = new Date() }) => {
+  const y = now.getFullYear();
+  const mine = (logs || []).filter((l) => isMine(l, me) && String(l.dateString || "").endsWith("/" + y));
+  const month = mine.filter((l) => Number(String(l.dateString).split("/")[1]) === now.getMonth() + 1);
+  const uniq = (arr) => new Set(arr.filter(Boolean)).size;
+  return [
+    { k: "year", head: `Il tuo ${y}`, n: myYearCount(logs, me, now), one: "intervento quest'anno", many: "interventi quest'anno", step: 50, unit: "INTERVENTI" },
+    { k: "month", head: MONTHS[now.getMonth()], n: month.length, one: "intervento questo mese", many: "interventi questo mese", step: 10, unit: "NEL MESE" },
+    { k: "customers", head: `Clienti ${y}`, n: uniq(mine.map((l) => String(l.customer || "").trim().toUpperCase())), one: "cliente visitato quest'anno", many: "clienti visitati quest'anno", step: 10, unit: "CLIENTI" },
+    { k: "cranes", head: `Gru ${y}`, n: uniq(mine.map((l) => (l.machineId ? `${String(l.customer || "").trim().toUpperCase()}|${l.machineId}` : ""))), one: "gru diversa quest'anno", many: "gru diverse quest'anno", step: 10, unit: "GRU" },
+    { k: "ropes", head: `Funi e catene ${y}`, n: mine.filter((l) => l.fune || l.catena).length, one: "fune o catena sostituita", many: "funi e catene sostituite", step: 5, unit: "SOSTITUITE" },
+    { k: "days", head: `Giorni ${y}`, n: uniq(mine.map((l) => l.dateString)), one: "giorno con interventi", many: "giorni con interventi", step: 10, unit: "GIORNI" },
+  ];
+};
+
 export const OdometerWidget = ({ logs = [], me = "", active = false, now = new Date() }) => {
-  const n = myYearCount(logs, me, now);
-  const goal = Math.max(50, Math.ceil((n + 1) / 50) * 50);
-  const from = goal - 50;
-  const frac = Math.min(1, (n - from) / 50);
+  const list = odoMetrics({ logs, me, now });
+  const turn = useTurn(active, list.length, "mora_w_odo");
+  const M = list[turn];
+  const n = M.n;
+  const step = M.step;
+  const goal = Math.max(step, Math.ceil((n + 1) / step) * step);
+  const from = goal - step;
+  const frac = Math.min(1, (n - from) / step);
   const ang = -120 + 240 * (active ? frac : 0);
   const digits = String(n).padStart(4, "0").slice(-4).split("").map(Number);
   const R = 62;
@@ -115,9 +246,9 @@ export const OdometerWidget = ({ logs = [], me = "", active = false, now = new D
     return `M${x1},${y1} A${r},${r} 0 ${a2 - a1 > 180 ? 1 : 0},1 ${x2},${y2}`;
   };
   return (
-    <div className={`${H} rounded-3xl relative overflow-hidden text-white`} style={{ background: "radial-gradient(120% 120% at 30% 20%,#1e293b,#020617)" }} data-home-widget="odometer" data-odo-count={n}>
+    <div className={`${H} rounded-3xl relative overflow-hidden text-white`} style={{ background: "radial-gradient(120% 120% at 30% 20%,#1e293b,#020617)" }} data-home-widget="odometer" data-odo-count={n} data-odo-metric={M.k}>
       <div className="relative h-full flex items-center gap-2 p-3">
-        <svg viewBox="0 0 160 130" className="w-[46%] max-w-[210px] shrink-0" aria-label={`Contachilometri: ${n} interventi nel ${now.getFullYear()}`}>
+        <svg viewBox="0 0 160 130" className="w-[46%] max-w-[210px] shrink-0" aria-label={`Contachilometri: ${n} ${n === 1 ? M.one : M.many}`}>
           <defs>
             <linearGradient id="odoArc" x1="0" x2="1">
               <stop offset="0" stopColor="#22c55e" />
@@ -140,7 +271,7 @@ export const OdometerWidget = ({ logs = [], me = "", active = false, now = new D
             const [x, y] = pt(-120 + i * 24, R - 32);
             return (
               <text key={i} x={x} y={Number(y) + 4} textAnchor="middle" fontSize="10" fontWeight="800" fill="#cbd5e1">
-                {from + i * 5}
+                {Math.round(from + (i * step) / 10)}
               </text>
             );
           })}
@@ -150,19 +281,20 @@ export const OdometerWidget = ({ logs = [], me = "", active = false, now = new D
           </g>
           <circle cx={cx} cy={cy} r="7" fill="#0f172a" stroke="#f97316" strokeWidth="2" />
           <text x={cx} y="122" textAnchor="middle" fontSize="9" fontWeight="800" fill="#64748b" letterSpacing="2">
-            INTERVENTI
+            {M.unit}
           </text>
         </svg>
         <div className="flex-1 min-w-0">
-          <p className="text-[11px] font-black uppercase tracking-[0.2em] text-orange-400">Il tuo {now.getFullYear()}</p>
+          <style>{"@keyframes moraIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}"}</style>
+          <p key={M.k} className="text-[11px] font-black uppercase tracking-[0.2em] text-orange-400" style={{ animation: "moraIn .5s ease-out" }}>
+            {M.head}
+          </p>
           <div className="mt-1.5 inline-flex p-1 rounded-lg bg-slate-800 border border-slate-600 shadow-inner" data-odo-digits>
             {digits.map((d, i) => (
               <Roll key={i} d={d} active={active} />
             ))}
           </div>
-          <p className="text-sm font-bold text-slate-300 mt-2 leading-snug">
-            {n === 1 ? "intervento" : "interventi"} quest'anno
-          </p>
+          <p className="text-sm font-bold text-slate-300 mt-2 leading-snug">{n === 1 ? M.one : M.many}</p>
           <p className="text-[12px] font-bold text-slate-400 leading-snug" data-odo-goal={goal}>
             {goal - n === 1 ? "Ne manca 1" : `Ne mancano ${goal - n}`} al traguardo dei {goal}
           </p>
@@ -180,17 +312,18 @@ export const RULES = [
   { t: SLING_TEXT.danneggiate, s: SLING_SOURCE },
   { t: SLING_TEXT.verifiche, s: SLING_SOURCE },
   { t: SLING_TEXT.chimici, s: SLING_SOURCE },
+  { t: SLING_TEXT.temperatura, s: SLING_SOURCE },
+  { t: SLING_TEXT.simmetria, s: SLING_SOURCE },
   { t: CHAIN_TEXT.perno, s: CHAIN_SOURCE },
   { t: CHAIN_TEXT.usura, s: CHAIN_SOURCE },
+  { t: CHAIN_TEXT.asimmetricoG6, s: CHAIN_SOURCE },
+  { t: CHAIN_TEXT.ridurre, s: CHAIN_SOURCE },
   { t: "Le funi e le catene debbono essere sottoposte a controlli trimestrali in mancanza di specifica indicazione da parte del fabbricante.", s: "D.Lgs. 81/2008, Allegato VI, punto 3.1.2" },
 ];
-export const ruleOfDay = (now = new Date()) => {
-  const n = Math.floor((now - new Date(now.getFullYear(), 0, 0)) / DAY);
-  return RULES[n % RULES.length];
-};
 
-export const SignWidget = ({ active = false, now = new Date() }) => {
-  const r = ruleOfDay(now);
+export const SignWidget = ({ active = false }) => {
+  const turn = useTurn(active, RULES.length, "mora_w_rule");
+  const r = RULES[turn];
   return (
     <div className={`${H} rounded-3xl relative overflow-hidden p-2.5`} style={{ background: "repeating-linear-gradient(-45deg,#111827 0 16px,#facc15 16px 32px)" }} data-home-widget="sign">
       <style>{"@keyframes moraSwing{0%{transform:rotate(-2.5deg)}50%{transform:rotate(2deg)}100%{transform:rotate(0)}}"}</style>
@@ -199,7 +332,7 @@ export const SignWidget = ({ active = false, now = new Date() }) => {
         {["left-1.5 top-1.5", "right-1.5 top-1.5", "left-1.5 bottom-1.5", "right-1.5 bottom-1.5"].map((p) => (
           <span key={p} className={`absolute ${p} w-2.5 h-2.5 rounded-full bg-slate-500 border border-slate-800`} />
         ))}
-        <svg viewBox="0 0 100 90" className="w-[30%] max-w-[110px] shrink-0" aria-hidden="true">
+        <svg viewBox="0 0 100 90" className={`${r.t.length > 120 ? "w-[22%]" : "w-[30%]"} max-w-[110px] shrink-0`} aria-hidden="true">
           <path d="M50,6 L95,84 L5,84 Z" fill="#facc15" stroke="#111827" strokeWidth="8" strokeLinejoin="round" />
           {/* gancio con carico */}
           <line x1="50" y1="30" x2="50" y2="44" stroke="#111827" strokeWidth="4" />
@@ -207,8 +340,8 @@ export const SignWidget = ({ active = false, now = new Date() }) => {
           <rect x="38" y="62" width="24" height="14" rx="2" fill="#111827" />
         </svg>
         <div className="min-w-0 flex-1">
-          <p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-900">Regola del giorno</p>
-          <p className="text-[15px] font-black text-slate-900 leading-snug mt-1" data-rule-text>
+          <p className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-900">Regola di sicurezza</p>
+          <p key={turn} className={`${r.t.length > 180 ? "text-[12px]" : r.t.length > 120 ? "text-[13px]" : "text-[15px]"} font-black text-slate-900 leading-snug mt-1`} style={{ animation: "moraIn .5s ease-out" }} data-rule-text>
             «{r.t}»
           </p>
           <p className="text-[10px] font-bold text-slate-700 mt-1 leading-tight line-clamp-2">{r.s}</p>

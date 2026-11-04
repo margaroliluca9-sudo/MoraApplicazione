@@ -670,7 +670,7 @@ export const DashboardView = ({
         results={searchResults}
         searchBox={
           <div className="space-y-4">
-            {!searching && <HomeTop mini={isOffice ? null : <MiniWear onOpen={(t) => window.dispatchEvent(new CustomEvent("mora-quick-wear", { detail: t }))} />} widgets={isOffice ? [] : [["Calendario di oggi", <CalendarWidget items={today} onOpen={() => setArea("calendar")} />], ["Il tuo anno", <OdometerWidget logs={logs} me={currentTechName} />], ["La regola del giorno", <SignWidget />]]} me={currentTechName} logs={logs} todayCount={isOffice ? 0 : todayCount} now={heroNow()} force={heroForce()} season={seasonNow(layoutConfig || {}, heroNow())} />}
+            {!searching && <HomeTop mini={isOffice ? null : <MiniWear onOpen={(t) => window.dispatchEvent(new CustomEvent("mora-quick-wear", { detail: t }))} />} widgets={isOffice ? [] : [["Calendario di oggi", <CalendarWidget items={today} logs={logs} me={currentTechName} onOpen={() => setArea("calendar")} />], ["Il tuo anno", <OdometerWidget logs={logs} me={currentTechName} />], ["La regola del giorno", <SignWidget />]]} me={currentTechName} logs={logs} todayCount={isOffice ? 0 : todayCount} now={heroNow()} force={heroForce()} season={seasonNow(layoutConfig || {}, heroNow())} />}
             {searchBox}
           </div>
         }

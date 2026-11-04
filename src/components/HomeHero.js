@@ -395,9 +395,9 @@ export const HomeTop = ({ mini, widgets = [], ...props }) => {
   return (
     <div className="relative" data-section="home-top" data-page={page} ref={box} onKeyDownCapture={() => (touched.current = Date.now())} onFocusCapture={() => (touched.current = Date.now())}>
       <div className="overflow-hidden rounded-3xl" onPointerDownCapture={onDown} onPointerUpCapture={onUp}>
-        <div className="flex transition-transform duration-500 ease-out" style={{ transform: `translateX(-${page * 100}%)` }}>
+        <div className="flex transition-transform duration-500 ease-out h-[212px] md:h-[240px] lg:h-[260px]" style={{ transform: `translateX(-${page * 100}%)` }}>
           {pages.map(([l, node], i) => (
-            <div key={l} className="w-full shrink-0" aria-hidden={page !== i} data-home-slide={i}>
+            <div key={l} className="w-full h-full shrink-0 overflow-hidden rounded-3xl" aria-hidden={page !== i} data-home-slide={i}>
               {node ? (React.isValidElement(node) && typeof node.type !== "string" ? React.cloneElement(node, { active: page === i }) : node) : <HomeHero {...props} />}
             </div>
           ))}
