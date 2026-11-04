@@ -12,6 +12,7 @@ import { ropeVerdict, chainVerdict, ropeRegister, chainRegister, ropeReport, cha
 import { printWear, doPrintWear } from "../WearPrintHost";
 import { listWearReports, deleteWearReport } from "../../wearReports";
 import { ropeSection, describeCons, consOf } from "../../ropeSection";
+import { CHAIN_GRADES, CHAIN_MODES, CHAIN_TEXT, CHAIN_SOURCE, EDGE, SHOCK, chainGrade, chainSlingWll } from "../../chainSlings";
 import { SLING_COLORS, SLING_MODES, SLING_FLAGS, SLING_TEXT, SLING_SOURCE, checkSling, slingVerdict, slingRegister, slingReport } from "../../slingRules";
 import { getSafeMatricola } from "../../utils";
 import { DriveCraneInfo } from "../DriveCraneInfo";
@@ -20,6 +21,9 @@ import { TECI_ROPES, TECI_GROUPS, teciFamily } from "../../teciRopes";
 
 // catalogo FAS delle funi (si apre sul loro sito)
 const FAS_CATALOG = "https://www.fasitaly.com/sottofamiglia/0107.pdf";
+// cataloghi FAS dei sottoganci: catene (Pewag) e fasce di poliestere
+const FAS_CHAINS = "https://www.fasitaly.com/sottofamiglia/0222009.pdf";
+const FAS_SLINGS = "https://www.fasitaly.com/sottofamiglia/0224007.pdf";
 // funi Teci sul loro sito (lì si scaricano il catalogo e le schede)
 const TECI_CATALOG = "https://www.teci.it/en/all-products/wire-ropes/";
 
@@ -960,7 +964,7 @@ const RopeCheck = ({ known = null, onReport = null, crane = null }) => {
 const ChainCheck = ({ known = null, onReport = null, crane = null }) => {
   const kd = known && known.diametro ? String(known.diametro).replace(".", ",") : "";
   const kp = known && known.passo ? String(known.passo).replace(".", ",") : "";
-  const [x, setX] = useState({ kind: "paranco", d: kd, d1: "", d2: "", t: kp, t1: "", t11: "", flags: {} });
+  const [x, setX] = useState({ kind: (known && known.kind) || "paranco", d: kd, d1: "", d2: "", t: kp, t1: "", t11: "", flags: {} });
   const set = (k) => (v) => setX((o) => ({ ...o, [k]: v }));
   const r = useMemo(() => checkChain(x), [x]);
   const [copied, copy] = useCopy();
@@ -1155,6 +1159,124 @@ const SlingCheck = () => {
   );
 };
 
+// ---------------------------------------------------------------- BRACHE DI CATENA (sottoganci): portata dal catalogo FAS / Pewag
+const ChainSlingCheck = ({ onWear }) => {
+  const [x, setX] = useState({ grade: "G10", d: "", mode: "d1", temp: "t1", edge: "r2", shock: "s1", lug: false, asym: false });
+  const set = (k) => (v) => setX((o) => ({ ...o, [k]: v }));
+  const g = chainGrade(x.grade);
+  const ds = Object.keys(g.rows).map(Number).sort((a, b) => a - b);
+  const modes = g.cols.filter((c) => {
+    const row = x.d ? g.rows[x.d] : null;
+    return !row || row[g.cols.indexOf(c)] != null;
+  });
+  const r = x.d ? chainSlingWll({ ...x, d: Number(x.d) }) : null;
+  const kg = (v) => `${Number(v).toLocaleString("it-IT")} kg`;
+  return (
+    <div className="space-y-4" data-section="wear-chainsling">
+      <section className="bg-white rounded-3xl border border-slate-200 p-4 space-y-3">
+        <h4 className="font-black text-slate-800">La braca di catena</h4>
+        <label className="block space-y-1">
+          <span className="text-xs font-black text-slate-500">Catena (grado)</span>
+          <select className={INPUT} value={x.grade} onChange={(e) => setX((o) => ({ ...o, grade: e.target.value, d: "", mode: "d1" }))} data-wear-input="grade">
+            {CHAIN_GRADES.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.label}
+              </option>
+            ))}
+          </select>
+        </label>
+        <div>
+          <p className="text-xs font-black text-slate-500 mb-1.5">Diametro (mm)</p>
+          <div className="flex flex-wrap gap-1.5" data-chainsling-d>
+            {ds.map((d) => (
+              <button key={d} type="button" onClick={() => set("d")(String(d))} data-chainsling-dia={d} className={`h-10 min-w-[46px] px-3 rounded-xl text-base font-black border ${x.d === String(d) ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-700 border-slate-300"}`}>
+                {d}
+              </button>
+            ))}
+          </div>
+        </div>
+      </section>
+      <section className="bg-white rounded-3xl border border-slate-200 p-4 space-y-3">
+        <h4 className="font-black text-slate-800">Come viene usata</h4>
+        <div className="grid grid-cols-2 gap-2" data-chainsling-modes>
+          {modes.map((c) => (
+            <button key={c} type="button" onClick={() => set("mode")(c)} data-chainsling-mode={c} className={`rounded-2xl border-2 px-2 py-2 text-left ${x.mode === c ? "border-blue-500 bg-blue-50 text-blue-800" : "border-slate-200 text-slate-600"}`}>
+              <span className="block text-[12px] font-black leading-tight">{CHAIN_MODES[c].label}</span>
+              <span className="block text-[11px] font-bold opacity-80">fattore {String(CHAIN_MODES[c].factor).replace(".", ",")}</span>
+            </button>
+          ))}
+        </div>
+        <h4 className="font-black text-slate-800 pt-1">Limitazioni all'uso (catalogo)</h4>
+        <label className="block space-y-1">
+          <span className="text-xs font-black text-slate-500">Temperatura</span>
+          <select className={INPUT} value={x.temp} onChange={(e) => set("temp")(e.target.value)} data-wear-input="temp">
+            <option value="t1">Normale (fino a 200 °C)</option>
+            <option value="t2">Da 200 a 300 °C</option>
+            <option value="t3">Oltre 300 °C</option>
+          </select>
+          <span className="block text-[11px] text-slate-400">Catalogo, {g.label}: {g.temp}</span>
+        </label>
+        <Choice id="edge" value={x.edge} onChange={set("edge")} options={EDGE.map(([k, l]) => [k, l])} />
+        <Choice id="shock" value={x.shock} onChange={set("shock")} options={SHOCK.map(([k, l]) => [k, l])} />
+        <label className="flex items-start gap-2 text-sm text-slate-700">
+          <input type="checkbox" className="mt-1 w-4 h-4" checked={x.lug} onChange={(e) => set("lug")(e.target.checked)} data-chainsling-lug />
+          <span>Avvolta su un perno o un carico tondo più piccolo di 3 × passo{r && r.pitch ? ` (3 × ${String(r.pitch).replace(".", ",")} = ${String(Math.round(r.pitch * 3 * 10) / 10).replace(".", ",")} mm)` : ""}</span>
+        </label>
+        <label className="flex items-start gap-2 text-sm text-slate-700">
+          <input type="checkbox" className="mt-1 w-4 h-4" checked={x.asym} onChange={(e) => set("asym")(e.target.checked)} data-chainsling-asym />
+          <span>Carico asimmetrico (bracci che non tirano uguale)</span>
+        </label>
+      </section>
+      {r && r.table != null && (
+        <div className={`rounded-3xl p-5 text-white ${r.notAllowed ? "bg-red-600" : "bg-slate-900"}`} data-chainsling-cap>
+          <p className="text-xs font-black uppercase tracking-wider opacity-80">Portata in questo uso</p>
+          <p className="font-black tabular-nums leading-none mt-1" style={{ fontSize: 44 }}>
+            {r.notAllowed ? "NON AMMESSO" : kg(r.cap)}
+          </p>
+          <p className="text-sm font-bold opacity-90 mt-2">
+            Tabella: {g.code} {x.d} · {CHAIN_MODES[x.mode].label} = {kg(r.table)}
+            {r.asymNote ? ` · carico asimmetrico: si conta come ${r.asymNote} (${kg(r.base)})` : ""}
+            {r.factors.map((f) => ` · ${f[0]} × ${String(f[1]).replace(".", ",")}`).join("")}
+          </p>
+          {r.pitch && <p className="text-xs font-bold opacity-80 mt-1">Passo della catena: {String(r.pitch).replace(".", ",")} mm</p>}
+          {onWear && (
+            <button type="button" onClick={() => onWear({ diametro: x.d, passo: r.pitch ? String(r.pitch).replace(".", ",") : "" })} data-action="chainsling-wear" className="mt-3 h-10 px-3 rounded-xl bg-white/15 text-sm font-bold">
+              Controlla l'usura di questa catena ›
+            </button>
+          )}
+        </div>
+      )}
+      <section className="bg-white rounded-3xl border border-slate-200 p-4 space-y-2 text-[12px] text-slate-600 leading-snug" data-chainsling-rules>
+        <h4 className="font-black text-slate-800 text-sm">Dal catalogo</h4>
+        <p>
+          <b>Carico asimmetrico:</b> «{x.grade === "G6" ? CHAIN_TEXT.asimmetricoG6 : CHAIN_TEXT.asimmetrico}»
+        </p>
+        <p>
+          <b>Perno o carico tondo:</b> «{CHAIN_TEXT.perno}»
+        </p>
+        <p>
+          <b>Spigoli:</b> R &gt; 2 × Ø catena: fattore 1 · R &gt; Ø catena: 0,7 · R &lt; Ø catena: 0,5. <b>Shock:</b> leggero 1 · medio 0,7 · pesante non ammissibile.
+        </p>
+        <p>
+          <b>Usura:</b> «{CHAIN_TEXT.usura}»
+        </p>
+        <p className="text-[11px] text-slate-400">{CHAIN_SOURCE}. Coefficiente di sicurezza 4. Portate in kg come nella tabella «Portata delle imbragature».</p>
+      </section>
+    </div>
+  );
+};
+
+// SOTTOGANCI: fasce e anelli di poliestere, brache di catena
+const SottoganciCheck = ({ onWear }) => {
+  const [k, setK] = useState("fasce");
+  return (
+    <div className="space-y-4">
+      <Choice id="sottoganci" value={k} onChange={setK} options={[["fasce", "Fasce e anelli"], ["catene", "Brache di catena"]]} />
+      {k === "fasce" ? <SlingCheck /> : <ChainSlingCheck onWear={onWear} />}
+    </div>
+  );
+};
+
 // controllo salvato in un rapporto (ropeCheck) — il più recente di quel tipo
 const lastCheckOf = (logs, type) => {
   const key = (ds) => {
@@ -1226,6 +1348,8 @@ const CranePicker = ({ machines, crane, onPick, color, type }) => {
 
 export const WearPanel = ({ color = "blue", onBack, onClose, machines = [], logs = [], onNewReport = null, initialTab = "rope", isAdmin = false }) => {
   const [tab, setTab] = useState(initialTab === "chain" ? "chain" : "rope");
+  // da «Brache di catena» → «Controlla l'usura»: catena dei sottoganci con diametro e passo già scritti
+  const [chainPreset, setChainPreset] = useState(null);
   const [crane, setCrane] = useState(null);
   const craneLogs = useMemo(() => {
     if (!crane) return [];
@@ -1264,7 +1388,7 @@ export const WearPanel = ({ color = "blue", onBack, onClose, machines = [], logs
           {[
             ["rope", "Fune"],
             ["chain", "Catena"],
-            ["sling", "Fasce"],
+            ["sling", "Sottoganci"],
           ].map(([id, l]) => (
             <button key={id} type="button" role="tab" aria-selected={tab === id} onClick={() => setTab(id)} data-wear-tab={id} className={`flex-1 h-11 rounded-xl text-sm font-black ${tab === id ? `bg-white text-${color}-700 shadow` : "text-slate-500"}`}>
               {l}
@@ -1300,21 +1424,37 @@ export const WearPanel = ({ color = "blue", onBack, onClose, machines = [], logs
           </div>
         )}
         {tab === "sling" ? (
-          <SlingCheck />
+          <SottoganciCheck
+            onWear={(preset) => {
+              setChainPreset({ ...preset, kind: "imbracatura", n: Date.now() });
+              setTab("chain");
+            }}
+          />
         ) : tab === "rope" ? (
           <RopeCheck key={`r${crane ? crane.id : ""}`} known={knownType} onReport={report} crane={crane} />
         ) : (
-          <ChainCheck key={`c${crane ? crane.id : ""}`} known={mounted && mounted.catena} onReport={report} crane={crane} />
+          <ChainCheck key={`c${crane ? crane.id : ""}${chainPreset ? chainPreset.n : ""}`} known={chainPreset || (mounted && mounted.catena)} onReport={report} crane={crane} />
         )}
         <PrintedReports isAdmin={isAdmin} />
+        {tab === "sling" ? (
+          <div className="flex justify-center gap-6">
+            <a href={FAS_CHAINS} target="_blank" rel="noopener noreferrer" className="text-sm font-bold text-blue-700 underline" data-chains-catalog>
+              Catalogo catene FAS
+            </a>
+            <a href={FAS_SLINGS} target="_blank" rel="noopener noreferrer" className="text-sm font-bold text-blue-700 underline" data-slings-catalog>
+              Catalogo fasce FAS
+            </a>
+          </div>
+        ) : (
         <div className="flex justify-center gap-6">
-          <a href={FAS_CATALOG} target="_blank" rel="noopener noreferrer" className="text-sm font-bold text-blue-700 underline" data-fas-catalog>
-            Catalogo funi FAS
-          </a>
-          <a href={TECI_CATALOG} target="_blank" rel="noopener noreferrer" className="text-sm font-bold text-blue-700 underline" data-teci-catalog>
-            Catalogo funi Teci
-          </a>
-        </div>
+            <a href={FAS_CATALOG} target="_blank" rel="noopener noreferrer" className="text-sm font-bold text-blue-700 underline" data-fas-catalog>
+              Catalogo funi FAS
+            </a>
+            <a href={TECI_CATALOG} target="_blank" rel="noopener noreferrer" className="text-sm font-bold text-blue-700 underline" data-teci-catalog>
+              Catalogo funi Teci
+            </a>
+          </div>
+        )}
       </div>
     </div>
   );
