@@ -2,17 +2,31 @@
 // L'app gli manda il messaggio della chat e l'elenco dei telefoni che lo devono ricevere:
 // lui cifra il messaggio e lo spedisce a ciascun telefono (Google, Apple, Mozilla...).
 // Standard "Web Push" (cifratura RFC 8291 aes128gcm + firma VAPID RFC 8292), senza librerie.
-// NB: la chiave privata è qui nel codice per scelta del titolare (repository pubblico):
-// chi la legge potrebbe mandare notifiche finte ai telefoni iscritti.
+// La chiave VAPID NON sta nel codice (il repository è pubblico): si ricava da una frase segreta che sta solo
+// nelle impostazioni di Vercel (variabile d'ambiente VAPID_SEED). Stessa frase = stessa chiave, sempre.
+// La chiave pubblica la chiede l'app con GET /api/notify (serve ai telefoni per iscriversi).
 const crypto = require("crypto");
 
-const VAPID = {
-  publicKey:
-    "BMTDaawgn4Me2RivufzqaFUb5ZWia54xy8Ea43IX2Cw94bDkrknJrPZ40dH3UQLa9v9kOE5xbprUmcFfjwYrgUw",
-  x: "xMNprCCfgx7ZGK-5_OpoVRvllaJrnjHLwRrjchfYLD0",
-  y: "4bDkrknJrPZ40dH3UQLa9v9kOE5xbprUmcFfjwYrgUw",
-  d: "X2A2lKoz-sjx-lcNw3S-VGztQTeUy35OCv6M4JtTfpc",
-  subject: "mailto:info@emora.it",
+const SUBJECT = "mailto:info@emora.it";
+// ordine della curva P-256
+const N = BigInt("0xffffffff00000000ffffffffffffffffbce6faada7179e84f3b9cac2fc632551");
+let cached = null;
+const vapidKeys = () => {
+  const seed = String(process.env.VAPID_SEED || "").trim();
+  if (seed.length < 16) return null;
+  if (cached && cached.seed === seed) return cached;
+  // dalla frase: 32 byte con HKDF-SHA256; se fuori dalla curva (quasi impossibile) si riprova col contatore
+  for (let i = 0; i < 100; i++) {
+    const d = Buffer.from(crypto.hkdfSync("sha256", Buffer.from(seed, "utf8"), Buffer.from("mora-vapid"), Buffer.from("p256-" + i), 32));
+    const n = BigInt("0x" + d.toString("hex"));
+    if (n === BigInt(0) || n >= N) continue;
+    const ecdh = crypto.createECDH("prime256v1");
+    ecdh.setPrivateKey(d);
+    const pub = ecdh.getPublicKey();
+    cached = { seed, d: b64u(d), x: b64u(pub.subarray(1, 33)), y: b64u(pub.subarray(33, 65)), publicKey: b64u(pub), key: null };
+    return cached;
+  }
+  return null;
 };
 
 // solo i servizi di notifica veri (niente indirizzi a caso)
@@ -40,26 +54,27 @@ const fromB64u = (s) =>
 const ZERO = Buffer.from([0]);
 const ONE = Buffer.from([1]);
 
-let vapidKey = null;
-const privateKey = () =>
-  vapidKey ||
-  (vapidKey = crypto.createPrivateKey({
-    key: { kty: "EC", crv: "P-256", x: VAPID.x, y: VAPID.y, d: VAPID.d },
+const privateKey = (k) =>
+  k.key ||
+  (k.key = crypto.createPrivateKey({
+    key: { kty: "EC", crv: "P-256", x: k.x, y: k.y, d: k.d },
     format: "jwk",
   }));
 
 // intestazione "Authorization: vapid t=<firma>, k=<chiave pubblica>"
 const vapidAuth = (endpoint, now = Date.now()) => {
+  const k = vapidKeys();
+  if (!k) throw new Error("Manca VAPID_SEED nelle impostazioni di Vercel");
   const aud = new URL(endpoint).origin;
   const header = b64u(JSON.stringify({ typ: "JWT", alg: "ES256" }));
   const claims = b64u(
-    JSON.stringify({ aud, exp: Math.floor(now / 1000) + 12 * 3600, sub: VAPID.subject })
+    JSON.stringify({ aud, exp: Math.floor(now / 1000) + 12 * 3600, sub: SUBJECT })
   );
   const sig = crypto.sign("sha256", Buffer.from(header + "." + claims), {
-    key: privateKey(),
+    key: privateKey(k),
     dsaEncoding: "ieee-p1363",
   });
-  return `vapid t=${header}.${claims}.${b64u(sig)}, k=${VAPID.publicKey}`;
+  return `vapid t=${header}.${claims}.${b64u(sig)}, k=${k.publicKey}`;
 };
 
 const hmac = (key, data) => crypto.createHmac("sha256", key).update(data).digest();
@@ -110,7 +125,14 @@ const sendOne = async (sub, payload) => {
 };
 
 const handler = async (req, res) => {
-  if (req.method !== "POST") return res.status(405).json({ error: "Usa POST" });
+  // l'app chiede la chiave pubblica per iscrivere il telefono
+  if (req.method === "GET") {
+    const k = vapidKeys();
+    res.setHeader("Cache-Control", "no-store");
+    return res.status(200).json({ publicKey: k ? k.publicKey : null });
+  }
+  if (req.method !== "POST") return res.status(405).json({ error: "Usa GET o POST" });
+  if (!vapidKeys()) return res.status(503).json({ error: "Notifiche non configurate: manca VAPID_SEED su Vercel", sent: 0, gone: [] });
   let body = req.body;
   if (typeof body === "string") {
     try {
@@ -142,4 +164,4 @@ module.exports = handler;
 module.exports.encrypt = encrypt;
 module.exports.vapidAuth = vapidAuth;
 module.exports.allowedEndpoint = allowedEndpoint;
-module.exports.VAPID_PUBLIC_KEY = VAPID.publicKey;
+module.exports.vapidKeys = vapidKeys;

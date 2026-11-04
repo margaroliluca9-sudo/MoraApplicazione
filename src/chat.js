@@ -12,8 +12,29 @@ import { addDoc, setDoc, deleteDoc, updateDoc } from "./tracked";
 import { getDocs } from "./metered";
 import { db, appId } from "./firebase";
 
-export const VAPID_PUBLIC_KEY =
-  "BMTDaawgn4Me2RivufzqaFUb5ZWia54xy8Ea43IX2Cw94bDkrknJrPZ40dH3UQLa9v9kOE5xbprUmcFfjwYrgUw";
+// chiave pubblica delle notifiche: la dà il postino (/api/notify), che la ricava dalla frase segreta su Vercel
+let serverKeyP = null;
+export const serverPushKey = () => {
+  if (!serverKeyP)
+    serverKeyP = fetch("/api/notify", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((j) => (j && j.publicKey) || "")
+      .catch(() => {
+        serverKeyP = null;
+        return "";
+      });
+  return serverKeyP;
+};
+// l'iscrizione del telefono è fatta con la chiave del server di adesso?
+const sameKey = (sub, key) => {
+  try {
+    const a = new Uint8Array(sub.options.applicationServerKey);
+    const b = keyBytes(key);
+    return a.length === b.length && a.every((v, i) => v === b[i]);
+  } catch (e) {
+    return true;
+  }
+};
 
 export const chatRef = (name) => collection(db, "artifacts", appId, "public", "data", name);
 export const chatDoc = (name, id) => doc(db, "artifacts", appId, "public", "data", name, id);
@@ -365,11 +386,19 @@ export const enablePush = async (techName) => {
     throw new Error("Notifiche non permesse: riattivale dalle impostazioni del telefono.");
   const reg = await navigator.serviceWorker.register("/sw.js");
   await navigator.serviceWorker.ready;
+  const key = await serverPushKey();
+  if (!key) throw new Error("Notifiche non ancora pronte: riprova più tardi.");
   let sub = await reg.pushManager.getSubscription();
+  // iscritto con una chiave vecchia: lo riscrivo con quella nuova
+  if (sub && !sameKey(sub, key)) {
+    await deleteDoc(chatDoc("push_subscriptions", subId(sub.endpoint))).catch(() => {});
+    await sub.unsubscribe().catch(() => {});
+    sub = null;
+  }
   if (!sub)
     sub = await reg.pushManager.subscribe({
       userVisibleOnly: true,
-      applicationServerKey: keyBytes(VAPID_PUBLIC_KEY),
+      applicationServerKey: keyBytes(key),
     });
   return saveSubscription(sub, techName);
 };
@@ -387,8 +416,16 @@ export const refreshPush = async (techName) => {
   if (!pushSupported() || permission() !== "granted") return null;
   try {
     const reg = await navigator.serviceWorker.register("/sw.js");
-    const sub = await reg.pushManager.getSubscription();
-    return sub ? await saveSubscription(sub, techName) : null;
+    let sub = await reg.pushManager.getSubscription();
+    if (!sub) return null;
+    // chiave cambiata sul server: mi re-iscrivo da solo (il permesso c'è già)
+    const key = await serverPushKey();
+    if (key && !sameKey(sub, key)) {
+      await deleteDoc(chatDoc("push_subscriptions", subId(sub.endpoint))).catch(() => {});
+      await sub.unsubscribe().catch(() => {});
+      sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: keyBytes(key) });
+    }
+    return await saveSubscription(sub, techName);
   } catch (e) {
     return null;
   }
