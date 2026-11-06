@@ -2,13 +2,14 @@
 // aperte (come nel browser): si passa da una all'altra con un clic e si chiudono con la ×.
 // Sotto i 768 px resta la versione telefono (barra in basso).
 import React from "react";
-import { Home, PlusCircle, History, Folder, Database, Briefcase, UserCircle, Settings, X } from "lucide-react";
+import { Home, PlusCircle, History, Folder, Database, Briefcase, UserCircle, Settings, X, Ruler } from "lucide-react";
 import { CraneMark } from "./CraneMark";
 
 export const TAB_INFO = {
   dashboard: { label: "Home", icon: Home },
   new: { label: "Nuovo rapporto", icon: PlusCircle },
   history: { label: "Storico", icon: History },
+  wear: { label: "Fune e catena", icon: Ruler },
   explore: { label: "Esplora", icon: Folder },
   database: { label: "Elenco gru", icon: Database },
   office: { label: "Ufficio", icon: Briefcase },
@@ -19,7 +20,7 @@ export const TAB_INFO = {
 export const Sidebar = ({ active, onGo, onArea, onAdmin, isOffice, title, color = "blue", compact }) => {
   const items = isOffice
     ? [["dashboard"], ["history", "Interventi"], ["explore"]]
-    : [["dashboard"], ["new"], ["history"], ["explore"], ["office"]];
+    : [["dashboard"], ["new"], ["history"], ["wear"], ["explore"], ["office"]];
   const Item = ({ id, label, icon: Icon, onClick, on }) => (
     <button
       type="button"

@@ -811,6 +811,13 @@ export default function App() {
   useEffect(() => {
     if (TAB_INFO[activeTab]) setOpenTabs((t) => (t.includes(activeTab) ? t : [...t, activeTab]));
   }, [activeTab]);
+  // cambio pagina: la nuova parte dall'alto (prima restava scrollata dove eri nella pagina di prima)
+  const prevTab = useRef(activeTab);
+  useEffect(() => {
+    if (prevTab.current === activeTab) return;
+    prevTab.current = activeTab;
+    window.scrollTo(0, 0);
+  }, [activeTab]);
   const closeTab = (id) => {
     setOpenTabs((t) => {
       const next = t.filter((x) => x !== id);
@@ -1356,7 +1363,7 @@ export default function App() {
                 technicians={fieldTechs}
                 machineTypes={machineTypes}
                 loading={loading}
-                isMobile={isMobileView}
+                isMobile={isMobileView || winW < 1280}
                 onAuthAdmin={() => setShowAdminLogin(true)}
                 isAdmin={isAdminAuthenticated}
                 layoutConfig={viewConfig}

@@ -195,3 +195,5 @@ html.dark .bg-emerald-100 { background-color: rgba(16, 185, 129, 0.2) }
 html.dark .text-emerald-800, html.dark .text-emerald-900 { color: #6ee7b7 }
 html.dark .text-red-900 { color: #fca5a5 }
 html.dark .text-blue-900 { color: #93c5fd }
+/* parole evidenziate nella ricerca: giallo chiaro con la scritta scura (prima la scritta diventava chiara e non si leggeva) */
+html.dark mark.bg-yellow-200 { color: #0f172a }
