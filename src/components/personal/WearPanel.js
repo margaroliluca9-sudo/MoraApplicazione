@@ -639,7 +639,7 @@ export const INFO = {
   },
   fili: {
     title: "Come contare i fili rotti",
-    text: "Conta i fili spezzati che vedi sulla superficie della fune (le punte che escono o i fili interrotti) dentro il tratto di 6d e di 30d. Fai scorrere la fune piano con uno straccio in mano: i fili rotti lo agganciano. Sono più gravi i fili rotti nella valle, cioè tra due trefoli dove i trefoli si toccano: per la ISO 4309 già 2 fili rotti nella valle in un passo di cordatura (circa 6d) portano allo scarto, anche se il numero totale è sotto il limite. Scarta sempre anche con un trefolo rotto, schiacciamenti, «gabbia» (trefoli che si aprono) o nodi.",
+    text: "Conta i fili spezzati che vedi sulla superficie della fune (le punte che escono o i fili interrotti) dentro il tratto di 6d e di 30d. Fai scorrere la fune piano con uno straccio in mano: i fili rotti lo agganciano. Sono più gravi i fili rotti nella valle, cioè tra due trefoli dove i trefoli si toccano: per la ISO 4309 già 2 fili rotti nella valle in un passo di cordatura (circa 6d) portano allo scarto, anche se il numero totale è sotto il limite. Scarta sempre anche con un trefolo rotto, schiacciamenti, «gabbia» (trefoli che si aprono) o nodi. ISO 4309, 6.2.1 e 6.2.3 (traduzione): un gruppo di fili rotti concentrati in un punto può portare allo scarto anche sotto i valori della tabella; i fili rotti isolati per trasporto, magazzino o montaggio (non per il lavoro) non si contano, ma si annotano e si tolgono le punte. Funi Seale con 19 fili o meno per trefolo (es. 6×19 Seale): la norma le mette due righe più su nella tabella, quindi meno fili rotti ammessi.",
     art: <FiliArt />,
   },
   diamfune: {
@@ -661,6 +661,10 @@ export const INFO = {
     title: "Diametro nominale della catena",
     text: "È lo spessore del tondino della maglia nuova: una catena «10×30» ha diametro 10 mm e passo 30 mm. Lo trovi sul certificato, sulla targhetta o sul manuale del paranco, a volte stampato sulle maglie. Se non c'è, misuralo sul tratto dritto di una maglia che non lavora (verso il capo libero della catena), lontano dai punti di contatto.",
     art: <ChainArt where="nominale" />,
+  },
+  apertura: {
+    title: "Apertura del gancio dei sottoganci",
+    text: "UNI EN 818-6 (informazioni per l'uso e la manutenzione delle brache di catena): l'aumento dell'apertura del gancio non deve superare il 10% del valore nominale e non deve impedire alla sicura (linguetta) di chiudersi. Misura l'apertura nella bocca del gancio e confrontala con quella nominale (scheda del gancio) o con quella misurata a gancio nuovo.",
   },
   passo: {
     title: "Passo e allungamento",
@@ -691,6 +695,30 @@ export const INFO = {
     title: "Diametro che cala in un punto solo",
     text: "Se in un punto la fune si stringe (mentre prima e dopo è normale) di solito l'anima dentro è rotta, schiacciata o consumata: la fune ha perso il sostegno interno. Si scarta anche se i fili rotti fuori sono pochi.",
     art: <DefectArt k="locale" />,
+  },
+  f_trefolo: {
+    title: "Un trefolo rotto",
+    text: "ISO 4309:2017, punto 6.5 (traduzione): se un trefolo si rompe del tutto, la fune va scartata subito.",
+  },
+  f_corrosione: {
+    title: "Corrosione",
+    text: "ISO 4309:2017, punto 6.6 e Prospetto 6 (traduzione): la corrosione esterna solo in superficie non conta; si scarta con fili ruvidi o molto bucherellati e allentati, o quando dalle valli tra i trefoli esce polvere di corrosione interna. Catalogo Teci (foto D): «Superficie molto bucata e fili completamente allentati. Grave riduzione del diametro, con gioco tra i fili pari a più della metà del loro diametro. Sostituzione immediata.»",
+  },
+  f_ondulazione: {
+    title: "Ondulazione",
+    text: "ISO 4309:2017, punto 6.7.2 (traduzione): appoggia un righello lungo la fune; si scarta se la distanza tra fune e righello è d/3 o più su un tratto dritto, oppure d/10 o più dove la fune passa su una puleggia o si avvolge sul tamburo (d = diametro nominale). L'app ti scrive i due valori in mm sotto l'elenco.",
+  },
+  f_anelli: {
+    title: "Fili che escono ad anello",
+    text: "ISO 4309:2017, punto 6.7.5 (traduzione): fili che escono dalla fune formando un anello → scarto subito. Un singolo filo dell'anima che esce può non richiedere lo scarto se si può togliere o non dà fastidio.",
+  },
+  f_piega: {
+    title: "Piegatura",
+    text: "ISO 4309:2017, punto 6.7.9 (traduzione): una piegatura grave nel tratto che passa sulle pulegge → scarto subito; se è meno grave, controlli più frequenti o valutare lo scarto. Catalogo Teci (foto 8): «Esempio di grave piegamento.» → «TALE CONDIZIONE RICHIEDE LA SOSTITUZIONE».",
+  },
+  f_calore: {
+    title: "Calore o arco elettrico",
+    text: "ISO 4309:2017, punto 6.7.10 (traduzione): fune non fatta per il calore che mostra colore cambiato per il calore o perdita di grasso → scarto subito; 2 o più fili colpiti da un arco elettrico nello stesso punto → scarto.",
   },
   f_anima: {
     title: "Diametro che aumenta in un punto",
@@ -991,6 +1019,11 @@ const RopeCheck = ({ known = null, onReport = null, crane = null }) => {
       <section className="bg-white rounded-3xl border border-slate-200 p-4 space-y-3">
         <h4 className="font-black text-slate-800">Si vede anche…</h4>
         <Flags list={ROPE_FLAGS} value={x.flags} onChange={set("flags")} />
+        {nOf(x.d) > 0 && (
+          <p className="text-[11px] text-slate-500 leading-snug" data-wear-wavy>
+            Ondulazione con Ø{x.d}: d/3 = {fmt(nOf(x.d) / 3, 1)} mm sul tratto dritto · d/10 = {fmt(nOf(x.d) / 10, 1)} mm dove passa su puleggia o tamburo.
+          </p>
+        )}
       </section>
 
       {ready && (
@@ -1053,6 +1086,22 @@ const ChainCheck = ({ known = null, onReport = null, crane = null }) => {
         )}
       </section>
 
+      {x.kind === "imbracatura" && (
+        <section className="bg-white rounded-3xl border border-slate-200 p-4 space-y-3" data-wear-hook>
+          <h4 className="font-black text-slate-800">Apertura del gancio (se la misuri)</h4>
+          <div className="grid grid-cols-2 gap-3">
+            <Num id="h0" info="apertura" label="Apertura nominale" value={x.h0 || ""} onChange={set("h0")} hint="Dalla scheda del gancio o misurata a gancio nuovo." />
+            <Num id="h1" label="Apertura adesso" value={x.h1 || ""} onChange={set("h1")} hint={readAs(x.h1 || "", nOf(x.h0 || ""))} />
+          </div>
+          {r.hook != null && (
+            <div className="text-xs font-bold text-slate-500" data-wear-hook-pct>
+              Aumento {fmt(Math.max(0, r.hook))}% (scarto oltre il 10%)
+              <Bar sev={(Math.max(0, r.hook) / 10) * 100} />
+            </div>
+          )}
+        </section>
+      )}
+
       <section className="bg-white rounded-3xl border border-slate-200 p-4 space-y-3">
         <h4 className="font-black text-slate-800">Allungamento (se lo misuri)</h4>
         <Num id="t" info="passo" label="Passo nominale (t)" value={x.t} onChange={set("t")} hint="Lunghezza interna di una maglia, dalla scheda della catena." />
@@ -1064,7 +1113,7 @@ const ChainCheck = ({ known = null, onReport = null, crane = null }) => {
 
       <section className="bg-white rounded-3xl border border-slate-200 p-4 space-y-3">
         <h4 className="font-black text-slate-800">Si vede anche…</h4>
-        <Flags list={CHAIN_FLAGS} value={x.flags} onChange={set("flags")} />
+        <Flags list={CHAIN_FLAGS.filter((f) => !f[2] || f[2] === x.kind)} value={x.flags} onChange={set("flags")} />
       </section>
 
       {ready && (
