@@ -5,6 +5,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { CheckCircle2, AlertTriangle, XCircle, Copy, Check, Info, X, ExternalLink, FilePlus2, History, Printer, Trash2 } from "lucide-react";
 import { PanelHeader, INPUT } from "./PersonalUi";
+import { BreakCalc } from "./BreakCalc";
 import { ROPES, ROPE_FLAGS, CHAIN_FLAGS, checkRope, checkChain, measureFixed } from "../../wearRules";
 import { lastRopeOf, formatRopeLong, knownRopes, ropeName } from "../../ropes";
 import { fasFamily } from "../../fasRopes";
@@ -1593,19 +1594,20 @@ export const WearPanel = ({ color = "blue", onBack, onClose, machines = [], logs
     <div className="flex flex-col h-full" data-section="wear">
       <PanelHeader title="Fune e catena" sub="Cosa dice la norma" onBack={onBack} onClose={onClose} color={color} />
       <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50">
-        {tab !== "sling" && <CranePicker machines={machines} crane={crane} onPick={setCrane} color={color} type={type} knownLabel={knownLabel} />}
+        {tab !== "sling" && tab !== "break" && <CranePicker machines={machines} crane={crane} onPick={setCrane} color={color} type={type} knownLabel={knownLabel} />}
         <div className="flex bg-slate-200/70 p-1 rounded-2xl" role="tablist">
           {[
             ["rope", "Fune"],
             ["chain", "Catena"],
             ["sling", "Sottoganci"],
+            ["break", "Rottura"],
           ].map(([id, l]) => (
             <button key={id} type="button" role="tab" aria-selected={tab === id} onClick={() => setTab(id)} data-wear-tab={id} className={`flex-1 h-11 rounded-xl text-sm font-black ${tab === id ? `bg-white text-${color}-700 shadow` : "text-slate-500"}`}>
               {l}
             </button>
           ))}
         </div>
-        {crane && tab !== "sling" && (
+        {crane && tab !== "sling" && tab !== "break" && (
           <div className="space-y-2" data-wear-history>
             {mounted ? (
               <div className="rounded-2xl bg-white border border-slate-200 p-3 text-sm" data-wear-mounted>
@@ -1633,7 +1635,9 @@ export const WearPanel = ({ color = "blue", onBack, onClose, machines = [], logs
             {type === "fune" && <DriveCraneInfo matricola={getSafeMatricola(crane)} customerName={crane.customerName} />}
           </div>
         )}
-        {tab === "sling" ? (
+        {tab === "break" ? (
+          <BreakCalc />
+        ) : tab === "sling" ? (
           <SottoganciCheck
             onWear={(preset) => {
               setChainPreset({ ...preset, kind: "imbracatura", n: Date.now() });
@@ -1645,8 +1649,8 @@ export const WearPanel = ({ color = "blue", onBack, onClose, machines = [], logs
         ) : (
           <ChainCheck key={`c${crane ? crane.id : ""}${chainPreset ? chainPreset.n : ""}`} known={chainPreset || (mounted && mounted.catena)} onReport={report} crane={crane} />
         )}
-        <PrintedReports isAdmin={isAdmin} />
-        {tab === "sling" ? (
+        {tab !== "break" && <PrintedReports isAdmin={isAdmin} />}
+        {tab === "break" ? null : tab === "sling" ? (
           <div className="flex justify-center gap-6">
             <a href={FAS_CHAINS} target="_blank" rel="noopener noreferrer" className="text-sm font-bold text-blue-700 underline" data-chains-catalog>
               Catalogo catene FAS
