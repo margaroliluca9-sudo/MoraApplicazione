@@ -288,9 +288,10 @@ const useCopy = () => {
 
 // disegnini per riconoscere la fune a occhio
 const Section = ({ n, big = false }) => {
-  const outer = n === "tanti" ? 14 : Number(n);
+  const outer = n === "tanti" ? 14 : n === "altre" ? 0 : Number(n);
   const R = 15;
-  const r = n === "tanti" ? 3.6 : n === "9" ? 4.6 : n === "8" ? 5 : 6.2;
+  // raggio del trefolo: tocca i vicini (6 → 6,2 come prima)
+  const r = n === "tanti" ? 3.6 : n === "6" ? 6.2 : n === "8" ? 5 : Math.min(7, 15 * Math.sin(Math.PI / Math.max(3, outer)) * 0.92);
   return (
     <svg viewBox="0 0 44 44" className={big ? "w-28 h-28" : "w-11 h-11"} aria-hidden="true">
       <circle cx="22" cy="22" r="20" fill="none" stroke="currentColor" strokeOpacity=".25" />
@@ -298,7 +299,12 @@ const Section = ({ n, big = false }) => {
       {Array.from({ length: outer }, (_, i) => (
         <circle key={i} cx={22 + (n === "tanti" ? 16 : R) * Math.cos((i * 2 * Math.PI) / outer)} cy={22 + (n === "tanti" ? 16 : R) * Math.sin((i * 2 * Math.PI) / outer)} r={r} fill="currentColor" opacity=".8" />
       ))}
-      {n !== "tanti" && <circle cx="22" cy="22" r={n === "9" ? 9 : n === "8" ? 8 : 7} fill="currentColor" opacity=".3" />}
+      {n === "altre" && (
+        <text x="22" y="28" textAnchor="middle" fontSize="16" fontWeight="900" fill="currentColor">
+          …
+        </text>
+      )}
+      {n !== "tanti" && n !== "altre" && <circle cx="22" cy="22" r={n === "6" ? 7 : n === "8" ? 8 : Math.max(4, R - r - 1)} fill="currentColor" opacity=".3" />}
     </svg>
   );
 };
@@ -849,15 +855,15 @@ const RopeCheck = ({ known = null, onReport = null, crane = null }) => {
   const kf = known && known.fas && FAS_ROPES.some((f) => f.id === known.fas) ? "fas:" + known.fas : known && known.teci && teciFamily(known.teci) ? "teci:" + known.teci : "";
   const kc = known && ROPES.find((r) => r.id === known.costruzione);
   const kd = known && known.diametro ? String(known.diametro).replace(".", ",") : "";
-  const [x, setX] = useState({ mode: kf || kc ? "so" : "auto", strands: "6", rope: kf || (kc ? kc.id : "6x36"), n: "", core: "metallica", lay: "nonso", layers: "nonso", d: kd, dRef: kd, dMis: "", dMis2: "", b6: "", b30: "", flags: {} });
+  const [x, setX] = useState({ mode: kf || kc ? "so" : "auto", strands: "6", rope: kf || (kc ? kc.id : "6x36"), n: "", core: "metallica", lay: "nonso", layers: "nonso", d: kd, dRef: kd, dMis: "", dMis2: "", b6: "", b30: "", cons: "", flags: {} });
   const set = (k) => (v) => setX((o) => ({ ...o, [k]: v }));
   const r = useMemo(() => checkRope(x), [x]);
   const isFas = !!r.fam;
   const isTeci = !!r.tfam;
   const isCat = isFas || isTeci;
   const rope = isCat ? { n: r.n, rr: r.rr, label: r.lim.rcn } : ROPES.find((o) => o.id === x.rope) || ROPES[0];
-  const catName = r.auto ? r.guess.label : isFas ? `FAS ${r.fam.id} (${r.fam.cons.join("/")})` : isTeci ? `Teci ${r.tfam.name} (${r.teciItem ? r.teciItem.cons : r.tfam.cons.join("/")})` : rope.label;
-  const consNow = r.auto ? "" : isFas ? consOf({ fam: r.fam }) : isTeci ? (r.teciItem ? r.teciItem.cons : r.tfam.cons[0]) : consOf({ rope: ROPES.find((o) => o.id === x.rope) });
+  const catName = r.auto ? r.guess.label : isFas ? `FAS ${r.fam.id} (${r.fam.cons.join("/")})` : isTeci ? `Teci ${r.tfam.name} (${r.teciItem ? r.teciItem.cons : r.tfam.cons.join("/")})` : r.custom && x.cons ? String(x.cons).toUpperCase() : rope.label;
+  const consNow = r.auto ? "" : isFas ? consOf({ fam: r.fam }) : isTeci ? (r.teciItem ? r.teciItem.cons : r.tfam.cons[0]) : r.custom ? String(x.cons || "") : consOf({ rope: ROPES.find((o) => o.id === x.rope) });
   const [copied, copy] = useCopy();
   const ready = Number(r.n) > 0 && (x.b6 !== "" || x.b30 !== "" || x.dMis !== "" || x.dMis2 !== "" || r.flags.length > 0);
   const lines = [];
@@ -878,15 +884,32 @@ const RopeCheck = ({ known = null, onReport = null, crane = null }) => {
         <span className="block text-xs font-black text-slate-500">Quanti trefoli vedi fuori? (contali girando intorno alla fune)</span>
         <Pick
           id="strands"
-          value={x.strands}
-          onChange={set("strands")}
+          value={x.strands === "6" || x.strands === "8" ? x.strands : "altre"}
+          onChange={(v) => set("strands")(v === "altre" ? (x.strands === "6" || x.strands === "8" ? "tanti" : x.strands) : v)}
           options={[
             ["6", "6 trefoli", <Section key="a" n="6" />],
             ["8", "8 trefoli", <Section key="b" n="8" />],
-            ["9", "9 trefoli", <Section key="n" n="9" />],
-            ["tanti", "Più di 10 (antigiro)", <Section key="c" n="tanti" />],
+            ["altre", "Altre", <Section key="c" n="altre" />],
           ]}
         />
+        {x.strands !== "6" && x.strands !== "8" && (
+          <div className="space-y-1.5" data-wear-strands-more>
+            <span className="block text-xs font-black text-slate-500">Quanti?</span>
+            <Pick
+              id="strands2"
+              value={x.strands}
+              onChange={set("strands")}
+              options={[
+                ["4", "4", <Section key="4" n="4" />],
+                ["5", "5", <Section key="5" n="5" />],
+                ["7", "7", <Section key="7" n="7" />],
+                ["9", "9", <Section key="9" n="9" />],
+                ["10", "10", <Section key="10" n="10" />],
+                ["tanti", "Antigiro", <Section key="t" n="tanti" />],
+              ]}
+            />
+          </div>
+        )}
         {x.strands !== "tanti" && (
           <>
             <span className="block text-xs font-black text-slate-500">Come stanno i fili sulla superficie?</span>
@@ -963,8 +986,16 @@ const RopeCheck = ({ known = null, onReport = null, crane = null }) => {
             <RopeSectionArt cons={consNow} />
           </div>
         )}
-        {!isCat && !rope.n && <Num id="n" label="Fili portanti dei trefoli esterni (n)" unit="fili" value={x.n} onChange={set("n")} hint="Fili esterni portanti × numero dei trefoli esterni (quelli di riempimento non contano)." />}
-        {!isCat && !rope.rr && (
+        {r.custom && (
+          <div className="space-y-2" data-wear-custom>
+            <label className="block space-y-1">
+              <span className="text-xs font-black text-slate-500">Scrivi la costruzione</span>
+              <input className={INPUT} value={x.cons || ""} onChange={(e) => set("cons")(e.target.value)} placeholder="es. 7x19, 6x37, 4xK26WS+IWRC, 15x7" data-wear-input="cons" autoComplete="off" autoCapitalize="characters" />
+            </label>
+            <Num id="n" label="Fili portanti dei trefoli esterni (n)" unit="fili" value={x.n} onChange={set("n")} hint={r.nAuto ? `Calcolato dalla costruzione: ${r.nAuto} (trefoli esterni × fili). ${r.filler ? "Nelle Filler i fili di riempimento non contano: scrivi n giusto se lo sai. " : ""}Scrivilo tu solo se è diverso.` : r.rr ? "Antigiro: conta solo i trefoli dello strato esterno × i loro fili portanti (es. 18×7 → 12 × 7 = 84). Finché non lo scrivi l'app usa i limiti più bassi." : "Fili esterni portanti × numero dei trefoli esterni (quelli di riempimento non contano)."} />
+          </div>
+        )}
+        {!isCat && !r.rr && (
           <>
             <span className="block text-xs font-black text-slate-500">Anima</span>
             <Choice id="core" value={x.core} onChange={set("core")} options={[["metallica", "Metallica"], ["tessile", "Tessile"]]} />

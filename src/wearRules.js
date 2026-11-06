@@ -16,6 +16,7 @@
 
 import { teciFamily, teciItem, teciTableLimits, teciLabel } from "./teciRopes";
 import { fasFamily, fasRange, fasItem, fasLabel } from "./fasRopes";
+import { parseCons } from "./ropeSection";
 
 // ---------------------------------------------------------------- FUNI
 // n = fili portanti dei trefoli esterni (si contano solo i fili esterni portanti, non quelli di riempimento)
@@ -24,15 +25,19 @@ export const ROPES = [
   // Seale con 19 fili o meno per trefolo: due righe più su nella Tab. 3 (nota della norma). Se non si sa, si conta Seale.
   { id: "6x19", label: "6×19 Seale (o non so quale)", n: 114, rr: false, seale: true },
   { id: "6x19wf", label: "6×19 Warrington o Filler", n: 114, rr: false },
+  { id: "6x24", label: "6×24 (anima tessile anche nei trefoli)", n: 144, rr: false },
   { id: "6x26", label: "6×26 WS", n: 156, rr: false },
   { id: "6x31", label: "6×31 WS", n: 186, rr: false },
   { id: "6x36", label: "6×36 WS", n: 216, rr: false },
+  { id: "6x37", label: "6×37", n: 222, rr: false },
   { id: "6x41", label: "6×41 WS", n: 246, rr: false },
+  { id: "8x7", label: "8×7", n: 56, rr: false },
   { id: "8x19", label: "8×19 Seale (o non so quale)", n: 152, rr: false, seale: true },
   { id: "8x19wf", label: "8×19 Warrington o Filler", n: 152, rr: false },
   { id: "8x26", label: "8×26 WS", n: 208, rr: false },
   { id: "8x31", label: "8×31 WS", n: 248, rr: false },
   { id: "8x36", label: "8×36 WS", n: 288, rr: false },
+  { id: "8x41", label: "8×41 WS", n: 328, rr: false },
   // 9 trefoli (catalogo FAS «Funi di acciaio a 9 trefoli», compattate con anima metallica plastificata)
   { id: "9x7", label: "9×7 (anche compattata 9×K7)", n: 63, rr: false },
   { id: "9x17", label: "9×17 / 9×19 Seale (anche compattata)", n: 153, rr: false, seale: true },
@@ -41,8 +46,8 @@ export const ROPES = [
   { id: "9x36", label: "9×36 WS (anche compattata)", n: 324, rr: false },
   { id: "18x7", label: "18×7 / 19×7 antigiro", n: 84, rr: true },
   { id: "35x7", label: "35×7 / 35(W)×7 antigiro", n: 112, rr: true },
-  { id: "altra", label: "Altra fune (scrivo io n)", n: 0, rr: false },
-  { id: "altra-rr", label: "Altra fune antigiro (scrivo io n)", n: 0, rr: true },
+  { id: "altra", label: "Altra fune: scrivo io la costruzione", n: 0, rr: false, custom: true },
+  { id: "altra-rr", label: "Altra fune antigiro: scrivo io la costruzione", n: 0, rr: true, custom: true },
 ];
 
 // Tab. 3 ISO 4309:2017 — [n massimo, RCN, crociata 6d, crociata 30d, parallela 6d, parallela 30d, più strati 6d, più strati 30d]
@@ -129,8 +134,26 @@ export const GUESS = {
   9: { n: 63, rr: false, label: "9 trefoli (si conta come 9×7)" },
   tanti: { n: 84, rr: true, label: "tanti trefoli: antigiro (si conta come 18×7)" },
 };
+// altro numero di trefoli (4, 5, 7, 10…): si conta come N×7, la più delicata con quei trefoli
+const guessOf = (s) => {
+  if (GUESS[s]) return GUESS[s];
+  const N = Math.round(Number(s) || 0);
+  return N >= 3 && N <= 12 ? { n: N * 7, rr: false, label: `${N} trefoli (si conta come ${N}×7)` } : GUESS[6];
+};
+// fune scritta dal tecnico («7x19», «6x37», «4xK26WS+IWRC»): n = trefoli × fili per trefolo (ISO 4309, 6.2.2:
+// se la fune non è nell'elenco si contano i fili portanti dei trefoli esterni). Seale con 19 fili o meno: due righe su.
+export const customRope = (cons) => {
+  const p = parseCons(cons);
+  if (!p || !(p.N > 0)) return null;
+  const filler = /F/.test(p.kind);
+  const rr = p.N >= 10 && !p.core;
+  // 7 trefoli senza anima scritta (7×7, 7×19): 6 trefoli intorno a uno centrale → i trefoli esterni sono 6.
+  // Antigiro: i trefoli esterni sono solo una parte (18×7 → 12, 35×7 → 16) e non si sa quanti: n lo scrive il tecnico.
+  const outer = p.N === 7 && !p.core ? 6 : p.N;
+  return { n: rr ? 0 : outer * p.W, N: p.N, W: p.W, filler, seale: /S$/.test(p.kind) && !/WS$/.test(p.kind) && p.W <= 19, rr };
+};
 export const guessRope = (x) => {
-  const g = GUESS[x.strands] || GUESS[6];
+  const g = guessOf(x.strands);
   return { n: g.n, rr: g.rr, seale: !!g.seale, lay: x.lay === "crociata" ? "crociata" : "parallela", core: "metallica", layers: x.layers === "piu" ? "piu" : "uno", label: g.label };
 };
 
@@ -163,7 +186,17 @@ export const checkRope = (x0) => {
   const d = Number(String(x.d || "").replace(",", ".")) || 0;
   const ti = tfam ? teciItem(tfam, d) || teciItem(tfam, tfam.it[0][0]) : null;
   const fr = fam ? fasRange(fam, d) : null;
-  const rope = auto ? { n: g.n, rr: g.rr, seale: g.seale, label: g.label } : fam ? { n: fr ? fr.n : fam.r[0][3], rr: fam.rr, label: fasLabel(fam) } : tfam ? { n: (ti && ti.n) || 0, rr: tfam.rr, label: teciLabel(tfam) } : ROPES.find((r) => r.id === x.rope) || ROPES[0];
+  const base = ROPES.find((r) => r.id === x.rope) || ROPES[0];
+  const cr = base.custom ? customRope(x.cons) : null;
+  const rope = auto
+    ? { n: g.n, rr: g.rr, seale: g.seale, label: g.label }
+    : fam
+      ? { n: fr ? fr.n : fam.r[0][3], rr: fam.rr, label: fasLabel(fam) }
+      : tfam
+        ? { n: (ti && ti.n) || 0, rr: tfam.rr, label: teciLabel(tfam) }
+        : base.custom
+          ? { n: Number(x.n) || (cr ? cr.n : 0), rr: base.rr || (cr ? cr.rr : false), seale: cr ? cr.seale : false, label: x.cons ? String(x.cons).toUpperCase() : base.label, custom: true, nAuto: cr ? cr.n : 0, filler: cr ? cr.filler : false }
+          : base;
   const n = rope.n || Number(x.n) || 0;
   const rr = rope.rr;
   const dRef = readMeasure(x.dRef, d) || d;
@@ -207,6 +240,9 @@ export const checkRope = (x0) => {
   const limCross = auto && !rr && x0.lay !== "crociata" ? wireLimits({ n, rr, lay: "crociata", layers: x.layers, seale: !!rope.seale }) : null;
   return {
     auto,
+    custom: !!rope.custom,
+    nAuto: rope.nAuto || 0,
+    filler: !!rope.filler,
     fam,
     fasItem: fam ? fasItem(fam, d) : null,
     tfam,
