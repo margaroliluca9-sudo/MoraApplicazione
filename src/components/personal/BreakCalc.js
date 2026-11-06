@@ -1,5 +1,5 @@
 // FUNE E CATENA → scheda «Carico rottura fune»: quanto deve reggere come minimo la fune (o la catena) di una gru.
-// Carico di rottura minimo = coefficiente × tiro su un ramo; coefficiente da Allegato V (non CE), Direttiva Macchine (CE)
+// Carico di rottura minimo = coefficiente × sforzo su un tiro; coefficiente da Allegato V (non CE), Direttiva Macchine (CE)
 // o dal costruttore. Conti e testi in src/breakLoad.js. Non salva niente.
 import React, { useMemo, useState } from "react";
 import { Copy, Check, CheckCircle2, XCircle } from "lucide-react";
@@ -28,7 +28,7 @@ const Field = ({ id, label, value, onChange, unit, hint }) => (
   </label>
 );
 
-// disegno: trave in alto, N rami, bozzello col gancio
+// disegno: trave in alto, N tiri, bozzello col gancio
 const Rami = ({ n }) => {
   const k = Math.max(1, Math.min(8, n || 1));
   const w = 120;
@@ -93,7 +93,7 @@ export const BreakCalc = () => {
         <div className="flex items-center gap-3">
           <Rami n={r.rami} />
           <div className="flex-1 space-y-1">
-            <span className="text-xs font-black text-slate-500">Rami che reggono il bozzello</span>
+            <span className="text-xs font-black text-slate-500">Numero dei tiri</span>
             <div className="flex flex-wrap gap-1.5" data-break-choice="rami">
               {["1", "2", "3", "4", "6", "8"].map((v) => (
                 <button key={v} type="button" onClick={() => set("rami")(v)} data-choice={v} className={`w-11 h-11 rounded-xl border-2 text-base font-black ${String(r.rami) === v ? "border-blue-500 bg-blue-50 text-blue-800" : "border-slate-200 text-slate-600"}`}>
@@ -101,7 +101,7 @@ export const BreakCalc = () => {
                 </button>
               ))}
             </div>
-            <span className="block text-[11px] text-slate-500 leading-snug">Conta i tratti di fune che scendono al bozzello.</span>
+            <span className="block text-[11px] text-slate-500 leading-snug">Conta i tiri di fune che reggono il bozzello.</span>
           </div>
         </div>
       </section>
@@ -117,7 +117,7 @@ export const BreakCalc = () => {
           </div>
           <div className="p-4 space-y-3">
             <p className="text-sm text-slate-700 leading-snug">
-              Tiro su un ramo: ({fmtB(r.portata, 0)} kg{r.bozzello ? ` + ${fmtB(r.bozzello, 0)} kg` : ""}) ÷ {r.rami} = <b>{fmtB(r.tiro, 2)} kN</b>
+              Sforzo su un tiro: ({fmtB(r.portata, 0)} kg{r.bozzello ? ` + ${fmtB(r.bozzello, 0)} kg` : ""}) ÷ {r.rami} = <b>{fmtB(r.tiro, 2)} kN</b>
               <br />
               Minimo: {fmtB(r.coeff)} × {fmtB(r.tiro, 2)} kN = <b>{fmtB(r.min)} kN</b>
             </p>

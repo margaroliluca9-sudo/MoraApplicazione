@@ -1,4 +1,4 @@
-// CARICO DI ROTTURA MINIMO della fune (o catena) su una gru: coefficiente × tiro massimo su un ramo.
+// CARICO DI ROTTURA MINIMO della fune (o catena) su una gru: coefficiente × sforzo massimo su un tiro.
 // Coefficienti con le parole delle leggi (niente valori inventati):
 //  - macchina NON CE (costruita prima o senza le direttive): D.Lgs. 81/2008, Allegato V, Parte II, punto 3.1.11
 //  - macchina CE: Direttiva Macchine (D.Lgs. 17/2010), Allegato I, punto 4.1.2.5 (accessori di sollevamento e componenti)
@@ -38,7 +38,7 @@ export const breakCalc = (x) => {
   const bozzello = num(x.bozzello);
   const rami = Math.max(1, Math.round(num(x.rami) || 1));
   const kg = portata + bozzello;
-  // tiro su un ramo (kN), senza rendimento delle pulegge
+  // sforzo su un tiro (kN), senza rendimento delle pulegge
   const tiro = kg > 0 ? Math.round(((kg * G) / 1000 / rami) * 100) / 100 : 0;
   const min = coeff && tiro ? Math.round(coeff * tiro * 10) / 10 : 0;
   const mbl = num(x.mbl);
@@ -52,7 +52,7 @@ export const fmtB = (v, dec = 1) => (v == null || Number.isNaN(v) ? "—" : Numb
 export const breakText = (r, x) => {
   const m = x.machine === "ce" ? "macchina CE" : x.machine === "noce" ? "macchina non CE" : x.machine === "argano" ? "argano a motore" : "coefficiente del costruttore";
   const out = [`Carico di rottura minimo (${r.kind[1].toLowerCase()}, ${m}, coefficiente ${fmtB(r.coeff)}): ${fmtB(r.min)} kN`];
-  out.push(`Tiro su un ramo: (${fmtB(r.portata, 0)} kg portata${r.bozzello ? ` + ${fmtB(r.bozzello, 0)} kg bozzello` : ""}) / ${r.rami} ${r.rami === 1 ? "ramo" : "rami"} = ${fmtB(r.tiro, 2)} kN`);
+  out.push(`Sforzo su un tiro: (${fmtB(r.portata, 0)} kg portata${r.bozzello ? ` + ${fmtB(r.bozzello, 0)} kg bozzello` : ""}) / ${r.rami} ${r.rami === 1 ? "tiro" : "tiri"} = ${fmtB(r.tiro, 2)} kN`);
   if (r.mbl) out.push(`Fune montata: carico di rottura ${fmtB(r.mbl)} kN → ${r.ok ? "va bene" : "NON basta"} (coefficiente reale ${fmtB(r.ratio, 2)})`);
   return out.join("\n");
 };
