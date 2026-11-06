@@ -402,7 +402,7 @@ const QuickRope = ({ saved, onSave, kb, onFull }) => {
       <div className="grid grid-cols-3 gap-2">
         <Field id="d" label="Nominale" info="nomfune" value={v.d} active={kb.open && active === "d"} onTap={() => tap("d")} hint="" />
         <Field id="mis" label="Misura 1" info="diamfune" value={v.mis} active={kb.open && active === "mis"} onTap={() => tap("mis")} hint={readAs(v.mis, dn)} />
-        <Field id="mis2" label="Misura 2 (90°)" info="diamfune" value={v.mis2} active={kb.open && active === "mis2"} onTap={() => tap("mis2")} hint={readAs(v.mis2, dn)} />
+        <Field id="mis2" label="A 90°" info="diamfune" value={v.mis2} active={kb.open && active === "mis2"} onTap={() => tap("mis2")} hint={readAs(v.mis2, dn)} />
       </div>
       {dn > 0 && (
         <p className="text-sm font-black text-slate-700 flex flex-wrap gap-x-3" data-quick-lengths>
