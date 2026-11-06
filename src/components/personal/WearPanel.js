@@ -480,6 +480,17 @@ const DefectArt = ({ k }) => {
         <text x="140" y="12" fontSize="10" fontWeight="900" fill="#dc2626">si stringe in un punto</text>
       </svg>
     );
+  if (k === "anima")
+    return (
+      <svg viewBox="0 0 260 64" className="w-full max-w-xs" aria-hidden="true">
+        <path d="M10 18 h95 q25 -14 50 0 h95 v28 h-95 q-25 14 -50 0 h-95 z" fill="#94a3b8" />
+        {Array.from({ length: 20 }).map((_, i) => (
+          <path key={i} d={`M${14 + i * 12} 19 l12 26`} stroke="#475569" strokeWidth="2.5" strokeLinecap="round" />
+        ))}
+        <path d="M130 2 v8 M130 54 v8" stroke="#dc2626" strokeWidth="3" />
+        <text x="140" y="10" fontSize="10" fontWeight="900" fill="#dc2626">si allarga in un punto</text>
+      </svg>
+    );
   if (k === "deforma")
     return (
       <svg viewBox="0 0 300 150" className="w-full max-w-sm" aria-hidden="true">
@@ -633,7 +644,7 @@ export const INFO = {
   },
   diamfune: {
     title: "Come misurare il diametro della fune",
-    text: "Usa il calibro con i becchi larghi, che appoggino su almeno due trefoli: si misura sulle creste dei trefoli, mai nella valle. Fai due misure nello stesso punto, la seconda girata di 90°, e prendi la media. Misura nel tratto più consumato (dove passa sulle pulegge). Il confronto giusto è col diametro di riferimento, misurato a fune nuova dopo il rodaggio; se non ce l'hai usi il nominale, ma la fune nuova di solito è un po' più grossa del nominale (fino al 4-5%) e quindi il calo vero può essere un po' più alto di quello che vedi.",
+    text: "Quante misure: ISO 4309, punto 3.2, il diametro misurato è la «media di due misurazioni, prese ad angolo retto una rispetto all'altra». Scrivi Misura 1 e Misura 2 (girata di 90°) e l'app fa la media. Il catalogo Teci dice anche: «La misura del diametro si effettua in due punti distanti almeno un metro; in ciascun punto si misurano due diametri a 90° uno dall'altro; la media dei quattro valori rilevati si assume come diametro effettivo.» Cosa si misura (Teci): «Il diametro effettivo della fune è il diametro del cerchio circoscritto alla sezione normale della fune», cioè sulle creste dei trefoli, con il calibro a becchi larghi. Il riferimento è il diametro misurato sulla fune nuova, subito dopo il rodaggio, in un tratto che non passa sulle pulegge (ISO 4309, 3.3); se non c'è vale il nominale. Il calo si calcola sul diametro nominale (ISO 4309, 6.4.2). Una fune nuova è di solito un po' più grossa del nominale: tolleranza EN 12385 per funi da sollevamento da 8 mm in su +5% / 0% (tabella del catalogo Teci).",
     art: <CaliperArt />,
   },
   nomfune: {
@@ -680,6 +691,11 @@ export const INFO = {
     title: "Diametro che cala in un punto solo",
     text: "Se in un punto la fune si stringe (mentre prima e dopo è normale) di solito l'anima dentro è rotta, schiacciata o consumata: la fune ha perso il sostegno interno. Si scarta anche se i fili rotti fuori sono pochi.",
     art: <DefectArt k="locale" />,
+  },
+  f_anima: {
+    title: "Diametro che aumenta in un punto",
+    text: "Catalogo Teci (deterioramenti secondo ISO 4309), foto 9: «Incremento locale del diametro di una fune, determinato da distorsione dell'anima metallica, derivante da un carico improvviso.» → «TALE CONDIZIONE RICHIEDE L'IMMEDIATA SOSTITUZIONE!». Tra le condizioni di sostituzione Teci c'è anche: «l'anima fuoriesce dalla fune anche in un solo punto». ISO 4309:2017, punto 6.7.6: se in servizio il diametro aumenta del 5% o più (anima metallica) o del 10% o più (anima tessile), bisogna cercarne la causa e valutare lo scarto.",
+    art: <DefectArt k="anima" />,
   },
   f_deforma: {
     title: "Deformazioni: gabbia d'uccello, nodo, schiacciamento",
@@ -770,13 +786,31 @@ const Pick = ({ value, onChange, options, id }) => {
 };
 
 // ---------------------------------------------------------------- FUNE
+// quanto sono lunghi i tratti da guardare: 6d e 30d (d = diametro nominale)
+const Lengths = ({ len6, len30 }) => (
+  <div className="grid grid-cols-2 gap-2" data-wear-lengths>
+    {[
+      ["6d", len6],
+      ["30d", len30],
+    ].map(([k, v]) => (
+      <div key={k} className="rounded-2xl bg-blue-50 border border-blue-200 px-3 py-2">
+        <p className="text-[11px] font-black text-blue-700 uppercase tracking-wider">Tratto {k}</p>
+        <p className="font-black text-slate-900 tabular-nums leading-tight" style={{ fontSize: 26 }} data-wear-len={k}>
+          {fmt(v / 10, 1)} cm
+        </p>
+        <p className="text-[11px] font-bold text-slate-500">{v} mm</p>
+      </div>
+    ))}
+  </div>
+);
+
 const RopeCheck = ({ known = null, onReport = null, crane = null }) => {
   // fune montata con un rapporto dell'app (con la costruzione dal certificato): si parte già da quella
   // fune montata: dal catalogo FAS (fas) o con la costruzione scritta a mano
   const kf = known && known.fas && FAS_ROPES.some((f) => f.id === known.fas) ? "fas:" + known.fas : known && known.teci && teciFamily(known.teci) ? "teci:" + known.teci : "";
   const kc = known && ROPES.find((r) => r.id === known.costruzione);
   const kd = known && known.diametro ? String(known.diametro).replace(".", ",") : "";
-  const [x, setX] = useState({ mode: kf || kc ? "so" : "auto", strands: "6", rope: kf || (kc ? kc.id : "6x36"), n: "", core: "metallica", lay: "nonso", layers: "nonso", d: kd, dRef: kd, dMis: "", b6: "", b30: "", flags: {} });
+  const [x, setX] = useState({ mode: kf || kc ? "so" : "auto", strands: "6", rope: kf || (kc ? kc.id : "6x36"), n: "", core: "metallica", lay: "nonso", layers: "nonso", d: kd, dRef: kd, dMis: "", dMis2: "", b6: "", b30: "", flags: {} });
   const set = (k) => (v) => setX((o) => ({ ...o, [k]: v }));
   const r = useMemo(() => checkRope(x), [x]);
   const isFas = !!r.fam;
@@ -786,11 +820,12 @@ const RopeCheck = ({ known = null, onReport = null, crane = null }) => {
   const catName = r.auto ? r.guess.label : isFas ? `FAS ${r.fam.id} (${r.fam.cons.join("/")})` : isTeci ? `Teci ${r.tfam.name} (${r.teciItem ? r.teciItem.cons : r.tfam.cons.join("/")})` : rope.label;
   const consNow = r.auto ? "" : isFas ? consOf({ fam: r.fam }) : isTeci ? (r.teciItem ? r.teciItem.cons : r.tfam.cons[0]) : consOf({ rope: ROPES.find((o) => o.id === x.rope) });
   const [copied, copy] = useCopy();
-  const ready = Number(r.n) > 0 && (x.b6 !== "" || x.b30 !== "" || x.dMis !== "" || r.flags.length > 0);
+  const ready = Number(r.n) > 0 && (x.b6 !== "" || x.b30 !== "" || x.dMis !== "" || x.dMis2 !== "" || r.flags.length > 0);
   const lines = [];
   if (x.b6 !== "" || x.b30 !== "") lines.push(`Fili rotti: ${r.b6} su 6d (limite ${r.lim.six}) · ${r.b30} su 30d (limite ${r.lim.thirty}) → gravità ${Math.max(r.s6, r.s30)}%`);
   if (r.limCross && (x.b6 !== "" || x.b30 !== "")) lines.push(`Contato come cordatura parallela (la più severa). Se sei sicuro che è crociata il limite sale a ${r.limCross.six} su 6d e ${r.limCross.thirty} su 30d.`);
-  if (r.dec != null) lines.push(`Diametro: calato del ${fmt(r.dec)}% (scarto al ${fmt(r.dia.limit)}%) → gravità ${r.dia.sev}%`);
+  if (r.dec != null) lines.push(`Diametro: ${r.m1 && r.m2 ? `media ${fmt(r.dMis, 2)} mm (${fmt(r.m1, 2)} e ${fmt(r.m2, 2)} a 90°), ` : ""}calato del ${fmt(r.dec)}% (scarto al ${fmt(r.dia.limit)}%${r.dia.teci ? ", catalogo Teci" : ""}) → gravità ${r.dia.sev}%`);
+  if (r.incWarn) lines.push(`Diametro aumentato del ${fmt(r.inc)}% rispetto al riferimento: ISO 4309 (6.7.6) chiede di cercarne la causa e di valutare lo scarto`);
   if ((x.b6 !== "" || x.b30 !== "") && r.dec != null) lines.push(`Insieme (fili + diametro): ${r.combined}%`);
   r.flags.forEach((k) => lines.push((ROPE_FLAGS.find((f) => f[0] === k) || [k, k])[1] + " → scarto"));
   const title = r.level === "scarto" ? "Fune da scartare" : r.level === "attenzione" ? "Fune idonea, vicina al limite di scarto" : "Fune idonea";
@@ -907,7 +942,8 @@ const RopeCheck = ({ known = null, onReport = null, crane = null }) => {
       )}
       <section className="bg-white rounded-3xl border border-slate-200 p-4 space-y-3">
         <h4 className="font-black text-slate-800">Fili rotti</h4>
-        <Num id="d" info="nomfune" label="Diametro nominale" value={x.d} onChange={set("d")} hint={x.d ? `6d = ${r.len6} mm (${fmt(r.len6 / 10)} cm) · 30d = ${r.len30} mm (${fmt(r.len30 / 10)} cm): conta i fili rotti nel tratto peggiore.` : "Serve per sapere quanto è lungo il tratto da guardare (6d e 30d)."} />
+        <Num id="d" info="nomfune" label="Diametro nominale" value={x.d} onChange={set("d")} hint={x.d ? "" : "Scrivilo e l'app ti dice quanto sono lunghi i tratti 6d e 30d."} />
+        {r.len6 > 0 && <Lengths len6={r.len6} len30={r.len30} />}
         <div className="grid grid-cols-2 gap-3">
           <Num id="b6" info="fili" label={`Fili rotti su 6d${r.len6 ? ` (${fmt(r.len6 / 10)} cm)` : ""}`} unit="fili" value={x.b6} onChange={set("b6")} />
           <Num id="b30" info="tratto" label={`Fili rotti su 30d${r.len30 ? ` (${fmt(r.len30 / 10)} cm)` : ""}`} unit="fili" value={x.b30} onChange={set("b30")} hint={r.b6 > (Number(x.b30) || 0) ? `Contati ${r.b30}: il tratto di 30d comprende quello di 6d, quindi ci sono almeno i ${r.b6} fili del 6d. Aggiungi quelli che vedi nel resto dei 30d.` : "Comprende il tratto di 6d: conta anche quei fili."} />
@@ -923,13 +959,31 @@ const RopeCheck = ({ known = null, onReport = null, crane = null }) => {
       <section className="bg-white rounded-3xl border border-slate-200 p-4 space-y-3">
         <h4 className="font-black text-slate-800">Diametro</h4>
         <div className="grid grid-cols-2 gap-3">
-          <Num id="dRef" info="diamfune" label="Di riferimento" value={x.dRef} onChange={set("dRef")} hint={readAs(x.dRef, nOf(x.d)) || "Misurato a fune nuova (dopo il rodaggio). Se non c'è vale il nominale."} />
-          <Num id="dMis" info="diamfune" label="Misurato adesso" value={x.dMis} onChange={set("dMis")} hint={readAs(x.dMis, r.dRef) || "Nel punto più consumato, media di due misure a 90°."} />
+          <Num id="dRef" info="diamfune" label="Di riferimento" value={x.dRef} onChange={set("dRef")} hint={readAs(x.dRef, nOf(x.d)) || "Misurato sulla fune nuova, dopo il rodaggio, in un tratto che non passa sulle pulegge. Se non c'è vale il nominale."} />
+          <span />
+          <Num id="dMis" info="diamfune" label="Misura 1" value={x.dMis} onChange={set("dMis")} hint={readAs(x.dMis, r.dRef)} />
+          <Num id="dMis2" info="diamfune" label="Misura 2 (a 90°)" value={x.dMis2} onChange={set("dMis2")} hint={readAs(x.dMis2, r.dRef)} />
         </div>
-        {r.dec != null && (
+        <p className="text-[11px] text-slate-500 leading-snug -mt-1">
+          ISO 4309, punto 3.2: il diametro misurato è la «media di due misurazioni, prese ad angolo retto una rispetto all'altra». Scrivi le due misure e l'app fa la media.
+        </p>
+        {r.m1 > 0 && r.m2 > 0 && (
+          <p className="text-sm font-black text-slate-700" data-wear-dmean>
+            Media: {fmt(r.dMis, 2)} mm
+          </p>
+        )}
+        {r.dec != null && r.dMis <= r.dRef && (
           <div className="text-xs font-bold text-slate-500">
-            Calo del {fmt(r.dec)}% · gravità {r.dia.sev}% (scarto al {fmt(r.dia.limit)}% per fune {r.kind === "antigiro" ? "antigiro" : r.kind === "tessile" ? "con anima tessile" : "con anima metallica"})
+            Calo del {fmt(r.dec)}% sul nominale · gravità {r.dia.sev}% (scarto al {fmt(r.dia.limit)}% per fune {r.kind === "antigiro" ? "antigiro" : r.kind === "tessile" ? "con anima tessile" : "con anima metallica"}{r.dia.teci ? ", catalogo Teci" : ""})
             <Bar sev={r.dia.sev} />
+          </div>
+        )}
+        {r.inc > 0 && (
+          <div className={`rounded-2xl p-3 text-[12px] leading-snug ${r.incWarn ? "bg-amber-50 border border-amber-300 text-amber-900" : "bg-slate-50 border border-slate-200 text-slate-600"}`} data-wear-inc={r.incWarn ? "warn" : "ok"}>
+            <b>Diametro più grande del riferimento: +{fmt(r.inc)}%.</b>{" "}
+            {r.incWarn
+              ? `ISO 4309, punto 6.7.6: se in servizio il diametro aumenta del ${r.incLimit}% o più (fune con anima ${r.kind === "tessile" ? "tessile" : "metallica"}), bisogna cercarne la causa e valutare lo scarto della fune. Se l'aumento è in un punto solo (anima distorta), spunta la voce sotto: il catalogo Teci la indica come sostituzione immediata.`
+              : `Il calo del diametro (punto 6.4) non c'è. Una fune nuova è di solito un po' più grossa del nominale (tolleranza EN 12385 per funi da sollevamento da 8 mm in su: +5% / 0%). Se aumenta in servizio del ${r.incLimit}% o più, la ISO 4309 (6.7.6) chiede di cercarne la causa.`}
           </div>
         )}
       </section>

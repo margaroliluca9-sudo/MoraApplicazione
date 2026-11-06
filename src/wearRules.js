@@ -4,7 +4,9 @@
 // FUNI — ISO 4309:2017 (Gru — Funi metalliche — Cura, manutenzione, ispezione e scarto)
 //   Tabella 3: fili rotti visibili per funi a uno strato di trefoli («single-layer») e a trefoli paralleli
 //   Tabella 4: fili rotti visibili per funi antigiro
-//   Tabella 5: diminuzione uniforme del diametro (rispetto al diametro di riferimento)
+//   Tabella 5: diminuzione uniforme del diametro: (riferimento − misurato) / nominale × 100 (punto 6.4.2, formula 1);
+//   diametro misurato = media di due misure ad angolo retto (punto 3.2); aumento in servizio ≥ 5% (anima metallica)
+//   o ≥ 10% (anima tessile): cercare la causa e valutare lo scarto (punto 6.7.6). Funi Teci: scarto al 7% sul nominale.
 //   I valori della Tab. 3 sono per meccanismi M1–M4 o classe non nota (la norma ammette il doppio per M5–M8:
 //   qui teniamo i valori più prudenti). Gravità: 20/40/60/80/100% (100% = scarto). Valutazione combinata
 //   (Allegato G): si sommano le gravità di fili rotti e diametro nello stesso tratto.
@@ -153,7 +155,10 @@ export const checkRope = (x0) => {
   const n = rope.n || Number(x.n) || 0;
   const rr = rope.rr;
   const dRef = readMeasure(x.dRef, d) || d;
-  const dMis = readMeasure(x.dMis, dRef);
+  // ISO 4309:2017, 3.2: diametro misurato = media di due misurazioni prese ad angolo retto una rispetto all'altra
+  const m1 = readMeasure(x.dMis, dRef);
+  const m2 = readMeasure(x.dMis2, dRef);
+  const dMis = m1 && m2 ? Math.round(((m1 + m2) / 2) * 1000) / 1000 : m1 || m2;
   const multi = x.layers === "piu";
   const lim = fam
     ? fr
@@ -169,9 +174,19 @@ export const checkRope = (x0) => {
   const s30 = wireSeverity(b30, lim.thirty);
   const wire = Math.max(s6, s30);
   const kind = rr ? "antigiro" : x.core === "tessile" ? "tessile" : "metallica";
+  // ISO 4309:2017, 6.4.2, formula (1): calo = (diametro di riferimento − diametro misurato) / diametro NOMINALE × 100
   // arrotondato al centesimo (12 → 11,4 mm deve fare 5%, non 4,9999%)
-  const dec = dRef > 0 && dMis > 0 ? Math.max(0, Math.round(((dRef - dMis) / dRef) * 10000) / 100) : null;
-  const dia = dec == null ? null : diamSeverity(dec, kind);
+  const dNom = d || dRef;
+  const dec = dRef > 0 && dMis > 0 ? Math.max(0, Math.round(((dRef - dMis) / dNom) * 10000) / 100) : null;
+  const dia0 = dec == null ? null : diamSeverity(dec, kind);
+  // catalogo Teci: «il diametro della fune, anche in un solo punto, risulta ridotto del 7% rispetto a quello nominale» → sostituzione
+  const teciDiam = !!tfam && dec != null && d > 0 && dMis > 0 && ((d - dMis) / d) * 100 >= 7;
+  const dia = dia0 && teciDiam ? { ...dia0, sev: 100, teci: true } : dia0 && tfam ? { ...dia0, limit: Math.min(dia0.limit, 7), teci: true } : dia0;
+  // ISO 4309:2017, 6.7.6: aumento del diametro in servizio del 5% o più (anima metallica) o del 10% o più (anima tessile):
+  // cercarne la causa e valutare lo scarto (non è uno scarto automatico)
+  const inc = dRef > 0 && dMis > dRef ? Math.round(((dMis - dRef) / dRef) * 10000) / 100 : 0;
+  const incLimit = kind === "tessile" ? 10 : 5;
+  const incWarn = inc >= incLimit;
   const flags = Object.keys(x.flags || {}).filter((k) => x.flags[k]);
   const combined = Math.min(100, wire + (dia ? dia.sev : 0));
   const discard = wire >= 100 || (dia && dia.sev >= 100) || combined >= 100 || flags.length > 0;
@@ -203,7 +218,12 @@ export const checkRope = (x0) => {
     combined,
     flags,
     discard,
-    level: discard ? "scarto" : worst >= 60 ? "attenzione" : "ok",
+    level: discard ? "scarto" : worst >= 60 || incWarn ? "attenzione" : "ok",
+    m1,
+    m2,
+    inc,
+    incLimit,
+    incWarn,
   };
 };
 
@@ -212,6 +232,7 @@ export const ROPE_FLAGS = [
   ["terminale", "2 o più fili rotti vicino alla terminazione (capocorda, morsetto, redancia)"],
   ["locale", "Diametro che cala in un punto solo (anima rotta o schiacciata)"],
   ["deforma", "Deformazioni gravi: gabbia d'uccello, nodo, asola, schiacciamento"],
+  ["anima", "Diametro che aumenta in un punto (anima distorta) o anima che esce dalla fune"],
 ];
 
 // ---------------------------------------------------------------- CATENE
