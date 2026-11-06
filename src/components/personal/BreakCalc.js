@@ -1,4 +1,4 @@
-// FUNE E CATENA → scheda «Carico di rottura»: quanto deve reggere come minimo la fune (o la catena) di una gru.
+// FUNE E CATENA → scheda «Carico rottura fune»: quanto deve reggere come minimo la fune (o la catena) di una gru.
 // Carico di rottura minimo = coefficiente × tiro su un ramo; coefficiente da Allegato V (non CE), Direttiva Macchine (CE)
 // o dal costruttore. Conti e testi in src/breakLoad.js. Non salva niente.
 import React, { useMemo, useState } from "react";
