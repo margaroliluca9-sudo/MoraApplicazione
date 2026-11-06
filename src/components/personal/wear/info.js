@@ -80,7 +80,7 @@ export const INFO = {
   },
   diamfune: {
     title: "Come misurare il diametro della fune",
-    text: "Usa il calibro con i becchi larghi, che appoggino su almeno due trefoli: si misura sulle creste dei trefoli, mai nella valle. Fai due misure nello stesso punto, la seconda girata di 90°, e prendi la media. Misura nel tratto più consumato (dove passa sulle pulegge). Il confronto giusto è col diametro di riferimento, misurato a fune nuova dopo il rodaggio; se non ce l'hai usi il nominale, ma la fune nuova di solito è un po' più grossa del nominale (fino al 4-5%) e quindi il calo vero può essere un po' più alto di quello che vedi.",
+    text: "Quante misure: ISO 4309, punto 3.2, il diametro misurato è la «media di due misurazioni, prese ad angolo retto una rispetto all'altra». Scrivi Misura 1 e Misura 2 (girata di 90°) e l'app fa la media. Il catalogo Teci dice anche: «La misura del diametro si effettua in due punti distanti almeno un metro; in ciascun punto si misurano due diametri a 90° uno dall'altro; la media dei quattro valori rilevati si assume come diametro effettivo.» Cosa si misura (Teci): «Il diametro effettivo della fune è il diametro del cerchio circoscritto alla sezione normale della fune», cioè sulle creste dei trefoli, con il calibro a becchi larghi. Il riferimento è il diametro misurato sulla fune nuova, subito dopo il rodaggio, in un tratto che non passa sulle pulegge (ISO 4309, 3.3); se non c'è vale il nominale. Il calo si calcola sul diametro nominale (ISO 4309, 6.4.2). Una fune nuova è di solito un po' più grossa del nominale: tolleranza EN 12385 per funi da sollevamento da 8 mm in su +5% / 0% (tabella del catalogo Teci).",
     art: <CaliperArt />,
   },
   nomfune: {
@@ -127,6 +127,11 @@ export const INFO = {
     title: "Diametro che cala in un punto solo",
     text: "Se in un punto la fune si stringe (mentre prima e dopo è normale) di solito l'anima dentro è rotta, schiacciata o consumata: la fune ha perso il sostegno interno. Si scarta anche se i fili rotti fuori sono pochi.",
     art: <DefectArt k="locale" />,
+  },
+  f_anima: {
+    title: "Diametro che aumenta in un punto",
+    text: "Catalogo Teci (deterioramenti secondo ISO 4309), foto 9: «Incremento locale del diametro di una fune, determinato da distorsione dell'anima metallica, derivante da un carico improvviso.» → «TALE CONDIZIONE RICHIEDE L'IMMEDIATA SOSTITUZIONE!». Tra le condizioni di sostituzione Teci c'è anche: «l'anima fuoriesce dalla fune anche in un solo punto». ISO 4309:2017, punto 6.7.6: se in servizio il diametro aumenta del 5% o più (anima metallica) o del 10% o più (anima tessile), bisogna cercarne la causa e valutare lo scarto.",
+    art: <DefectArt k="anima" />,
   },
   f_deforma: {
     title: "Deformazioni: gabbia d'uccello, nodo, schiacciamento",

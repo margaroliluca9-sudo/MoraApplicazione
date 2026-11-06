@@ -213,6 +213,17 @@ export const DefectArt = ({ k }) => {
         <text x="140" y="12" fontSize="10" fontWeight="900" fill="#dc2626">si stringe in un punto</text>
       </svg>
     );
+  if (k === "anima")
+    return (
+      <svg viewBox="0 0 260 64" className="w-full max-w-xs" aria-hidden="true">
+        <path d="M10 18 h95 q25 -14 50 0 h95 v28 h-95 q-25 14 -50 0 h-95 z" fill="#94a3b8" />
+        {Array.from({ length: 20 }).map((_, i) => (
+          <path key={i} d={`M${14 + i * 12} 19 l12 26`} stroke="#475569" strokeWidth="2.5" strokeLinecap="round" />
+        ))}
+        <path d="M130 2 v8 M130 54 v8" stroke="#dc2626" strokeWidth="3" />
+        <text x="140" y="10" fontSize="10" fontWeight="900" fill="#dc2626">si allarga in un punto</text>
+      </svg>
+    );
   if (k === "deforma")
     return (
       <svg viewBox="0 0 300 150" className="w-full max-w-sm" aria-hidden="true">

@@ -317,13 +317,13 @@ const STRANDS = [
   ["tanti", "Antigiro"],
 ];
 const QuickRope = ({ saved, onSave, kb, onFull }) => {
-  const [v, setV] = useState({ d: saved.rd || "", mis: "" });
+  const [v, setV] = useState({ d: saved.rd || "", mis: "", mis2: "" });
   const [active, setActive] = useState(saved.rd ? "mis" : "d");
   const [fresh, setFresh] = useState(true);
   const [strands, setStrands] = useState(saved.rs || "6");
   const [b6, setB6] = useState(0);
   const [b30, setB30] = useState(0);
-  const r = useMemo(() => checkRope({ mode: "auto", strands, lay: "", layers: "uno", d: v.d, dRef: v.d, dMis: v.mis, b6, b30, flags: {} }), [v, strands, b6, b30]);
+  const r = useMemo(() => checkRope({ mode: "auto", strands, lay: "", layers: "uno", d: v.d, dRef: v.d, dMis: v.mis, dMis2: v.mis2, b6, b30, flags: {} }), [v, strands, b6, b30]);
   const [copied, copy] = useCopy();
   const dn = num(v.d);
   const limD = r.dia ? r.dia.limit : r.rr ? 5 : 7.5;
@@ -361,7 +361,7 @@ const QuickRope = ({ saved, onSave, kb, onFull }) => {
       />
     ) : null;
   return (
-    <Body kb={kb} tab="fune" onFull={onFull} onKey={onKey} onNext={() => tap(active === "d" ? "mis" : "d")} onCopy={() => ready && copy(text)} onPrint={print} copied={copied} chips={chips}>
+    <Body kb={kb} tab="fune" onFull={onFull} onKey={onKey} onNext={() => tap(active === "d" ? "mis" : active === "mis" ? "mis2" : "d")} onCopy={() => ready && copy(text)} onPrint={print} copied={copied} chips={chips}>
     <div className="space-y-3" data-section="quick-rope">
       <Result
         label={showWireBig ? `Fili rotti ${wireBig[2]}` : "Calo del diametro"}
@@ -399,10 +399,23 @@ const QuickRope = ({ saved, onSave, kb, onFull }) => {
           <InfoBtn id={strands === "tanti" ? "tanti" : strands} label="trefoli" />
         </span>
       </div>
-      <div className="grid grid-cols-2 gap-2">
-        <Field id="d" label="Nominale" info="nomfune" value={v.d} active={kb.open && active === "d"} onTap={() => tap("d")} hint={dn ? `6d = ${Math.round(6 * dn)} mm · 30d = ${Math.round(30 * dn)} mm` : ""} />
-        <Field id="mis" label="Misurato" info="diamfune" value={v.mis} active={kb.open && active === "mis"} onTap={() => tap("mis")} hint={readAs(v.mis, dn)} />
+      <div className="grid grid-cols-3 gap-2">
+        <Field id="d" label="Nominale" info="nomfune" value={v.d} active={kb.open && active === "d"} onTap={() => tap("d")} hint="" />
+        <Field id="mis" label="Misura 1" info="diamfune" value={v.mis} active={kb.open && active === "mis"} onTap={() => tap("mis")} hint={readAs(v.mis, dn)} />
+        <Field id="mis2" label="Misura 2 (90°)" info="diamfune" value={v.mis2} active={kb.open && active === "mis2"} onTap={() => tap("mis2")} hint={readAs(v.mis2, dn)} />
       </div>
+      {dn > 0 && (
+        <p className="text-sm font-black text-slate-700 flex flex-wrap gap-x-3" data-quick-lengths>
+          <span>6d = {fmt((6 * dn) / 10, 1)} cm</span>
+          <span>30d = {fmt((30 * dn) / 10, 1)} cm</span>
+          {r.m1 > 0 && r.m2 > 0 && <span className="text-slate-500">· media {fmt(r.dMis, 2)} mm</span>}
+        </p>
+      )}
+      {r.incWarn && (
+        <p className="text-[12px] font-bold text-amber-800 bg-amber-50 border border-amber-300 rounded-xl px-3 py-2 leading-snug" data-quick-inc>
+          Diametro aumentato del {fmt(r.inc)}%: ISO 4309 (6.7.6) chiede di cercarne la causa e di valutare lo scarto.
+        </p>
+      )}
       <div className="grid grid-cols-2 gap-2">
         <Counter id="b6" info="fili" label="Fili rotti 6d" value={b6} onChange={(n) => { setB30((o) => Math.max(n, o + (n - b6))); setB6(n); }} limit={r.lim.six} />
         <Counter id="b30" info="tratto" label="Fili rotti 30d" value={b30} onChange={(n) => setB30(Math.max(n, b6))} limit={r.lim.thirty} />

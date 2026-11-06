@@ -49,7 +49,8 @@ export const ropeRegister = ({ r, x, label = "" }) => {
   const out = [`CONTROLLO FUNE (ISO 4309:2017) – ${today()}${tech() ? " – tecnico " + tech() : ""}`];
   out.push(`Fune: ${label || "non nota (valori prudenti)"}${d ? ` Ø${fmt(d)} mm` : ""}`);
   out.push(`Fili rotti visibili nel tratto peggiore: ${r.b6 || 0} su 6d${r.len6 ? ` (${r.len6} mm)` : ""}, scarto a ${r.lim.six} · ${r.b30 || 0} su 30d${r.len30 ? ` (${r.len30} mm)` : ""}, scarto a ${r.lim.thirty}`);
-  out.push(r.dec != null ? `Diametro: riferimento ${fmt(r.dRef, 2)} mm · misurato ${fmt(r.dMis, 2)} mm · calo ${fmt(r.dec)}% (scarto al ${fmt(r.dia.limit)}%)` : "Diametro: non misurato");
+  out.push(r.dec != null ? `Diametro: riferimento ${fmt(r.dRef, 2)} mm · misurato ${fmt(r.dMis, 2)} mm${r.m1 && r.m2 ? ` (media di ${fmt(r.m1, 2)} e ${fmt(r.m2, 2)} a 90°)` : ""} · calo ${fmt(r.dec)}% sul nominale (scarto al ${fmt(r.dia.limit)}%${r.dia.teci ? ", catalogo Teci" : ""})` : "Diametro: non misurato");
+  if (r.incWarn) out.push(`Diametro aumentato del ${fmt(r.inc)}% rispetto al riferimento (ISO 4309, 6.7.6: cercarne la causa e valutare lo scarto)`);
   out.push(`Altri difetti: ${r.flags.length ? r.flags.map((k) => (ROPE_FLAGS.find((f) => f[0] === k) || [k, k])[1]).join("; ") : "nessuno"}`);
   out.push(`Gravità complessiva: ${v.g}%`);
   out.push(`Esito: ${v.esito} – ${v.azione}`);
@@ -77,7 +78,8 @@ export const ropeReport = ({ r, x, label = "", fas = false, teci = false }) => {
     ["Fili rotti visibili su 6d" + (r.len6 ? ` (${r.len6} mm)` : ""), String(r.b6 || 0), `scarto a ${r.lim.six}`, `${ok((r.b6 || 0) >= r.lim.six)} · gravità ${r.s6}%`],
     ["Fili rotti visibili su 30d" + (r.len30 ? ` (${r.len30} mm)` : ""), String(r.b30 || 0), `scarto a ${r.lim.thirty}`, `${ok((r.b30 || 0) >= r.lim.thirty)} · gravità ${r.s30}%`],
   ];
-  if (r.dec != null) rows.push(["Diametro (rif. " + fmt(r.dRef, 2) + " mm)", `${fmt(r.dMis, 2)} mm · calo ${fmt(r.dec)}%`, `scarto al ${fmt(r.dia.limit)}%`, `${ok(r.dia.sev >= 100)} · gravità ${r.dia.sev}%`]);
+  if (r.dec != null) rows.push(["Diametro (rif. " + fmt(r.dRef, 2) + " mm)" + (r.m1 && r.m2 ? ` – media di ${fmt(r.m1, 2)} e ${fmt(r.m2, 2)} a 90°` : ""), `${fmt(r.dMis, 2)} mm · calo ${fmt(r.dec)}%`, `scarto al ${fmt(r.dia.limit)}%${r.dia.teci ? " (Teci)" : ""}`, `${ok(r.dia.sev >= 100)} · gravità ${r.dia.sev}%`]);
+  if (r.inc > 0) rows.push(["Aumento del diametro rispetto al riferimento", `+${fmt(r.inc)}%`, `${r.incLimit}% o più: cercarne la causa`, r.incWarn ? "DA VERIFICARE" : "sotto la soglia"]);
   else rows.push(["Diametro", "non misurato", "", ""]);
   if (r.dec != null && (r.b6 || r.b30)) rows.push(["Valutazione combinata (fili + diametro)", `${r.combined}%`, "scarto al 100%", ok(r.combined >= 100)]);
   const params = [
@@ -89,10 +91,10 @@ export const ropeReport = ({ r, x, label = "", fas = false, teci = false }) => {
     ["Avvolgimento sul tamburo", x.layers === "piu" ? "a più strati" : "a uno strato / non noto"],
   ];
   const norms = [
-    "ISO 4309:2017 (UNI ISO 4309) – Cranes – Wire ropes – Care and maintenance, inspection and discard. Criteri usati: numero di fili rotti visibili su 6d e su 30d, diminuzione del diametro rispetto al diametro di riferimento, valutazione combinata dei due; valori per meccanismi di classe M1–M4 o di classe non nota.",
+    "ISO 4309:2017 (UNI ISO 4309) – Cranes – Wire ropes – Care and maintenance, inspection and discard. Criteri usati: numero di fili rotti visibili su 6d e su 30d (Prospetti 3 e 4), diminuzione uniforme del diametro (Prospetto 5; calo = (diametro di riferimento − diametro misurato) / diametro nominale × 100, punto 6.4.2), valutazione combinata dei due; valori per meccanismi di classe M1–M4 o di classe non nota. Diametro misurato: «Media di due misurazioni, prese ad angolo retto una rispetto all'altra» (punto 3.2). Aumento del diametro in servizio del 5% o più (anima metallica) o del 10% o più (anima tessile): cercarne la causa e valutare lo scarto (punto 6.7.6).",
   ];
   if (fas) norms.push("Catalogo funi FAS (rev. 09/2026): numero massimo di fili rotti su 6d e 30d indicato nel catalogo per questa fune e questo diametro.");
-  if (teci) norms.push(`Catalogo Teci «Funi in acciaio / Steel Wire Ropes»: costruzione, fili portanti esterni e carico di rottura minimo della fune${r.lim.teci ? "; fili rotti ammessi dalla tabella Teci «Rottura dei fili (secondo ISO 4309)», meccanismi M1–M4" : ""}.`);
+  if (teci) norms.push(`Catalogo Teci «Funi in acciaio / Steel Wire Ropes»: costruzione, fili portanti esterni e carico di rottura minimo della fune${r.lim.teci ? "; fili rotti ammessi dalla tabella Teci «Rottura dei fili (secondo ISO 4309)», meccanismi M1–M4" : ""}. Diametro: «il diametro della fune, anche in un solo punto, risulta ridotto del 7% rispetto a quello nominale» → sostituzione.`);
   if (r.auto) norms.push("Fune non identificata: l'app usa i valori della fune più delicata del tipo osservato, con cordatura parallela e anima metallica.");
   norms.push(DLGS_3_1_2);
   return {
