@@ -201,9 +201,12 @@ export const checkRope = (x0) => {
   const rr = rope.rr;
   const dRef = readMeasure(x.dRef, d) || d;
   // ISO 4309:2017, 3.2: diametro misurato = media di due misurazioni prese ad angolo retto una rispetto all'altra
+  // fino a 4 misure (catalogo Teci: «due punti distanti almeno un metro; in ciascun punto si misurano due diametri
+  // a 90° uno dall'altro; la media dei quattro valori rilevati si assume come diametro effettivo»): media di quelle scritte
   const m1 = readMeasure(x.dMis, dRef);
   const m2 = readMeasure(x.dMis2, dRef);
-  const dMis = m1 && m2 ? Math.round(((m1 + m2) / 2) * 1000) / 1000 : m1 || m2;
+  const ms = [m1, m2, readMeasure(x.dMis3, dRef), readMeasure(x.dMis4, dRef)].filter((v) => v > 0);
+  const dMis = ms.length ? Math.round((ms.reduce((a, b) => a + b, 0) / ms.length) * 1000) / 1000 : 0;
   const multi = x.layers === "piu";
   const lim = fam
     ? fr
@@ -269,6 +272,7 @@ export const checkRope = (x0) => {
     level: discard ? "scarto" : worst >= 60 || incWarn ? "attenzione" : "ok",
     m1,
     m2,
+    ms,
     inc,
     incLimit,
     incWarn,
@@ -295,10 +299,11 @@ export const ROPE_FLAG_ISO = { valle: "6.2.1", terminale: "6.2.1", locale: "6.4.
 export const checkChain = (x) => {
   const num = (v) => Number(String(v || "").replace(",", ".")) || 0;
   const d = num(x.d);
-  const d1 = readMeasure(x.d1, d);
-  const d2 = readMeasure(x.d2, d) || d1;
+  // fino a 4 misure (d1 obbligatoria, d2 a 90°, d3 e d4 su altre maglie)
+  const ds = [x.d1, x.d2, x.d3, x.d4].map((v) => readMeasure(v, d)).filter((v) => v > 0);
   // regola Mora: basta una misura sotto il 90% del nominale → conta la misura più bassa (non la media)
-  const dm = d1 ? Math.min(d1, d2) : 0;
+  const dm = ds.length ? Math.min(...ds) : 0;
+  const dMean = ds.length ? Math.round((ds.reduce((a, b) => a + b, 0) / ds.length) * 1000) / 1000 : 0;
   const wear = d && dm ? Math.max(0, Math.round(((d - dm) / d) * 10000) / 100) : null;
   const t = num(x.t);
   const t1 = readMeasure(x.t1, t);
@@ -318,7 +323,7 @@ export const checkChain = (x) => {
   if (hoist && p11 != null) out.push({ id: "passo11", label: "Allungamento su 11 maglie", value: p11, limit: 2, bad: p11 > 2 });
   const discard = out.some((o) => o.bad) || flags.length > 0;
   const near = out.some((o) => o.value >= o.limit * 0.7);
-  return { d, dm, wear, minDm: d ? 0.9 * d : null, p1, p11, hoist, h0, h1, hook, checks: out, flags, discard, level: discard ? "scarto" : near ? "attenzione" : "ok" };
+  return { d, dm, ds, dMean, wear, minDm: d ? 0.9 * d : null, p1, p11, hoist, h0, h1, hook, checks: out, flags, discard, level: discard ? "scarto" : near ? "attenzione" : "ok" };
 };
 
 export const CHAIN_FLAGS = [

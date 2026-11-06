@@ -49,7 +49,7 @@ export const ropeRegister = ({ r, x, label = "" }) => {
   const out = [`CONTROLLO FUNE (ISO 4309:2017) – ${today()}${tech() ? " – tecnico " + tech() : ""}`];
   out.push(`Fune: ${label || "non nota (valori prudenti)"}${d ? ` Ø${fmt(d)} mm` : ""}`);
   out.push(`Fili rotti visibili nel tratto peggiore: ${r.b6 || 0} su 6d${r.len6 ? ` (${r.len6} mm)` : ""}, scarto a ${r.lim.six} · ${r.b30 || 0} su 30d${r.len30 ? ` (${r.len30} mm)` : ""}, scarto a ${r.lim.thirty}`);
-  out.push(r.dec != null ? `Diametro: riferimento ${fmt(r.dRef, 2)} mm · misurato ${fmt(r.dMis, 2)} mm${r.m1 && r.m2 ? ` (media di ${fmt(r.m1, 2)} e ${fmt(r.m2, 2)} a 90°)` : ""} · calo ${fmt(r.dec)}% sul nominale (scarto al ${fmt(r.dia.limit)}%${r.dia.teci ? ", catalogo Teci" : ""})` : "Diametro: non misurato");
+  out.push(r.dec != null ? `Diametro: riferimento ${fmt(r.dRef, 2)} mm · misurato ${fmt(r.dMis, 2)} mm${r.ms && r.ms.length > 1 ? ` (media di ${r.ms.length} misure: ${r.ms.map((m) => fmt(m, 2)).join(" · ")})` : ""} · calo ${fmt(r.dec)}% sul nominale (scarto al ${fmt(r.dia.limit)}%${r.dia.teci ? ", catalogo Teci" : ""})` : "Diametro: non misurato");
   if (r.incWarn) out.push(`Diametro aumentato del ${fmt(r.inc)}% rispetto al riferimento (ISO 4309, 6.7.6: cercarne la causa e valutare lo scarto)`);
   out.push(`Altri difetti: ${r.flags.length ? r.flags.map((k) => (ROPE_FLAGS.find((f) => f[0] === k) || [k, k])[1]).join("; ") : "nessuno"}`);
   out.push(`Gravità complessiva: ${v.g}%`);
@@ -60,7 +60,7 @@ export const chainRegister = ({ r, x }) => {
   const v = chainVerdict(r);
   const out = [`CONTROLLO CATENA ${x.kind === "imbracatura" ? "DEI SOTTOGANCI (BRACA DI CATENA)" : "DEL PARANCO"} – ${today()}${tech() ? " – tecnico " + tech() : ""}`];
   out.push(`Catena: ${x.kind === "imbracatura" && x.mora ? `N. Mora ${x.mora} · ` : ""}Ø${fmt(r.d, 2)} mm nominale${Number(String(x.t || "").replace(",", ".")) ? ` · passo ${x.t} mm` : ""}`);
-  out.push(r.wear != null ? `Usura: misura più bassa ${fmt(r.dm, 2)} mm (minimo ${fmt(r.minDm, 2)} mm) · usura ${fmt(r.wear)}% (scarto oltre il 10%)` : "Usura: non misurata");
+  out.push(r.wear != null ? `Usura: misura più bassa ${fmt(r.dm, 2)} mm${r.ds && r.ds.length > 1 ? ` su ${r.ds.length} misure (${r.ds.map((m) => fmt(m, 2)).join(" · ")}; media ${fmt(r.dMean, 2)} mm)` : ""} (minimo ${fmt(r.minDm, 2)} mm) · usura ${fmt(r.wear)}% (scarto oltre il 10%)` : "Usura: non misurata");
   if (r.p1 != null) out.push(`Allungamento di una maglia: ${fmt(r.p1)}% (scarto oltre il 5%)`);
   if (r.p11 != null && r.hoist) out.push(`Allungamento su 11 maglie: ${fmt(r.p11)}% (scarto oltre il 2%)`);
   if (r.hook != null) out.push(`Apertura del gancio: ${fmt(r.h1, 2)} mm su ${fmt(r.h0, 2)} mm nominali, +${fmt(Math.max(0, r.hook))}% (scarto oltre il 10%)`);
@@ -79,7 +79,7 @@ export const ropeReport = ({ r, x, label = "", fas = false, teci = false }) => {
     ["Fili rotti visibili su 6d" + (r.len6 ? ` (${r.len6} mm)` : ""), String(r.b6 || 0), `scarto a ${r.lim.six}`, `${ok((r.b6 || 0) >= r.lim.six)} · gravità ${r.s6}%`],
     ["Fili rotti visibili su 30d" + (r.len30 ? ` (${r.len30} mm)` : ""), String(r.b30 || 0), `scarto a ${r.lim.thirty}`, `${ok((r.b30 || 0) >= r.lim.thirty)} · gravità ${r.s30}%`],
   ];
-  if (r.dec != null) rows.push(["Diametro (rif. " + fmt(r.dRef, 2) + " mm)" + (r.m1 && r.m2 ? ` – media di ${fmt(r.m1, 2)} e ${fmt(r.m2, 2)} a 90°` : ""), `${fmt(r.dMis, 2)} mm · calo ${fmt(r.dec)}%`, `scarto al ${fmt(r.dia.limit)}%${r.dia.teci ? " (Teci)" : ""}`, `${ok(r.dia.sev >= 100)} · gravità ${r.dia.sev}%`]);
+  if (r.dec != null) rows.push(["Diametro (rif. " + fmt(r.dRef, 2) + " mm)" + (r.ms && r.ms.length > 1 ? ` – media di ${r.ms.length} misure (${r.ms.map((m) => fmt(m, 2)).join(" · ")})` : ""), `${fmt(r.dMis, 2)} mm · calo ${fmt(r.dec)}%`, `scarto al ${fmt(r.dia.limit)}%${r.dia.teci ? " (Teci)" : ""}`, `${ok(r.dia.sev >= 100)} · gravità ${r.dia.sev}%`]);
   if (r.inc > 0) rows.push(["Aumento del diametro rispetto al riferimento", `+${fmt(r.inc)}%`, `${r.incLimit}% o più: cercarne la causa`, r.incWarn ? "DA VERIFICARE" : "sotto la soglia"]);
   else rows.push(["Diametro", "non misurato", "", ""]);
   if (r.dec != null && (r.b6 || r.b30)) rows.push(["Valutazione combinata (fili + diametro)", `${r.combined}%`, "scarto al 100%", ok(r.combined >= 100)]);
@@ -129,7 +129,7 @@ export const chainReport = ({ r, x }) => {
     ["Catena", hoist ? "del paranco" : "dei sottoganci (braca di catena)"],
     ["Numero Mora (targhetta)", hoist ? "" : x.mora || ""],
     ["Diametro nominale", r.d ? `${fmt(r.d, 2)} mm` : ""],
-    ["Misure", [x.d1, x.d2].filter(Boolean).map((m) => `${m} mm`).join(" · ")],
+    ["Misure", (r.ds || []).map((m) => `${fmt(m, 2)} mm`).join(" · ") + (r.ds && r.ds.length > 1 ? ` (media ${fmt(r.dMean, 2)} mm)` : "")],
     ["Passo nominale", Number(String(x.t || "").replace(",", ".")) ? `${x.t} mm` : ""],
   ];
   const norms = hoist

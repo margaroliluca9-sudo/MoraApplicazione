@@ -855,7 +855,7 @@ const RopeCheck = ({ known = null, onReport = null, crane = null }) => {
   const kf = known && known.fas && FAS_ROPES.some((f) => f.id === known.fas) ? "fas:" + known.fas : known && known.teci && teciFamily(known.teci) ? "teci:" + known.teci : "";
   const kc = known && ROPES.find((r) => r.id === known.costruzione);
   const kd = known && known.diametro ? String(known.diametro).replace(".", ",") : "";
-  const [x, setX] = useState({ mode: kf || kc ? "so" : "auto", strands: "6", rope: kf || (kc ? kc.id : "6x36"), n: "", core: "metallica", lay: "nonso", layers: "nonso", d: kd, dRef: kd, dMis: "", dMis2: "", b6: "", b30: "", cons: "", flags: {} });
+  const [x, setX] = useState({ mode: kf || kc ? "so" : "auto", strands: "6", rope: kf || (kc ? kc.id : "6x36"), n: "", core: "metallica", lay: "nonso", layers: "nonso", d: kd, dRef: kd, dMis: "", dMis2: "", dMis3: "", dMis4: "", b6: "", b30: "", cons: "", flags: {} });
   const set = (k) => (v) => setX((o) => ({ ...o, [k]: v }));
   const r = useMemo(() => checkRope(x), [x]);
   const isFas = !!r.fam;
@@ -865,11 +865,11 @@ const RopeCheck = ({ known = null, onReport = null, crane = null }) => {
   const catName = r.auto ? r.guess.label : isFas ? `FAS ${r.fam.id} (${r.fam.cons.join("/")})` : isTeci ? `Teci ${r.tfam.name} (${r.teciItem ? r.teciItem.cons : r.tfam.cons.join("/")})` : r.custom && x.cons ? String(x.cons).toUpperCase() : rope.label;
   const consNow = r.auto ? "" : isFas ? consOf({ fam: r.fam }) : isTeci ? (r.teciItem ? r.teciItem.cons : r.tfam.cons[0]) : r.custom ? String(x.cons || "") : consOf({ rope: ROPES.find((o) => o.id === x.rope) });
   const [copied, copy] = useCopy();
-  const ready = Number(r.n) > 0 && (x.b6 !== "" || x.b30 !== "" || x.dMis !== "" || x.dMis2 !== "" || r.flags.length > 0);
+  const ready = Number(r.n) > 0 && (x.b6 !== "" || x.b30 !== "" || x.dMis !== "" || x.dMis2 !== "" || x.dMis3 !== "" || x.dMis4 !== "" || r.flags.length > 0);
   const lines = [];
   if (x.b6 !== "" || x.b30 !== "") lines.push(`Fili rotti: ${r.b6} su 6d (limite ${r.lim.six}) · ${r.b30} su 30d (limite ${r.lim.thirty}) → gravità ${Math.max(r.s6, r.s30)}%`);
   if (r.limCross && (x.b6 !== "" || x.b30 !== "")) lines.push(`Contato come cordatura parallela (la più severa). Se sei sicuro che è crociata il limite sale a ${r.limCross.six} su 6d e ${r.limCross.thirty} su 30d.`);
-  if (r.dec != null) lines.push(`Diametro: ${r.m1 && r.m2 ? `media ${fmt(r.dMis, 2)} mm (${fmt(r.m1, 2)} e ${fmt(r.m2, 2)} a 90°), ` : ""}calato del ${fmt(r.dec)}% (scarto al ${fmt(r.dia.limit)}%${r.dia.teci ? ", catalogo Teci" : ""}) → gravità ${r.dia.sev}%`);
+  if (r.dec != null) lines.push(`Diametro: ${r.ms.length > 1 ? `media di ${r.ms.length} misure ${fmt(r.dMis, 2)} mm, ` : ""}calato del ${fmt(r.dec)}% (scarto al ${fmt(r.dia.limit)}%${r.dia.teci ? ", catalogo Teci" : ""}) → gravità ${r.dia.sev}%`);
   if (r.incWarn) lines.push(`Diametro aumentato del ${fmt(r.inc)}% rispetto al riferimento: ISO 4309 (6.7.6) chiede di cercarne la causa e di valutare lo scarto`);
   if ((x.b6 !== "" || x.b30 !== "") && r.dec != null) lines.push(`Insieme (fili + diametro): ${r.combined}%`);
   r.flags.forEach((k) => lines.push((ROPE_FLAGS.find((f) => f[0] === k) || [k, k])[1] + " → scarto"));
@@ -1032,15 +1032,19 @@ const RopeCheck = ({ known = null, onReport = null, crane = null }) => {
         <div className="grid grid-cols-2 gap-3">
           <Num id="dRef" info="diamfune" label="Di riferimento" value={x.dRef} onChange={set("dRef")} hint={readAs(x.dRef, nOf(x.d)) || "Misurato sulla fune nuova, dopo il rodaggio, in un tratto che non passa sulle pulegge. Se non c'è vale il nominale."} />
           <span />
-          <Num id="dMis" info="diamfune" label="Misura 1" value={x.dMis} onChange={set("dMis")} hint={readAs(x.dMis, r.dRef)} />
+          <span className="col-span-2 text-[11px] font-black text-slate-500 uppercase tracking-wider -mb-1">Punto 1</span>
+          <Num id="dMis" info="diamfune" label="Misura 1 (obbligatoria)" value={x.dMis} onChange={set("dMis")} hint={readAs(x.dMis, r.dRef)} />
           <Num id="dMis2" info="diamfune" label="Misura 2 (a 90°)" value={x.dMis2} onChange={set("dMis2")} hint={readAs(x.dMis2, r.dRef)} />
+          <span className="col-span-2 text-[11px] font-black text-slate-500 uppercase tracking-wider -mb-1">Punto 2 (almeno 1 m più in là)</span>
+          <Num id="dMis3" info="diamfune" label="Misura 3" value={x.dMis3} onChange={set("dMis3")} hint={readAs(x.dMis3, r.dRef)} />
+          <Num id="dMis4" info="diamfune" label="Misura 4 (a 90°)" value={x.dMis4} onChange={set("dMis4")} hint={readAs(x.dMis4, r.dRef)} />
         </div>
         <p className="text-[11px] text-slate-500 leading-snug -mt-1">
-          ISO 4309, punto 3.2: il diametro misurato è la «media di due misurazioni, prese ad angolo retto una rispetto all'altra». Scrivi le due misure e l'app fa la media.
+          ISO 4309, punto 3.2: il diametro misurato è la «media di due misurazioni, prese ad angolo retto una rispetto all'altra». Catalogo Teci: «due punti distanti almeno un metro; in ciascun punto si misurano due diametri a 90° uno dall'altro; la media dei quattro valori rilevati si assume come diametro effettivo». La prima misura basta; con le altre l'app fa la media di tutte quelle scritte.
         </p>
-        {r.m1 > 0 && r.m2 > 0 && (
+        {r.ms.length > 1 && (
           <p className="text-sm font-black text-slate-700" data-wear-dmean>
-            Media: {fmt(r.dMis, 2)} mm
+            Media di {r.ms.length} misure: {fmt(r.dMis, 2)} mm
           </p>
         )}
         {r.dec != null && r.dMis <= r.dRef && (
@@ -1094,12 +1098,12 @@ const RopeCheck = ({ known = null, onReport = null, crane = null }) => {
 const ChainCheck = ({ known = null, onReport = null, crane = null }) => {
   const kd = known && known.diametro ? String(known.diametro).replace(".", ",") : "";
   const kp = known && known.passo ? String(known.passo).replace(".", ",") : "";
-  const [x, setX] = useState({ kind: (known && known.kind) || "paranco", d: kd, d1: "", d2: "", t: kp, t1: "", t11: "", flags: {} });
+  const [x, setX] = useState({ kind: (known && known.kind) || "paranco", d: kd, d1: "", d2: "", d3: "", d4: "", t: kp, t1: "", t11: "", flags: {} });
   const set = (k) => (v) => setX((o) => ({ ...o, [k]: v }));
   const r = useMemo(() => checkChain(x), [x]);
   const [copied, copy] = useCopy();
   const lines = r.checks.map((c) => `${c.label}: ${fmt(c.value)}% (scarto oltre il ${c.limit}%)${c.bad ? " → scarto" : ""}`);
-  if (r.wear != null) lines.unshift(`Misura più bassa ${fmt(r.dm, 2)} mm su ${fmt(r.d, 2)} mm nominale (minimo ammesso ${fmt(r.minDm, 2)} mm)`);
+  if (r.wear != null) lines.unshift(`Misura più bassa ${fmt(r.dm, 2)} mm${r.ds.length > 1 ? ` su ${r.ds.length} misure (media ${fmt(r.dMean, 2)} mm)` : ""} su ${fmt(r.d, 2)} mm nominale (minimo ammesso ${fmt(r.minDm, 2)} mm)`);
   r.flags.forEach((k) => lines.push((CHAIN_FLAGS.find((f) => f[0] === k) || [k, k])[1] + " → scarto"));
   const title = r.level === "scarto" ? "Catena da scartare" : r.level === "attenzione" ? "Catena idonea, vicina al limite di scarto" : "Catena idonea";
   const report = `Controllo catena ${x.kind === "imbracatura" ? "dei sottoganci" : "del paranco"}${x.d ? " Ø" + x.d + " mm" : ""}: ${title.toLowerCase()}. ${lines.join(". ")}.`;
@@ -1117,9 +1121,16 @@ const ChainCheck = ({ known = null, onReport = null, crane = null }) => {
         {x.kind === "imbracatura" && <Txt id="mora" label="Numero Mora (targhetta)" value={x.mora || ""} onChange={set("mora")} hint="Il numero progressivo della targhetta Mora sul sottogancio." />}
         <Num id="d" info="catnominale" label="Diametro nominale (d)" value={x.d} onChange={set("d")} />
         <div className="grid grid-cols-2 gap-3">
-          <Num id="d1" info="catmisura" label="Misura d1" value={x.d1} onChange={set("d1")} hint={readAs(x.d1, nOf(x.d))} />
+          <Num id="d1" info="catmisura" label="Misura d1 (obbligatoria)" value={x.d1} onChange={set("d1")} hint={readAs(x.d1, nOf(x.d))} />
           <Num id="d2" label="Misura d2 (a 90°)" value={x.d2} onChange={set("d2")} hint={readAs(x.d2, nOf(x.d))} />
+          <Num id="d3" label="Misura d3 (altra maglia)" value={x.d3} onChange={set("d3")} hint={readAs(x.d3, nOf(x.d))} />
+          <Num id="d4" label="Misura d4 (a 90°)" value={x.d4} onChange={set("d4")} hint={readAs(x.d4, nOf(x.d))} />
         </div>
+        {r.ds.length > 1 && (
+          <p className="text-sm font-black text-slate-700" data-wear-cmean>
+            Più bassa {fmt(r.dm, 2)} mm · media {fmt(r.dMean, 2)} mm ({r.ds.length} misure)
+          </p>
+        )}
         <p className="text-[11px] text-slate-400 leading-snug">Misura nel punto dove le maglie si toccano (dove si consuma), con la catena allentata: due misure a 90° tra loro. Conta la misura più bassa: basta una sotto il 90% del nominale per lo scarto.</p>
         {r.wear != null && (
           <div className="text-xs font-bold text-slate-500">
@@ -1434,7 +1445,11 @@ const lastCheckOf = (logs, type) => {
 const norm = (v) => String(v || "").trim().toUpperCase();
 
 // SU QUALE GRU? solo le gru di cui l'app sa la fune (o la catena): sostituita con un rapporto, col tipo
-const CranePicker = ({ machines, crane, onPick, color, type }) => {
+// QUALE GRU (facoltativo): prima il cliente, poi la gru. In cima i clienti dove l'app sa la fune (o la catena) montata
+// perché l'abbiamo cambiata noi; sotto tutti gli altri. Scegliere la gru non salva niente: serve per il verbale
+// (cliente, matricola, tipo) e, se l'app la sa, per partire dalla fune o catena montata.
+const CranePicker = ({ machines, crane, onPick, color, type, knownLabel }) => {
+  const [cust, setCust] = useState("");
   if (crane)
     return (
       <div className="bg-white rounded-3xl border border-slate-200 p-3 flex items-center gap-3" data-wear-crane>
@@ -1444,49 +1459,83 @@ const CranePicker = ({ machines, crane, onPick, color, type }) => {
             {crane.customerName} · {getSafeMatricola(crane)}
           </p>
           {crane.type && <p className="text-xs text-slate-500 truncate">{crane.type}</p>}
+          <p className={`text-[11px] font-bold ${knownLabel(crane) ? "text-emerald-700" : "text-slate-400"}`} data-wear-crane-known={knownLabel(crane) ? "1" : "0"}>
+            {knownLabel(crane) ? `${type === "catena" ? "Catena" : "Fune"} montata da noi: ${knownLabel(crane)}` : `${type === "catena" ? "Catena" : "Fune"} non nota: scegli tu ${type === "catena" ? "il diametro" : "la costruzione"} qui sotto`}
+          </p>
         </div>
-        <button type="button" onClick={() => onPick(null)} className={`h-9 px-3 rounded-full border border-slate-200 text-sm font-bold text-${color}-700`} data-action="wear-crane-change">
+        <button
+          type="button"
+          onClick={() => {
+            onPick(null);
+            setCust(crane.customerName || "");
+          }}
+          className={`h-9 px-3 rounded-full border border-slate-200 text-sm font-bold text-${color}-700`}
+          data-action="wear-crane-change"
+        >
           Cambia
         </button>
       </div>
     );
-  // menu a tendina (le gru sono tante): raggruppate per cliente
-  const groups = {};
-  [...machines]
-    .sort((a, b) => String(a.customerName).localeCompare(String(b.customerName), "it") || String(getSafeMatricola(a)).localeCompare(String(getSafeMatricola(b)), "it", { numeric: true }))
-    .forEach((m) => {
-      (groups[m.customerName || "—"] = groups[m.customerName || "—"] || []).push(m);
-    });
+  const byCust = {};
+  machines.forEach((m) => {
+    const c = m.customerName || "—";
+    (byCust[c] = byCust[c] || []).push(m);
+  });
+  const names = Object.keys(byCust).sort((a, b) => a.localeCompare(b, "it"));
+  const nKnown = (c) => byCust[c].filter((m) => knownLabel(m)).length;
+  const withKnown = names.filter((c) => nKnown(c) > 0);
+  const others = names.filter((c) => !nKnown(c));
+  const list = cust && byCust[cust] ? [...byCust[cust]].sort((a, b) => (knownLabel(b) ? 1 : 0) - (knownLabel(a) ? 1 : 0) || String(getSafeMatricola(a)).localeCompare(String(getSafeMatricola(b)), "it", { numeric: true })) : [];
   return (
     <div className="bg-white rounded-3xl border border-slate-200 p-3 space-y-2" data-wear-picker>
-      <p className="text-xs font-black text-slate-500">Su quale gru? (facoltativo) — qui ci sono solo le gru di cui l'app sa {type === "catena" ? "la catena montata" : "che fune c'è montata"}</p>
+      <p className="text-xs font-black text-slate-500">Su quale gru? (facoltativo: serve per il verbale, non si salva niente)</p>
       {!machines.length ? (
         <p className="text-xs text-slate-400" data-wear-none>
-          Per ora nessuna: compaiono quando {type === "catena" ? "la catena viene sostituita" : "la fune viene sostituita"} con un rapporto dell'app (con il tipo di fune).
+          Nessuna gru nell'elenco.
         </p>
       ) : (
-        <select
-          className={INPUT}
-          value=""
-          data-wear-input="crane"
-          aria-label="Scegli la gru"
-          onChange={(e) => {
-            const m = machines.find((x) => String(x.id) === e.target.value);
-            if (m) onPick(m);
-          }}
-        >
-          <option value="">Scegli la gru ({machines.length})…</option>
-          {Object.keys(groups).map((c) => (
-            <optgroup key={c} label={c}>
-              {groups[c].map((m) => (
-                <option key={m.id} value={m.id} data-wear-crane-option={getSafeMatricola(m)}>
-                  {getSafeMatricola(m)}
-                  {m.type ? ` · ${m.type}` : ""}
+        <>
+          <select className={INPUT} value={cust} data-wear-input="customer" aria-label="Scegli il cliente" onChange={(e) => setCust(e.target.value)}>
+            <option value="">Scegli il cliente ({names.length})…</option>
+            {withKnown.length > 0 && (
+              <optgroup label={`${type === "catena" ? "Catena" : "Fune"} cambiata da noi`}>
+                {withKnown.map((c) => (
+                  <option key={c} value={c} data-wear-cust-option={c}>
+                    {c} · {nKnown(c)} {nKnown(c) === 1 ? "gru" : "gru"} con {type === "catena" ? "catena" : "fune"} nota
+                  </option>
+                ))}
+              </optgroup>
+            )}
+            <optgroup label="Tutti gli altri clienti">
+              {others.map((c) => (
+                <option key={c} value={c} data-wear-cust-option={c}>
+                  {c}
                 </option>
               ))}
             </optgroup>
-          ))}
-        </select>
+          </select>
+          {cust && (
+            <select
+              className={INPUT}
+              value=""
+              data-wear-input="crane"
+              aria-label="Scegli la gru"
+              onChange={(e) => {
+                const m = list.find((x) => String(x.id) === e.target.value);
+                if (m) onPick(m);
+              }}
+            >
+              <option value="">Scegli la gru ({list.length})…</option>
+              {list.map((m) => (
+                <option key={m.id} value={m.id} data-wear-crane-option={getSafeMatricola(m)}>
+                  {getSafeMatricola(m)}
+                  {m.type ? ` · ${m.type}` : ""}
+                  {knownLabel(m) ? ` · ✓ ${knownLabel(m)}` : ""}
+                </option>
+              ))}
+            </select>
+          )}
+        </>
       )}
     </div>
   );
@@ -1508,7 +1557,22 @@ export const WearPanel = ({ color = "blue", onBack, onClose, machines = [], logs
   // gru di cui si sa la fune montata (tutti gli interventi, anche quelli di prima: tipo dal certificato o dalla descrizione)
   const known = useMemo(() => knownRopes(logs), [logs]);
   const chainKeys = useMemo(() => new Set(logs.filter((l) => l && l.catena && l.catena.diametro).map((l) => `${norm(l.customer)}|${norm(l.machineId)}`)), [logs]);
-  const pickable = useMemo(() => machines.filter((m) => (type === "fune" ? !!known[mkey(m)] : chainKeys.has(mkey(m)))), [machines, known, chainKeys, type]);
+  // cosa sa l'app della fune / catena montata su una gru (vuoto = non la sa)
+  const chainOf = useMemo(() => {
+    const out = {};
+    logs.forEach((l) => {
+      if (l && l.catena && l.catena.diametro) out[`${norm(l.customer)}|${norm(l.machineId)}`] = `Ø${String(l.catena.diametro).replace(".", ",")} mm`;
+    });
+    return out;
+  }, [logs]);
+  const knownLabel = (m) => {
+    if (type === "catena") return chainOf[mkey(m)] || (chainKeys.has(mkey(m)) ? "nota" : "");
+    const k = known[mkey(m)];
+    if (!k) return "";
+    const t = k.type || {};
+    const name = t.fas || (t.teci ? `Teci ${t.teci}` : t.costruzione ? ropeName(t.costruzione) : "");
+    return `${name || "fune"}${t.diametro ? ` Ø${String(t.diametro).replace(".", ",")}` : ""}`;
+  };
   const kr = crane && type === "fune" ? known[mkey(crane)] : null;
   const mounted = crane ? (kr ? kr.log : lastRopeOf(craneLogs, type)) : null;
   const knownType = kr ? { ...(mounted.fune || {}), fas: kr.type.fas || "", teci: kr.type.teci || "", costruzione: kr.type.costruzione || "", diametro: kr.type.diametro || (mounted.fune || {}).diametro } : null;
@@ -1529,7 +1593,7 @@ export const WearPanel = ({ color = "blue", onBack, onClose, machines = [], logs
     <div className="flex flex-col h-full" data-section="wear">
       <PanelHeader title="Fune e catena" sub="Cosa dice la norma" onBack={onBack} onClose={onClose} color={color} />
       <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50">
-        {tab !== "sling" && <CranePicker machines={pickable} crane={crane} onPick={setCrane} color={color} type={type} />}
+        {tab !== "sling" && <CranePicker machines={machines} crane={crane} onPick={setCrane} color={color} type={type} knownLabel={knownLabel} />}
         <div className="flex bg-slate-200/70 p-1 rounded-2xl" role="tablist">
           {[
             ["rope", "Fune"],
