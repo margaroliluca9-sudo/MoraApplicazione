@@ -33,6 +33,12 @@ export const ROPES = [
   { id: "8x26", label: "8×26 WS", n: 208, rr: false },
   { id: "8x31", label: "8×31 WS", n: 248, rr: false },
   { id: "8x36", label: "8×36 WS", n: 288, rr: false },
+  // 9 trefoli (catalogo FAS «Funi di acciaio a 9 trefoli», compattate con anima metallica plastificata)
+  { id: "9x7", label: "9×7 (anche compattata 9×K7)", n: 63, rr: false },
+  { id: "9x17", label: "9×17 / 9×19 Seale (anche compattata)", n: 153, rr: false, seale: true },
+  { id: "9x26", label: "9×26 WS (anche compattata)", n: 234, rr: false },
+  { id: "9x31", label: "9×31 WS (anche compattata)", n: 279, rr: false },
+  { id: "9x36", label: "9×36 WS (anche compattata)", n: 324, rr: false },
   { id: "18x7", label: "18×7 / 19×7 antigiro", n: 84, rr: true },
   { id: "35x7", label: "35×7 / 35(W)×7 antigiro", n: 112, rr: true },
   { id: "altra", label: "Altra fune (scrivo io n)", n: 0, rr: false },
@@ -120,6 +126,7 @@ const wireSeverity = (count, limit) => {
 export const GUESS = {
   6: { n: 114, rr: false, seale: true, label: "6 trefoli (si conta come 6×19 Seale)" },
   8: { n: 152, rr: false, seale: true, label: "8 trefoli (si conta come 8×19 Seale)" },
+  9: { n: 63, rr: false, label: "9 trefoli (si conta come 9×7)" },
   tanti: { n: 84, rr: true, label: "tanti trefoli: antigiro (si conta come 18×7)" },
 };
 export const guessRope = (x) => {

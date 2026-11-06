@@ -314,6 +314,7 @@ const QuickChain = ({ saved, onSave, kb, onFull }) => {
 const STRANDS = [
   ["6", "6 trefoli"],
   ["8", "8 trefoli"],
+  ["9", "9 trefoli"],
   ["tanti", "Antigiro"],
 ];
 const QuickRope = ({ saved, onSave, kb, onFull }) => {

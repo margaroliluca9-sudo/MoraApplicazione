@@ -174,6 +174,11 @@ export const ROPE_TYPES = [
   ["8x26", "8×26 WS"],
   ["8x31", "8×31 WS"],
   ["8x36", "8×36 WS"],
+  ["9x7", "9×7 (anche compattata 9×K7)"],
+  ["9x17", "9×17 / 9×19 Seale (anche compattata)"],
+  ["9x26", "9×26 WS (anche compattata)"],
+  ["9x31", "9×31 WS (anche compattata)"],
+  ["9x36", "9×36 WS (anche compattata)"],
   ["18x7", "18×7 / 19×7 antigiro"],
   ["35x7", "35×7 / 35(W)×7 antigiro"],
 ];

@@ -290,7 +290,7 @@ const useCopy = () => {
 const Section = ({ n, big = false }) => {
   const outer = n === "tanti" ? 14 : Number(n);
   const R = 15;
-  const r = n === "tanti" ? 3.6 : n === "8" ? 5 : 6.2;
+  const r = n === "tanti" ? 3.6 : n === "9" ? 4.6 : n === "8" ? 5 : 6.2;
   return (
     <svg viewBox="0 0 44 44" className={big ? "w-28 h-28" : "w-11 h-11"} aria-hidden="true">
       <circle cx="22" cy="22" r="20" fill="none" stroke="currentColor" strokeOpacity=".25" />
@@ -298,7 +298,7 @@ const Section = ({ n, big = false }) => {
       {Array.from({ length: outer }, (_, i) => (
         <circle key={i} cx={22 + (n === "tanti" ? 16 : R) * Math.cos((i * 2 * Math.PI) / outer)} cy={22 + (n === "tanti" ? 16 : R) * Math.sin((i * 2 * Math.PI) / outer)} r={r} fill="currentColor" opacity=".8" />
       ))}
-      {n !== "tanti" && <circle cx="22" cy="22" r={n === "8" ? 8 : 7} fill="currentColor" opacity=".3" />}
+      {n !== "tanti" && <circle cx="22" cy="22" r={n === "9" ? 9 : n === "8" ? 8 : 7} fill="currentColor" opacity=".3" />}
     </svg>
   );
 };
@@ -615,6 +615,17 @@ export const INFO = {
       </>
     ),
   },
+  9: {
+    title: "Fune a 9 trefoli",
+    text: "Conti 9 trefoli intorno all'anima. Nel catalogo FAS ci sono le «Funi di acciaio a 9 trefoli», con trefoli compattati e anima metallica plastificata. Se non sai la costruzione l'app la conta come 9×7, la più prudente (meno fili rotti ammessi).",
+    ex: "9×K7+PWRC, 9×K17S+EPIWRC, 9×K26WS+EPIWRC, 9×K36WS+EPIWRC",
+    art: (
+      <>
+        <Section n="9" big />
+        <Side strands={9} />
+      </>
+    ),
+  },
   tanti: {
     title: "Fune antigiro",
     text: "Fuori vedi tanti trefoli piccoli (più di 10, di solito da 12 a 18) e sotto c'è un altro strato di trefoli girato al contrario: col carico appeso la fune non gira su sé stessa. Si usa con il tiro singolo e le grandi altezze (gru a torre, autogru, paranchi alti). Attenzione: la norma ammette pochissimi fili rotti.",
@@ -872,6 +883,7 @@ const RopeCheck = ({ known = null, onReport = null, crane = null }) => {
           options={[
             ["6", "6 trefoli", <Section key="a" n="6" />],
             ["8", "8 trefoli", <Section key="b" n="8" />],
+            ["9", "9 trefoli", <Section key="n" n="9" />],
             ["tanti", "Più di 10 (antigiro)", <Section key="c" n="tanti" />],
           ]}
         />
