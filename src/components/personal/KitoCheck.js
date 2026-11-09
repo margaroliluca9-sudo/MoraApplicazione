@@ -159,7 +159,7 @@ const Tabs = ({ value, onChange, list, id }) => (
 const KqMeasure = ({ parts = "tutto" }) => {
   const showChain = parts !== "gancio";
   const showHook = parts !== "catena";
-  const [x, setX] = useState({ model: "KQ3SD", passo5: "", d: "", a: "", a0: "", b: "", c: "", od: "", oe: "", puleggia: "", molla: "", frenoB: "", serie: "", ore: "", flags: {} });
+  const [x, setX] = useState({ model: "KQ3SD", passo5: "", d: "", a: "", b: "", c: "", od: "", oe: "", puleggia: "", molla: "", frenoB: "", serie: "", ore: "", flags: {} });
   const [active, setActive] = useState("");
   const set = (k) => (v) => setX((o) => ({ ...o, [k]: v }));
   const r = useMemo(() => checkKq(x), [x]);
@@ -219,10 +219,9 @@ const KqMeasure = ({ parts = "tutto" }) => {
       {showHook && (
       <Card title="Gancio inferiore e occhiello di sospensione" id="hook">
         <KqHookArt active={active} st={st} />
-        <p className="text-[11px] text-slate-500 -mt-1">La «a» si misura tra i segni in rilievo del gancio. Sotto, l'occhiello di sospensione (d, e). Tocca un campo e la quota da misurare si colora di blu nel disegno.</p>
+        <p className="text-[11px] text-slate-500 -mt-1">La «a» si misura tra i segni in rilievo del gancio: per lei il manuale dà solo lo standard, il limite +10% è della UNI EN 818-6; b, c, d, e hanno i limiti del manuale. Tocca un campo e la sua lettera si colora di blu.</p>
         <div className="grid grid-cols-2 gap-2">
-          <Field id="a" label="a · apertura del gancio" value={x.a} onChange={set("a")} onFocus={() => setActive("a")} std={m.a} lim={r.aInfo ? r.aInfo.limit : Math.round(m.a * 1.1 * 100) / 100} dir="max" st={r.aInfo ? (r.aInfo.over ? "over" : r.aInfo.near ? "near" : "ok") : ""} hint={r.aInfo && r.aInfo.ref ? "(+5% sulla misura all'acquisto, manuale)" : "(+10% sullo standard, EN 818-6: scrivi la misura all'acquisto per usare il 5% del manuale)"} />
-          <Field id="a0" label="a · registrata all'acquisto" value={x.a0} onChange={set("a0")} onFocus={() => setActive("a")} hint="se ce l'hai" />
+          <Field id="a" label="a · apertura del gancio" value={x.a} onChange={set("a")} onFocus={() => setActive("a")} std={m.a} lim={r.aInfo ? r.aInfo.limit : Math.round(m.a * 1.1 * 100) / 100} dir="max" st={r.aInfo ? (r.aInfo.over ? "over" : r.aInfo.near ? "near" : "ok") : ""} hint="(tra i segni in rilievo · limite +10% sullo standard, UNI EN 818-6)" />
           {F("b", "b · larghezza del gancio")}
           {F("c", "c · spessore del gancio")}
           {F("od", "d · spessore dell'occhiello")}
