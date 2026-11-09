@@ -1601,7 +1601,7 @@ export const WearPanel = ({ color = "blue", onBack, onClose, machines = [], logs
             ["rope", "Fune"],
             ["chain", "Catena"],
             ["sling", "Sottoganci"],
-            ["kito", "Kito"],
+            ["kito", "Ganci"],
             ["break", "Carico rottura fune"],
           ].map(([id, l]) => (
             <button key={id} type="button" role="tab" aria-selected={tab === id} onClick={() => setTab(id)} data-wear-tab={id} className={`flex-1 min-h-11 px-1 rounded-xl font-black leading-tight ${id === "break" ? "text-xs" : "text-sm"} ${tab === id ? `bg-white text-${color}-700 shadow` : "text-slate-500"}`}>

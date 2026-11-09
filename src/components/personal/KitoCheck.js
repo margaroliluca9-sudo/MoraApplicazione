@@ -1,4 +1,5 @@
-// FUNE E CATENA → scheda «Kito»: paranchi elettrici a catena KITO serie KQ e KF.
+// FUNE E CATENA → scheda «Ganci paranchi»: paranchi elettrici a catena KITO (serie KQ e KF) e DONATI (serie DMK).
+// Donati DMK: catena (d, passo, 11 maglie) e gancio (a2, h2) con i limiti del manuale Donati (src/donati.js).
 // KQ: misure (catena, gancio con il disegno delle quote, occhiello, puleggia, molla, freno) con l'esito dai limiti
 // del manuale e il verbale PDF; conta ore (U7-01/02/03); codici errore dell'inverter; guasti; procedure.
 // KF: controllo del gancio con le misure (a, b, c, d, e, g): standard dal catalogo FAS, limite di scarto +10%
@@ -44,6 +45,7 @@ import {
   kfRegister,
   kfReport,
 } from "../../kito";
+import { DMK_MODELS, DMK_TEXT, DMK_SOURCE, DMK_FLAGS, DMK_MEASURES, checkDmk, dmkVerdict, dmkRegister, dmkReport, fmtD } from "../../donati";
 
 const useCopy = () => {
   const [copied, setCopied] = useState(false);
@@ -846,27 +848,199 @@ const KfView = () => {
   );
 };
 
+// ---------------------------------------------------------------- DONATI DMK
+// gancio DMK con le quote del manuale (fig. 77): a2 = apertura all'imbocco, h2 = altezza della sezione (disegno fatto dall'app)
+export const DmkHookArt = ({ active = "", st = {} }) => (
+  <div className="flex justify-center" data-dmk-hook-art>
+    <svg viewBox="0 0 230 240" className="w-64" aria-label="Gancio Donati: quote a2 e h2">
+      <Markers />
+      <rect x="100" y="8" width="30" height="56" rx="4" {...METAL} />
+      <path d="M104,64 L104,118 A52,52 0 1,0 176,148 L190,120 Q188,110 178,116 L160,148 A26,26 0 1,1 126,110 L126,64 Z" {...METAL} />
+      <line x1="128" y1="78" x2="182" y2="120" stroke="#334155" strokeWidth="5" strokeLinecap="round" />
+      <line x1="128" y1="78" x2="182" y2="120" stroke="#cbd5e1" strokeWidth="2.5" strokeLinecap="round" />
+      <Dim x1="128" y1="136" x2="176" y2="136" label="a2" lx="152" ly="162" st={st.a2} on={active === "a2"} />
+      <line x1="152" y1="139" x2="152" y2="152" stroke={active === "a2" ? "#2563eb" : "#cbd5e1"} strokeWidth="1" strokeDasharray="3 2" />
+      <Dim x1="74" y1="208" x2="74" y2="236" label="h2" lx="50" ly="222" st={st.h2} on={active === "h2"} />
+      <line x1="76" y1="208" x2="126" y2="208" stroke="#cbd5e1" strokeWidth="1" strokeDasharray="3 2" />
+      <line x1="76" y1="236" x2="126" y2="236" stroke="#cbd5e1" strokeWidth="1" strokeDasharray="3 2" />
+    </svg>
+  </div>
+);
+// catena DMK: diametro d, passo p di una maglia, 11 maglie
+export const DmkChainArt = ({ active = "", st = {} }) => {
+  const p = 17;
+  const d = 5;
+  const x0 = 22;
+  return (
+    <svg viewBox="0 0 230 96" className="w-full" aria-label="Catena Donati: diametro d, passo p e lunghezza di 11 maglie" data-dmk-chain-art>
+      <Markers />
+      {Array.from({ length: 11 }, (_, k) => {
+        const x = x0 + k * p - d;
+        const w = p + 2 * d;
+        return k % 2 === 0 ? <rect key={k} x={x} y={26} width={w} height={22} rx={11} fill="none" stroke="#334155" strokeWidth={d} /> : <rect key={k} x={x} y={34} width={w} height={d} rx={d / 2} fill="#cbd5e1" stroke="#334155" strokeWidth="1.5" />;
+      })}
+      <Dim x1={x0} y1="66" x2={x0 + 11 * p} y2="66" label="11p" lx={x0 + 5.5 * p} ly="84" st={st.p11} on={active === "p11"} />
+      <Dim x1={x0 + 2 * p} y1="14" x2={x0 + 3 * p} y2="14" label="p" lx={x0 + 2.5 * p} ly="4" st={st.p} on={active === "p"} />
+      <Dim x1={x0 - d - 10} y1="37" x2={x0 - 1} y2="37" label="d" lx={x0 - d - 5} ly="14" st={st.d} on={active === "d"} />
+    </svg>
+  );
+};
+
+const DmkMeasure = () => {
+  const [x, setX] = useState({ model: DMK_MODELS[1].id, d: "", p: "", p11: "", a2: "", h2: "", serie: "", flags: {} });
+  const [active, setActive] = useState("");
+  const set = (k) => (v) => setX((o) => ({ ...o, [k]: v }));
+  const r = useMemo(() => checkDmk(x), [x]);
+  const m = r.m;
+  const [copied, copy] = useCopy();
+  const [regCopied, copyReg] = useCopy();
+  const st = {};
+  r.items.forEach((i) => {
+    st[i.id] = i.over ? "over" : i.near ? "near" : "ok";
+  });
+  const v = dmkVerdict(r);
+  const Tone = r.level === "scarto" ? ["bg-red-600", XCircle] : r.level === "attenzione" ? ["bg-amber-500", AlertTriangle] : ["bg-emerald-600", CheckCircle2];
+  const Icon = Tone[1];
+  const F = (id, hint) => {
+    const q = DMK_MEASURES.find((z) => z.id === id);
+    const std = m[q.std];
+    const lim = q.lim ? m[q.lim] : Math.round(std * (1 + (q.dir === "max" ? q.pct : -q.pct) / 100) * 100) / 100;
+    return <Field id={id} label={q.label} value={x[id]} onChange={set(id)} onFocus={() => setActive(id)} st={st[id]} std={std} lim={lim} dir={q.dir} hint={hint} />;
+  };
+  return (
+    <div className="space-y-4" data-kito="dmk">
+      <div className="rounded-2xl bg-emerald-50 border border-emerald-200 p-3 text-[12px] text-emerald-900 leading-snug" data-dmk-source>
+        <b>Da dove vengono i numeri.</b> Tutti i limiti sono del <b>costruttore</b>: manuale Donati serie DMK (rev. luglio 2026), tabella della catena (FEM 9.671 paragrafo 4) e fig. 77 per il gancio. Nessun valore è inventato.
+      </div>
+      <Card title="Paranco" id="dmkmodel">
+        <div className="grid grid-cols-2 gap-1.5" data-dmk-models>
+          {DMK_MODELS.map((q) => (
+            <button key={q.id} type="button" onClick={() => set("model")(q.id)} data-dmk-model={q.id} className={`rounded-2xl border-2 px-2 py-2 text-left ${x.model === q.id ? "border-blue-500 bg-blue-50" : "border-slate-200 bg-white"}`}>
+              <span className={`block text-sm font-black ${x.model === q.id ? "text-blue-800" : "text-slate-700"}`}>{q.id}</span>
+              <span className="block text-[11px] text-slate-500 leading-tight">
+                FEM 2m {q.fem2m}
+                {q.fem1am !== "—" ? ` · 1Am ${q.fem1am}` : ""}
+                {q.fem1b !== "—" ? ` · 1B ${q.fem1b}` : ""}
+              </span>
+            </button>
+          ))}
+        </div>
+        <p className="text-[11px] text-slate-500">
+          Catena {m.chain} (d {fmtD(m.d)} mm, passo {fmtD(m.p)} mm) · carico di rottura minimo {fmtD(m.kN, 1)} kN · la grandezza e il gruppo FEM sono sulla targhetta.
+        </p>
+        <label className="block">
+          <span className="text-xs font-black text-slate-500">Numero di serie (facoltativo, va sul verbale)</span>
+          <input className={INPUT} value={x.serie} onChange={(e) => set("serie")(e.target.value.toUpperCase())} data-kito-input="dmkserie" autoComplete="off" />
+        </label>
+      </Card>
+      <Card title="Catena di sollevamento" id="dmkchain">
+        <DmkChainArt active={active} st={st} />
+        <div className="grid grid-cols-2 gap-2">
+          {F("d", "(tondino, nel punto più consumato)")}
+          {F("p", "(una maglia, da interno a interno)")}
+        </div>
+        {F("p11", "(11 maglie di fila, nel tratto che lavora sulla noce)")}
+        <Quote>{DMK_TEXT.catenaTab}</Quote>
+        <Quote>{DMK_TEXT.catenaDove}</Quote>
+        <Quote>{DMK_TEXT.spina}</Quote>
+      </Card>
+      <Card title="Gancio di sollevamento" id="dmkhook">
+        <DmkHookArt active={active} st={st} />
+        <p className="text-[11px] text-slate-500 -mt-1">Tocca un campo e la quota si colora di blu nel disegno. Verde entro il limite, arancio vicino, rosso oltre.</p>
+        <div className="grid grid-cols-2 gap-2">
+          {F("a2", "(all'imbocco)")}
+          {F("h2", "(la sezione nel fondo della gola)")}
+        </div>
+        <Quote>{DMK_TEXT.gancioSost}</Quote>
+        <p className="text-[11px] text-slate-500">
+          «{DMK_TEXT.gancioA2}» · «{DMK_TEXT.gancioH2}» · «{DMK_TEXT.gancioAssistenza}»
+        </p>
+      </Card>
+      <Card title="Controllo a vista (verifica trimestrale)" id="dmkflags">
+        <div className="space-y-2">
+          {DMK_FLAGS.map((f) => (
+            <label key={f.id} className="flex items-start gap-2 text-sm text-slate-700">
+              <input type="checkbox" className="mt-1 w-4 h-4" checked={!!x.flags[f.id]} onChange={(e) => set("flags")({ ...x.flags, [f.id]: e.target.checked })} data-kito-flag={"dmk-" + f.id} />
+              <span className="flex-1">
+                {f.label}
+                {x.flags[f.id] && <span className="block text-xs font-bold text-red-700">Rimedio: {f.rimedio}</span>}
+              </span>
+            </label>
+          ))}
+        </div>
+        <Quote>{DMK_TEXT.gancioTrim}</Quote>
+      </Card>
+      {r.any && (
+        <div className="rounded-3xl overflow-hidden border border-slate-200 bg-white shadow-lg" data-kito-verdict={r.level}>
+          <div className={`${Tone[0]} text-white p-5`}>
+            <p className="text-sm font-black uppercase tracking-wider opacity-90">DONATI {m.id}</p>
+            <p className="font-black text-2xl flex items-center gap-2 mt-1">
+              <Icon className="w-7 h-7 shrink-0" /> {r.level === "scarto" ? "Da sistemare" : r.level === "attenzione" ? "Entro i limiti, vicino" : "Entro i limiti"}
+            </p>
+          </div>
+          <div className="p-4 space-y-2">
+            <ul className="space-y-1 text-sm font-semibold text-slate-700">
+              {r.items.map((i) => (
+                <li key={i.id} data-kito-line={"dmk-" + i.id}>
+                  <span className={i.over ? "text-red-700" : i.near ? "text-amber-700" : ""}>
+                    {i.label}: {fmtD(i.v)} mm ({i.dir === "max" ? "max" : "min"} {fmtD(i.limit)}) → {i.over ? `OLTRE IL LIMITE · ${i.rimedio}` : "entro il limite"}
+                  </span>
+                </li>
+              ))}
+              {r.flags.map((f) => (
+                <li key={f.id} className="text-red-700">
+                  {f.label} → {f.rimedio}
+                </li>
+              ))}
+            </ul>
+            <div className="rounded-2xl bg-slate-50 border border-slate-200 p-3" data-kito-register>
+              <p className="text-[11px] font-black text-slate-500 uppercase tracking-wider">Sul registro di controllo</p>
+              <p className="font-black text-slate-800 mt-0.5" data-kito-esito>
+                Esito: {v.esito}
+              </p>
+              <p className="text-sm font-semibold text-slate-700">{v.azione}</p>
+              <button type="button" onClick={() => copyReg(dmkRegister({ r }))} className="mt-2 h-10 px-3 rounded-xl bg-white border border-slate-300 text-sm font-bold text-slate-700 flex items-center gap-1.5" data-action="dmk-copy-register">
+                {regCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />} {regCopied ? "Copiato: incollalo sul registro" : "Copia per il registro"}
+              </button>
+            </div>
+            <button type="button" onClick={() => copy(dmkRegister({ r }))} className="h-10 px-3 rounded-xl bg-slate-100 border border-slate-200 text-sm font-bold text-slate-700 flex items-center gap-1.5" data-action="dmk-copy">
+              {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />} {copied ? "Copiato: incollalo nel rapporto" : "Copia per il rapporto"}
+            </button>
+            <button type="button" onClick={() => printWear(dmkReport({ r, x }))} className="w-full h-11 px-3 rounded-xl bg-slate-900 text-white text-sm font-bold flex items-center justify-center gap-1.5" data-action="dmk-print">
+              <Printer className="w-4 h-4" /> Stampa il verbale (PDF)
+            </button>
+          </div>
+        </div>
+      )}
+      <p className="text-[11px] text-slate-400 text-center">{DMK_SOURCE}. {DMK_TEXT.periodicita}</p>
+    </div>
+  );
+};
+
 export const KitoCheck = () => {
   const [serie, setSerie] = useState("kq");
   const [sec, setSec] = useState("misure");
   return (
     <div className="space-y-4" data-section="wear-kito">
       <div className="px-1">
-        <h3 className="font-black text-slate-800 text-lg leading-tight">Ganci Kito</h3>
-        <p className="text-xs text-slate-500">Paranchi elettrici a catena KITO: gancio, catena e controlli</p>
+        <h3 className="font-black text-slate-800 text-lg leading-tight">Ganci paranchi</h3>
+        <p className="text-xs text-slate-500">Paranchi elettrici a catena: gancio, catena e controlli del costruttore</p>
       </div>
       <div className="flex bg-slate-200/70 p-1 rounded-2xl" data-kito-serie>
         {[
-          ["kq", "Kito KQ", "limiti dal manuale FAS/KITO"],
-          ["kf", "Kito KF", "limite dalla UNI EN 818-6"],
+          ["kq", "Kito KQ", "manuale FAS/KITO"],
+          ["kf", "Kito KF", "UNI EN 818-6"],
+          ["dmk", "Donati DMK", "manuale Donati"],
         ].map(([id, l, sub]) => (
-          <button key={id} type="button" onClick={() => setSerie(id)} data-kito-serie-btn={id} className={`flex-1 min-h-12 py-1 rounded-xl leading-tight ${serie === id ? "bg-white text-slate-800 shadow" : "text-slate-500"}`}>
+          <button key={id} type="button" onClick={() => setSerie(id)} data-kito-serie-btn={id} className={`flex-1 min-h-12 py-1 px-0.5 rounded-xl leading-tight ${serie === id ? "bg-white text-slate-800 shadow" : "text-slate-500"}`}>
             <span className="block text-sm font-black">{l}</span>
             <span className={`block text-[10px] font-bold ${serie === id ? "text-slate-500" : "text-slate-400"}`}>{sub}</span>
           </button>
         ))}
       </div>
-      {serie === "kf" ? (
+      {serie === "dmk" ? (
+        <DmkMeasure />
+      ) : serie === "kf" ? (
         <KfView />
       ) : (
         <>
