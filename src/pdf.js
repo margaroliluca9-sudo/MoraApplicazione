@@ -803,7 +803,7 @@ export const buildWearPdf = async ({ rep, crane = null, tech = "", today }) => {
       { label: (rep.rowHead || [])[2] || "Limite di scarto", w: 0.2 },
       { label: (rep.rowHead || [])[3] || "Esito", w: 0.22 },
     ],
-    rows: rep.rows.map((r) => [{ t: r[0], b: true }, r[1], r[2], { t: r[3], b: true, c: /OLTRE|SCARTO|MANCANTE/.test(r[3]) ? [220, 38, 38] : C.green }]),
+    rows: rep.rows.map((r) => [{ t: r[0], b: true }, r[1], r[2], { t: r[3], b: true, c: /OLTRE|SCARTO|MANCANTE/.test(r[3]) ? [220, 38, 38] : /VERIFICARE/.test(r[3]) ? [217, 119, 6] : C.green }]),
   });
   flow.heading("Altri difetti osservati");
   if (rep.defects.length) rep.defects.forEach((d) => flow.paragraph(`- ${d} (motivo di scarto)`, { size: 9 }));

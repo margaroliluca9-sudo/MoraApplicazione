@@ -4,7 +4,9 @@
 // FUNI — ISO 4309:2017 (Gru — Funi metalliche — Cura, manutenzione, ispezione e scarto)
 //   Tabella 3: fili rotti visibili per funi a uno strato di trefoli («single-layer») e a trefoli paralleli
 //   Tabella 4: fili rotti visibili per funi antigiro
-//   Tabella 5: diminuzione uniforme del diametro (rispetto al diametro di riferimento)
+//   Tabella 5: diminuzione uniforme del diametro: (riferimento − misurato) / nominale × 100 (punto 6.4.2, formula 1);
+//   diametro misurato = media di due misure ad angolo retto (punto 3.2); aumento in servizio ≥ 5% (anima metallica)
+//   o ≥ 10% (anima tessile): cercare la causa e valutare lo scarto (punto 6.7.6). Funi Teci: scarto al 7% sul nominale.
 //   I valori della Tab. 3 sono per meccanismi M1–M4 o classe non nota (la norma ammette il doppio per M5–M8:
 //   qui teniamo i valori più prudenti). Gravità: 20/40/60/80/100% (100% = scarto). Valutazione combinata
 //   (Allegato G): si sommano le gravità di fili rotti e diametro nello stesso tratto.
@@ -14,24 +16,38 @@
 
 import { teciFamily, teciItem, teciTableLimits, teciLabel } from "./teciRopes";
 import { fasFamily, fasRange, fasItem, fasLabel } from "./fasRopes";
+import { parseCons } from "./ropeSection";
 
 // ---------------------------------------------------------------- FUNI
 // n = fili portanti dei trefoli esterni (si contano solo i fili esterni portanti, non quelli di riempimento)
 export const ROPES = [
   { id: "6x7", label: "6×7", n: 42, rr: false },
-  { id: "6x19", label: "6×19 (Seale, Warrington, Filler)", n: 114, rr: false },
+  // Seale con 19 fili o meno per trefolo: due righe più su nella Tab. 3 (nota della norma). Se non si sa, si conta Seale.
+  { id: "6x19", label: "6×19 Seale (o non so quale)", n: 114, rr: false, seale: true },
+  { id: "6x19wf", label: "6×19 Warrington o Filler", n: 114, rr: false },
+  { id: "6x24", label: "6×24 (anima tessile anche nei trefoli)", n: 144, rr: false },
   { id: "6x26", label: "6×26 WS", n: 156, rr: false },
   { id: "6x31", label: "6×31 WS", n: 186, rr: false },
   { id: "6x36", label: "6×36 WS", n: 216, rr: false },
+  { id: "6x37", label: "6×37", n: 222, rr: false },
   { id: "6x41", label: "6×41 WS", n: 246, rr: false },
-  { id: "8x19", label: "8×19 (Seale, Warrington, Filler)", n: 152, rr: false },
+  { id: "8x7", label: "8×7", n: 56, rr: false },
+  { id: "8x19", label: "8×19 Seale (o non so quale)", n: 152, rr: false, seale: true },
+  { id: "8x19wf", label: "8×19 Warrington o Filler", n: 152, rr: false },
   { id: "8x26", label: "8×26 WS", n: 208, rr: false },
   { id: "8x31", label: "8×31 WS", n: 248, rr: false },
   { id: "8x36", label: "8×36 WS", n: 288, rr: false },
+  { id: "8x41", label: "8×41 WS", n: 328, rr: false },
+  // 9 trefoli (catalogo FAS «Funi di acciaio a 9 trefoli», compattate con anima metallica plastificata)
+  { id: "9x7", label: "9×7 (anche compattata 9×K7)", n: 63, rr: false },
+  { id: "9x17", label: "9×17 / 9×19 Seale (anche compattata)", n: 153, rr: false, seale: true },
+  { id: "9x26", label: "9×26 WS (anche compattata)", n: 234, rr: false },
+  { id: "9x31", label: "9×31 WS (anche compattata)", n: 279, rr: false },
+  { id: "9x36", label: "9×36 WS (anche compattata)", n: 324, rr: false },
   { id: "18x7", label: "18×7 / 19×7 antigiro", n: 84, rr: true },
   { id: "35x7", label: "35×7 / 35(W)×7 antigiro", n: 112, rr: true },
-  { id: "altra", label: "Altra fune (scrivo io n)", n: 0, rr: false },
-  { id: "altra-rr", label: "Altra fune antigiro (scrivo io n)", n: 0, rr: true },
+  { id: "altra", label: "Altra fune: scrivo io la costruzione", n: 0, rr: false, custom: true },
+  { id: "altra-rr", label: "Altra fune antigiro: scrivo io la costruzione", n: 0, rr: true, custom: true },
 ];
 
 // Tab. 3 ISO 4309:2017 — [n massimo, RCN, crociata 6d, crociata 30d, parallela 6d, parallela 30d, più strati 6d, più strati 30d]
@@ -66,14 +82,16 @@ const T4 = [
 ];
 
 // limiti di fili rotti: { rcn, six, thirty }
-export const wireLimits = ({ n, rr, lay = "crociata", layers = "uno" }) => {
+// seale = fune Seale con 19 fili o meno per trefolo: ISO 4309 la mette «due righe sopra» quella normale
+export const wireLimits = ({ n, rr, lay = "crociata", layers = "uno", seale = false }) => {
   const N = Math.max(1, Math.round(Number(n) || 0));
   if (rr) {
     const row = T4.find((r) => N <= r[0]);
     if (!row) return layers === "piu" ? { rcn: "31+", six: 12, thirty: 24 } : { rcn: "31+", six: 6, thirty: 12 };
     return layers === "piu" ? { rcn: row[1], six: row[4], thirty: row[5] } : { rcn: row[1], six: row[2], thirty: row[3] };
   }
-  const row = T3.find((r) => N <= r[0]);
+  const i0 = T3.findIndex((r) => N <= r[0]);
+  const row = i0 < 0 ? null : T3[seale ? Math.max(0, i0 - 2) : i0];
   if (!row) {
     // oltre 300 fili: in proporzione (arrotondato per difetto: più prudente)
     const k = layers === "piu" ? [0.08, 0.16] : lay === "parallela" ? [0.02, 0.04] : [0.04, 0.08];
@@ -111,13 +129,32 @@ const wireSeverity = (count, limit) => {
 // limiti più bassi), cordatura parallela se non si sa, anima metallica (calo del diametro più stretto):
 // così il verdetto è sempre dalla parte della sicurezza.
 export const GUESS = {
-  6: { n: 114, rr: false, label: "6 trefoli (si conta come 6×19)" },
-  8: { n: 152, rr: false, label: "8 trefoli (si conta come 8×19)" },
+  6: { n: 114, rr: false, seale: true, label: "6 trefoli (si conta come 6×19 Seale)" },
+  8: { n: 152, rr: false, seale: true, label: "8 trefoli (si conta come 8×19 Seale)" },
+  9: { n: 63, rr: false, label: "9 trefoli (si conta come 9×7)" },
   tanti: { n: 84, rr: true, label: "tanti trefoli: antigiro (si conta come 18×7)" },
 };
+// altro numero di trefoli (4, 5, 7, 10…): si conta come N×7, la più delicata con quei trefoli
+const guessOf = (s) => {
+  if (GUESS[s]) return GUESS[s];
+  const N = Math.round(Number(s) || 0);
+  return N >= 3 && N <= 12 ? { n: N * 7, rr: false, label: `${N} trefoli (si conta come ${N}×7)` } : GUESS[6];
+};
+// fune scritta dal tecnico («7x19», «6x37», «4xK26WS+IWRC»): n = trefoli × fili per trefolo (ISO 4309, 6.2.2:
+// se la fune non è nell'elenco si contano i fili portanti dei trefoli esterni). Seale con 19 fili o meno: due righe su.
+export const customRope = (cons) => {
+  const p = parseCons(cons);
+  if (!p || !(p.N > 0)) return null;
+  const filler = /F/.test(p.kind);
+  const rr = p.N >= 10 && !p.core;
+  // 7 trefoli senza anima scritta (7×7, 7×19): 6 trefoli intorno a uno centrale → i trefoli esterni sono 6.
+  // Antigiro: i trefoli esterni sono solo una parte (18×7 → 12, 35×7 → 16) e non si sa quanti: n lo scrive il tecnico.
+  const outer = p.N === 7 && !p.core ? 6 : p.N;
+  return { n: rr ? 0 : outer * p.W, N: p.N, W: p.W, filler, seale: /S$/.test(p.kind) && !/WS$/.test(p.kind) && p.W <= 19, rr };
+};
 export const guessRope = (x) => {
-  const g = GUESS[x.strands] || GUESS[6];
-  return { n: g.n, rr: g.rr, lay: x.lay === "crociata" ? "crociata" : "parallela", core: "metallica", layers: x.layers === "piu" ? "piu" : "uno", label: g.label };
+  const g = guessOf(x.strands);
+  return { n: g.n, rr: g.rr, seale: !!g.seale, lay: x.lay === "crociata" ? "crociata" : "parallela", core: "metallica", layers: x.layers === "piu" ? "piu" : "uno", label: g.label };
 };
 
 // MISURA SCRITTA SENZA VIRGOLA (solo fune e catena): con una catena del 10, «950» o «95» vuol dire 9,5 mm.
@@ -149,11 +186,27 @@ export const checkRope = (x0) => {
   const d = Number(String(x.d || "").replace(",", ".")) || 0;
   const ti = tfam ? teciItem(tfam, d) || teciItem(tfam, tfam.it[0][0]) : null;
   const fr = fam ? fasRange(fam, d) : null;
-  const rope = auto ? { n: g.n, rr: g.rr, label: g.label } : fam ? { n: fr ? fr.n : fam.r[0][3], rr: fam.rr, label: fasLabel(fam) } : tfam ? { n: (ti && ti.n) || 0, rr: tfam.rr, label: teciLabel(tfam) } : ROPES.find((r) => r.id === x.rope) || ROPES[0];
+  const base = ROPES.find((r) => r.id === x.rope) || ROPES[0];
+  const cr = base.custom ? customRope(x.cons) : null;
+  const rope = auto
+    ? { n: g.n, rr: g.rr, seale: g.seale, label: g.label }
+    : fam
+      ? { n: fr ? fr.n : fam.r[0][3], rr: fam.rr, label: fasLabel(fam) }
+      : tfam
+        ? { n: (ti && ti.n) || 0, rr: tfam.rr, label: teciLabel(tfam) }
+        : base.custom
+          ? { n: Number(x.n) || (cr ? cr.n : 0), rr: base.rr || (cr ? cr.rr : false), seale: cr ? cr.seale : false, label: x.cons ? String(x.cons).toUpperCase() : base.label, custom: true, nAuto: cr ? cr.n : 0, filler: cr ? cr.filler : false }
+          : base;
   const n = rope.n || Number(x.n) || 0;
   const rr = rope.rr;
   const dRef = readMeasure(x.dRef, d) || d;
-  const dMis = readMeasure(x.dMis, dRef);
+  // ISO 4309:2017, 3.2: diametro misurato = media di due misurazioni prese ad angolo retto una rispetto all'altra
+  // fino a 4 misure (catalogo Teci: «due punti distanti almeno un metro; in ciascun punto si misurano due diametri
+  // a 90° uno dall'altro; la media dei quattro valori rilevati si assume come diametro effettivo»): media di quelle scritte
+  const m1 = readMeasure(x.dMis, dRef);
+  const m2 = readMeasure(x.dMis2, dRef);
+  const ms = [m1, m2, readMeasure(x.dMis3, dRef), readMeasure(x.dMis4, dRef)].filter((v) => v > 0);
+  const dMis = ms.length ? Math.round((ms.reduce((a, b) => a + b, 0) / ms.length) * 1000) / 1000 : 0;
   const multi = x.layers === "piu";
   const lim = fam
     ? fr
@@ -161,7 +214,7 @@ export const checkRope = (x0) => {
       : { rcn: fam.r[0][2], six: multi ? fam.r[0][5] : fam.r[0][4], thirty: multi ? fam.r[0][7] : fam.r[0][6], fas: true, noDiam: true }
     : tfam && teciTableLimits(tfam, d)
       ? { rcn: "tabella Teci", ...teciTableLimits(tfam, d) }
-      : wireLimits({ n, rr, lay: x.lay, layers: x.layers });
+      : wireLimits({ n, rr, lay: x.lay, layers: x.layers, seale: !!rope.seale });
   const b6 = Math.max(0, Number(x.b6) || 0);
   // il tratto di 30d comprende quello di 6d: i fili rotti su 30d sono almeno quelli su 6d
   const b30 = Math.max(0, Number(x.b30) || 0, b6);
@@ -169,17 +222,30 @@ export const checkRope = (x0) => {
   const s30 = wireSeverity(b30, lim.thirty);
   const wire = Math.max(s6, s30);
   const kind = rr ? "antigiro" : x.core === "tessile" ? "tessile" : "metallica";
+  // ISO 4309:2017, 6.4.2, formula (1): calo = (diametro di riferimento − diametro misurato) / diametro NOMINALE × 100
   // arrotondato al centesimo (12 → 11,4 mm deve fare 5%, non 4,9999%)
-  const dec = dRef > 0 && dMis > 0 ? Math.max(0, Math.round(((dRef - dMis) / dRef) * 10000) / 100) : null;
-  const dia = dec == null ? null : diamSeverity(dec, kind);
+  const dNom = d || dRef;
+  const dec = dRef > 0 && dMis > 0 ? Math.max(0, Math.round(((dRef - dMis) / dNom) * 10000) / 100) : null;
+  const dia0 = dec == null ? null : diamSeverity(dec, kind);
+  // catalogo Teci: «il diametro della fune, anche in un solo punto, risulta ridotto del 7% rispetto a quello nominale» → sostituzione
+  const teciDiam = !!tfam && dec != null && d > 0 && dMis > 0 && ((d - dMis) / d) * 100 >= 7;
+  const dia = dia0 && teciDiam ? { ...dia0, sev: 100, teci: true } : dia0 && tfam ? { ...dia0, limit: Math.min(dia0.limit, 7), teci: true } : dia0;
+  // ISO 4309:2017, 6.7.6: aumento del diametro in servizio del 5% o più (anima metallica) o del 10% o più (anima tessile):
+  // cercarne la causa e valutare lo scarto (non è uno scarto automatico)
+  const inc = dRef > 0 && dMis > dRef ? Math.round(((dMis - dRef) / dRef) * 10000) / 100 : 0;
+  const incLimit = kind === "tessile" ? 10 : 5;
+  const incWarn = inc >= incLimit;
   const flags = Object.keys(x.flags || {}).filter((k) => x.flags[k]);
   const combined = Math.min(100, wire + (dia ? dia.sev : 0));
   const discard = wire >= 100 || (dia && dia.sev >= 100) || combined >= 100 || flags.length > 0;
   const worst = Math.max(wire, dia ? dia.sev : 0, combined);
   // se non si sa la cordatura: anche il limite che varrebbe con la crociata (più comune), per informazione
-  const limCross = auto && !rr && x0.lay !== "crociata" ? wireLimits({ n, rr, lay: "crociata", layers: x.layers }) : null;
+  const limCross = auto && !rr && x0.lay !== "crociata" ? wireLimits({ n, rr, lay: "crociata", layers: x.layers, seale: !!rope.seale }) : null;
   return {
     auto,
+    custom: !!rope.custom,
+    nAuto: rope.nAuto || 0,
+    filler: !!rope.filler,
     fam,
     fasItem: fam ? fasItem(fam, d) : null,
     tfam,
@@ -203,7 +269,13 @@ export const checkRope = (x0) => {
     combined,
     flags,
     discard,
-    level: discard ? "scarto" : worst >= 60 ? "attenzione" : "ok",
+    level: discard ? "scarto" : worst >= 60 || incWarn ? "attenzione" : "ok",
+    m1,
+    m2,
+    ms,
+    inc,
+    incLimit,
+    incWarn,
   };
 };
 
@@ -212,16 +284,26 @@ export const ROPE_FLAGS = [
   ["terminale", "2 o più fili rotti vicino alla terminazione (capocorda, morsetto, redancia)"],
   ["locale", "Diametro che cala in un punto solo (anima rotta o schiacciata)"],
   ["deforma", "Deformazioni gravi: gabbia d'uccello, nodo, asola, schiacciamento"],
+  ["anima", "Diametro che aumenta in un punto (anima distorta) o anima che esce dalla fune"],
+  ["trefolo", "Un trefolo rotto"],
+  ["corrosione", "Corrosione grave: fili ruvidi o bucherellati e allentati, o polvere di ruggine che esce tra i trefoli"],
+  ["ondulazione", "Ondulazione: col righello la fune si stacca di d/3 o più (tratto dritto) o di d/10 o più (su puleggia o tamburo)"],
+  ["anelli", "Fili che escono dalla fune a forma di anello"],
+  ["piega", "Piegatura grave nel tratto che passa sulle pulegge"],
+  ["calore", "Danni da calore o da arco elettrico (fili scoloriti, grasso bruciato, 2 o più fili colpiti dall'arco)"],
 ];
+// da quale punto della ISO 4309:2017 viene ogni voce (per il verbale)
+export const ROPE_FLAG_ISO = { valle: "6.2.1", terminale: "6.2.1", locale: "6.4.3", deforma: "6.7.3, 6.7.7, 6.7.8", anima: "6.7.4, 6.7.6", trefolo: "6.5", corrosione: "6.6", ondulazione: "6.7.2", anelli: "6.7.5", piega: "6.7.9", calore: "6.7.10" };
 
 // ---------------------------------------------------------------- CATENE
 export const checkChain = (x) => {
   const num = (v) => Number(String(v || "").replace(",", ".")) || 0;
   const d = num(x.d);
-  const d1 = readMeasure(x.d1, d);
-  const d2 = readMeasure(x.d2, d) || d1;
+  // fino a 4 misure (d1 obbligatoria, d2 a 90°, d3 e d4 su altre maglie)
+  const ds = [x.d1, x.d2, x.d3, x.d4].map((v) => readMeasure(v, d)).filter((v) => v > 0);
   // regola Mora: basta una misura sotto il 90% del nominale → conta la misura più bassa (non la media)
-  const dm = d1 ? Math.min(d1, d2) : 0;
+  const dm = ds.length ? Math.min(...ds) : 0;
+  const dMean = ds.length ? Math.round((ds.reduce((a, b) => a + b, 0) / ds.length) * 1000) / 1000 : 0;
   const wear = d && dm ? Math.max(0, Math.round(((d - dm) / d) * 10000) / 100) : null;
   const t = num(x.t);
   const t1 = readMeasure(x.t1, t);
@@ -229,14 +311,19 @@ export const checkChain = (x) => {
   const p1 = t && t1 ? Math.round(((t1 - t) / t) * 10000) / 100 : null;
   const p11 = t && t11 ? Math.round(((t11 - 11 * t) / (11 * t)) * 10000) / 100 : null;
   const hoist = x.kind !== "imbracatura";
-  const flags = Object.keys(x.flags || {}).filter((k) => x.flags[k]);
+  const flags = Object.keys(x.flags || {}).filter((k) => x.flags[k] && (!CHAIN_FLAG_ONLY[k] || CHAIN_FLAG_ONLY[k] === x.kind));
+  // apertura del gancio dei sottoganci (UNI EN 818-6): l'aumento non deve superare il 10% del valore nominale
+  const h0 = num(x.h0);
+  const h1 = readMeasure(x.h1, h0);
+  const hook = !hoist && h0 && h1 ? Math.round(((h1 - h0) / h0) * 10000) / 100 : null;
   const out = [];
+  if (hook != null) out.push({ id: "gancio", label: "Apertura del gancio", value: Math.max(0, hook), limit: 10, bad: hook > 10 });
   if (wear != null) out.push({ id: "usura", label: "Usura della maglia", value: wear, limit: 10, bad: wear > 10 });
   if (p1 != null) out.push({ id: "passo", label: "Allungamento di una maglia", value: p1, limit: 5, bad: p1 > 5 });
   if (hoist && p11 != null) out.push({ id: "passo11", label: "Allungamento su 11 maglie", value: p11, limit: 2, bad: p11 > 2 });
   const discard = out.some((o) => o.bad) || flags.length > 0;
   const near = out.some((o) => o.value >= o.limit * 0.7);
-  return { d, dm, wear, minDm: d ? 0.9 * d : null, p1, p11, hoist, checks: out, flags, discard, level: discard ? "scarto" : near ? "attenzione" : "ok" };
+  return { d, dm, ds, dMean, wear, minDm: d ? 0.9 * d : null, p1, p11, hoist, h0, h1, hook, checks: out, flags, discard, level: discard ? "scarto" : near ? "attenzione" : "ok" };
 };
 
 export const CHAIN_FLAGS = [
@@ -244,4 +331,7 @@ export const CHAIN_FLAGS = [
   ["piegata", "Maglie piegate, ritorte, schiacciate o allungate a vista"],
   ["calore", "Segni di surriscaldamento o corrosione profonda"],
   ["gancio", "Gancio aperto, deformato o sicura che non chiude"],
+  ["marcatura", "Targhetta o marcatura con la portata illeggibile o assente", "imbracatura"],
 ];
+// voci che valgono solo per un tipo di catena (es. la targhetta: solo sottoganci)
+export const CHAIN_FLAG_ONLY = Object.fromEntries(CHAIN_FLAGS.filter((f) => f[2]).map((f) => [f[0], f[2]]));

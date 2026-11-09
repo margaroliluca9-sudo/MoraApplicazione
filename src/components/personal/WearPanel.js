@@ -5,6 +5,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { CheckCircle2, AlertTriangle, XCircle, Copy, Check, Info, X, ExternalLink, FilePlus2, History, Printer, Trash2 } from "lucide-react";
 import { PanelHeader, INPUT } from "./PersonalUi";
+import { BreakCalc } from "./BreakCalc";
 import { ROPES, ROPE_FLAGS, CHAIN_FLAGS, checkRope, checkChain, measureFixed } from "../../wearRules";
 import { lastRopeOf, formatRopeLong, knownRopes, ropeName } from "../../ropes";
 import { fasFamily } from "../../fasRopes";
@@ -289,9 +290,10 @@ const useCopy = () => {
 
 // disegnini per riconoscere la fune a occhio
 const Section = ({ n, big = false }) => {
-  const outer = n === "tanti" ? 14 : Number(n);
+  const outer = n === "tanti" ? 14 : n === "altre" ? 0 : Number(n);
   const R = 15;
-  const r = n === "tanti" ? 3.6 : n === "8" ? 5 : 6.2;
+  // raggio del trefolo: tocca i vicini (6 → 6,2 come prima)
+  const r = n === "tanti" ? 3.6 : n === "6" ? 6.2 : n === "8" ? 5 : Math.min(7, 15 * Math.sin(Math.PI / Math.max(3, outer)) * 0.92);
   return (
     <svg viewBox="0 0 44 44" className={big ? "w-28 h-28" : "w-11 h-11"} aria-hidden="true">
       <circle cx="22" cy="22" r="20" fill="none" stroke="currentColor" strokeOpacity=".25" />
@@ -299,7 +301,12 @@ const Section = ({ n, big = false }) => {
       {Array.from({ length: outer }, (_, i) => (
         <circle key={i} cx={22 + (n === "tanti" ? 16 : R) * Math.cos((i * 2 * Math.PI) / outer)} cy={22 + (n === "tanti" ? 16 : R) * Math.sin((i * 2 * Math.PI) / outer)} r={r} fill="currentColor" opacity=".8" />
       ))}
-      {n !== "tanti" && <circle cx="22" cy="22" r={n === "8" ? 8 : 7} fill="currentColor" opacity=".3" />}
+      {n === "altre" && (
+        <text x="22" y="28" textAnchor="middle" fontSize="16" fontWeight="900" fill="currentColor">
+          …
+        </text>
+      )}
+      {n !== "tanti" && n !== "altre" && <circle cx="22" cy="22" r={n === "6" ? 7 : n === "8" ? 8 : Math.max(4, R - r - 1)} fill="currentColor" opacity=".3" />}
     </svg>
   );
 };
@@ -481,6 +488,17 @@ const DefectArt = ({ k }) => {
         <text x="140" y="12" fontSize="10" fontWeight="900" fill="#dc2626">si stringe in un punto</text>
       </svg>
     );
+  if (k === "anima")
+    return (
+      <svg viewBox="0 0 260 64" className="w-full max-w-xs" aria-hidden="true">
+        <path d="M10 18 h95 q25 -14 50 0 h95 v28 h-95 q-25 14 -50 0 h-95 z" fill="#94a3b8" />
+        {Array.from({ length: 20 }).map((_, i) => (
+          <path key={i} d={`M${14 + i * 12} 19 l12 26`} stroke="#475569" strokeWidth="2.5" strokeLinecap="round" />
+        ))}
+        <path d="M130 2 v8 M130 54 v8" stroke="#dc2626" strokeWidth="3" />
+        <text x="140" y="10" fontSize="10" fontWeight="900" fill="#dc2626">si allarga in un punto</text>
+      </svg>
+    );
   if (k === "deforma")
     return (
       <svg viewBox="0 0 300 150" className="w-full max-w-sm" aria-hidden="true">
@@ -605,6 +623,17 @@ export const INFO = {
       </>
     ),
   },
+  9: {
+    title: "Fune a 9 trefoli",
+    text: "Conti 9 trefoli intorno all'anima. Nel catalogo FAS ci sono le «Funi di acciaio a 9 trefoli», con trefoli compattati e anima metallica plastificata. Se non sai la costruzione l'app la conta come 9×7, la più prudente (meno fili rotti ammessi).",
+    ex: "9×K7+PWRC, 9×K17S+EPIWRC, 9×K26WS+EPIWRC, 9×K36WS+EPIWRC",
+    art: (
+      <>
+        <Section n="9" big />
+        <Side strands={9} />
+      </>
+    ),
+  },
   tanti: {
     title: "Fune antigiro",
     text: "Fuori vedi tanti trefoli piccoli (più di 10, di solito da 12 a 18) e sotto c'è un altro strato di trefoli girato al contrario: col carico appeso la fune non gira su sé stessa. Si usa con il tiro singolo e le grandi altezze (gru a torre, autogru, paranchi alti). Attenzione: la norma ammette pochissimi fili rotti.",
@@ -629,12 +658,12 @@ export const INFO = {
   },
   fili: {
     title: "Come contare i fili rotti",
-    text: "Conta i fili spezzati che vedi sulla superficie della fune (le punte che escono o i fili interrotti) dentro il tratto di 6d e di 30d. Fai scorrere la fune piano con uno straccio in mano: i fili rotti lo agganciano. Sono più gravi i fili rotti nella valle, cioè tra due trefoli dove i trefoli si toccano: per la ISO 4309 già 2 fili rotti nella valle in un passo di cordatura (circa 6d) portano allo scarto, anche se il numero totale è sotto il limite. Scarta sempre anche con un trefolo rotto, schiacciamenti, «gabbia» (trefoli che si aprono) o nodi.",
+    text: "Conta i fili spezzati che vedi sulla superficie della fune (le punte che escono o i fili interrotti) dentro il tratto di 6d e di 30d. Fai scorrere la fune piano con uno straccio in mano: i fili rotti lo agganciano. Sono più gravi i fili rotti nella valle, cioè tra due trefoli dove i trefoli si toccano: per la ISO 4309 già 2 fili rotti nella valle in un passo di cordatura (circa 6d) portano allo scarto, anche se il numero totale è sotto il limite. Scarta sempre anche con un trefolo rotto, schiacciamenti, «gabbia» (trefoli che si aprono) o nodi. ISO 4309, 6.2.1 e 6.2.3 (traduzione): un gruppo di fili rotti concentrati in un punto può portare allo scarto anche sotto i valori della tabella; i fili rotti isolati per trasporto, magazzino o montaggio (non per il lavoro) non si contano, ma si annotano e si tolgono le punte. Funi Seale con 19 fili o meno per trefolo (es. 6×19 Seale): la norma le mette due righe più su nella tabella, quindi meno fili rotti ammessi.",
     art: <FiliArt />,
   },
   diamfune: {
     title: "Come misurare il diametro della fune",
-    text: "Usa il calibro con i becchi larghi, che appoggino su almeno due trefoli: si misura sulle creste dei trefoli, mai nella valle. Fai due misure nello stesso punto, la seconda girata di 90°, e prendi la media. Misura nel tratto più consumato (dove passa sulle pulegge). Il confronto giusto è col diametro di riferimento, misurato a fune nuova dopo il rodaggio; se non ce l'hai usi il nominale, ma la fune nuova di solito è un po' più grossa del nominale (fino al 4-5%) e quindi il calo vero può essere un po' più alto di quello che vedi.",
+    text: "Quante misure: ISO 4309, punto 3.2, il diametro misurato è la «media di due misurazioni, prese ad angolo retto una rispetto all'altra». Scrivi Misura 1 e Misura 2 (girata di 90°) e l'app fa la media. Il catalogo Teci dice anche: «La misura del diametro si effettua in due punti distanti almeno un metro; in ciascun punto si misurano due diametri a 90° uno dall'altro; la media dei quattro valori rilevati si assume come diametro effettivo.» Cosa si misura (Teci): «Il diametro effettivo della fune è il diametro del cerchio circoscritto alla sezione normale della fune», cioè sulle creste dei trefoli, con il calibro a becchi larghi. Il riferimento è il diametro misurato sulla fune nuova, subito dopo il rodaggio, in un tratto che non passa sulle pulegge (ISO 4309, 3.3); se non c'è vale il nominale. Il calo si calcola sul diametro nominale (ISO 4309, 6.4.2). Una fune nuova è di solito un po' più grossa del nominale: tolleranza EN 12385 per funi da sollevamento da 8 mm in su +5% / 0% (tabella del catalogo Teci).",
     art: <CaliperArt />,
   },
   nomfune: {
@@ -651,6 +680,10 @@ export const INFO = {
     title: "Diametro nominale della catena",
     text: "È lo spessore del tondino della maglia nuova: una catena «10×30» ha diametro 10 mm e passo 30 mm. Lo trovi sul certificato, sulla targhetta o sul manuale del paranco, a volte stampato sulle maglie. Se non c'è, misuralo sul tratto dritto di una maglia che non lavora (verso il capo libero della catena), lontano dai punti di contatto.",
     art: <ChainArt where="nominale" />,
+  },
+  apertura: {
+    title: "Apertura del gancio dei sottoganci",
+    text: "UNI EN 818-6 (informazioni per l'uso e la manutenzione delle brache di catena): l'aumento dell'apertura del gancio non deve superare il 10% del valore nominale e non deve impedire alla sicura (linguetta) di chiudersi. Misura l'apertura nella bocca del gancio e confrontala con quella nominale (scheda del gancio) o con quella misurata a gancio nuovo.",
   },
   passo: {
     title: "Passo e allungamento",
@@ -681,6 +714,35 @@ export const INFO = {
     title: "Diametro che cala in un punto solo",
     text: "Se in un punto la fune si stringe (mentre prima e dopo è normale) di solito l'anima dentro è rotta, schiacciata o consumata: la fune ha perso il sostegno interno. Si scarta anche se i fili rotti fuori sono pochi.",
     art: <DefectArt k="locale" />,
+  },
+  f_trefolo: {
+    title: "Un trefolo rotto",
+    text: "ISO 4309:2017, punto 6.5 (traduzione): se un trefolo si rompe del tutto, la fune va scartata subito.",
+  },
+  f_corrosione: {
+    title: "Corrosione",
+    text: "ISO 4309:2017, punto 6.6 e Prospetto 6 (traduzione): la corrosione esterna solo in superficie non conta; si scarta con fili ruvidi o molto bucherellati e allentati, o quando dalle valli tra i trefoli esce polvere di corrosione interna. Catalogo Teci (foto D): «Superficie molto bucata e fili completamente allentati. Grave riduzione del diametro, con gioco tra i fili pari a più della metà del loro diametro. Sostituzione immediata.»",
+  },
+  f_ondulazione: {
+    title: "Ondulazione",
+    text: "ISO 4309:2017, punto 6.7.2 (traduzione): appoggia un righello lungo la fune; si scarta se la distanza tra fune e righello è d/3 o più su un tratto dritto, oppure d/10 o più dove la fune passa su una puleggia o si avvolge sul tamburo (d = diametro nominale). L'app ti scrive i due valori in mm sotto l'elenco.",
+  },
+  f_anelli: {
+    title: "Fili che escono ad anello",
+    text: "ISO 4309:2017, punto 6.7.5 (traduzione): fili che escono dalla fune formando un anello → scarto subito. Un singolo filo dell'anima che esce può non richiedere lo scarto se si può togliere o non dà fastidio.",
+  },
+  f_piega: {
+    title: "Piegatura",
+    text: "ISO 4309:2017, punto 6.7.9 (traduzione): una piegatura grave nel tratto che passa sulle pulegge → scarto subito; se è meno grave, controlli più frequenti o valutare lo scarto. Catalogo Teci (foto 8): «Esempio di grave piegamento.» → «TALE CONDIZIONE RICHIEDE LA SOSTITUZIONE».",
+  },
+  f_calore: {
+    title: "Calore o arco elettrico",
+    text: "ISO 4309:2017, punto 6.7.10 (traduzione): fune non fatta per il calore che mostra colore cambiato per il calore o perdita di grasso → scarto subito; 2 o più fili colpiti da un arco elettrico nello stesso punto → scarto.",
+  },
+  f_anima: {
+    title: "Diametro che aumenta in un punto",
+    text: "Catalogo Teci (deterioramenti secondo ISO 4309), foto 9: «Incremento locale del diametro di una fune, determinato da distorsione dell'anima metallica, derivante da un carico improvviso.» → «TALE CONDIZIONE RICHIEDE L'IMMEDIATA SOSTITUZIONE!». Tra le condizioni di sostituzione Teci c'è anche: «l'anima fuoriesce dalla fune anche in un solo punto». ISO 4309:2017, punto 6.7.6: se in servizio il diametro aumenta del 5% o più (anima metallica) o del 10% o più (anima tessile), bisogna cercarne la causa e valutare lo scarto.",
+    art: <DefectArt k="anima" />,
   },
   f_deforma: {
     title: "Deformazioni: gabbia d'uccello, nodo, schiacciamento",
@@ -771,27 +833,46 @@ const Pick = ({ value, onChange, options, id }) => {
 };
 
 // ---------------------------------------------------------------- FUNE
+// quanto sono lunghi i tratti da guardare: 6d e 30d (d = diametro nominale)
+const Lengths = ({ len6, len30 }) => (
+  <div className="grid grid-cols-2 gap-2" data-wear-lengths>
+    {[
+      ["6d", len6],
+      ["30d", len30],
+    ].map(([k, v]) => (
+      <div key={k} className="rounded-2xl bg-blue-50 border border-blue-200 px-3 py-2">
+        <p className="text-[11px] font-black text-blue-700 uppercase tracking-wider">Tratto {k}</p>
+        <p className="font-black text-slate-900 tabular-nums leading-tight" style={{ fontSize: 26 }} data-wear-len={k}>
+          {fmt(v / 10, 1)} cm
+        </p>
+        <p className="text-[11px] font-bold text-slate-500">{v} mm</p>
+      </div>
+    ))}
+  </div>
+);
+
 const RopeCheck = ({ known = null, onReport = null, crane = null }) => {
   // fune montata con un rapporto dell'app (con la costruzione dal certificato): si parte già da quella
   // fune montata: dal catalogo FAS (fas) o con la costruzione scritta a mano
   const kf = known && known.fas && FAS_ROPES.some((f) => f.id === known.fas) ? "fas:" + known.fas : known && known.teci && teciFamily(known.teci) ? "teci:" + known.teci : "";
   const kc = known && ROPES.find((r) => r.id === known.costruzione);
   const kd = known && known.diametro ? String(known.diametro).replace(".", ",") : "";
-  const [x, setX] = useState({ mode: kf || kc ? "so" : "auto", strands: "6", rope: kf || (kc ? kc.id : "6x36"), n: "", core: "metallica", lay: "nonso", layers: "nonso", d: kd, dRef: kd, dMis: "", b6: "", b30: "", flags: {} });
+  const [x, setX] = useState({ mode: kf || kc ? "so" : "auto", strands: "6", rope: kf || (kc ? kc.id : "6x36"), n: "", core: "metallica", lay: "nonso", layers: "nonso", d: kd, dRef: kd, dMis: "", dMis2: "", dMis3: "", dMis4: "", b6: "", b30: "", cons: "", flags: {} });
   const set = (k) => (v) => setX((o) => ({ ...o, [k]: v }));
   const r = useMemo(() => checkRope(x), [x]);
   const isFas = !!r.fam;
   const isTeci = !!r.tfam;
   const isCat = isFas || isTeci;
   const rope = isCat ? { n: r.n, rr: r.rr, label: r.lim.rcn } : ROPES.find((o) => o.id === x.rope) || ROPES[0];
-  const catName = r.auto ? r.guess.label : isFas ? `FAS ${r.fam.id} (${r.fam.cons.join("/")})` : isTeci ? `Teci ${r.tfam.name} (${r.teciItem ? r.teciItem.cons : r.tfam.cons.join("/")})` : rope.label;
-  const consNow = r.auto ? "" : isFas ? consOf({ fam: r.fam }) : isTeci ? (r.teciItem ? r.teciItem.cons : r.tfam.cons[0]) : consOf({ rope: ROPES.find((o) => o.id === x.rope) });
+  const catName = r.auto ? r.guess.label : isFas ? `FAS ${r.fam.id} (${r.fam.cons.join("/")})` : isTeci ? `Teci ${r.tfam.name} (${r.teciItem ? r.teciItem.cons : r.tfam.cons.join("/")})` : r.custom && x.cons ? String(x.cons).toUpperCase() : rope.label;
+  const consNow = r.auto ? "" : isFas ? consOf({ fam: r.fam }) : isTeci ? (r.teciItem ? r.teciItem.cons : r.tfam.cons[0]) : r.custom ? String(x.cons || "") : consOf({ rope: ROPES.find((o) => o.id === x.rope) });
   const [copied, copy] = useCopy();
-  const ready = Number(r.n) > 0 && (x.b6 !== "" || x.b30 !== "" || x.dMis !== "" || r.flags.length > 0);
+  const ready = Number(r.n) > 0 && (x.b6 !== "" || x.b30 !== "" || x.dMis !== "" || x.dMis2 !== "" || x.dMis3 !== "" || x.dMis4 !== "" || r.flags.length > 0);
   const lines = [];
   if (x.b6 !== "" || x.b30 !== "") lines.push(`Fili rotti: ${r.b6} su 6d (limite ${r.lim.six}) · ${r.b30} su 30d (limite ${r.lim.thirty}) → gravità ${Math.max(r.s6, r.s30)}%`);
   if (r.limCross && (x.b6 !== "" || x.b30 !== "")) lines.push(`Contato come cordatura parallela (la più severa). Se sei sicuro che è crociata il limite sale a ${r.limCross.six} su 6d e ${r.limCross.thirty} su 30d.`);
-  if (r.dec != null) lines.push(`Diametro: calato del ${fmt(r.dec)}% (scarto al ${fmt(r.dia.limit)}%) → gravità ${r.dia.sev}%`);
+  if (r.dec != null) lines.push(`Diametro: ${r.ms.length > 1 ? `media di ${r.ms.length} misure ${fmt(r.dMis, 2)} mm, ` : ""}calato del ${fmt(r.dec)}% (scarto al ${fmt(r.dia.limit)}%${r.dia.teci ? ", catalogo Teci" : ""}) → gravità ${r.dia.sev}%`);
+  if (r.incWarn) lines.push(`Diametro aumentato del ${fmt(r.inc)}% rispetto al riferimento: ISO 4309 (6.7.6) chiede di cercarne la causa e di valutare lo scarto`);
   if ((x.b6 !== "" || x.b30 !== "") && r.dec != null) lines.push(`Insieme (fili + diametro): ${r.combined}%`);
   r.flags.forEach((k) => lines.push((ROPE_FLAGS.find((f) => f[0] === k) || [k, k])[1] + " → scarto"));
   const title = r.level === "scarto" ? "Fune da scartare" : r.level === "attenzione" ? "Fune idonea, vicina al limite di scarto" : "Fune idonea";
@@ -805,14 +886,32 @@ const RopeCheck = ({ known = null, onReport = null, crane = null }) => {
         <span className="block text-xs font-black text-slate-500">Quanti trefoli vedi fuori? (contali girando intorno alla fune)</span>
         <Pick
           id="strands"
-          value={x.strands}
-          onChange={set("strands")}
+          value={x.strands === "6" || x.strands === "8" ? x.strands : "altre"}
+          onChange={(v) => set("strands")(v === "altre" ? (x.strands === "6" || x.strands === "8" ? "tanti" : x.strands) : v)}
           options={[
             ["6", "6 trefoli", <Section key="a" n="6" />],
             ["8", "8 trefoli", <Section key="b" n="8" />],
-            ["tanti", "Più di 10 (antigiro)", <Section key="c" n="tanti" />],
+            ["altre", "Altre", <Section key="c" n="altre" />],
           ]}
         />
+        {x.strands !== "6" && x.strands !== "8" && (
+          <div className="space-y-1.5" data-wear-strands-more>
+            <span className="block text-xs font-black text-slate-500">Quanti?</span>
+            <Pick
+              id="strands2"
+              value={x.strands}
+              onChange={set("strands")}
+              options={[
+                ["4", "4", <Section key="4" n="4" />],
+                ["5", "5", <Section key="5" n="5" />],
+                ["7", "7", <Section key="7" n="7" />],
+                ["9", "9", <Section key="9" n="9" />],
+                ["10", "10", <Section key="10" n="10" />],
+                ["tanti", "Antigiro", <Section key="t" n="tanti" />],
+              ]}
+            />
+          </div>
+        )}
         {x.strands !== "tanti" && (
           <>
             <span className="block text-xs font-black text-slate-500">Come stanno i fili sulla superficie?</span>
@@ -889,8 +988,16 @@ const RopeCheck = ({ known = null, onReport = null, crane = null }) => {
             <RopeSectionArt cons={consNow} />
           </div>
         )}
-        {!isCat && !rope.n && <Num id="n" label="Fili portanti dei trefoli esterni (n)" unit="fili" value={x.n} onChange={set("n")} hint="Fili esterni portanti × numero dei trefoli esterni (quelli di riempimento non contano)." />}
-        {!isCat && !rope.rr && (
+        {r.custom && (
+          <div className="space-y-2" data-wear-custom>
+            <label className="block space-y-1">
+              <span className="text-xs font-black text-slate-500">Scrivi la costruzione</span>
+              <input className={INPUT} value={x.cons || ""} onChange={(e) => set("cons")(e.target.value)} placeholder="es. 7x19, 6x37, 4xK26WS+IWRC, 15x7" data-wear-input="cons" autoComplete="off" autoCapitalize="characters" />
+            </label>
+            <Num id="n" label="Fili portanti dei trefoli esterni (n)" unit="fili" value={x.n} onChange={set("n")} hint={r.nAuto ? `Calcolato dalla costruzione: ${r.nAuto} (trefoli esterni × fili). ${r.filler ? "Nelle Filler i fili di riempimento non contano: scrivi n giusto se lo sai. " : ""}Scrivilo tu solo se è diverso.` : r.rr ? "Antigiro: conta solo i trefoli dello strato esterno × i loro fili portanti (es. 18×7 → 12 × 7 = 84). Finché non lo scrivi l'app usa i limiti più bassi." : "Fili esterni portanti × numero dei trefoli esterni (quelli di riempimento non contano)."} />
+          </div>
+        )}
+        {!isCat && !r.rr && (
           <>
             <span className="block text-xs font-black text-slate-500">Anima</span>
             <Choice id="core" value={x.core} onChange={set("core")} options={[["metallica", "Metallica"], ["tessile", "Tessile"]]} />
@@ -908,7 +1015,8 @@ const RopeCheck = ({ known = null, onReport = null, crane = null }) => {
       )}
       <section className="bg-white rounded-3xl border border-slate-200 p-4 space-y-3">
         <h4 className="font-black text-slate-800">Fili rotti</h4>
-        <Num id="d" info="nomfune" label="Diametro nominale" value={x.d} onChange={set("d")} hint={x.d ? `6d = ${r.len6} mm (${fmt(r.len6 / 10)} cm) · 30d = ${r.len30} mm (${fmt(r.len30 / 10)} cm): conta i fili rotti nel tratto peggiore.` : "Serve per sapere quanto è lungo il tratto da guardare (6d e 30d)."} />
+        <Num id="d" info="nomfune" label="Diametro nominale" value={x.d} onChange={set("d")} hint={x.d ? "" : "Scrivilo e l'app ti dice quanto sono lunghi i tratti 6d e 30d."} />
+        {r.len6 > 0 && <Lengths len6={r.len6} len30={r.len30} />}
         <div className="grid grid-cols-2 gap-3">
           <Num id="b6" info="fili" label={`Fili rotti su 6d${r.len6 ? ` (${fmt(r.len6 / 10)} cm)` : ""}`} unit="fili" value={x.b6} onChange={set("b6")} />
           <Num id="b30" info="tratto" label={`Fili rotti su 30d${r.len30 ? ` (${fmt(r.len30 / 10)} cm)` : ""}`} unit="fili" value={x.b30} onChange={set("b30")} hint={r.b6 > (Number(x.b30) || 0) ? `Contati ${r.b30}: il tratto di 30d comprende quello di 6d, quindi ci sono almeno i ${r.b6} fili del 6d. Aggiungi quelli che vedi nel resto dei 30d.` : "Comprende il tratto di 6d: conta anche quei fili."} />
@@ -924,13 +1032,35 @@ const RopeCheck = ({ known = null, onReport = null, crane = null }) => {
       <section className="bg-white rounded-3xl border border-slate-200 p-4 space-y-3">
         <h4 className="font-black text-slate-800">Diametro</h4>
         <div className="grid grid-cols-2 gap-3">
-          <Num id="dRef" info="diamfune" label="Di riferimento" value={x.dRef} onChange={set("dRef")} hint={readAs(x.dRef, nOf(x.d)) || "Misurato a fune nuova (dopo il rodaggio). Se non c'è vale il nominale."} />
-          <Num id="dMis" info="diamfune" label="Misurato adesso" value={x.dMis} onChange={set("dMis")} hint={readAs(x.dMis, r.dRef) || "Nel punto più consumato, media di due misure a 90°."} />
+          <Num id="dRef" info="diamfune" label="Di riferimento" value={x.dRef} onChange={set("dRef")} hint={readAs(x.dRef, nOf(x.d)) || "Misurato sulla fune nuova, dopo il rodaggio, in un tratto che non passa sulle pulegge. Se non c'è vale il nominale."} />
+          <span />
+          <span className="col-span-2 text-[11px] font-black text-slate-500 uppercase tracking-wider -mb-1">Punto 1</span>
+          <Num id="dMis" info="diamfune" label="Misura 1 (obbligatoria)" value={x.dMis} onChange={set("dMis")} hint={readAs(x.dMis, r.dRef)} />
+          <Num id="dMis2" info="diamfune" label="Misura 2 (a 90°)" value={x.dMis2} onChange={set("dMis2")} hint={readAs(x.dMis2, r.dRef)} />
+          <span className="col-span-2 text-[11px] font-black text-slate-500 uppercase tracking-wider -mb-1">Punto 2 (almeno 1 m più in là)</span>
+          <Num id="dMis3" info="diamfune" label="Misura 3" value={x.dMis3} onChange={set("dMis3")} hint={readAs(x.dMis3, r.dRef)} />
+          <Num id="dMis4" info="diamfune" label="Misura 4 (a 90°)" value={x.dMis4} onChange={set("dMis4")} hint={readAs(x.dMis4, r.dRef)} />
         </div>
-        {r.dec != null && (
+        <p className="text-[11px] text-slate-500 leading-snug -mt-1">
+          ISO 4309, punto 3.2: il diametro misurato è la «media di due misurazioni, prese ad angolo retto una rispetto all'altra». Catalogo Teci: «due punti distanti almeno un metro; in ciascun punto si misurano due diametri a 90° uno dall'altro; la media dei quattro valori rilevati si assume come diametro effettivo». La prima misura basta; con le altre l'app fa la media di tutte quelle scritte.
+        </p>
+        {r.ms.length > 1 && (
+          <p className="text-sm font-black text-slate-700" data-wear-dmean>
+            Media di {r.ms.length} misure: {fmt(r.dMis, 2)} mm
+          </p>
+        )}
+        {r.dec != null && r.dMis <= r.dRef && (
           <div className="text-xs font-bold text-slate-500">
-            Calo del {fmt(r.dec)}% · gravità {r.dia.sev}% (scarto al {fmt(r.dia.limit)}% per fune {r.kind === "antigiro" ? "antigiro" : r.kind === "tessile" ? "con anima tessile" : "con anima metallica"})
+            Calo del {fmt(r.dec)}% sul nominale · gravità {r.dia.sev}% (scarto al {fmt(r.dia.limit)}% per fune {r.kind === "antigiro" ? "antigiro" : r.kind === "tessile" ? "con anima tessile" : "con anima metallica"}{r.dia.teci ? ", catalogo Teci" : ""})
             <Bar sev={r.dia.sev} />
+          </div>
+        )}
+        {r.inc > 0 && (
+          <div className={`rounded-2xl p-3 text-[12px] leading-snug ${r.incWarn ? "bg-amber-50 border border-amber-300 text-amber-900" : "bg-slate-50 border border-slate-200 text-slate-600"}`} data-wear-inc={r.incWarn ? "warn" : "ok"}>
+            <b>Diametro più grande del riferimento: +{fmt(r.inc)}%.</b>{" "}
+            {r.incWarn
+              ? `ISO 4309, punto 6.7.6: se in servizio il diametro aumenta del ${r.incLimit}% o più (fune con anima ${r.kind === "tessile" ? "tessile" : "metallica"}), bisogna cercarne la causa e valutare lo scarto della fune. Se l'aumento è in un punto solo (anima distorta), spunta la voce sotto: il catalogo Teci la indica come sostituzione immediata.`
+              : `Il calo del diametro (punto 6.4) non c'è. Una fune nuova è di solito un po' più grossa del nominale (tolleranza EN 12385 per funi da sollevamento da 8 mm in su: +5% / 0%). Se aumenta in servizio del ${r.incLimit}% o più, la ISO 4309 (6.7.6) chiede di cercarne la causa.`}
           </div>
         )}
       </section>
@@ -938,6 +1068,11 @@ const RopeCheck = ({ known = null, onReport = null, crane = null }) => {
       <section className="bg-white rounded-3xl border border-slate-200 p-4 space-y-3">
         <h4 className="font-black text-slate-800">Si vede anche…</h4>
         <Flags list={ROPE_FLAGS} value={x.flags} onChange={set("flags")} />
+        {nOf(x.d) > 0 && (
+          <p className="text-[11px] text-slate-500 leading-snug" data-wear-wavy>
+            Ondulazione con Ø{x.d}: d/3 = {fmt(nOf(x.d) / 3, 1)} mm sul tratto dritto · d/10 = {fmt(nOf(x.d) / 10, 1)} mm dove passa su puleggia o tamburo.
+          </p>
+        )}
       </section>
 
       {ready && (
@@ -965,12 +1100,12 @@ const RopeCheck = ({ known = null, onReport = null, crane = null }) => {
 const ChainCheck = ({ known = null, onReport = null, crane = null }) => {
   const kd = known && known.diametro ? String(known.diametro).replace(".", ",") : "";
   const kp = known && known.passo ? String(known.passo).replace(".", ",") : "";
-  const [x, setX] = useState({ kind: (known && known.kind) || "paranco", d: kd, d1: "", d2: "", t: kp, t1: "", t11: "", flags: {} });
+  const [x, setX] = useState({ kind: (known && known.kind) || "paranco", d: kd, d1: "", d2: "", d3: "", d4: "", t: kp, t1: "", t11: "", flags: {} });
   const set = (k) => (v) => setX((o) => ({ ...o, [k]: v }));
   const r = useMemo(() => checkChain(x), [x]);
   const [copied, copy] = useCopy();
   const lines = r.checks.map((c) => `${c.label}: ${fmt(c.value)}% (scarto oltre il ${c.limit}%)${c.bad ? " → scarto" : ""}`);
-  if (r.wear != null) lines.unshift(`Misura più bassa ${fmt(r.dm, 2)} mm su ${fmt(r.d, 2)} mm nominale (minimo ammesso ${fmt(r.minDm, 2)} mm)`);
+  if (r.wear != null) lines.unshift(`Misura più bassa ${fmt(r.dm, 2)} mm${r.ds.length > 1 ? ` su ${r.ds.length} misure (media ${fmt(r.dMean, 2)} mm)` : ""} su ${fmt(r.d, 2)} mm nominale (minimo ammesso ${fmt(r.minDm, 2)} mm)`);
   r.flags.forEach((k) => lines.push((CHAIN_FLAGS.find((f) => f[0] === k) || [k, k])[1] + " → scarto"));
   const title = r.level === "scarto" ? "Catena da scartare" : r.level === "attenzione" ? "Catena idonea, vicina al limite di scarto" : "Catena idonea";
   const report = `Controllo catena ${x.kind === "imbracatura" ? "dei sottoganci" : "del paranco"}${x.d ? " Ø" + x.d + " mm" : ""}: ${title.toLowerCase()}. ${lines.join(". ")}.`;
@@ -988,9 +1123,16 @@ const ChainCheck = ({ known = null, onReport = null, crane = null }) => {
         {x.kind === "imbracatura" && <Txt id="mora" label="Numero Mora (targhetta)" value={x.mora || ""} onChange={set("mora")} hint="Il numero progressivo della targhetta Mora sul sottogancio." />}
         <Num id="d" info="catnominale" label="Diametro nominale (d)" value={x.d} onChange={set("d")} />
         <div className="grid grid-cols-2 gap-3">
-          <Num id="d1" info="catmisura" label="Misura d1" value={x.d1} onChange={set("d1")} hint={readAs(x.d1, nOf(x.d))} />
+          <Num id="d1" info="catmisura" label="Misura d1 (obbligatoria)" value={x.d1} onChange={set("d1")} hint={readAs(x.d1, nOf(x.d))} />
           <Num id="d2" label="Misura d2 (a 90°)" value={x.d2} onChange={set("d2")} hint={readAs(x.d2, nOf(x.d))} />
+          <Num id="d3" label="Misura d3 (altra maglia)" value={x.d3} onChange={set("d3")} hint={readAs(x.d3, nOf(x.d))} />
+          <Num id="d4" label="Misura d4 (a 90°)" value={x.d4} onChange={set("d4")} hint={readAs(x.d4, nOf(x.d))} />
         </div>
+        {r.ds.length > 1 && (
+          <p className="text-sm font-black text-slate-700" data-wear-cmean>
+            Più bassa {fmt(r.dm, 2)} mm · media {fmt(r.dMean, 2)} mm ({r.ds.length} misure)
+          </p>
+        )}
         <p className="text-[11px] text-slate-400 leading-snug">Misura nel punto dove le maglie si toccano (dove si consuma), con la catena allentata: due misure a 90° tra loro. Conta la misura più bassa: basta una sotto il 90% del nominale per lo scarto.</p>
         {r.wear != null && (
           <div className="text-xs font-bold text-slate-500">
@@ -999,6 +1141,22 @@ const ChainCheck = ({ known = null, onReport = null, crane = null }) => {
           </div>
         )}
       </section>
+
+      {x.kind === "imbracatura" && (
+        <section className="bg-white rounded-3xl border border-slate-200 p-4 space-y-3" data-wear-hook>
+          <h4 className="font-black text-slate-800">Apertura del gancio (se la misuri)</h4>
+          <div className="grid grid-cols-2 gap-3">
+            <Num id="h0" info="apertura" label="Apertura nominale" value={x.h0 || ""} onChange={set("h0")} hint="Dalla scheda del gancio o misurata a gancio nuovo." />
+            <Num id="h1" label="Apertura adesso" value={x.h1 || ""} onChange={set("h1")} hint={readAs(x.h1 || "", nOf(x.h0 || ""))} />
+          </div>
+          {r.hook != null && (
+            <div className="text-xs font-bold text-slate-500" data-wear-hook-pct>
+              Aumento {fmt(Math.max(0, r.hook))}% (scarto oltre il 10%)
+              <Bar sev={(Math.max(0, r.hook) / 10) * 100} />
+            </div>
+          )}
+        </section>
+      )}
 
       <section className="bg-white rounded-3xl border border-slate-200 p-4 space-y-3">
         <h4 className="font-black text-slate-800">Allungamento (se lo misuri)</h4>
@@ -1011,7 +1169,7 @@ const ChainCheck = ({ known = null, onReport = null, crane = null }) => {
 
       <section className="bg-white rounded-3xl border border-slate-200 p-4 space-y-3">
         <h4 className="font-black text-slate-800">Si vede anche…</h4>
-        <Flags list={CHAIN_FLAGS} value={x.flags} onChange={set("flags")} />
+        <Flags list={CHAIN_FLAGS.filter((f) => !f[2] || f[2] === x.kind)} value={x.flags} onChange={set("flags")} />
       </section>
 
       {ready && (
@@ -1289,7 +1447,11 @@ const lastCheckOf = (logs, type) => {
 const norm = (v) => String(v || "").trim().toUpperCase();
 
 // SU QUALE GRU? solo le gru di cui l'app sa la fune (o la catena): sostituita con un rapporto, col tipo
-const CranePicker = ({ machines, crane, onPick, color, type }) => {
+// QUALE GRU (facoltativo): prima il cliente, poi la gru. In cima i clienti dove l'app sa la fune (o la catena) montata
+// perché l'abbiamo cambiata noi; sotto tutti gli altri. Scegliere la gru non salva niente: serve per il verbale
+// (cliente, matricola, tipo) e, se l'app la sa, per partire dalla fune o catena montata.
+const CranePicker = ({ machines, crane, onPick, color, type, knownLabel }) => {
+  const [cust, setCust] = useState("");
   if (crane)
     return (
       <div className="bg-white rounded-3xl border border-slate-200 p-3 flex items-center gap-3" data-wear-crane>
@@ -1299,49 +1461,83 @@ const CranePicker = ({ machines, crane, onPick, color, type }) => {
             {crane.customerName} · {getSafeMatricola(crane)}
           </p>
           {crane.type && <p className="text-xs text-slate-500 truncate">{crane.type}</p>}
+          <p className={`text-[11px] font-bold ${knownLabel(crane) ? "text-emerald-700" : "text-slate-400"}`} data-wear-crane-known={knownLabel(crane) ? "1" : "0"}>
+            {knownLabel(crane) ? `${type === "catena" ? "Catena" : "Fune"} montata da noi: ${knownLabel(crane)}` : `${type === "catena" ? "Catena" : "Fune"} non nota: scegli tu ${type === "catena" ? "il diametro" : "la costruzione"} qui sotto`}
+          </p>
         </div>
-        <button type="button" onClick={() => onPick(null)} className={`h-9 px-3 rounded-full border border-slate-200 text-sm font-bold text-${color}-700`} data-action="wear-crane-change">
+        <button
+          type="button"
+          onClick={() => {
+            onPick(null);
+            setCust(crane.customerName || "");
+          }}
+          className={`h-9 px-3 rounded-full border border-slate-200 text-sm font-bold text-${color}-700`}
+          data-action="wear-crane-change"
+        >
           Cambia
         </button>
       </div>
     );
-  // menu a tendina (le gru sono tante): raggruppate per cliente
-  const groups = {};
-  [...machines]
-    .sort((a, b) => String(a.customerName).localeCompare(String(b.customerName), "it") || String(getSafeMatricola(a)).localeCompare(String(getSafeMatricola(b)), "it", { numeric: true }))
-    .forEach((m) => {
-      (groups[m.customerName || "—"] = groups[m.customerName || "—"] || []).push(m);
-    });
+  const byCust = {};
+  machines.forEach((m) => {
+    const c = m.customerName || "—";
+    (byCust[c] = byCust[c] || []).push(m);
+  });
+  const names = Object.keys(byCust).sort((a, b) => a.localeCompare(b, "it"));
+  const nKnown = (c) => byCust[c].filter((m) => knownLabel(m)).length;
+  const withKnown = names.filter((c) => nKnown(c) > 0);
+  const others = names.filter((c) => !nKnown(c));
+  const list = cust && byCust[cust] ? [...byCust[cust]].sort((a, b) => (knownLabel(b) ? 1 : 0) - (knownLabel(a) ? 1 : 0) || String(getSafeMatricola(a)).localeCompare(String(getSafeMatricola(b)), "it", { numeric: true })) : [];
   return (
     <div className="bg-white rounded-3xl border border-slate-200 p-3 space-y-2" data-wear-picker>
-      <p className="text-xs font-black text-slate-500">Su quale gru? (facoltativo) — qui ci sono solo le gru di cui l'app sa {type === "catena" ? "la catena montata" : "che fune c'è montata"}</p>
+      <p className="text-xs font-black text-slate-500">Su quale gru? (facoltativo: serve per il verbale, non si salva niente)</p>
       {!machines.length ? (
         <p className="text-xs text-slate-400" data-wear-none>
-          Per ora nessuna: compaiono quando {type === "catena" ? "la catena viene sostituita" : "la fune viene sostituita"} con un rapporto dell'app (con il tipo di fune).
+          Nessuna gru nell'elenco.
         </p>
       ) : (
-        <select
-          className={INPUT}
-          value=""
-          data-wear-input="crane"
-          aria-label="Scegli la gru"
-          onChange={(e) => {
-            const m = machines.find((x) => String(x.id) === e.target.value);
-            if (m) onPick(m);
-          }}
-        >
-          <option value="">Scegli la gru ({machines.length})…</option>
-          {Object.keys(groups).map((c) => (
-            <optgroup key={c} label={c}>
-              {groups[c].map((m) => (
-                <option key={m.id} value={m.id} data-wear-crane-option={getSafeMatricola(m)}>
-                  {getSafeMatricola(m)}
-                  {m.type ? ` · ${m.type}` : ""}
+        <>
+          <select className={INPUT} value={cust} data-wear-input="customer" aria-label="Scegli il cliente" onChange={(e) => setCust(e.target.value)}>
+            <option value="">Scegli il cliente ({names.length})…</option>
+            {withKnown.length > 0 && (
+              <optgroup label={`${type === "catena" ? "Catena" : "Fune"} cambiata da noi`}>
+                {withKnown.map((c) => (
+                  <option key={c} value={c} data-wear-cust-option={c}>
+                    {c} · {nKnown(c)} {nKnown(c) === 1 ? "gru" : "gru"} con {type === "catena" ? "catena" : "fune"} nota
+                  </option>
+                ))}
+              </optgroup>
+            )}
+            <optgroup label="Tutti gli altri clienti">
+              {others.map((c) => (
+                <option key={c} value={c} data-wear-cust-option={c}>
+                  {c}
                 </option>
               ))}
             </optgroup>
-          ))}
-        </select>
+          </select>
+          {cust && (
+            <select
+              className={INPUT}
+              value=""
+              data-wear-input="crane"
+              aria-label="Scegli la gru"
+              onChange={(e) => {
+                const m = list.find((x) => String(x.id) === e.target.value);
+                if (m) onPick(m);
+              }}
+            >
+              <option value="">Scegli la gru ({list.length})…</option>
+              {list.map((m) => (
+                <option key={m.id} value={m.id} data-wear-crane-option={getSafeMatricola(m)}>
+                  {getSafeMatricola(m)}
+                  {m.type ? ` · ${m.type}` : ""}
+                  {knownLabel(m) ? ` · ✓ ${knownLabel(m)}` : ""}
+                </option>
+              ))}
+            </select>
+          )}
+        </>
       )}
     </div>
   );
@@ -1363,7 +1559,22 @@ export const WearPanel = ({ color = "blue", onBack, onClose, machines = [], logs
   // gru di cui si sa la fune montata (tutti gli interventi, anche quelli di prima: tipo dal certificato o dalla descrizione)
   const known = useMemo(() => knownRopes(logs), [logs]);
   const chainKeys = useMemo(() => new Set(logs.filter((l) => l && l.catena && l.catena.diametro).map((l) => `${norm(l.customer)}|${norm(l.machineId)}`)), [logs]);
-  const pickable = useMemo(() => machines.filter((m) => (type === "fune" ? !!known[mkey(m)] : chainKeys.has(mkey(m)))), [machines, known, chainKeys, type]);
+  // cosa sa l'app della fune / catena montata su una gru (vuoto = non la sa)
+  const chainOf = useMemo(() => {
+    const out = {};
+    logs.forEach((l) => {
+      if (l && l.catena && l.catena.diametro) out[`${norm(l.customer)}|${norm(l.machineId)}`] = `Ø${String(l.catena.diametro).replace(".", ",")} mm`;
+    });
+    return out;
+  }, [logs]);
+  const knownLabel = (m) => {
+    if (type === "catena") return chainOf[mkey(m)] || (chainKeys.has(mkey(m)) ? "nota" : "");
+    const k = known[mkey(m)];
+    if (!k) return "";
+    const t = k.type || {};
+    const name = t.fas || (t.teci ? `Teci ${t.teci}` : t.costruzione ? ropeName(t.costruzione) : "");
+    return `${name || "fune"}${t.diametro ? ` Ø${String(t.diametro).replace(".", ",")}` : ""}`;
+  };
   const kr = crane && type === "fune" ? known[mkey(crane)] : null;
   const mounted = crane ? (kr ? kr.log : lastRopeOf(craneLogs, type)) : null;
   const knownType = kr ? { ...(mounted.fune || {}), fas: kr.type.fas || "", teci: kr.type.teci || "", costruzione: kr.type.costruzione || "", diametro: kr.type.diametro || (mounted.fune || {}).diametro } : null;
@@ -1384,20 +1595,21 @@ export const WearPanel = ({ color = "blue", onBack, onClose, machines = [], logs
     <div className="flex flex-col h-full" data-section="wear">
       <PanelHeader title="Fune e catena" sub="Cosa dice la norma" onBack={onBack} onClose={onClose} color={color} />
       <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50">
-        {tab !== "sling" && tab !== "kito" && <CranePicker machines={pickable} crane={crane} onPick={setCrane} color={color} type={type} />}
+        {tab !== "sling" && tab !== "break" && tab !== "kito" && <CranePicker machines={machines} crane={crane} onPick={setCrane} color={color} type={type} knownLabel={knownLabel} />}
         <div className="flex bg-slate-200/70 p-1 rounded-2xl" role="tablist">
           {[
             ["rope", "Fune"],
             ["chain", "Catena"],
             ["sling", "Sottoganci"],
             ["kito", "Kito"],
+            ["break", "Carico rottura fune"],
           ].map(([id, l]) => (
-            <button key={id} type="button" role="tab" aria-selected={tab === id} onClick={() => setTab(id)} data-wear-tab={id} className={`flex-1 h-11 rounded-xl text-sm font-black ${tab === id ? `bg-white text-${color}-700 shadow` : "text-slate-500"}`}>
+            <button key={id} type="button" role="tab" aria-selected={tab === id} onClick={() => setTab(id)} data-wear-tab={id} className={`flex-1 min-h-11 px-1 rounded-xl font-black leading-tight ${id === "break" ? "text-xs" : "text-sm"} ${tab === id ? `bg-white text-${color}-700 shadow` : "text-slate-500"}`}>
               {l}
             </button>
           ))}
         </div>
-        {crane && tab !== "sling" && tab !== "kito" && (
+        {crane && tab !== "sling" && tab !== "break" && tab !== "kito" && (
           <div className="space-y-2" data-wear-history>
             {mounted ? (
               <div className="rounded-2xl bg-white border border-slate-200 p-3 text-sm" data-wear-mounted>
@@ -1427,6 +1639,8 @@ export const WearPanel = ({ color = "blue", onBack, onClose, machines = [], logs
         )}
         {tab === "kito" ? (
           <KitoCheck />
+        ) : tab === "break" ? (
+          <BreakCalc />
         ) : tab === "sling" ? (
           <SottoganciCheck
             onWear={(preset) => {
@@ -1439,8 +1653,8 @@ export const WearPanel = ({ color = "blue", onBack, onClose, machines = [], logs
         ) : (
           <ChainCheck key={`c${crane ? crane.id : ""}${chainPreset ? chainPreset.n : ""}`} known={chainPreset || (mounted && mounted.catena)} onReport={report} crane={crane} />
         )}
-        <PrintedReports isAdmin={isAdmin} />
-        {tab === "kito" ? null : tab === "sling" ? (
+        {tab !== "break" && <PrintedReports isAdmin={isAdmin} />}
+        {tab === "break" || tab === "kito" ? null : tab === "sling" ? (
           <div className="flex justify-center gap-6">
             <a href={FAS_CHAINS} target="_blank" rel="noopener noreferrer" className="text-sm font-bold text-blue-700 underline" data-chains-catalog>
               Catalogo catene FAS

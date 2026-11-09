@@ -133,6 +133,7 @@ export const DashboardView = ({
     else if (to === "print") setArea("print");
     else if (to === "practice") setShowPractice(true);
     else if (to === "misura") window.dispatchEvent(new CustomEvent("mora-quick-wear", { detail: "" }));
+    else if (to === "wear") window.dispatchEvent(new CustomEvent("mora-open-wear", { detail: "rope" }));
     else if (to === "history") onNavigate("history");
     else if (to === "explore") onNavigate("explore");
     else if (to === "chat") {

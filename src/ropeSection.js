@@ -125,6 +125,10 @@ export const consOf = ({ fam = null, rope = null } = {}) => {
     const id = String(rope.id);
     if (/^6x36$|^6x26$|^6x41$|^8x26$|^8x36$/.test(id)) return id + "WS+IWRC";
     if (/^6x19$|^8x19$/.test(id)) return id + "S+IWRC";
+    if (/^6x19wf$|^8x19wf$/.test(id)) return id.slice(0, 4) + "W+IWRC";
+    if (id === "9x17") return "9xK17S+EPIWRC";
+    if (/^9x(26|31|36)$/.test(id)) return "9xK" + id.slice(2) + "WS+EPIWRC";
+    if (id === "9x7") return "9xK7+PWRC";
     return id;
   }
   return "";

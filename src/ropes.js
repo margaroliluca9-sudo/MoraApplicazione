@@ -163,15 +163,22 @@ const fmt = (n) => String(n).replace(".", ",");
 // nome della costruzione (stesso elenco del controllo Fune e catena)
 export const ROPE_TYPES = [
   ["6x7", "6×7"],
-  ["6x19", "6×19 (Seale, Warrington, Filler)"],
+  ["6x19", "6×19 Seale (o non so quale)"],
+  ["6x19wf", "6×19 Warrington o Filler"],
   ["6x26", "6×26 WS"],
   ["6x31", "6×31 WS"],
   ["6x36", "6×36 WS"],
   ["6x41", "6×41 WS"],
-  ["8x19", "8×19 (Seale, Warrington, Filler)"],
+  ["8x19", "8×19 Seale (o non so quale)"],
+  ["8x19wf", "8×19 Warrington o Filler"],
   ["8x26", "8×26 WS"],
   ["8x31", "8×31 WS"],
   ["8x36", "8×36 WS"],
+  ["9x7", "9×7 (anche compattata 9×K7)"],
+  ["9x17", "9×17 / 9×19 Seale (anche compattata)"],
+  ["9x26", "9×26 WS (anche compattata)"],
+  ["9x31", "9×31 WS (anche compattata)"],
+  ["9x36", "9×36 WS (anche compattata)"],
   ["18x7", "18×7 / 19×7 antigiro"],
   ["35x7", "35×7 / 35(W)×7 antigiro"],
 ];
@@ -242,8 +249,8 @@ export const consInText = (text) => {
   if (!m) return null;
   let id = `${m[1]}x${m[2]}`;
   if (id === "19x7") id = "18x7";
-  if (id === "6x25") id = "6x19"; // filler: 19 fili portanti
-  if (id === "8x25") id = "8x19";
+  if (id === "6x25") id = "6x19wf"; // filler: 19 fili portanti
+  if (id === "8x25") id = "8x19wf";
   return CONS_IDS.includes(id) ? { costruzione: id } : null;
 };
 // rapporti di prima (senza i campi della fune): «sostituita fune 6x36 Ø12», «montata fune nuova FZ636A12»…
