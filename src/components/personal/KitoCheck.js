@@ -1,7 +1,8 @@
 // FUNE E CATENA → scheda «Kito»: paranchi elettrici a catena KITO serie KQ e KF.
 // KQ: misure (catena, gancio con il disegno delle quote, occhiello, puleggia, molla, freno) con l'esito dai limiti
 // del manuale e il verbale PDF; conta ore (U7-01/02/03); codici errore dell'inverter; guasti; procedure.
-// KF: dimensioni standard di catena e gancio (il catalogo non dà limiti di usura).
+// KF: controllo del gancio con le misure (a, b, c, d, e, g): standard dal catalogo FAS, limite di scarto +10%
+// sull'apertura dalla UNI EN 818-6 (il catalogo non dà limiti di usura), dimensioni standard della catena.
 // Dati e testi del manuale in src/kito.js (parola per parola). I disegni sono fatti dall'app.
 import React, { useMemo, useState } from "react";
 import { CheckCircle2, AlertTriangle, XCircle, Copy, Check, Printer, Search } from "lucide-react";
@@ -33,6 +34,15 @@ import {
   KF_CHAINS,
   KF_HOOKS,
   KF_TEXT,
+  KF_HOOK_DIMS,
+  KF_HOOK_MODELS,
+  KF_HOOK_LIMIT,
+  KF_HOOK_SOURCE,
+  KF_FLAGS,
+  checkKf,
+  kfVerdict,
+  kfRegister,
+  kfReport,
 } from "../../kito";
 
 const useCopy = () => {
@@ -216,16 +226,17 @@ const KqMeasure = () => {
           ))}
         </div>
         <p className="text-[11px] text-slate-500">Catena di carico {m.chain} mm · il modello è sulla targhetta del paranco.</p>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-2 gap-2 items-end">
           <label className="block">
-            <span className="text-xs font-black text-slate-500">N. di serie (facoltativo)</span>
+            <span className="text-xs font-black text-slate-500">N. di serie</span>
             <input className={INPUT} value={x.serie} onChange={(e) => set("serie")(e.target.value.toUpperCase())} data-kito-input="serie" autoComplete="off" />
           </label>
           <label className="block">
-            <span className="text-xs font-black text-slate-500">Conta ore U7-03 (facoltativo)</span>
+            <span className="text-xs font-black text-slate-500">Conta ore U7-03</span>
             <input className={INPUT} inputMode="numeric" value={x.ore} onChange={(e) => set("ore")(e.target.value.replace(/\D/g, ""))} data-kito-input="ore" autoComplete="off" />
           </label>
         </div>
+        <p className="text-[11px] text-slate-400 -mt-1">Tutti e due facoltativi: vanno sul verbale.</p>
       </Card>
 
       <Card title="Catena di carico" id="chain">
@@ -594,7 +605,161 @@ const KqInfo = () => (
 );
 
 // ---------------------------------------------------------------- KF
-const KfView = () => (
+// gancio KF visto di fronte con le 6 quote del catalogo (disegno fatto dall'app)
+export const KfHookArt = ({ active = "", st = {} }) => (
+  <div className="flex justify-center" data-kito-kf-art>
+    <svg viewBox="0 0 230 250" className="w-64" aria-label="Gancio KF: quote a, b, c, d, e, g">
+      <Markers />
+      {/* gambo */}
+      <rect x="100" y="8" width="30" height="60" rx="4" {...METAL} />
+      {/* corpo del gancio: gambo → curva → punta */}
+      <path d="M104,68 L104,120 A52,52 0 1,0 176,150 L190,122 Q188,112 178,118 L160,150 A26,26 0 1,1 126,112 L126,68 Z" {...METAL} />
+      {/* sicurezza antisgancio */}
+      <line x1="128" y1="80" x2="182" y2="122" stroke="#334155" strokeWidth="5" strokeLinecap="round" />
+      <line x1="128" y1="80" x2="182" y2="122" stroke="#cbd5e1" strokeWidth="2.5" strokeLinecap="round" />
+      {/* d: gambo */}
+      <Dim x1="100" y1="40" x2="130" y2="40" label="d" lx="150" ly="38" st={st.d} on={active === "d"} />
+      {/* a: apertura (dal gambo alla punta) */}
+      <Dim x1="128" y1="138" x2="176" y2="138" label="a" lx="152" ly="162" st={st.a} on={active === "a"} />
+      <line x1="152" y1="141" x2="152" y2="152" stroke={active === "a" ? "#2563eb" : "#cbd5e1"} strokeWidth="1" strokeDasharray="3 2" />
+      {/* e: profondità della gola (dal fondo alla punta) */}
+      <Dim x1="60" y1="182" x2="60" y2="118" label="e" lx="40" ly="150" st={st.e} on={active === "e"} />
+      <line x1="62" y1="182" x2="126" y2="182" stroke="#cbd5e1" strokeWidth="1" strokeDasharray="3 2" />
+      <line x1="62" y1="118" x2="190" y2="118" stroke="#cbd5e1" strokeWidth="1" strokeDasharray="3 2" />
+      {/* c: spessore nel fondo della gola */}
+      <Dim x1="74" y1="212" x2="74" y2="240" label="c" lx="52" ly="228" st={st.c} on={active === "c"} />
+      <line x1="76" y1="212" x2="126" y2="212" stroke="#cbd5e1" strokeWidth="1" strokeDasharray="3 2" />
+      <line x1="76" y1="240" x2="126" y2="240" stroke="#cbd5e1" strokeWidth="1" strokeDasharray="3 2" />
+      {/* g: larghezza della punta */}
+      <Dim x1="178" y1="112" x2="192" y2="122" label="g" lx="212" ly="108" st={st.g} on={active === "g"} />
+    </svg>
+    <svg viewBox="0 0 60 250" className="w-16" aria-label="Gancio KF di lato: quota b">
+      <Markers />
+      <rect x="20" y="8" width="20" height="60" rx="4" {...METAL} />
+      <rect x="16" y="66" width="28" height="140" rx="14" {...METAL} />
+      <Dim x1="16" y1="222" x2="44" y2="222" label="b" lx="30" ly="242" st={st.b} on={active === "b"} />
+    </svg>
+  </div>
+);
+
+const KfHook = () => {
+  const [x, setX] = useState({ model: KF_HOOK_MODELS[4], kind: "SV", a: "", b: "", c: "", d: "", e: "", g: "", serie: "", flags: {} });
+  const [active, setActive] = useState("");
+  const set = (k) => (v) => setX((o) => ({ ...o, [k]: v }));
+  const r = useMemo(() => checkKf(x), [x]);
+  const [copied, copy] = useCopy();
+  const [regCopied, copyReg] = useCopy();
+  const st = {};
+  r.items.forEach((i) => {
+    st[i.id] = i.over ? "over" : i.near ? "near" : "ok";
+  });
+  const v = kfVerdict(r);
+  const Tone = r.level === "scarto" ? ["bg-red-600", XCircle] : r.level === "attenzione" ? ["bg-amber-500", AlertTriangle] : ["bg-emerald-600", CheckCircle2];
+  const Icon = Tone[1];
+  return (
+    <div className="space-y-4" data-kito="kf-hook">
+      <div className="rounded-2xl bg-sky-50 border border-sky-200 p-3 text-[12px] text-sky-900 leading-snug" data-kito-kf-source>
+        <b>Da dove vengono i numeri.</b> Le misure standard (da nuovo) sono quelle del catalogo FAS/KITO serie KF. Il catalogo <b>non dà limiti di usura</b>: il limite di scarto dell'apertura (+{KF_HOOK_LIMIT}%) è della <b>UNI EN 818-6</b>, non del costruttore. Per le altre quote l'app ti dice solo di quanto ti scosti dallo standard. Fa sempre fede il manuale del costruttore.
+      </div>
+      <Card title="Quale paranco e quale gancio" id="kfmodel">
+        <label className="block">
+          <span className="text-xs font-black text-slate-500">Paranco</span>
+          <select className={INPUT} value={x.model} onChange={(e) => set("model")(e.target.value)} data-kito-select="kfmodel">
+            {KF_HOOK_MODELS.map((m) => (
+              <option key={m} value={m}>
+                {m}
+              </option>
+            ))}
+          </select>
+        </label>
+        <div className="grid grid-cols-2 gap-1.5" data-kito-kind>
+          {[
+            ["SV", "Gancio di carico", "SV · quello in basso, col bozzello"],
+            ["SP", "Gancio di sospensione", "SP · quello in alto, che regge il paranco"],
+          ].map(([id, l, sub]) => (
+            <button key={id} type="button" onClick={() => set("kind")(id)} data-kito-kind-btn={id} className={`rounded-2xl border-2 px-2 py-2 text-left ${x.kind === id ? "border-blue-500 bg-blue-50" : "border-slate-200 bg-white"}`}>
+              <span className={`block text-sm font-black ${x.kind === id ? "text-blue-800" : "text-slate-700"}`}>{l}</span>
+              <span className="block text-[11px] text-slate-500 leading-tight">{sub}</span>
+            </button>
+          ))}
+        </div>
+        <label className="block">
+          <span className="text-xs font-black text-slate-500">Numero di serie del paranco (per il verbale, facoltativo)</span>
+          <input className={INPUT} value={x.serie} onChange={(e) => set("serie")(e.target.value)} data-kito-input="kfserie" autoComplete="off" />
+        </label>
+      </Card>
+      <Card title="Misura il gancio" id="kfmeasure">
+        <KfHookArt active={active} st={st} />
+        <p className="text-[11px] text-slate-500 -mt-1">Tocca un campo e la quota da misurare si colora di blu nel disegno. Verde: come da nuovo. Arancio: si scosta. Rosso: apertura oltre il limite della EN 818-6.</p>
+        <div className="grid grid-cols-2 gap-2">
+          {KF_HOOK_DIMS.map(([id, label, where]) => (
+            <Field key={id} id={id} label={label} value={x[id]} onChange={set(id)} onFocus={() => setActive(id)} st={st[id]} std={r.std ? r.std[id] : null} lim={id === "a" && r.std ? Math.round(r.std.a * (1 + KF_HOOK_LIMIT / 100) * 100) / 100 : null} dir="max" hint={where} />
+          ))}
+        </div>
+      </Card>
+      <Card title="Controllo a vista" id="kfflags">
+        <div className="space-y-2">
+          {KF_FLAGS.map((f) => (
+            <label key={f.id} className="flex items-start gap-2 text-sm text-slate-700">
+              <input type="checkbox" className="mt-1 w-4 h-4" checked={!!x.flags[f.id]} onChange={(e) => set("flags")({ ...x.flags, [f.id]: e.target.checked })} data-kito-flag={"kf-" + f.id} />
+              <span className="flex-1">
+                {f.label}
+                {x.flags[f.id] && <span className="block text-xs font-bold text-red-700">Rimedio: {f.rimedio}</span>}
+              </span>
+            </label>
+          ))}
+        </div>
+      </Card>
+      {r.any && (
+        <div className="rounded-3xl overflow-hidden border border-slate-200 bg-white shadow-lg" data-kito-verdict={r.level}>
+          <div className={`${Tone[0]} text-white p-5`}>
+            <p className="text-sm font-black uppercase tracking-wider opacity-90">Gancio KITO KF {r.kind} · {r.wll}</p>
+            <p className="font-black text-2xl flex items-center gap-2 mt-1">
+              <Icon className="w-7 h-7 shrink-0" /> {r.level === "scarto" ? "Da sostituire" : r.level === "attenzione" ? "Si scosta dallo standard" : "Come da nuovo"}
+            </p>
+          </div>
+          <div className="p-4 space-y-2">
+            <ul className="space-y-1 text-sm font-semibold text-slate-700">
+              {r.items.map((i) => (
+                <li key={i.id} data-kito-line={"kf-" + i.id}>
+                  <span className={i.over ? "text-red-700" : i.near ? "text-amber-700" : ""}>
+                    {i.label}: {fmtK(i.v, 2)} mm · standard {fmtK(i.std, 2)} · {i.diff > 0 ? "+" : ""}
+                    {fmtK(i.diff, 2)} mm ({i.pct > 0 ? "+" : ""}
+                    {fmtK(i.pct, 1)}%){i.limit != null ? ` · limite EN 818-6 ${fmtK(i.limit, 2)} → ${i.over ? "OLTRE IL LIMITE" : "entro il limite"}` : ""}
+                  </span>
+                </li>
+              ))}
+              {r.flags.map((f) => (
+                <li key={f.id} className="text-red-700">
+                  {f.label} → {f.rimedio}
+                </li>
+              ))}
+            </ul>
+            <div className="rounded-2xl bg-slate-50 border border-slate-200 p-3" data-kito-register>
+              <p className="text-[11px] font-black text-slate-500 uppercase tracking-wider">Sul registro di controllo</p>
+              <p className="font-black text-slate-800 mt-0.5" data-kito-esito>
+                Esito: {v.esito}
+              </p>
+              <p className="text-sm font-semibold text-slate-700">{v.azione}</p>
+              <button type="button" onClick={() => copyReg(kfRegister({ r }))} className="mt-2 h-10 px-3 rounded-xl bg-white border border-slate-300 text-sm font-bold text-slate-700 flex items-center gap-1.5" data-action="kito-kf-copy-register">
+                {regCopied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />} {regCopied ? "Copiato: incollalo sul registro" : "Copia per il registro"}
+              </button>
+            </div>
+            <button type="button" onClick={() => copy(kfRegister({ r }))} className="h-10 px-3 rounded-xl bg-slate-100 border border-slate-200 text-sm font-bold text-slate-700 flex items-center gap-1.5" data-action="kito-kf-copy">
+              {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />} {copied ? "Copiato: incollalo nel rapporto" : "Copia per il rapporto"}
+            </button>
+            <button type="button" onClick={() => printWear(kfReport({ r, x }))} className="w-full h-11 px-3 rounded-xl bg-slate-900 text-white text-sm font-bold flex items-center justify-center gap-1.5" data-action="kito-kf-print">
+              <Printer className="w-4 h-4" /> Stampa il verbale (PDF)
+            </button>
+          </div>
+        </div>
+      )}
+      <p className="text-[11px] text-slate-400 text-center">{KF_HOOK_SOURCE}.</p>
+    </div>
+  );
+};
+
+const KfTables = () => (
   <div className="space-y-4" data-kito="kf">
     <Card title="KF · dimensioni standard della catena" id="kfchain">
       <div className="overflow-x-auto -mx-1">
@@ -625,7 +790,7 @@ const KfView = () => (
           </tbody>
         </table>
       </div>
-      <p className="text-[11px] text-slate-500">d = diametro · a = larghezza interna · b = larghezza esterna · p = passo (mm) · peso per 1 m di corsa del gancio.</p>
+      <p className="text-[11px] text-slate-500">d = diametro · a = larghezza interna · b = larghezza esterna · p = passo (mm) · peso per 1 m di corsa del gancio. Per l'usura della catena usa la scheda «Catena» (del paranco).</p>
     </Card>
     <Card title="KF · dimensioni standard del gancio" id="kfhook">
       <div className="overflow-x-auto -mx-1">
@@ -663,18 +828,41 @@ const KfView = () => (
   </div>
 );
 
+const KfView = () => {
+  const [sec, setSec] = useState("gancio");
+  return (
+    <>
+      <Tabs
+        id="kf"
+        value={sec}
+        onChange={setSec}
+        list={[
+          ["gancio", "Gancio"],
+          ["tabelle", "Tabelle catalogo"],
+        ]}
+      />
+      {sec === "gancio" ? <KfHook /> : <KfTables />}
+    </>
+  );
+};
+
 export const KitoCheck = () => {
   const [serie, setSerie] = useState("kq");
   const [sec, setSec] = useState("misure");
   return (
     <div className="space-y-4" data-section="wear-kito">
+      <div className="px-1">
+        <h3 className="font-black text-slate-800 text-lg leading-tight">Ganci Kito</h3>
+        <p className="text-xs text-slate-500">Paranchi elettrici a catena KITO: gancio, catena e controlli</p>
+      </div>
       <div className="flex bg-slate-200/70 p-1 rounded-2xl" data-kito-serie>
         {[
-          ["kq", "Kito KQ"],
-          ["kf", "Kito KF"],
-        ].map(([id, l]) => (
-          <button key={id} type="button" onClick={() => setSerie(id)} data-kito-serie-btn={id} className={`flex-1 h-10 rounded-xl text-sm font-black ${serie === id ? "bg-white text-slate-800 shadow" : "text-slate-500"}`}>
-            {l}
+          ["kq", "Kito KQ", "limiti dal manuale FAS/KITO"],
+          ["kf", "Kito KF", "limite dalla UNI EN 818-6"],
+        ].map(([id, l, sub]) => (
+          <button key={id} type="button" onClick={() => setSerie(id)} data-kito-serie-btn={id} className={`flex-1 min-h-12 py-1 rounded-xl leading-tight ${serie === id ? "bg-white text-slate-800 shadow" : "text-slate-500"}`}>
+            <span className="block text-sm font-black">{l}</span>
+            <span className={`block text-[10px] font-bold ${serie === id ? "text-slate-500" : "text-slate-400"}`}>{sub}</span>
           </button>
         ))}
       </div>

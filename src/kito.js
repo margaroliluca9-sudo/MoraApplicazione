@@ -384,3 +384,105 @@ export const KF_HOOKS = [
   ["SP SV", "2 t", 47.5, 29, 40, 29, 50, 37],
 ];
 export const KF_TEXT = { tipi: "SP = Gancio di sospensione · SV = Gancio di carico" };
+
+// ---------------------------------------------------------------- GANCIO KF: controllo con le misure
+// Il catalogo FAS dà solo le misure standard (da nuovo). Il limite di scarto NON è del costruttore: viene dalla
+// UNI EN 818-6 (apertura del gancio: l'aumento non deve superare il 10% del valore nominale). Per le altre quote
+// l'app mostra solo di quanto si scostano dallo standard, senza dire «scarto»: fa fede il manuale del costruttore.
+export const KF_HOOK_SOURCE = "UNI EN 818-6 (apertura del gancio: aumento massimo 10% del valore nominale); misure standard dal " + KF_SOURCE;
+export const KF_HOOK_LIMIT = 10; // %
+// [id, nome, dove si misura]
+export const KF_HOOK_DIMS = [
+  ["a", "a · apertura del gancio", "tra la punta e il gambo, nel punto più stretto"],
+  ["b", "b · larghezza del gancio", "il fianco del gancio, nel punto dove lavora la braca"],
+  ["c", "c · spessore del gancio", "la sezione del gancio di fronte, nel punto dove lavora la braca"],
+  ["d", "d · diametro del gambo", "il gambo sopra il gancio"],
+  ["e", "e · profondità della gola", "dal fondo della gola alla punta"],
+  ["g", "g · larghezza della punta", "la punta del gancio, dove si chiude la sicurezza"],
+];
+// i modelli KF e il loro gancio (portata del gancio = portata del paranco)
+export const KF_HOOK_MODELS = KF_CHAINS.map((c) => c[0] + " · " + c[1]);
+export const kfHook = (wll) => KF_HOOKS.filter((h) => h[1] === wll || (h[1] === "125/250/500 kg" && ["125 kg", "250 kg", "500 kg"].includes(wll)));
+// x = { model (es. "KF 50S1 · 500 kg"), kind: "SP" | "SV", a, b, c, d, e, g, flags }
+export const checkKf = (x) => {
+  const wll = (x.model || "").split(" · ")[1] || "";
+  const kind = x.kind === "SP" ? "SP" : "SV";
+  const hooks = kfHook(wll);
+  const row = hooks.find((h) => h[0] === kind) || hooks.find((h) => h[0].includes(kind)) || hooks[0] || null;
+  const std = row ? { a: row[2], b: row[3], c: row[4], d: row[5], e: row[6], g: row[7] } : null;
+  const items = [];
+  if (std)
+    KF_HOOK_DIMS.forEach(([id, label]) => {
+      const v = num(x[id]);
+      if (v == null) return;
+      const s0 = std[id];
+      const diff = Math.round((v - s0) * 100) / 100;
+      const pct = Math.round(((v - s0) / s0) * 1000) / 10;
+      // solo per «a» c'è un limite (EN 818-6): +10%. Le altre quote si confrontano e basta.
+      const limit = id === "a" ? Math.round(s0 * (1 + KF_HOOK_LIMIT / 100) * 100) / 100 : null;
+      const over = id === "a" ? pct > KF_HOOK_LIMIT : false;
+      const near = id === "a" ? !over && pct > KF_HOOK_LIMIT / 2 : Math.abs(pct) > 5;
+      items.push({ id, label, v, std: s0, diff, pct, limit, over, near });
+    });
+  const flags = KF_FLAGS.filter((f) => x.flags && x.flags[f.id]);
+  const bad = items.filter((i) => i.over);
+  const level = bad.length || flags.length ? "scarto" : items.some((i) => i.near) ? "attenzione" : "ok";
+  return { wll, kind, row, std, items, bad, flags, level, any: items.length > 0 || flags.length > 0 };
+};
+// controlli a vista del gancio (UNI EN 818-6, come per le brache dei sottoganci)
+export const KF_FLAGS = [
+  { id: "sicurezza", label: "Sicurezza antisgancio mancante, deformata o che non chiude", rimedio: "Sostituire la sicurezza antisgancio; non usare il gancio senza." },
+  { id: "deformato", label: "Gancio deformato, piegato o storto", rimedio: "Sostituire il gancio." },
+  { id: "cricche", label: "Cricche, tagli, solchi o intagli", rimedio: "Sostituire il gancio." },
+  { id: "corrosione", label: "Corrosione forte o segni di calore (colore cambiato)", rimedio: "Sostituire il gancio." },
+  { id: "rotazione", label: "Il gancio non ruota liberamente", rimedio: "Controllare il cuscinetto; se necessario sostituire il gancio-bozzello." },
+];
+export const kfVerdict = (r) => {
+  const fix = [...r.bad.map((i) => `${i.label}: oltre il +${KF_HOOK_LIMIT}% (EN 818-6). Sostituire il gancio.`), ...r.flags.map((f) => `${f.label}: ${f.rimedio}`)];
+  return {
+    esito: r.level === "scarto" ? "NON IDONEO" : "IDONEO",
+    azione: fix.length ? fix.join(" ") : `Apertura entro il +${KF_HOOK_LIMIT}% della EN 818-6; le altre quote sono confrontate con lo standard del catalogo (nessun limite del costruttore disponibile).`,
+  };
+};
+const sgn = (v) => (v > 0 ? "+" : "");
+export const kfRegister = ({ r }) => {
+  const v = kfVerdict(r);
+  const out = [`CONTROLLO GANCIO KITO KF ${r.kind} (${r.wll}) – ${today()}${tech() ? " – tecnico " + tech() : ""}`];
+  r.items.forEach((i) => out.push(`${i.label}: ${fmtK(i.v, 2)} mm (standard catalogo ${fmtK(i.std, 2)}, ${sgn(i.diff)}${fmtK(i.diff, 2)} mm = ${sgn(i.pct)}${fmtK(i.pct, 1)}%)${i.limit != null ? ` · limite EN 818-6 ${fmtK(i.limit, 2)} mm → ${i.over ? "OLTRE IL LIMITE" : "entro il limite"}` : ""}`));
+  r.flags.forEach((f) => out.push(`${f.label} → ${f.rimedio}`));
+  out.push(`Esito: ${v.esito}`);
+  out.push("Fonte: " + KF_HOOK_SOURCE + ". Fa fede il manuale del costruttore.");
+  return out.join("\n");
+};
+export const kfReport = ({ r, x }) => {
+  const v = kfVerdict(r);
+  const rows = r.items.map((i) => [i.label, `${fmtK(i.v, 2)} mm`, i.limit != null ? `max ${fmtK(i.limit, 2)} (std ${fmtK(i.std, 2)}, EN 818-6)` : `std ${fmtK(i.std, 2)} (catalogo)`, i.limit != null ? (i.over ? "OLTRE IL LIMITE" : "entro il limite") : `${sgn(i.diff)}${fmtK(i.diff, 2)} mm (${sgn(i.pct)}${fmtK(i.pct, 1)}%)`]);
+  r.flags.forEach((f) => rows.push([f.label, "SÌ", "a vista", "SCARTO"]));
+  return {
+    type: "paranco",
+    title: "VERBALE CONTROLLO GANCIO PARANCO",
+    tiles: [
+      ["Gancio", `KITO KF ${r.kind}`],
+      ["Misure prese", String(r.items.length)],
+      ["Oltre il limite", String(r.bad.length + r.flags.length)],
+    ],
+    params: [
+      ["Paranco", `KITO serie KF · ${x.model || ""}`],
+      ["Gancio", r.kind === "SP" ? "SP · gancio di sospensione" : "SV · gancio di carico"],
+      ["Portata", r.wll],
+      ["Numero di serie", x.serie || ""],
+    ],
+    rows,
+    rowHead: ["Quota", "Misurato", "Riferimento", "Esito"],
+    defects: r.flags.map((f) => f.label),
+    esito: v.esito,
+    azione: v.azione,
+    level: r.level,
+    norms: [
+      "Limite di scarto: UNI EN 818-6, apertura del gancio: l'aumento non deve superare il 10% del valore nominale. Non è un limite del costruttore: il catalogo KITO/FAS della serie KF riporta solo le dimensioni standard.",
+      `Misure standard: ${KF_SOURCE}, tabella «Dimensioni standard del gancio» (a, b, c, d, e, g).`,
+      "Per le quote b, c, d, e, g il verbale riporta lo scostamento dallo standard; fa fede il manuale del costruttore.",
+      "D.Lgs. 81/2008, Allegato VI, punto 3.1.2: «Le funi e le catene debbono essere sottoposte a controlli trimestrali in mancanza di specifica indicazione da parte del fabbricante.»",
+    ],
+  };
+};
