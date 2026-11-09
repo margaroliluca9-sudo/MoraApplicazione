@@ -19,7 +19,7 @@ import { getSafeMatricola } from "../../utils";
 import { DriveCraneInfo } from "../DriveCraneInfo";
 import { FAS_ROPES, FAS_GROUPS, fasCode } from "../../fasRopes";
 import { TECI_ROPES, TECI_GROUPS, teciFamily } from "../../teciRopes";
-import { KitoCheck } from "./KitoCheck";
+import { KitoCheck, KqPage, HoistChain } from "./KitoCheck";
 
 // catalogo FAS delle funi (si apre sul loro sito)
 const FAS_CATALOG = "https://www.fasitaly.com/sottofamiglia/0107.pdf";
@@ -1101,6 +1101,8 @@ const ChainCheck = ({ known = null, onReport = null, crane = null }) => {
   const kd = known && known.diametro ? String(known.diametro).replace(".", ",") : "";
   const kp = known && known.passo ? String(known.passo).replace(".", ",") : "";
   const [x, setX] = useState({ kind: (known && known.kind) || "paranco", d: kd, d1: "", d2: "", d3: "", d4: "", t: kp, t1: "", t11: "", flags: {} });
+  // catena del paranco: generica (EN 818 / regola Mora) oppure con i limiti del costruttore
+  const [maker, setMaker] = useState("gen");
   const set = (k) => (v) => setX((o) => ({ ...o, [k]: v }));
   const r = useMemo(() => checkChain(x), [x]);
   const [copied, copy] = useCopy();
@@ -1121,6 +1123,30 @@ const ChainCheck = ({ known = null, onReport = null, crane = null }) => {
           <InfoBtn id="imbracatura" label="paranco o sottoganci" />
         </div>
         {x.kind === "imbracatura" && <Txt id="mora" label="Numero Mora (targhetta)" value={x.mora || ""} onChange={set("mora")} hint="Il numero progressivo della targhetta Mora sul sottogancio." />}
+        {x.kind === "paranco" && (
+          <div className="space-y-1.5" data-wear-chain-maker>
+            <p className="text-xs font-black text-slate-500">Di chi è il paranco?</p>
+            <div className="grid grid-cols-3 gap-1.5">
+              {[
+                ["gen", "Altro / non so", "EN 818 e regola Mora"],
+                ["kq", "Kito KQ", "manuale FAS/KITO"],
+                ["dmk", "Donati DMK", "manuale Donati"],
+              ].map(([id, l, sub]) => (
+                <button key={id} type="button" onClick={() => setMaker(id)} data-wear-maker={id} className={`rounded-2xl border-2 px-1.5 py-2 text-center leading-tight ${maker === id ? "border-blue-500 bg-blue-50" : "border-slate-200 bg-white"}`}>
+                  <span className={`block text-sm font-black ${maker === id ? "text-blue-800" : "text-slate-700"}`}>{l}</span>
+                  <span className="block text-[10px] text-slate-500">{sub}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </section>
+      {x.kind === "paranco" && maker !== "gen" ? (
+        <HoistChain maker={maker} />
+      ) : (
+      <>
+      <section className="bg-white rounded-3xl border border-slate-200 p-4 space-y-3">
+        <h4 className="font-black text-slate-800">Le misure</h4>
         <Num id="d" info="catnominale" label="Diametro nominale (d)" value={x.d} onChange={set("d")} />
         <div className="grid grid-cols-2 gap-3">
           <Num id="d1" info="catmisura" label="Misura d1 (obbligatoria)" value={x.d1} onChange={set("d1")} hint={readAs(x.d1, nOf(x.d))} />
@@ -1187,8 +1213,10 @@ const ChainCheck = ({ known = null, onReport = null, crane = null }) => {
       )}
       <p className="text-[11px] text-slate-400 leading-snug">
         Usura: nessuna misura sotto 0,9·d (regola Mora: basta una misura sotto il 90% del nominale; limite del 10% della EN 818-6, usato anche per la catena del paranco). Allungamento: una maglia +5%;
-        catena da paranco su 11 maglie +2%. Fa sempre fede il manuale del costruttore del paranco.
+        catena da paranco su 11 maglie +2%. Fa sempre fede il manuale del costruttore del paranco: se è Kito KQ o Donati DMK scegli il costruttore qui sopra e usi i suoi limiti.
       </p>
+      </>
+      )}
     </div>
   );
 };
@@ -1593,9 +1621,10 @@ export const WearPanel = ({ color = "blue", onBack, onClose, machines = [], logs
       : null;
   return (
     <div className="flex flex-col h-full" data-section="wear">
-      <PanelHeader title="Fune e catena" sub="Cosa dice la norma" onBack={onBack} onClose={onClose} color={color} />
+      <PanelHeader title={tab === "kq" ? "Paranco Kito KQ" : "Fune e catena"} sub={tab === "kq" ? "Dal manuale FAS/KITO" : "Cosa dice la norma"} onBack={tab === "kq" ? () => setTab("kito") : onBack} onClose={onClose} color={color} />
       <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50">
-        {tab !== "sling" && tab !== "break" && tab !== "kito" && <CranePicker machines={machines} crane={crane} onPick={setCrane} color={color} type={type} knownLabel={knownLabel} />}
+        {tab !== "sling" && tab !== "break" && tab !== "kito" && tab !== "kq" && <CranePicker machines={machines} crane={crane} onPick={setCrane} color={color} type={type} knownLabel={knownLabel} />}
+        {tab !== "kq" && (
         <div className="flex bg-slate-200/70 p-1 rounded-2xl" role="tablist">
           {[
             ["rope", "Fune"],
@@ -1609,7 +1638,8 @@ export const WearPanel = ({ color = "blue", onBack, onClose, machines = [], logs
             </button>
           ))}
         </div>
-        {crane && tab !== "sling" && tab !== "break" && tab !== "kito" && (
+        )}
+        {crane && tab !== "sling" && tab !== "break" && tab !== "kito" && tab !== "kq" && (
           <div className="space-y-2" data-wear-history>
             {mounted ? (
               <div className="rounded-2xl bg-white border border-slate-200 p-3 text-sm" data-wear-mounted>
@@ -1637,8 +1667,10 @@ export const WearPanel = ({ color = "blue", onBack, onClose, machines = [], logs
             {type === "fune" && <DriveCraneInfo matricola={getSafeMatricola(crane)} customerName={crane.customerName} />}
           </div>
         )}
-        {tab === "kito" ? (
-          <KitoCheck />
+        {tab === "kq" ? (
+          <KqPage />
+        ) : tab === "kito" ? (
+          <KitoCheck onOpenKq={() => setTab("kq")} />
         ) : tab === "break" ? (
           <BreakCalc />
         ) : tab === "sling" ? (
@@ -1653,8 +1685,8 @@ export const WearPanel = ({ color = "blue", onBack, onClose, machines = [], logs
         ) : (
           <ChainCheck key={`c${crane ? crane.id : ""}${chainPreset ? chainPreset.n : ""}`} known={chainPreset || (mounted && mounted.catena)} onReport={report} crane={crane} />
         )}
-        {tab !== "break" && <PrintedReports isAdmin={isAdmin} />}
-        {tab === "break" || tab === "kito" ? null : tab === "sling" ? (
+        {tab !== "break" && tab !== "kq" && <PrintedReports isAdmin={isAdmin} />}
+        {tab === "break" || tab === "kito" || tab === "kq" ? null : tab === "sling" ? (
           <div className="flex justify-center gap-6">
             <a href={FAS_CHAINS} target="_blank" rel="noopener noreferrer" className="text-sm font-bold text-blue-700 underline" data-chains-catalog>
               Catalogo catene FAS

@@ -104,37 +104,101 @@ const Markers = () => (
 );
 const METAL = { fill: "#e2e8f0", stroke: "#334155", strokeWidth: 2 };
 
+// GANCIO (disegno unico fatto dall'app, grande, di fronte e di lato). Le quote si scelgono per costruttore:
+//  a = apertura (tra il fianco interno lato gambo e la punta) · b = larghezza (di lato) · c = spessore nel fondo della gola
+//  d = diametro del gambo · e = profondità della gola · g = larghezza della punta
+// labels: { a: "a2", c: "h2" } cambia la lettera scritta nel pallino; dims: quali quote disegnare.
+const Metal = () => (
+  <defs>
+    <linearGradient id="hk-met" x1="0" x2="1">
+      <stop offset="0" stopColor="#f1f5f9" />
+      <stop offset="0.5" stopColor="#cbd5e1" />
+      <stop offset="1" stopColor="#94a3b8" />
+    </linearGradient>
+  </defs>
+);
+const Q = ({ x1, y1, x2, y2, lx, ly, label, st, on, leader }) => {
+  const c = on ? "#2563eb" : tone(st);
+  return (
+    <g data-kito-dim={label} data-on={on ? "1" : "0"}>
+      <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={c} strokeWidth={on ? 3 : 2} markerStart={`url(#ka-${on ? "on" : st || "n"})`} markerEnd={`url(#ka-${on ? "on" : st || "n"})`} />
+      {leader && <line x1={leader[0]} y1={leader[1]} x2={lx} y2={ly} stroke="#94a3b8" strokeWidth="1" />}
+      <circle cx={lx} cy={ly} r={on ? 13 : 11} fill={on ? "#2563eb" : "#fff"} stroke={c} strokeWidth="2" />
+      <text x={lx} y={Number(ly) + 4.5} textAnchor="middle" fontSize="13" fontWeight="900" fill={on ? "#fff" : c}>
+        {label}
+      </text>
+    </g>
+  );
+};
+const Dash = (p) => <line {...p} stroke="#94a3b8" strokeWidth="1" strokeDasharray="3 2" />;
+export const HookArt = ({ active = "", st = {}, dims = ["a", "b", "c", "d", "e", "g"], labels = {} }) => {
+  const L = (k) => labels[k] || k;
+  const has = (k) => dims.includes(k);
+  const S = (k) => st[k];
+  const on = (k) => active === k;
+  return (
+    <div className="flex justify-center items-start gap-3" data-hook-art>
+      <svg viewBox="0 0 300 330" className="w-[17rem] max-w-[70%]" aria-label="Gancio visto di fronte">
+        <Markers />
+        <Metal />
+        <rect x="128" y="10" width="44" height="22" rx="4" fill="#64748b" stroke="#334155" strokeWidth="2" />
+        <rect x="135" y="32" width="30" height="58" fill="url(#hk-met)" stroke="#334155" strokeWidth="2" />
+        <path d="M135,90 C95,100 70,135 70,180 C70,235 115,275 165,275 C205,275 235,250 240,215 L252,162 L228,157 L216,200 C208,228 190,245 165,245 C128,245 100,215 100,180 C100,150 118,124 150,116 L165,116 L165,90 Z" fill="url(#hk-met)" stroke="#334155" strokeWidth="2.5" strokeLinejoin="round" />
+        <path d="M165,100 L242,165" stroke="#334155" strokeWidth="7" strokeLinecap="round" />
+        <path d="M165,100 L242,165" stroke="#e2e8f0" strokeWidth="3.5" strokeLinecap="round" />
+        <circle cx="165" cy="100" r="5" fill="#64748b" stroke="#334155" strokeWidth="1.5" />
+        {has("d") && <Q x1="135" y1="60" x2="165" y2="60" lx="198" ly="60" label={L("d")} st={S("d")} on={on("d")} />}
+        {has("a") && (
+          <>
+            <Dash x1="165" y1="118" x2="165" y2="150" />
+            <Dash x1="228" y1="157" x2="228" y2="150" />
+            <Q x1="166" y1="150" x2="227" y2="150" lx="196" ly="134" label={L("a")} st={S("a")} on={on("a")} />
+          </>
+        )}
+        {has("e") && (
+          <>
+            <Dash x1="40" y1="245" x2="165" y2="245" />
+            <Dash x1="40" y1="160" x2="228" y2="160" />
+            <Q x1="40" y1="244" x2="40" y2="161" lx="22" ly="202" label={L("e")} st={S("e")} on={on("e")} />
+          </>
+        )}
+        {has("c") && (
+          <>
+            <Dash x1="130" y1="275" x2="165" y2="275" />
+            {!has("e") && <Dash x1="130" y1="245" x2="165" y2="245" />}
+            <Q x1="165" y1="246" x2="165" y2="274" lx="198" ly="300" label={L("c")} st={S("c")} on={on("c")} leader={[168, 262]} />
+          </>
+        )}
+        {has("g") && <Q x1="228" y1="157" x2="252" y2="162" lx="276" ly="136" label={L("g")} st={S("g")} on={on("g")} leader={[242, 156]} />}
+      </svg>
+      {has("b") && (
+        <svg viewBox="0 0 90 330" className="w-20" aria-label="Gancio visto di lato: larghezza b">
+          <Markers />
+          <rect x="30" y="10" width="30" height="22" rx="4" fill="#64748b" stroke="#334155" strokeWidth="2" />
+          <rect x="36" y="32" width="18" height="58" fill="#cbd5e1" stroke="#334155" strokeWidth="2" />
+          <path d="M36,90 L30,120 L30,250 C30,266 60,266 60,250 L60,120 L54,90 Z" fill="#cbd5e1" stroke="#334155" strokeWidth="2.5" strokeLinejoin="round" />
+          <Dash x1="30" y1="262" x2="30" y2="290" />
+          <Dash x1="60" y1="262" x2="60" y2="290" />
+          <Q x1="30" y1="290" x2="60" y2="290" lx="45" ly="314" label={L("b")} st={S("b")} on={on("b")} />
+        </svg>
+      )}
+    </div>
+  );
+};
+
 // gancio inferiore KQ: di fronte (a, c), di lato (b); occhiello di sospensione (d, e)
 export const KqHookArt = ({ active = "", st = {} }) => (
-  <div className="grid grid-cols-[auto_auto] justify-center gap-4 items-end" data-kito-hook-art>
-    <svg viewBox="0 0 170 192" className="w-48" aria-label="Gancio inferiore visto di fronte: dimensioni a e c">
-      <Markers />
-      <rect x="58" y="10" width="44" height="22" rx="6" {...METAL} />
-      <path d="M65.8,32 L65.8,71.9 A55,55 0 1,0 127.6,97.5 L131,79 Q129,70 119,78 L103.4,111.5 A27,27 0 1,1 93.5,101.6 L93.5,32 Z" {...METAL} />
-      <line x1="95" y1="50" x2="121" y2="80" stroke="#334155" strokeWidth="5" strokeLinecap="round" />
-      <line x1="95" y1="50" x2="121" y2="80" stroke="#cbd5e1" strokeWidth="2.5" strokeLinecap="round" />
-      <circle cx="89" cy="92" r="2.6" fill="#334155" />
-      <circle cx="118" cy="93" r="2.6" fill="#334155" />
-      <Dim x1="92" y1="96" x2="115" y2="97" label="a" lx="104" ly="130" st={st.a} on={active === "a"} />
-      <line x1="104" y1="99" x2="104" y2="120" stroke={active === "a" ? "#2563eb" : "#cbd5e1"} strokeWidth="1" strokeDasharray="3 2" />
-      <Dim x1="80" y1="153" x2="80" y2="179" label="c" lx="58" ly="167" st={st.c} on={active === "c"} />
-    </svg>
-    <svg viewBox="0 0 70 222" className="w-14" aria-label="Gancio inferiore visto di lato: dimensione b">
-      <Markers />
-      <rect x="25" y="10" width="20" height="22" rx="5" {...METAL} />
-      <rect x="29" y="32" width="12" height="38" {...METAL} />
-      <rect x="22" y="66" width="26" height="114" rx="13" {...METAL} />
-      <Dim x1="22" y1="192" x2="48" y2="192" label="b" lx="35" ly="210" st={st.b} on={active === "b"} />
-    </svg>
-    <svg viewBox="0 0 230 92" className="col-span-2 w-full max-w-xs mx-auto" aria-label="Occhiello di sospensione: dimensioni d ed e">
+  <div className="space-y-2" data-kito-hook-art>
+    <HookArt active={active} st={st} dims={["a", "b", "c"]} />
+    <svg viewBox="0 0 230 92" className="w-full max-w-xs mx-auto" aria-label="Occhiello di sospensione: dimensioni d ed e">
       <Markers />
       <path d="M30,74 L95,24 L160,74" fill="none" stroke="#334155" strokeWidth="18" strokeLinejoin="round" strokeLinecap="round" />
       <path d="M30,74 L95,24 L160,74" fill="none" stroke="#e2e8f0" strokeWidth="14" strokeLinejoin="round" strokeLinecap="round" />
       <circle cx="30" cy="74" r="3.5" fill="#fff" stroke="#334155" strokeWidth="1.5" />
       <circle cx="160" cy="74" r="3.5" fill="#fff" stroke="#334155" strokeWidth="1.5" />
-      <Dim x1="95" y1="13" x2="95" y2="35" label="d" lx="118" ly="28" st={st.od} on={active === "od"} />
+      <Q x1="95" y1="13" x2="95" y2="35" lx="122" ly="24" label="d" st={st.od} on={active === "od"} />
       <rect x="192" y="22" width="18" height="60" rx="4" {...METAL} />
-      <Dim x1="192" y1="12" x2="210" y2="12" label="e" lx="221" ly="44" st={st.oe} on={active === "oe"} />
+      <Q x1="192" y1="12" x2="210" y2="12" lx="221" ly="48" label="e" st={st.oe} on={active === "oe"} />
     </svg>
   </div>
 );
@@ -197,7 +261,9 @@ const Tabs = ({ value, onChange, list, id }) => (
 );
 
 // ---------------------------------------------------------------- MISURE KQ
-const KqMeasure = () => {
+const KqMeasure = ({ parts = "tutto" }) => {
+  const showChain = parts !== "gancio";
+  const showHook = parts !== "catena";
   const [x, setX] = useState({ model: "KQ3SD", passo5: "", d: "", a: "", a0: "", b: "", c: "", od: "", oe: "", puleggia: "", molla: "", frenoB: "", serie: "", ore: "", flags: {} });
   const [active, setActive] = useState("");
   const set = (k) => (v) => setX((o) => ({ ...o, [k]: v }));
@@ -241,6 +307,7 @@ const KqMeasure = () => {
         <p className="text-[11px] text-slate-400 -mt-1">Tutti e due facoltativi: vanno sul verbale.</p>
       </Card>
 
+      {showChain && (
       <Card title="Catena di carico" id="chain">
         <KqChainArt active={active} st={st} />
         <div className="grid grid-cols-2 gap-2">
@@ -252,10 +319,12 @@ const KqMeasure = () => {
           Somma di 5 maglie: non superare il limite massimo · diametro: non superare il limite minimo (tabella del manuale). «{KQ_TEXT.catenaNota}»
         </p>
       </Card>
+      )}
 
+      {showHook && (
       <Card title="Gancio inferiore e occhiello di sospensione" id="hook">
         <KqHookArt active={active} st={st} />
-        <p className="text-[11px] text-slate-500 -mt-1">I due puntini sono i segni in rilievo sul gancio: la «a» si misura tra quelli. Tocca un campo e la quota da misurare si colora di blu nel disegno.</p>
+        <p className="text-[11px] text-slate-500 -mt-1">La «a» si misura tra i segni in rilievo del gancio. Sotto, l'occhiello di sospensione (d, e). Tocca un campo e la quota da misurare si colora di blu nel disegno.</p>
         <div className="grid grid-cols-2 gap-2">
           <Field id="a" label="a · apertura del gancio" value={x.a} onChange={set("a")} onFocus={() => setActive("a")} std={m.a} st={r.aInfo && r.aInfo.ref ? (r.aInfo.diff > 0 ? "near" : "ok") : ""} hint="(misurata tra i segni in rilievo)" />
           <Field id="a0" label="a · registrata all'acquisto" value={x.a0} onChange={set("a0")} onFocus={() => setActive("a")} hint="se ce l'hai" />
@@ -275,7 +344,9 @@ const KqMeasure = () => {
           Valore limite di a: «{KQ_TEXT.gancioLimiteA}» · di b, c, d, e: «{KQ_TEXT.usura5}» «{KQ_TEXT.gancioRischio}»
         </p>
       </Card>
+      )}
 
+      {showChain && (
       <Card title="Puleggia, molla e freno" id="other">
         <div className="grid grid-cols-2 gap-2">
           {F("puleggia", "Puleggia di carico · spessore", { hint: "(punto usurato, calibro a corsoio)" })}
@@ -292,10 +363,11 @@ const KqMeasure = () => {
         <Quote>{KQ_TEXT.freno}</Quote>
         <Quote>{KQ_TEXT.frenoB1}</Quote>
       </Card>
+      )}
 
       <Card title="Controllo a vista" id="flags">
         <div className="space-y-2">
-          {KQ_FLAGS.map((f) => (
+          {KQ_FLAGS.filter((f) => parts === "tutto" || (parts === "gancio" ? ["antisgancio", "gancioDanni", "rotazione"].includes(f.id) : !["antisgancio", "gancioDanni", "rotazione"].includes(f.id))).map((f) => (
             <label key={f.id} className="flex items-start gap-2 text-sm text-slate-700">
               <input type="checkbox" className="mt-1 w-4 h-4" checked={!!x.flags[f.id]} onChange={(e) => set("flags")({ ...x.flags, [f.id]: e.target.checked })} data-kito-flag={f.id} />
               <span className="flex-1">
@@ -608,41 +680,7 @@ const KqInfo = () => (
 
 // ---------------------------------------------------------------- KF
 // gancio KF visto di fronte con le 6 quote del catalogo (disegno fatto dall'app)
-export const KfHookArt = ({ active = "", st = {} }) => (
-  <div className="flex justify-center" data-kito-kf-art>
-    <svg viewBox="0 0 230 250" className="w-64" aria-label="Gancio KF: quote a, b, c, d, e, g">
-      <Markers />
-      {/* gambo */}
-      <rect x="100" y="8" width="30" height="60" rx="4" {...METAL} />
-      {/* corpo del gancio: gambo → curva → punta */}
-      <path d="M104,68 L104,120 A52,52 0 1,0 176,150 L190,122 Q188,112 178,118 L160,150 A26,26 0 1,1 126,112 L126,68 Z" {...METAL} />
-      {/* sicurezza antisgancio */}
-      <line x1="128" y1="80" x2="182" y2="122" stroke="#334155" strokeWidth="5" strokeLinecap="round" />
-      <line x1="128" y1="80" x2="182" y2="122" stroke="#cbd5e1" strokeWidth="2.5" strokeLinecap="round" />
-      {/* d: gambo */}
-      <Dim x1="100" y1="40" x2="130" y2="40" label="d" lx="150" ly="38" st={st.d} on={active === "d"} />
-      {/* a: apertura (dal gambo alla punta) */}
-      <Dim x1="128" y1="138" x2="176" y2="138" label="a" lx="152" ly="162" st={st.a} on={active === "a"} />
-      <line x1="152" y1="141" x2="152" y2="152" stroke={active === "a" ? "#2563eb" : "#cbd5e1"} strokeWidth="1" strokeDasharray="3 2" />
-      {/* e: profondità della gola (dal fondo alla punta) */}
-      <Dim x1="60" y1="182" x2="60" y2="118" label="e" lx="40" ly="150" st={st.e} on={active === "e"} />
-      <line x1="62" y1="182" x2="126" y2="182" stroke="#cbd5e1" strokeWidth="1" strokeDasharray="3 2" />
-      <line x1="62" y1="118" x2="190" y2="118" stroke="#cbd5e1" strokeWidth="1" strokeDasharray="3 2" />
-      {/* c: spessore nel fondo della gola */}
-      <Dim x1="74" y1="212" x2="74" y2="240" label="c" lx="52" ly="228" st={st.c} on={active === "c"} />
-      <line x1="76" y1="212" x2="126" y2="212" stroke="#cbd5e1" strokeWidth="1" strokeDasharray="3 2" />
-      <line x1="76" y1="240" x2="126" y2="240" stroke="#cbd5e1" strokeWidth="1" strokeDasharray="3 2" />
-      {/* g: larghezza della punta */}
-      <Dim x1="178" y1="112" x2="192" y2="122" label="g" lx="212" ly="108" st={st.g} on={active === "g"} />
-    </svg>
-    <svg viewBox="0 0 60 250" className="w-16" aria-label="Gancio KF di lato: quota b">
-      <Markers />
-      <rect x="20" y="8" width="20" height="60" rx="4" {...METAL} />
-      <rect x="16" y="66" width="28" height="140" rx="14" {...METAL} />
-      <Dim x1="16" y1="222" x2="44" y2="222" label="b" lx="30" ly="242" st={st.b} on={active === "b"} />
-    </svg>
-  </div>
-);
+export const KfHookArt = ({ active = "", st = {} }) => <HookArt active={active} st={st} />;
 
 const KfHook = () => {
   const [x, setX] = useState({ model: KF_HOOK_MODELS[4], kind: "SV", a: "", b: "", c: "", d: "", e: "", g: "", serie: "", flags: {} });
@@ -850,22 +888,8 @@ const KfView = () => {
 
 // ---------------------------------------------------------------- DONATI DMK
 // gancio DMK con le quote del manuale (fig. 77): a2 = apertura all'imbocco, h2 = altezza della sezione (disegno fatto dall'app)
-export const DmkHookArt = ({ active = "", st = {} }) => (
-  <div className="flex justify-center" data-dmk-hook-art>
-    <svg viewBox="0 0 230 240" className="w-64" aria-label="Gancio Donati: quote a2 e h2">
-      <Markers />
-      <rect x="100" y="8" width="30" height="56" rx="4" {...METAL} />
-      <path d="M104,64 L104,118 A52,52 0 1,0 176,148 L190,120 Q188,110 178,116 L160,148 A26,26 0 1,1 126,110 L126,64 Z" {...METAL} />
-      <line x1="128" y1="78" x2="182" y2="120" stroke="#334155" strokeWidth="5" strokeLinecap="round" />
-      <line x1="128" y1="78" x2="182" y2="120" stroke="#cbd5e1" strokeWidth="2.5" strokeLinecap="round" />
-      <Dim x1="128" y1="136" x2="176" y2="136" label="a2" lx="152" ly="162" st={st.a2} on={active === "a2"} />
-      <line x1="152" y1="139" x2="152" y2="152" stroke={active === "a2" ? "#2563eb" : "#cbd5e1"} strokeWidth="1" strokeDasharray="3 2" />
-      <Dim x1="74" y1="208" x2="74" y2="236" label="h2" lx="50" ly="222" st={st.h2} on={active === "h2"} />
-      <line x1="76" y1="208" x2="126" y2="208" stroke="#cbd5e1" strokeWidth="1" strokeDasharray="3 2" />
-      <line x1="76" y1="236" x2="126" y2="236" stroke="#cbd5e1" strokeWidth="1" strokeDasharray="3 2" />
-    </svg>
-  </div>
-);
+export const DmkHookArt = ({ active = "", st = {} }) => <HookArt active={active === "a2" ? "a" : active === "h2" ? "c" : ""} st={{ a: st.a2, c: st.h2 }} dims={["a", "c"]} labels={{ a: "a2", c: "h2" }} />;
+
 // catena DMK: diametro d, passo p di una maglia, 11 maglie
 export const DmkChainArt = ({ active = "", st = {} }) => {
   const p = 17;
@@ -886,7 +910,9 @@ export const DmkChainArt = ({ active = "", st = {} }) => {
   );
 };
 
-const DmkMeasure = () => {
+const DmkMeasure = ({ parts = "tutto" }) => {
+  const showChain = parts !== "gancio";
+  const showHook = parts !== "catena";
   const [x, setX] = useState({ model: DMK_MODELS[1].id, d: "", p: "", p11: "", a2: "", h2: "", serie: "", flags: {} });
   const [active, setActive] = useState("");
   const set = (k) => (v) => setX((o) => ({ ...o, [k]: v }));
@@ -933,6 +959,7 @@ const DmkMeasure = () => {
           <input className={INPUT} value={x.serie} onChange={(e) => set("serie")(e.target.value.toUpperCase())} data-kito-input="dmkserie" autoComplete="off" />
         </label>
       </Card>
+      {showChain && (
       <Card title="Catena di sollevamento" id="dmkchain">
         <DmkChainArt active={active} st={st} />
         <div className="grid grid-cols-2 gap-2">
@@ -944,6 +971,8 @@ const DmkMeasure = () => {
         <Quote>{DMK_TEXT.catenaDove}</Quote>
         <Quote>{DMK_TEXT.spina}</Quote>
       </Card>
+      )}
+      {showHook && (
       <Card title="Gancio di sollevamento" id="dmkhook">
         <DmkHookArt active={active} st={st} />
         <p className="text-[11px] text-slate-500 -mt-1">Tocca un campo e la quota si colora di blu nel disegno. Verde entro il limite, arancio vicino, rosso oltre.</p>
@@ -956,9 +985,10 @@ const DmkMeasure = () => {
           «{DMK_TEXT.gancioA2}» · «{DMK_TEXT.gancioH2}» · «{DMK_TEXT.gancioAssistenza}»
         </p>
       </Card>
+      )}
       <Card title="Controllo a vista (verifica trimestrale)" id="dmkflags">
         <div className="space-y-2">
-          {DMK_FLAGS.map((f) => (
+          {DMK_FLAGS.filter((f) => parts === "tutto" || (parts === "catena" ? ["catenaDanni", "asciutta"].includes(f.id) : !["catenaDanni", "asciutta"].includes(f.id))).map((f) => (
             <label key={f.id} className="flex items-start gap-2 text-sm text-slate-700">
               <input type="checkbox" className="mt-1 w-4 h-4" checked={!!x.flags[f.id]} onChange={(e) => set("flags")({ ...x.flags, [f.id]: e.target.checked })} data-kito-flag={"dmk-" + f.id} />
               <span className="flex-1">
@@ -968,7 +998,7 @@ const DmkMeasure = () => {
             </label>
           ))}
         </div>
-        <Quote>{DMK_TEXT.gancioTrim}</Quote>
+        {showHook && <Quote>{DMK_TEXT.gancioTrim}</Quote>}
       </Card>
       {r.any && (
         <div className="rounded-3xl overflow-hidden border border-slate-200 bg-white shadow-lg" data-kito-verdict={r.level}>
@@ -1017,14 +1047,48 @@ const DmkMeasure = () => {
   );
 };
 
-export const KitoCheck = () => {
-  const [serie, setSerie] = useState("kq");
+// pagina a sé: tutto il paranco Kito KQ (misure complete, codici errore, guasti, conta ore, procedure)
+export const KqPage = () => {
   const [sec, setSec] = useState("misure");
+  return (
+    <div className="space-y-4" data-section="wear-kq">
+      <div className="rounded-3xl bg-slate-900 text-white p-4" data-kq-head>
+        <p className="text-[11px] font-black uppercase tracking-wider text-blue-300">Paranco elettrico a catena</p>
+        <h3 className="font-black text-xl leading-tight">Kito KQ</h3>
+        <p className="text-xs text-slate-300 mt-1">Tutto dal manuale FAS/KITO: misure e limiti, codici errore dell'inverter, guasti, conta ore, procedure.</p>
+      </div>
+      <Tabs
+        id="kq"
+        value={sec}
+        onChange={setSec}
+        list={[
+          ["misure", "Misure"],
+          ["errori", "Codici errore"],
+          ["guasti", "Guasti"],
+          ["ore", "Conta ore"],
+          ["info", "Procedure"],
+        ]}
+      />
+      {sec === "misure" && <KqMeasure parts="tutto" />}
+      {sec === "errori" && <InvErrors />}
+      {sec === "guasti" && <KqTrouble onCodes={() => setSec("errori")} />}
+      {sec === "ore" && <KqHours />}
+      {sec === "info" && <KqInfo />}
+    </div>
+  );
+};
+
+// scheda «Catena» → Del paranco: catena con i limiti del costruttore (Kito KQ, Donati DMK)
+export const HoistChain = ({ maker }) => (maker === "dmk" ? <DmkMeasure parts="catena" /> : <KqMeasure parts="catena" />);
+
+// scheda «Ganci»: solo ganci
+export const KitoCheck = ({ onOpenKq = null }) => {
+  const [serie, setSerie] = useState("kq");
   return (
     <div className="space-y-4" data-section="wear-kito">
       <div className="px-1">
         <h3 className="font-black text-slate-800 text-lg leading-tight">Ganci paranchi</h3>
-        <p className="text-xs text-slate-500">Paranchi elettrici a catena: gancio, catena e controlli del costruttore</p>
+        <p className="text-xs text-slate-500">Il gancio dei paranchi elettrici a catena, con i limiti del costruttore o della norma. La catena è nella scheda «Catena».</p>
       </div>
       <div className="flex bg-slate-200/70 p-1 rounded-2xl" data-kito-serie>
         {[
@@ -1039,28 +1103,24 @@ export const KitoCheck = () => {
         ))}
       </div>
       {serie === "dmk" ? (
-        <DmkMeasure />
+        <DmkMeasure parts="gancio" />
       ) : serie === "kf" ? (
         <KfView />
       ) : (
         <>
-          <Tabs
-            id="kq"
-            value={sec}
-            onChange={setSec}
-            list={[
-              ["misure", "Misure"],
-              ["errori", "Codici errore"],
-              ["guasti", "Guasti"],
-              ["ore", "Conta ore"],
-              ["info", "Procedure"],
-            ]}
-          />
-          {sec === "misure" && <KqMeasure />}
-          {sec === "errori" && <InvErrors />}
-          {sec === "guasti" && <KqTrouble onCodes={() => setSec("errori")} />}
-          {sec === "ore" && <KqHours />}
-          {sec === "info" && <KqInfo />}
+          {onOpenKq && (
+            <button type="button" onClick={onOpenKq} data-action="open-kq" className="w-full rounded-3xl bg-slate-900 text-white p-4 text-left flex items-center gap-3 shadow-lg">
+              <span className="p-2.5 rounded-2xl bg-blue-600 shrink-0">
+                <Search className="w-6 h-6" />
+              </span>
+              <span className="flex-1">
+                <span className="block font-black">Paranco Kito KQ: tutto il resto</span>
+                <span className="block text-xs text-slate-300 leading-snug">Codici errore dell'inverter, guasti, conta ore, procedure e il controllo completo (catena, puleggia, molla, freno).</span>
+              </span>
+              <span className="text-2xl font-black text-blue-300">›</span>
+            </button>
+          )}
+          <KqMeasure parts="gancio" />
         </>
       )}
     </div>
