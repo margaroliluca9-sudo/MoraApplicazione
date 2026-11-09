@@ -221,7 +221,7 @@ const KqMeasure = ({ parts = "tutto" }) => {
         <KqHookArt active={active} st={st} />
         <p className="text-[11px] text-slate-500 -mt-1">La «a» si misura tra i segni in rilievo del gancio. Sotto, l'occhiello di sospensione (d, e). Tocca un campo e la quota da misurare si colora di blu nel disegno.</p>
         <div className="grid grid-cols-2 gap-2">
-          <Field id="a" label="a · apertura del gancio" value={x.a} onChange={set("a")} onFocus={() => setActive("a")} std={m.a} st={r.aInfo && r.aInfo.ref ? (r.aInfo.diff > 0 ? "near" : "ok") : ""} hint="(misurata tra i segni in rilievo)" />
+          <Field id="a" label="a · apertura del gancio" value={x.a} onChange={set("a")} onFocus={() => setActive("a")} std={m.a} lim={r.aInfo ? r.aInfo.limit : Math.round(m.a * 1.1 * 100) / 100} dir="max" st={r.aInfo ? (r.aInfo.over ? "over" : r.aInfo.near ? "near" : "ok") : ""} hint={r.aInfo && r.aInfo.ref ? "(+5% sulla misura all'acquisto, manuale)" : "(+10% sullo standard, EN 818-6: scrivi la misura all'acquisto per usare il 5% del manuale)"} />
           <Field id="a0" label="a · registrata all'acquisto" value={x.a0} onChange={set("a0")} onFocus={() => setActive("a")} hint="se ce l'hai" />
           {F("b", "b · larghezza del gancio")}
           {F("c", "c · spessore del gancio")}
@@ -229,9 +229,8 @@ const KqMeasure = ({ parts = "tutto" }) => {
           {F("oe", "e · larghezza dell'occhiello")}
         </div>
         {r.aInfo && (
-          <p className="text-sm font-bold text-slate-700" data-kito-a>
-            Apertura a: {fmtK(r.aInfo.v, 2)} mm
-            {r.aInfo.ref ? ` · all'acquisto ${fmtK(r.aInfo.ref, 2)} mm → ${r.aInfo.diff >= 0 ? "+" : ""}${fmtK(r.aInfo.diff, 2)} mm` : ` · standard ${fmtK(r.aInfo.std, 2)} mm`}
+          <p className={`text-sm font-bold ${r.aInfo.over ? "text-red-700" : r.aInfo.near ? "text-amber-700" : "text-emerald-700"}`} data-kito-a data-kito-a-state={r.aInfo.over ? "over" : r.aInfo.near ? "near" : "ok"}>
+            Apertura a: {fmtK(r.aInfo.v, 2)} mm · limite {fmtK(r.aInfo.limit, 2)} mm ({r.aInfo.rule}) → {r.aInfo.over ? "OLTRE IL LIMITE: sostituire il gancio" : r.aInfo.near ? "entro il limite, ma si è aperto" : "entro il limite"}
           </p>
         )}
         <Quote>{KQ_TEXT.gancio}</Quote>
@@ -291,6 +290,13 @@ const KqMeasure = ({ parts = "tutto" }) => {
                   </span>
                 </li>
               ))}
+              {r.aInfo && (
+                <li data-kito-line="a">
+                  <span className={r.aInfo.over ? "text-red-700" : r.aInfo.near ? "text-amber-700" : ""}>
+                    Gancio · dimensione a (apertura): {fmtK(r.aInfo.v, 2)} mm (max {fmtK(r.aInfo.limit, 2)}) → {r.aInfo.over ? "OLTRE IL LIMITE · Sostituire il gancio e l'occhiello di sospensione." : r.aInfo.near ? "entro il limite, ma si è aperto" : "entro il limite"}
+                  </span>
+                </li>
+              )}
               {r.flags.map((f) => (
                 <li key={f.id} className="text-red-700">
                   {f.label} → {f.rimedio}

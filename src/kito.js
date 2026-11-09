@@ -111,18 +111,32 @@ export const checkKq = (x) => {
     if (q.id === "frenoB") it.state = frenoBState(v, lim);
     items.push(it);
   });
-  // apertura «a»: il manuale dà solo lo standard; il limite è la misura registrata all'acquisto
+  // apertura «a»: il manuale dà solo lo standard e dice di confrontare con la misura registrata all'acquisto
+  // («L'usura non deve eccedere il 5%»). Quindi:
+  //  - con la misura all'acquisto: scarto se «a» è cresciuta oltre il 5% di quella (manuale KQ);
+  //  - senza: scarto se «a» supera di oltre il 10% lo standard del manuale (UNI EN 818-6, apertura del gancio);
+  //  - sopra lo standard ma sotto il limite: arancio (si è aperto).
   const a = num(x.a);
   const a0 = num(x.a0);
-  const aInfo = a != null ? { v: a, std: m.a, ref: a0 || null, diff: a0 ? a - a0 : null } : null;
+  let aInfo = null;
+  if (a != null) {
+    const ref = a0 || null;
+    const base = ref || m.a;
+    const pctLim = ref ? 5 : 10;
+    const limit = Math.round(base * (1 + pctLim / 100) * 100) / 100;
+    const pct = Math.round(((a - base) / base) * 1000) / 10;
+    const over = a > limit;
+    aInfo = { v: a, std: m.a, ref, diff: ref ? Math.round((a - ref) * 100) / 100 : null, base, pct, limit, pctLim, over, near: !over && a > base, rule: ref ? "manuale KQ: usura massima 5% rispetto alla misura all'acquisto" : "UNI EN 818-6: apertura del gancio +10% sullo standard (manca la misura all'acquisto)" };
+  }
   const flags = KQ_FLAGS.filter((f) => x.flags && x.flags[f.id]);
   const bad = items.filter((i) => i.over);
-  const level = bad.length || flags.length ? "scarto" : items.some((i) => i.state && i.state.level === "attenzione") ? "attenzione" : "ok";
-  return { m, items, bad, aInfo, flags, level, any: items.length > 0 || !!aInfo || flags.length > 0 };
+  const aBad = !!(aInfo && aInfo.over);
+  const level = bad.length || flags.length || aBad ? "scarto" : items.some((i) => i.state && i.state.level === "attenzione") || (aInfo && aInfo.near) ? "attenzione" : "ok";
+  return { m, items, bad, aInfo, aBad, flags, level, any: items.length > 0 || !!aInfo || flags.length > 0 };
 };
 
 export const kqVerdict = (r) => {
-  const fix = [...r.bad.map((i) => `${i.label}: ${i.rimedio}`), ...r.flags.map((f) => `${f.label}: ${f.rimedio}`)];
+  const fix = [...r.bad.map((i) => `${i.label}: ${i.rimedio}`), ...(r.aBad ? [`Gancio · dimensione a (apertura) ${fmtK(r.aInfo.v, 2)} mm, oltre ${fmtK(r.aInfo.limit, 2)} mm (${r.aInfo.rule}): Sostituire il gancio e l'occhiello di sospensione.`] : []), ...r.flags.map((f) => `${f.label}: ${f.rimedio}`)];
   return {
     esito: r.level === "scarto" ? "NON IDONEO" : "IDONEO",
     azione: fix.length ? `Rimedio (manuale KQ): ${fix.join(" ")}` : "Nessun limite del manuale superato.",
@@ -146,7 +160,7 @@ export const kqRegister = ({ r }) => {
   const v = kqVerdict(r);
   const out = [`CONTROLLO PARANCO KITO ${r.m.id} (${r.m.wll}) – ${today()}${tech() ? " – tecnico " + tech() : ""}`];
   r.items.forEach((i) => out.push(`${i.label}: ${fmtK(i.v, 2)} mm (standard ${fmtK(i.std, 2)}, limite ${limTxt(i)}) → ${i.over ? "OLTRE IL LIMITE" : "entro il limite"}${i.state && !i.over ? ` · ${i.state.azione}` : ""}`));
-  if (r.aInfo) out.push(`Gancio · dimensione a (apertura): ${fmtK(r.aInfo.v, 2)} mm (standard ${fmtK(r.aInfo.std, 2)}${r.aInfo.ref ? `, all'acquisto ${fmtK(r.aInfo.ref, 2)}: ${r.aInfo.diff >= 0 ? "+" : ""}${fmtK(r.aInfo.diff, 2)} mm` : ""})`);
+  if (r.aInfo) out.push(`Gancio · dimensione a (apertura): ${fmtK(r.aInfo.v, 2)} mm (standard ${fmtK(r.aInfo.std, 2)}${r.aInfo.ref ? `, all'acquisto ${fmtK(r.aInfo.ref, 2)}` : ""}; limite ${fmtK(r.aInfo.limit, 2)} mm, ${r.aInfo.rule}) → ${r.aInfo.over ? "OLTRE IL LIMITE" : "entro il limite"}`);
   r.flags.forEach((f) => out.push(`${f.label} → ${f.rimedio}`));
   out.push(`Esito: ${v.esito}`);
   return out.join("\n");
@@ -155,7 +169,7 @@ export const kqRegister = ({ r }) => {
 export const kqReport = ({ r, x }) => {
   const v = kqVerdict(r);
   const rows = r.items.map((i) => [i.label, `${fmtK(i.v, 2)} mm`, `${limTxt(i)} (std ${fmtK(i.std, 2)})`, i.over ? "OLTRE IL LIMITE" : i.state && i.state.level === "attenzione" ? "entro (vicino)" : "entro il limite"]);
-  if (r.aInfo) rows.push(["Gancio · dimensione a (apertura)", `${fmtK(r.aInfo.v, 2)} mm`, r.aInfo.ref ? `all'acquisto ${fmtK(r.aInfo.ref, 2)}` : `std ${fmtK(r.aInfo.std, 2)}`, r.aInfo.ref ? `${r.aInfo.diff >= 0 ? "+" : ""}${fmtK(r.aInfo.diff, 2)} mm` : "—"]);
+  if (r.aInfo) rows.push(["Gancio · dimensione a (apertura)", `${fmtK(r.aInfo.v, 2)} mm`, `max ${fmtK(r.aInfo.limit, 2)} (${r.aInfo.ref ? `+5% su ${fmtK(r.aInfo.ref, 2)} all'acquisto` : `+10% su std ${fmtK(r.aInfo.std, 2)}, EN 818-6`})`, r.aInfo.over ? "OLTRE IL LIMITE" : r.aInfo.near ? "entro (si è aperto)" : "entro il limite"]);
   r.flags.forEach((f) => rows.push([f.label, "SÌ", "a vista", "SCARTO"]));
   return {
     type: "paranco",
@@ -181,7 +195,7 @@ export const kqReport = ({ r, x }) => {
     norms: [
       `${KQ_SOURCE}: tabelle «Passo della catena di carico e diametro per le singole portate», «Gancio inferiore / Occhiello di sospensione», «Puleggia di carico», «Molla della catena», «Usura della guarnizione del freno durante l'uso».`,
       `Catena (manuale): «${KQ_TEXT.passo5}» «${KQ_TEXT.diametro}»`,
-      `Gancio (manuale): «${KQ_TEXT.gancio}» «${KQ_TEXT.usura5}»`,
+      `Gancio (manuale): «${KQ_TEXT.gancio}» «${KQ_TEXT.usura5}» Apertura a: il manuale dà solo lo standard e la misura all'acquisto; senza quella l'app usa la UNI EN 818-6 (aumento massimo 10%).`,
       `Freno (manuale): «${KQ_TEXT.freno}»`,
       "D.Lgs. 81/2008, Allegato VI, punto 3.1.2: «Le funi e le catene debbono essere sottoposte a controlli trimestrali in mancanza di specifica indicazione da parte del fabbricante.»",
     ],
@@ -420,10 +434,12 @@ export const checkKf = (x) => {
       const pct = Math.round(((v - s0) / s0) * 1000) / 10;
       // solo per «e» (il diametro della gola, dove entra la braca: è il vano che si allarga) c'è un limite (EN 818-6, apertura +10%).
       // Le altre quote si confrontano e basta.
+      // Per le altre quote nessun limite del costruttore: ma uno scostamento oltre il 10% dallo standard (in più o in meno)
+      // non è più un gancio «da nuovo» ed è segnato rosso lo stesso (UNI EN 818-6: deformazione / usura oltre il 10%).
       const lim = id === "e";
       const limit = lim ? Math.round(s0 * (1 + KF_HOOK_LIMIT / 100) * 100) / 100 : null;
-      const over = lim ? pct > KF_HOOK_LIMIT : false;
-      const near = lim ? !over && pct > KF_HOOK_LIMIT / 2 : Math.abs(pct) > 5;
+      const over = lim ? pct > KF_HOOK_LIMIT : Math.abs(pct) > KF_HOOK_LIMIT;
+      const near = lim ? !over && pct > KF_HOOK_LIMIT / 2 : !over && Math.abs(pct) > 5;
       items.push({ id, label, v, std: s0, diff, pct, limit, over, near });
     });
   const flags = KF_FLAGS.filter((f) => x.flags && x.flags[f.id]);
@@ -440,7 +456,7 @@ export const KF_FLAGS = [
   { id: "rotazione", label: "Il gancio non ruota liberamente", rimedio: "Controllare il cuscinetto; se necessario sostituire il gancio-bozzello." },
 ];
 export const kfVerdict = (r) => {
-  const fix = [...r.bad.map((i) => `${i.label}: oltre il +${KF_HOOK_LIMIT}% (EN 818-6). Sostituire il gancio.`), ...r.flags.map((f) => `${f.label}: ${f.rimedio}`)];
+  const fix = [...r.bad.map((i) => `${i.label}: ${i.limit != null ? `oltre il +${KF_HOOK_LIMIT}%` : `scostamento ${i.pct > 0 ? "+" : ""}${fmtK(i.pct, 1)}% dallo standard, oltre il 10%`} (EN 818-6). Sostituire il gancio.`), ...r.flags.map((f) => `${f.label}: ${f.rimedio}`)];
   return {
     esito: r.level === "scarto" ? "NON IDONEO" : "IDONEO",
     azione: fix.length ? fix.join(" ") : `Apertura entro il +${KF_HOOK_LIMIT}% della EN 818-6; le altre quote sono confrontate con lo standard del catalogo (nessun limite del costruttore disponibile).`,
