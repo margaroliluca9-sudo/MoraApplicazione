@@ -13,9 +13,11 @@ import { isPhotoRef, resolvePhotos } from "../logPhotos";
 //  - due dita: ingrandisci proprio dove hai le dita · doppio tocco: ingrandisci lì (di nuovo: torna normale)
 //  - ingrandita: la sposti col dito · tira giù (non ingrandita): lo sfondo si schiarisce e si chiude
 //  - computer: frecce ← → della tastiera, Esc chiude, doppio clic ingrandisce
+// figure dei manuali (disegni con le quote): sfondo chiaro, zoom fino a 6×, didascalia, niente «scarica»
 const MAX = 4;
 const ZOOM = 2.5;
-const Viewer = ({ photos, onClose }) => {
+const Viewer = ({ photos, onClose, figure = null }) => {
+  const maxZoom = figure ? 6 : MAX;
   const [currentIndex, setCurrentIndex] = useState(0);
   const [z, setZ] = useState({ s: 1, x: 0, y: 0 });
   const [drag, setDrag] = useState({ dx: 0, dy: 0, live: false });
@@ -92,7 +94,7 @@ const Viewer = ({ photos, onClose }) => {
     if (c.pinch && t.length === 2) {
       const b = box();
       const m = mid(t);
-      const s = Math.min(MAX, Math.max(0.8, (c.s0 * dist(t)) / c.pinch));
+      const s = Math.min(maxZoom, Math.max(0.8, (c.s0 * dist(t)) / c.pinch));
       setZ({ s, x: m.x - b.cx - c.px * s, y: m.y - b.cy - c.py * s });
       return;
     }
@@ -162,13 +164,17 @@ const Viewer = ({ photos, onClose }) => {
   return (
     <div
       className="fixed inset-0 z-[500] flex flex-col items-center justify-center p-4 backdrop-blur-md animate-in fade-in"
-      style={{ backgroundColor: `rgba(0,0,0,${0.95 * fade})` }}
+      style={{ backgroundColor: figure ? `rgba(248,250,252,${0.98 * fade})` : `rgba(0,0,0,${0.95 * fade})` }}
       data-section="photo-viewer"
+      data-figure={figure ? "1" : undefined}
     >
       <div className="absolute top-4 right-4 flex gap-4 z-10 items-center" style={{ opacity: fade }}>
+        {n > 1 && (
         <div className="bg-black/50 text-white px-4 py-2 rounded-full font-bold text-xs flex items-center shadow-lg" data-photo-count>
           {currentIndex + 1} / {photos.length}
         </div>
+        )}
+        {!figure && (
         <button
           onClick={handleDownload}
           className="p-2 text-white/70 hover:text-white bg-black/50 hover:bg-black/80 rounded-full transition-all shadow-lg"
@@ -176,6 +182,7 @@ const Viewer = ({ photos, onClose }) => {
         >
           <Download className="w-6 h-6" />
         </button>
+        )}
         <button
           onClick={onClose}
           className="p-2 text-white/70 hover:text-white bg-black/50 hover:bg-black/80 rounded-full transition-all shadow-lg"
@@ -207,7 +214,7 @@ const Viewer = ({ photos, onClose }) => {
                   alt={`Foto ${i + 1}`}
                   draggable={false}
                   data-photo-current={cur ? "" : undefined}
-                  className="max-w-full max-h-full object-contain rounded-xl shadow-2xl select-none"
+                  className={`max-w-full max-h-full object-contain select-none ${figure ? "rounded-2xl border border-slate-200 bg-white" : "rounded-xl shadow-2xl"}`}
                   style={cur ? { transform: `translate(${z.x}px, ${z.y}px) scale(${z.s})`, transition: g.current ? "none" : "transform .22s cubic-bezier(.2,.8,.2,1)" } : undefined}
                 />
               </div>
@@ -269,6 +276,28 @@ const Viewer = ({ photos, onClose }) => {
 };
 
 // le foto dei rapporti nuovi stanno a parte: le scarico quando le apri (poi restano sul telefono)
+// figure dei manuali: photos = [src], figure = { title, legend: [[k, testo]], source }
+export const FigureViewerModal = ({ src, figure, onClose }) => (
+  <div data-figure-viewer>
+    <Viewer photos={[src]} onClose={onClose} figure={figure} />
+    <div className="fixed left-0 right-0 bottom-0 z-[501] p-3 pb-6 pointer-events-none" data-figure-caption>
+      <div className="mx-auto max-w-md rounded-2xl bg-white/95 border border-slate-200 shadow-lg p-3 space-y-1.5 pointer-events-auto">
+        <p className="font-black text-slate-800 text-sm leading-tight">{figure.title}</p>
+        {figure.legend && figure.legend.length > 0 && (
+          <div className="flex flex-wrap gap-1.5">
+            {figure.legend.map(([k, l]) => (
+              <span key={k} className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-bold text-slate-600">
+                <b className="text-xs text-blue-700">{k}</b> {l}
+              </span>
+            ))}
+          </div>
+        )}
+        <p className="text-[10px] text-slate-400 leading-snug">{figure.source} · Due dita o doppio tocco per ingrandire, trascina per spostare, tira giù per chiudere.</p>
+      </div>
+    </div>
+  </div>
+);
+
 export const PhotoViewerModal = ({ photos, onClose }) => {
   const needs = Array.isArray(photos) && photos.some(isPhotoRef);
   const [real, setReal] = useState(needs ? null : photos);

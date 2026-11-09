@@ -7,8 +7,9 @@
 // Dati e testi del manuale in src/kito.js (parola per parola). Le figure sono quelle dei manuali (public/manuali),
 // riprodotte con il consenso di FAS/KITO e Donati.
 import React, { useMemo, useState } from "react";
-import { CheckCircle2, AlertTriangle, XCircle, Copy, Check, Printer, Search } from "lucide-react";
+import { CheckCircle2, AlertTriangle, XCircle, Copy, Check, Printer, Search, ZoomIn } from "lucide-react";
 import { INPUT } from "./PersonalUi";
+import { FigureViewerModal } from "../PhotoViewerModal";
 import { printWear } from "../WearPrintHost";
 import {
   KQ_MODELS,
@@ -75,28 +76,35 @@ const Quote = ({ children }) => <p className="text-[12px] text-slate-500 leading
 
 // FIGURA DEL MANUALE (disegni originali del costruttore, usati con il suo consenso): immagine + legenda delle quote;
 // la lettera del campo che stai compilando si evidenzia in blu, le altre verde/arancio/rosso come il campo.
-const ManualFig = ({ src, alt, source, legend = [], active = "", st = {}, wide = false }) => (
-  <div className="space-y-2" data-manual-fig={src}>
-    <div className={`bg-white rounded-2xl border border-slate-200 p-2 flex justify-center ${wide ? "" : "max-w-xs mx-auto"}`}>
-      <img src={src} alt={alt} className={`${wide ? "w-full" : "max-h-56"} object-contain`} loading="lazy" />
+const ManualFig = ({ src, alt, source, legend = [], active = "", st = {}, wide = false }) => {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="space-y-2" data-manual-fig={src}>
+      <button type="button" onClick={() => setOpen(true)} data-action="open-figure" className={`relative w-full bg-white rounded-2xl border border-slate-200 p-2 flex justify-center active:bg-slate-50 ${wide ? "" : "max-w-xs mx-auto"}`} aria-label={`Apri e ingrandisci: ${alt}`}>
+        <img src={src} alt={alt} className={`${wide ? "w-full" : "max-h-56"} object-contain`} loading="lazy" />
+        <span className="absolute right-2 bottom-2 inline-flex items-center gap-1 rounded-full bg-slate-900/80 text-white px-2 py-1 text-[10px] font-bold">
+          <ZoomIn className="w-3 h-3" /> Ingrandisci
+        </span>
+      </button>
+      {legend.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 justify-center" data-manual-legend>
+          {legend.map(([k, l]) => {
+            const on = active === k;
+            const t = st[k];
+            const cls = on ? "bg-blue-600 text-white border-blue-600" : t === "over" ? "bg-red-50 text-red-700 border-red-300" : t === "near" ? "bg-amber-50 text-amber-700 border-amber-300" : t === "ok" ? "bg-emerald-50 text-emerald-700 border-emerald-300" : "bg-white text-slate-600 border-slate-200";
+            return (
+              <span key={k} data-legend={k} data-on={on ? "1" : "0"} className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-bold ${cls}`}>
+                <b className="text-xs">{k}</b> {l}
+              </span>
+            );
+          })}
+        </div>
+      )}
+      <p className="text-[10px] text-slate-400 text-center leading-snug">{source}</p>
+      {open && <FigureViewerModal src={src} figure={{ title: alt, legend, source }} onClose={() => setOpen(false)} />}
     </div>
-    {legend.length > 0 && (
-      <div className="flex flex-wrap gap-1.5 justify-center" data-manual-legend>
-        {legend.map(([k, l]) => {
-          const on = active === k;
-          const t = st[k];
-          const cls = on ? "bg-blue-600 text-white border-blue-600" : t === "over" ? "bg-red-50 text-red-700 border-red-300" : t === "near" ? "bg-amber-50 text-amber-700 border-amber-300" : t === "ok" ? "bg-emerald-50 text-emerald-700 border-emerald-300" : "bg-white text-slate-600 border-slate-200";
-          return (
-            <span key={k} data-legend={k} data-on={on ? "1" : "0"} className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-bold ${cls}`}>
-              <b className="text-xs">{k}</b> {l}
-            </span>
-          );
-        })}
-      </div>
-    )}
-    <p className="text-[10px] text-slate-400 text-center leading-snug">{source}</p>
-  </div>
-);
+  );
+};
 
 export const KqHookArt = ({ active = "", st = {} }) => (
   <ManualFig
