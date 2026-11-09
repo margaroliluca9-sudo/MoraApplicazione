@@ -4,7 +4,8 @@
 // del manuale e il verbale PDF; conta ore (U7-01/02/03); codici errore dell'inverter; guasti; procedure.
 // KF: controllo del gancio con le misure (a, b, c, d, e, g): standard dal catalogo FAS, limite di scarto +10%
 // sull'apertura dalla UNI EN 818-6 (il catalogo non dà limiti di usura), dimensioni standard della catena.
-// Dati e testi del manuale in src/kito.js (parola per parola). I disegni sono fatti dall'app.
+// Dati e testi del manuale in src/kito.js (parola per parola). Le figure sono quelle dei manuali (public/manuali),
+// riprodotte con il consenso di FAS/KITO e Donati.
 import React, { useMemo, useState } from "react";
 import { CheckCircle2, AlertTriangle, XCircle, Copy, Check, Printer, Search } from "lucide-react";
 import { INPUT } from "./PersonalUi";
@@ -72,161 +73,55 @@ const Card = ({ title, children, id }) => (
 );
 const Quote = ({ children }) => <p className="text-[12px] text-slate-500 leading-snug">«{children}»</p>;
 
-// ---------------------------------------------------------------- disegni (fatti dall'app)
-const tone = (st) => (st === "over" ? "#dc2626" : st === "ok" ? "#059669" : st === "near" ? "#d97706" : "#64748b");
-const Dim = ({ x1, y1, x2, y2, label, lx, ly, st, on }) => {
-  const c = on ? "#2563eb" : tone(st);
-  const w = on ? 2.6 : 1.6;
-  return (
-    <g data-kito-dim={label} data-on={on ? "1" : "0"}>
-      <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={c} strokeWidth={w} markerStart={`url(#ka-${on ? "on" : st || "n"})`} markerEnd={`url(#ka-${on ? "on" : st || "n"})`} />
-      <circle cx={lx} cy={ly} r={on ? 10 : 8.5} fill={on ? "#2563eb" : "#fff"} stroke={c} strokeWidth="1.5" />
-      <text x={lx} y={Number(ly) + 4} textAnchor="middle" fontSize="12" fontWeight="900" fill={on ? "#fff" : c}>
-        {label}
-      </text>
-    </g>
-  );
-};
-const Markers = () => (
-  <defs>
-    {[
-      ["n", "#64748b"],
-      ["ok", "#059669"],
-      ["over", "#dc2626"],
-      ["near", "#d97706"],
-      ["on", "#2563eb"],
-    ].map(([k, c]) => (
-      <marker key={k} id={`ka-${k}`} viewBox="0 0 10 10" refX="5" refY="5" markerWidth="5" markerHeight="5" orient="auto-start-reverse">
-        <path d="M0,1 L9,5 L0,9 z" fill={c} />
-      </marker>
-    ))}
-  </defs>
-);
-const METAL = { fill: "#e2e8f0", stroke: "#334155", strokeWidth: 2 };
-
-// GANCIO (disegno unico fatto dall'app, grande, di fronte e di lato). Le quote si scelgono per costruttore:
-//  a = apertura (tra il fianco interno lato gambo e la punta) · b = larghezza (di lato) · c = spessore nel fondo della gola
-//  d = diametro del gambo · e = profondità della gola · g = larghezza della punta
-// labels: { a: "a2", c: "h2" } cambia la lettera scritta nel pallino; dims: quali quote disegnare.
-const Metal = () => (
-  <defs>
-    <linearGradient id="hk-met" x1="0" x2="1">
-      <stop offset="0" stopColor="#f1f5f9" />
-      <stop offset="0.5" stopColor="#cbd5e1" />
-      <stop offset="1" stopColor="#94a3b8" />
-    </linearGradient>
-  </defs>
-);
-const Q = ({ x1, y1, x2, y2, lx, ly, label, st, on, leader }) => {
-  const c = on ? "#2563eb" : tone(st);
-  return (
-    <g data-kito-dim={label} data-on={on ? "1" : "0"}>
-      <line x1={x1} y1={y1} x2={x2} y2={y2} stroke={c} strokeWidth={on ? 3 : 2} markerStart={`url(#ka-${on ? "on" : st || "n"})`} markerEnd={`url(#ka-${on ? "on" : st || "n"})`} />
-      {leader && <line x1={leader[0]} y1={leader[1]} x2={lx} y2={ly} stroke="#94a3b8" strokeWidth="1" />}
-      <circle cx={lx} cy={ly} r={on ? 13 : 11} fill={on ? "#2563eb" : "#fff"} stroke={c} strokeWidth="2" />
-      <text x={lx} y={Number(ly) + 4.5} textAnchor="middle" fontSize="13" fontWeight="900" fill={on ? "#fff" : c}>
-        {label}
-      </text>
-    </g>
-  );
-};
-const Dash = (p) => <line {...p} stroke="#94a3b8" strokeWidth="1" strokeDasharray="3 2" />;
-export const HookArt = ({ active = "", st = {}, dims = ["a", "b", "c", "d", "e", "g"], labels = {} }) => {
-  const L = (k) => labels[k] || k;
-  const has = (k) => dims.includes(k);
-  const S = (k) => st[k];
-  const on = (k) => active === k;
-  return (
-    <div className="flex justify-center items-start gap-3" data-hook-art>
-      <svg viewBox="0 0 300 330" className="w-[17rem] max-w-[70%]" aria-label="Gancio visto di fronte">
-        <Markers />
-        <Metal />
-        <rect x="128" y="10" width="44" height="22" rx="4" fill="#64748b" stroke="#334155" strokeWidth="2" />
-        <rect x="135" y="32" width="30" height="58" fill="url(#hk-met)" stroke="#334155" strokeWidth="2" />
-        <path d="M135,90 C95,100 70,135 70,180 C70,235 115,275 165,275 C205,275 235,250 240,215 L252,162 L228,157 L216,200 C208,228 190,245 165,245 C128,245 100,215 100,180 C100,150 118,124 150,116 L165,116 L165,90 Z" fill="url(#hk-met)" stroke="#334155" strokeWidth="2.5" strokeLinejoin="round" />
-        <path d="M165,100 L242,165" stroke="#334155" strokeWidth="7" strokeLinecap="round" />
-        <path d="M165,100 L242,165" stroke="#e2e8f0" strokeWidth="3.5" strokeLinecap="round" />
-        <circle cx="165" cy="100" r="5" fill="#64748b" stroke="#334155" strokeWidth="1.5" />
-        {has("d") && <Q x1="135" y1="60" x2="165" y2="60" lx="198" ly="60" label={L("d")} st={S("d")} on={on("d")} />}
-        {has("a") && (
-          <>
-            <Dash x1="165" y1="118" x2="165" y2="150" />
-            <Dash x1="228" y1="157" x2="228" y2="150" />
-            <Q x1="166" y1="150" x2="227" y2="150" lx="196" ly="134" label={L("a")} st={S("a")} on={on("a")} />
-          </>
-        )}
-        {has("e") && (
-          <>
-            <Dash x1="40" y1="245" x2="165" y2="245" />
-            <Dash x1="40" y1="160" x2="228" y2="160" />
-            <Q x1="40" y1="244" x2="40" y2="161" lx="22" ly="202" label={L("e")} st={S("e")} on={on("e")} />
-          </>
-        )}
-        {has("c") && (
-          <>
-            <Dash x1="130" y1="275" x2="165" y2="275" />
-            {!has("e") && <Dash x1="130" y1="245" x2="165" y2="245" />}
-            <Q x1="165" y1="246" x2="165" y2="274" lx="198" ly="300" label={L("c")} st={S("c")} on={on("c")} leader={[168, 262]} />
-          </>
-        )}
-        {has("g") && <Q x1="228" y1="157" x2="252" y2="162" lx="276" ly="136" label={L("g")} st={S("g")} on={on("g")} leader={[242, 156]} />}
-      </svg>
-      {has("b") && (
-        <svg viewBox="0 0 90 330" className="w-20" aria-label="Gancio visto di lato: larghezza b">
-          <Markers />
-          <rect x="30" y="10" width="30" height="22" rx="4" fill="#64748b" stroke="#334155" strokeWidth="2" />
-          <rect x="36" y="32" width="18" height="58" fill="#cbd5e1" stroke="#334155" strokeWidth="2" />
-          <path d="M36,90 L30,120 L30,250 C30,266 60,266 60,250 L60,120 L54,90 Z" fill="#cbd5e1" stroke="#334155" strokeWidth="2.5" strokeLinejoin="round" />
-          <Dash x1="30" y1="262" x2="30" y2="290" />
-          <Dash x1="60" y1="262" x2="60" y2="290" />
-          <Q x1="30" y1="290" x2="60" y2="290" lx="45" ly="314" label={L("b")} st={S("b")} on={on("b")} />
-        </svg>
-      )}
+// FIGURA DEL MANUALE (disegni originali del costruttore, usati con il suo consenso): immagine + legenda delle quote;
+// la lettera del campo che stai compilando si evidenzia in blu, le altre verde/arancio/rosso come il campo.
+const ManualFig = ({ src, alt, source, legend = [], active = "", st = {}, wide = false }) => (
+  <div className="space-y-2" data-manual-fig={src}>
+    <div className={`bg-white rounded-2xl border border-slate-200 p-2 flex justify-center ${wide ? "" : "max-w-xs mx-auto"}`}>
+      <img src={src} alt={alt} className={`${wide ? "w-full" : "max-h-56"} object-contain`} loading="lazy" />
     </div>
-  );
-};
-
-// gancio inferiore KQ: di fronte (a, c), di lato (b); occhiello di sospensione (d, e)
-export const KqHookArt = ({ active = "", st = {} }) => (
-  <div className="space-y-2" data-kito-hook-art>
-    <HookArt active={active} st={st} dims={["a", "b", "c"]} />
-    <svg viewBox="0 0 230 92" className="w-full max-w-xs mx-auto" aria-label="Occhiello di sospensione: dimensioni d ed e">
-      <Markers />
-      <path d="M30,74 L95,24 L160,74" fill="none" stroke="#334155" strokeWidth="18" strokeLinejoin="round" strokeLinecap="round" />
-      <path d="M30,74 L95,24 L160,74" fill="none" stroke="#e2e8f0" strokeWidth="14" strokeLinejoin="round" strokeLinecap="round" />
-      <circle cx="30" cy="74" r="3.5" fill="#fff" stroke="#334155" strokeWidth="1.5" />
-      <circle cx="160" cy="74" r="3.5" fill="#fff" stroke="#334155" strokeWidth="1.5" />
-      <Q x1="95" y1="13" x2="95" y2="35" lx="122" ly="24" label="d" st={st.od} on={active === "od"} />
-      <rect x="192" y="22" width="18" height="60" rx="4" {...METAL} />
-      <Q x1="192" y1="12" x2="210" y2="12" lx="221" ly="48" label="e" st={st.oe} on={active === "oe"} />
-    </svg>
+    {legend.length > 0 && (
+      <div className="flex flex-wrap gap-1.5 justify-center" data-manual-legend>
+        {legend.map(([k, l]) => {
+          const on = active === k;
+          const t = st[k];
+          const cls = on ? "bg-blue-600 text-white border-blue-600" : t === "over" ? "bg-red-50 text-red-700 border-red-300" : t === "near" ? "bg-amber-50 text-amber-700 border-amber-300" : t === "ok" ? "bg-emerald-50 text-emerald-700 border-emerald-300" : "bg-white text-slate-600 border-slate-200";
+          return (
+            <span key={k} data-legend={k} data-on={on ? "1" : "0"} className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-bold ${cls}`}>
+              <b className="text-xs">{k}</b> {l}
+            </span>
+          );
+        })}
+      </div>
+    )}
+    <p className="text-[10px] text-slate-400 text-center leading-snug">{source}</p>
   </div>
 );
 
-// catena: 5 maglie, somma dei passi (dall'interno della 1ª all'interno della 5ª) e diametro del tondino
-export const KqChainArt = ({ active = "", st = {} }) => {
-  const p = 34;
-  const d = 8;
-  const x0 = 26;
-  return (
-    <svg viewBox="0 0 230 90" className="w-full" aria-label="Catena: somma dei passi di 5 maglie e diametro del tondino" data-kito-chain-art>
-      <Markers />
-      {[0, 1, 2, 3, 4].map((k) => {
-        const x = x0 + k * p - d;
-        const w = p + 2 * d;
-        return k % 2 === 0 ? (
-          <rect key={k} x={x} y={18} width={w} height={30} rx={15} fill="none" stroke="#334155" strokeWidth={d} />
-        ) : (
-          <rect key={k} x={x} y={29} width={w} height={d} rx={d / 2} fill="#cbd5e1" stroke="#334155" strokeWidth="1.5" />
-        );
-      })}
-      <line x1={x0} y1="58" x2={x0} y2="70" stroke="#94a3b8" strokeWidth="1" />
-      <line x1={x0 + 5 * p} y1="58" x2={x0 + 5 * p} y2="70" stroke="#94a3b8" strokeWidth="1" />
-      <Dim x1={x0} y1="66" x2={x0 + 5 * p} y2="66" label="5p" lx={x0 + 2.5 * p} ly="80" st={st.passo5} on={active === "passo5"} />
-      <Dim x1={x0 - d - 12} y1="33" x2={x0 - 1} y2="33" label="d" lx={x0 - d - 6} ly="12" st={st.d} on={active === "d"} />
-    </svg>
-  );
-};
+export const KqHookArt = ({ active = "", st = {} }) => (
+  <ManualFig
+    src="/manuali/kito-kq-gancio-occhiello.png"
+    alt="Gancio inferiore KQ (a tra i segni in rilievo, c, b) e occhiello di sospensione (d, e): manuale KITO"
+    source="Disegno del manuale KITO «Istruzioni d'uso e di sicurezza – Paranchi elettrici a catena serie KQ» (pag. 57), riprodotto con il consenso di FAS/KITO."
+    legend={[
+      ["a", "apertura tra i segni in rilievo"],
+      ["b", "larghezza del gancio (di lato)"],
+      ["c", "spessore del gancio"],
+      ["od", "d · spessore dell'occhiello"],
+      ["oe", "e · larghezza dell'occhiello"],
+    ]}
+    active={active}
+    st={st}
+  />
+);
+
+// catena KQ: figure del manuale (somma dei passi di 5 maglie, diametro del tondino)
+export const KqChainArt = ({ active = "", st = {} }) => (
+  <div className="grid grid-cols-[3fr_2fr] gap-2 items-start" data-kito-chain-art>
+    <ManualFig src="/manuali/kito-kq-catena-5maglie.png" alt="Somma dei passi di 5 maglie (manuale KITO KQ)" source="Manuale KITO serie KQ, pag. 56." legend={[["passo5", "somma dei passi di 5 maglie"]]} active={active} st={st} wide />
+    <ManualFig src="/manuali/kito-kq-catena-diametro.png" alt="Diametro del tondino d (manuale KITO KQ)" source="Riprodotto con il consenso di FAS/KITO." legend={[["d", "diametro del tondino"]]} active={active} st={st} wide />
+  </div>
+);
 
 // ---------------------------------------------------------------- campo misura
 const Field = ({ id, label, value, onChange, onFocus, unit = "mm", hint, st, std, lim, dir }) => (
@@ -680,7 +575,23 @@ const KqInfo = () => (
 
 // ---------------------------------------------------------------- KF
 // gancio KF visto di fronte con le 6 quote del catalogo (disegno fatto dall'app)
-export const KfHookArt = ({ active = "", st = {} }) => <HookArt active={active} st={st} />;
+export const KfHookArt = ({ active = "", st = {} }) => (
+  <ManualFig
+    src="/manuali/fas-kf-gancio.png"
+    alt="Gancio KF: quote a, b, c, d, e, g (catalogo FAS)"
+    source="Disegno del catalogo FAS «Paranchi elettrici a catena serie KF – Dimensioni ganci e catene» (rev. 02/2018, pag. 93), riprodotto con il consenso di FAS."
+    legend={[
+      ["a", "larghezza in basso"],
+      ["b", "altezza in basso"],
+      ["c", "altezza punta"],
+      ["d", "larghezza punta"],
+      ["e", "diametro gola"],
+      ["g", "punta, in obliquo"],
+    ]}
+    active={active}
+    st={st}
+  />
+);
 
 const KfHook = () => {
   const [x, setX] = useState({ model: KF_HOOK_MODELS[4], kind: "SV", a: "", b: "", c: "", d: "", e: "", g: "", serie: "", flags: {} });
@@ -733,7 +644,7 @@ const KfHook = () => {
         <p className="text-[11px] text-slate-500 -mt-1">Tocca un campo e la quota da misurare si colora di blu nel disegno. Verde: come da nuovo. Arancio: si scosta. Rosso: apertura oltre il limite della EN 818-6.</p>
         <div className="grid grid-cols-2 gap-2">
           {KF_HOOK_DIMS.map(([id, label, where]) => (
-            <Field key={id} id={id} label={label} value={x[id]} onChange={set(id)} onFocus={() => setActive(id)} st={st[id]} std={r.std ? r.std[id] : null} lim={id === "a" && r.std ? Math.round(r.std.a * (1 + KF_HOOK_LIMIT / 100) * 100) / 100 : null} dir="max" hint={where} />
+            <Field key={id} id={id} label={label} value={x[id]} onChange={set(id)} onFocus={() => setActive(id)} st={st[id]} std={r.std ? r.std[id] : null} lim={id === "e" && r.std ? Math.round(r.std.e * (1 + KF_HOOK_LIMIT / 100) * 100) / 100 : null} dir="max" hint={where} />
           ))}
         </div>
       </Card>
@@ -802,6 +713,7 @@ const KfHook = () => {
 const KfTables = () => (
   <div className="space-y-4" data-kito="kf">
     <Card title="KF · dimensioni standard della catena" id="kfchain">
+      <ManualFig src="/manuali/fas-kf-catena.png" alt="Maglia della catena KF: d, a, b, p (catalogo FAS)" source="Disegno del catalogo FAS serie KF (rev. 02/2018, pag. 93), riprodotto con il consenso di FAS." legend={[["d", "diametro"], ["a", "larghezza interna"], ["b", "larghezza esterna"], ["p", "passo"]]} />
       <div className="overflow-x-auto -mx-1">
         <table className="w-full text-[12px] text-slate-700" data-kito-kf-chain>
           <thead>
@@ -888,27 +800,20 @@ const KfView = () => {
 
 // ---------------------------------------------------------------- DONATI DMK
 // gancio DMK con le quote del manuale (fig. 77): a2 = apertura all'imbocco, h2 = altezza della sezione (disegno fatto dall'app)
-export const DmkHookArt = ({ active = "", st = {} }) => <HookArt active={active === "a2" ? "a" : active === "h2" ? "c" : ""} st={{ a: st.a2, c: st.h2 }} dims={["a", "c"]} labels={{ a: "a2", c: "h2" }} />;
-
-// catena DMK: diametro d, passo p di una maglia, 11 maglie
-export const DmkChainArt = ({ active = "", st = {} }) => {
-  const p = 17;
-  const d = 5;
-  const x0 = 22;
-  return (
-    <svg viewBox="0 0 230 96" className="w-full" aria-label="Catena Donati: diametro d, passo p e lunghezza di 11 maglie" data-dmk-chain-art>
-      <Markers />
-      {Array.from({ length: 11 }, (_, k) => {
-        const x = x0 + k * p - d;
-        const w = p + 2 * d;
-        return k % 2 === 0 ? <rect key={k} x={x} y={26} width={w} height={22} rx={11} fill="none" stroke="#334155" strokeWidth={d} /> : <rect key={k} x={x} y={34} width={w} height={d} rx={d / 2} fill="#cbd5e1" stroke="#334155" strokeWidth="1.5" />;
-      })}
-      <Dim x1={x0} y1="66" x2={x0 + 11 * p} y2="66" label="11p" lx={x0 + 5.5 * p} ly="84" st={st.p11} on={active === "p11"} />
-      <Dim x1={x0 + 2 * p} y1="14" x2={x0 + 3 * p} y2="14" label="p" lx={x0 + 2.5 * p} ly="4" st={st.p} on={active === "p"} />
-      <Dim x1={x0 - d - 10} y1="37" x2={x0 - 1} y2="37" label="d" lx={x0 - d - 5} ly="14" st={st.d} on={active === "d"} />
-    </svg>
-  );
-};
+export const DmkHookArt = ({ active = "", st = {} }) => (
+  <ManualFig
+    src="/manuali/donati-dmk-gancio-fig77.png"
+    alt="Gancio Donati DMK: quote a2 e h2 (fig. 77 del manuale)"
+    source="Fig. 77 del manuale Donati «Istruzioni per l'uso – Paranchi elettrici a catena serie DMK» (rev. luglio 2026, pag. 82), riprodotta con il consenso di Donati Sollevamenti."
+    legend={[
+      ["a2", "apertura all'imbocco, col calibro"],
+      ["h2", "altezza della sezione in basso"],
+    ]}
+    active={active}
+    st={st}
+    wide
+  />
+);
 
 const DmkMeasure = ({ parts = "tutto" }) => {
   const showChain = parts !== "gancio";
@@ -961,7 +866,7 @@ const DmkMeasure = ({ parts = "tutto" }) => {
       </Card>
       {showChain && (
       <Card title="Catena di sollevamento" id="dmkchain">
-        <DmkChainArt active={active} st={st} />
+        <ManualFig src="/manuali/donati-dmk-catena.png" alt="Catena Donati: d, p, 11p (manuale)" source="Schema del manuale Donati serie DMK (pag. 82), riprodotto con il consenso di Donati Sollevamenti." legend={[["d", "diametro tondino"], ["p", "passo di una maglia"], ["p11", "11 maglie"]]} active={active} st={st} />
         <div className="grid grid-cols-2 gap-2">
           {F("d", "(tondino, nel punto più consumato)")}
           {F("p", "(una maglia, da interno a interno)")}

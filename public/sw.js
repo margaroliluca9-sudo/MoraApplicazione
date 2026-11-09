@@ -4,7 +4,7 @@
 //     L'app si apre SUBITO dalla copia (veloce anche con poco campo) e intanto scarica la versione nuova:
 //     la volta dopo è già quella (nessun avviso).
 //  2) Notifiche della chat e dei promemoria.
-const SHELL = "mora-offline-v1";
+const SHELL = "mora-offline-v2";
 const CDN_HOSTS = ["cdn.tailwindcss.com", "fonts.googleapis.com", "fonts.gstatic.com"];
 
 const putSafe = async (key, res) => {
@@ -23,7 +23,7 @@ const precache = async () => {
   const res = await fetch("/", { cache: "no-store" });
   const html = await res.clone().text();
   await putSafe("/", res);
-  const urls = new Set(["/manifest.json", "/icons/icon-192.png", "https://cdn.tailwindcss.com"]);
+  const urls = new Set(["/manifest.json", "/icons/icon-192.png", "https://cdn.tailwindcss.com", "/manuali/donati-dmk-gancio-fig77.png", "/manuali/donati-dmk-catena.png", "/manuali/fas-kf-gancio.png", "/manuali/fas-kf-catena.png", "/manuali/kito-kq-gancio-occhiello.png", "/manuali/kito-kq-catena-5maglie.png", "/manuali/kito-kq-catena-diametro.png"]);
   const re = /(?:src|href)="([^"]+)"/g;
   let m;
   while ((m = re.exec(html))) {

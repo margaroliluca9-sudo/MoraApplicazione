@@ -389,16 +389,16 @@ export const KF_TEXT = { tipi: "SP = Gancio di sospensione · SV = Gancio di car
 // Il catalogo FAS dà solo le misure standard (da nuovo). Il limite di scarto NON è del costruttore: viene dalla
 // UNI EN 818-6 (apertura del gancio: l'aumento non deve superare il 10% del valore nominale). Per le altre quote
 // l'app mostra solo di quanto si scostano dallo standard, senza dire «scarto»: fa fede il manuale del costruttore.
-export const KF_HOOK_SOURCE = "UNI EN 818-6 (apertura del gancio: aumento massimo 10% del valore nominale); misure standard dal " + KF_SOURCE;
+export const KF_HOOK_SOURCE = "UNI EN 818-6 (apertura del gancio: aumento massimo 10% del valore nominale, applicato alla gola «e» dove entra la braca); misure standard dal " + KF_SOURCE;
 export const KF_HOOK_LIMIT = 10; // %
 // [id, nome, dove si misura]
 export const KF_HOOK_DIMS = [
-  ["a", "a · apertura del gancio", "tra la punta e il gambo, nel punto più stretto"],
-  ["b", "b · larghezza del gancio", "il fianco del gancio, nel punto dove lavora la braca"],
-  ["c", "c · spessore del gancio", "la sezione del gancio di fronte, nel punto dove lavora la braca"],
-  ["d", "d · diametro del gambo", "il gambo sopra il gancio"],
-  ["e", "e · profondità della gola", "dal fondo della gola alla punta"],
-  ["g", "g · larghezza della punta", "la punta del gancio, dove si chiude la sicurezza"],
+  ["a", "a · larghezza del corpo (in basso)", "la larghezza del gancio nella parte bassa, dove lavora la braca (vedi disegno)"],
+  ["b", "b · altezza del corpo (in basso)", "l'altezza della sezione nella parte bassa"],
+  ["c", "c · altezza della punta", "la sezione della punta, in verticale"],
+  ["d", "d · larghezza della punta", "la sezione della punta, in orizzontale"],
+  ["e", "e · diametro della gola", "il tondo interno dove si appoggia la braca"],
+  ["g", "g · punta in obliquo", "dalla punta all'attacco della sicurezza"],
 ];
 // i modelli KF e il loro gancio (portata del gancio = portata del paranco)
 export const KF_HOOK_MODELS = KF_CHAINS.map((c) => c[0] + " · " + c[1]);
@@ -418,10 +418,12 @@ export const checkKf = (x) => {
       const s0 = std[id];
       const diff = Math.round((v - s0) * 100) / 100;
       const pct = Math.round(((v - s0) / s0) * 1000) / 10;
-      // solo per «a» c'è un limite (EN 818-6): +10%. Le altre quote si confrontano e basta.
-      const limit = id === "a" ? Math.round(s0 * (1 + KF_HOOK_LIMIT / 100) * 100) / 100 : null;
-      const over = id === "a" ? pct > KF_HOOK_LIMIT : false;
-      const near = id === "a" ? !over && pct > KF_HOOK_LIMIT / 2 : Math.abs(pct) > 5;
+      // solo per «e» (il diametro della gola, dove entra la braca: è il vano che si allarga) c'è un limite (EN 818-6, apertura +10%).
+      // Le altre quote si confrontano e basta.
+      const lim = id === "e";
+      const limit = lim ? Math.round(s0 * (1 + KF_HOOK_LIMIT / 100) * 100) / 100 : null;
+      const over = lim ? pct > KF_HOOK_LIMIT : false;
+      const near = lim ? !over && pct > KF_HOOK_LIMIT / 2 : Math.abs(pct) > 5;
       items.push({ id, label, v, std: s0, diff, pct, limit, over, near });
     });
   const flags = KF_FLAGS.filter((f) => x.flags && x.flags[f.id]);
