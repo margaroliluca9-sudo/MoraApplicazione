@@ -16,6 +16,7 @@ import {
 import {
   csvCell,
   getTechsString,
+  logTechs,
   formatCapacity,
 } from "../utils";
 import { PRO_INPUT, getProPanelClass } from "../ui";
@@ -127,13 +128,11 @@ export const OfficeView = ({
     const customerCounts = {};
 
     calendarFilteredLogs.forEach((l) => {
-      if (l.technician)
-        techCounts[l.technician] = (techCounts[l.technician] || 0) + 1;
-      if (l.additionalTechnicians) {
-        l.additionalTechnicians.forEach((t) => {
-          if (t.trim()) techCounts[t] = (techCounts[t] || 0) + 1;
-        });
-      }
+      // ogni tecnico una volta per intervento (anche se è stato messo pure tra i colleghi)
+      logTechs(l).forEach((t) => {
+        const name = String(t).trim();
+        techCounts[name] = (techCounts[name] || 0) + 1;
+      });
       if (l.machineType)
         machineTypeCounts[l.machineType] =
           (machineTypeCounts[l.machineType] || 0) + 1;

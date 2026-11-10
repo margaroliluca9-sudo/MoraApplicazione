@@ -16,7 +16,7 @@ import { isAdminPassword } from "../passwords";
 import { Avatar } from "../components/Avatar";
 import { CardsSkeleton } from "../components/Skeleton";
 import { techOf } from "../profile";
-import { getTechsString, formatCapacity, unitLabel } from "../utils";
+import { getTechsString, logTechs, formatCapacity, unitLabel } from "../utils";
 import { getProPanelClass } from "../ui";
 import { DeleteConfirmDialog } from "../components/DeleteConfirmDialog";
 import { EditLogModal } from "../components/modals/EditLogModal";
@@ -50,7 +50,7 @@ const isRecent = (log) => !!(log && log.createdAt && Date.now() - log.createdAt.
 const FACE_TONES = ["blue", "emerald", "amber", "purple", "rose", "teal"];
 const faceTone = (n) => FACE_TONES[[...String(n)].reduce((a, c) => a + c.charCodeAt(0), 0) % FACE_TONES.length];
 const TechFaces = ({ log, technicians = [] }) => {
-  const names = [log.technician, ...(log.additionalTechnicians || [])].filter(Boolean);
+  const names = logTechs(log);
   return (
     <div className="flex items-center gap-2 min-w-0" data-tech-faces>
       <div className="flex -space-x-2 shrink-0">

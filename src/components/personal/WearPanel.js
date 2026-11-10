@@ -103,14 +103,49 @@ const Flags = ({ list, value, onChange }) => (
   </div>
 );
 
-const Bar = ({ sev }) => (
-  <span className="block h-2 rounded-full bg-slate-200 overflow-hidden mt-1">
-    <span className={`block h-full ${sev >= 100 ? "bg-red-500" : sev >= 60 ? "bg-amber-500" : "bg-emerald-500"}`} style={{ width: `${Math.min(100, Math.max(4, sev))}%` }} />
-  </span>
-);
+// BARRA DELL'USURA: 5 tratti come i gradini della ISO 4309 (20-40-60-80-100%), dal verde al rosso; si riempie
+// piano fino al valore e un cartellino dice a che punto sei. A 100% = scarto.
+const ZONES = ["#10b981", "#84cc16", "#f59e0b", "#f97316", "#dc2626"];
+export const WearBar = ({ sev, dark = false, label = "" }) => {
+  const v = Math.max(0, Math.min(100, Number(sev) || 0));
+  const [w, setW] = useState(0);
+  useEffect(() => {
+    const t = requestAnimationFrame(() => setW(v));
+    return () => cancelAnimationFrame(t);
+  }, [v]);
+  const tone = v >= 100 ? ZONES[4] : ZONES[Math.min(4, Math.floor(v / 20))];
+  return (
+    <span className="block mt-1.5" data-wear-bar={Math.round(v)}>
+      <span className="relative block pt-6">
+        <span className="absolute top-0 -translate-x-1/2 rounded-full px-2 text-[11px] font-black text-white whitespace-nowrap shadow" style={{ left: `${Math.min(92, Math.max(8, w))}%`, background: dark ? "rgba(15,23,42,.55)" : tone, lineHeight: "18px", transition: "left .7s cubic-bezier(.2,.8,.2,1)" }} data-wear-bar-tag>
+          {label || `${Math.round(v)}%`}
+        </span>
+        <span className="flex gap-1 h-3.5">
+          {ZONES.map((c, i) => {
+            const fill = Math.max(0, Math.min(1, (w - i * 20) / 20));
+            return (
+              <span key={i} className="relative flex-1 rounded-full overflow-hidden" style={{ background: dark ? "rgba(255,255,255,.22)" : `${c}2e` }}>
+                <span className="absolute inset-y-0 left-0 rounded-full" style={{ width: `${fill * 100}%`, background: dark ? "#fff" : c, transition: `width .35s linear ${i * 0.12}s` }} />
+              </span>
+            );
+          })}
+        </span>
+      </span>
+      <span className={`flex justify-between text-[10px] font-bold mt-0.5 tabular-nums ${dark ? "text-white/80" : "text-slate-400"}`}>
+        <span>0</span>
+        <span>20</span>
+        <span>40</span>
+        <span>60</span>
+        <span>80</span>
+        <span>scarto</span>
+      </span>
+    </span>
+  );
+};
+const Bar = ({ sev, label }) => <WearBar sev={sev} label={label} />;
 
 // verdetto: in cima, grande e colorato, il numero che conta (usura, calo del diametro, fili rotti)
-const Verdict = ({ level, title, lines, onCopy, copied, onReport, big = null, register = null, onPrint = null }) => {
+const Verdict = ({ level, title, lines, onCopy, copied, onReport, big = null, register = null, onPrint = null, meter = null }) => {
   const [regCopied, copyReg] = useCopy();
   const tone = level === "scarto" ? ["bg-red-600", XCircle] : level === "attenzione" ? ["bg-amber-600", AlertTriangle] : ["bg-emerald-600", CheckCircle2];
   const Icon = tone[1];
@@ -132,6 +167,12 @@ const Verdict = ({ level, title, lines, onCopy, copied, onReport, big = null, re
         <p className={`font-black flex items-center gap-2 ${big ? "text-xl mt-3" : "text-2xl"}`}>
           <Icon className="w-7 h-7 shrink-0" /> {title}
         </p>
+        {meter && (
+          <div className="mt-3" data-wear-meter>
+            <p className="text-[11px] font-black uppercase tracking-wider opacity-90">{meter.label}</p>
+            <WearBar sev={meter.sev} dark />
+          </div>
+        )}
       </div>
       <div className="p-4">
         <ul className="space-y-1 text-sm font-semibold text-slate-700">
@@ -1084,6 +1125,7 @@ const RopeCheck = ({ known = null, onReport = null, crane = null }) => {
           copied={copied}
           onReport={onReport ? () => onReport({ type: "fune", level: r.level, title, text: report, d: x.d, b6: x.b6, b30: x.b30, dMis: r.dMis || x.dMis, rope: r.auto ? "" : x.rope }) : null}
           big={ropeBig(r)}
+          meter={{ label: "Quanto manca allo scarto (ISO 4309)", sev: Math.max(r.s6 || 0, r.s30 || 0, r.dia ? r.dia.sev : 0, r.combined || 0, r.level === "scarto" ? 100 : 0) }}
           register={{ ...ropeVerdict(r), text: ropeRegister({ r, x, label: catName }) }}
           onPrint={() => printWear({ ...ropeReport({ r, x, label: catName, fas: !!isFas, teci: !!isTeci }), cons: consNow }, crane)}
         />
@@ -1207,6 +1249,7 @@ const ChainCheck = ({ known = null, onReport = null, crane = null }) => {
           copied={copied}
           onReport={onReport ? () => onReport({ type: "catena", level: r.level, title, text: report, d: x.d, d1: x.d1, d2: x.d2 }) : null}
           big={chainBig(r)}
+          meter={{ label: "Quanto manca allo scarto", sev: Math.max(r.wear != null ? (r.wear / 10) * 100 : 0, ...r.checks.map((c) => (c.limit ? (Math.max(0, c.value) / c.limit) * 100 : 0)), r.level === "scarto" ? 100 : 0) }}
           register={{ ...chainVerdict(r), text: chainRegister({ r, x }) }}
           onPrint={() => printWear(chainReport({ r, x }), crane)}
         />

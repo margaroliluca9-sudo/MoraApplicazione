@@ -6,7 +6,7 @@
 // sull'apertura dalla UNI EN 818-6 (il catalogo non dà limiti di usura), dimensioni standard della catena.
 // Dati e testi del manuale in src/kito.js (parola per parola). Le figure sono quelle dei manuali (public/manuali),
 // riprodotte con il consenso di FAS/KITO e Donati.
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { CheckCircle2, AlertTriangle, XCircle, Copy, Check, Printer, Search, ZoomIn } from "lucide-react";
 import { INPUT } from "./PersonalUi";
 import { FigureViewerModal } from "../PhotoViewerModal";
@@ -74,14 +74,50 @@ const Card = ({ title, children, id }) => (
 );
 const Quote = ({ children }) => <p className="text-[12px] text-slate-500 leading-snug">«{children}»</p>;
 
-// FIGURA DEL MANUALE (disegni originali del costruttore, usati con il suo consenso): immagine + legenda delle quote;
-// la lettera del campo che stai compilando si evidenzia in blu, le altre verde/arancio/rosso come il campo.
-const ManualFig = ({ src, alt, source, legend = [], active = "", st = {}, wide = false }) => {
+// FIGURA DEL MANUALE (disegni originali del costruttore, usati con il suo consenso): immagine + legenda delle quote.
+// marks = { quota: [x %, y %] } punto della quota sul disegno: lì compare la misura scritta nel campo (verde/arancio/rosso)
+// e, quando tocchi il campo, il disegno si avvicina da solo a quella quota (la lettera si colora di blu).
+const ZOOM_IN = 1.9;
+const toneOf = (t, on) => (on ? "#2563eb" : t === "over" ? "#dc2626" : t === "near" ? "#d97706" : t === "ok" ? "#059669" : "#475569");
+const ManualFig = ({ src, alt, source, legend = [], active = "", st = {}, wide = false, marks = null, vals = {} }) => {
   const [open, setOpen] = useState(false);
+  const focus = marks && marks[active] ? marks[active] : null;
+  const z = focus ? ZOOM_IN : 1;
+  // a zoom attivo: il punto della quota va al centro del riquadro (senza uscire dal disegno)
+  const tx = focus ? Math.max(-(z - 1) * 50, Math.min((z - 1) * 50, (50 - focus[0]) * z)) : 0;
+  const ty = focus ? Math.max(-(z - 1) * 50, Math.min((z - 1) * 50, (50 - focus[1]) * z)) : 0;
+  const shown = marks ? Object.keys(marks).filter((k) => vals[k] !== undefined && String(vals[k]).trim() !== "") : [];
   return (
-    <div className="space-y-2" data-manual-fig={src}>
-      <button type="button" onClick={() => setOpen(true)} data-action="open-figure" className={`relative w-full bg-white rounded-2xl border border-slate-200 p-2 flex justify-center active:bg-slate-50 ${wide ? "" : "max-w-xs mx-auto"}`} aria-label={`Apri e ingrandisci: ${alt}`}>
-        <img src={src} alt={alt} className={`${wide ? "w-full" : "max-h-56"} object-contain`} loading="lazy" />
+    <div className="space-y-2" data-manual-fig={src} data-fig-zoom={focus ? active : ""}>
+      <button type="button" onClick={() => setOpen(true)} data-action="open-figure" className={`relative w-full bg-white rounded-2xl border border-slate-200 p-2 flex justify-center overflow-hidden active:bg-slate-50 ${wide ? "" : "max-w-xs mx-auto"}`} aria-label={`Apri e ingrandisci: ${alt}`}>
+        <span className="relative inline-block overflow-hidden rounded-xl" style={{ lineHeight: 0 }}>
+          <span className="block relative" style={{ transform: `translate(${tx}%, ${ty}%) scale(${z})`, transformOrigin: "50% 50%", transition: "transform .45s cubic-bezier(.2,.8,.2,1)" }}>
+            <img src={src} alt={alt} className={`${wide ? "w-full" : "max-h-56"} object-contain`} loading="lazy" />
+            {shown.map((k) => {
+              const [mx, my] = marks[k];
+              const on = active === k;
+              return (
+                <span
+                  key={k}
+                  data-fig-val={k}
+                  className="absolute rounded-full text-white font-black whitespace-nowrap shadow-md"
+                  style={{ left: `${mx}%`, top: `${my}%`, transform: `translate(-50%, -50%) scale(${1 / z})`, background: toneOf(st[k], on), fontSize: 11, lineHeight: "16px", padding: "1px 6px", boxShadow: on ? "0 0 0 3px rgba(37,99,235,.35)" : undefined, transition: "transform .45s cubic-bezier(.2,.8,.2,1)" }}
+                >
+                  {vals[k]}
+                </span>
+              );
+            })}
+          </span>
+        </span>
+        {focus && (
+          <span className="absolute left-2 top-2 rounded-full bg-blue-600 text-white px-2 py-1 text-[10px] font-black" data-fig-focus>
+            {(() => {
+              const lg = legend.find((l) => l[0] === active);
+              if (!lg) return active;
+              return lg[0].length <= 3 && !lg[1].includes("·") ? `${lg[0]} · ${lg[1]}` : lg[1];
+            })()}
+          </span>
+        )}
         <span className="absolute right-2 bottom-2 inline-flex items-center gap-1 rounded-full bg-slate-900/80 text-white px-2 py-1 text-[10px] font-bold">
           <ZoomIn className="w-3 h-3" /> Ingrandisci
         </span>
@@ -101,12 +137,36 @@ const ManualFig = ({ src, alt, source, legend = [], active = "", st = {}, wide =
         </div>
       )}
       <p className="text-[10px] text-slate-400 text-center leading-snug">{source}</p>
-      {open && <FigureViewerModal src={src} figure={{ title: alt, legend, source }} onClose={() => setOpen(false)} />}
+      {open && <FigureViewerModal src={src} figure={{ title: alt, legend, source, marks, vals, st }} onClose={() => setOpen(false)} />}
     </div>
   );
 };
+// valore come lo scrive il tecnico, pronto per il disegno («45,2»)
+const valsOf = (x, keys) => {
+  const o = {};
+  keys.forEach((k) => {
+    const v = String(x[k] == null ? "" : x[k]).trim();
+    if (v) o[k] = v.replace(".", ",");
+  });
+  return o;
+};
+// quando lasci un campo, la figura torna intera (se non ne tocchi subito un altro)
+const useActive = () => {
+  const [active, setActive] = useState("");
+  const t = useRef(null);
+  useEffect(() => () => clearTimeout(t.current), []);
+  const focus = (id) => () => {
+    clearTimeout(t.current);
+    setActive(id);
+  };
+  const blur = (id) => () => {
+    clearTimeout(t.current);
+    t.current = setTimeout(() => setActive((a) => (a === id ? "" : a)), 250);
+  };
+  return [active, focus, blur];
+};
 
-export const KqHookArt = ({ active = "", st = {} }) => (
+export const KqHookArt = ({ active = "", st = {}, vals = {} }) => (
   <ManualFig
     src="/manuali/kito-kq-gancio-occhiello.png"
     alt="Gancio inferiore KQ (a tra i segni in rilievo, c, b) e occhiello di sospensione (d, e): manuale KITO"
@@ -118,25 +178,27 @@ export const KqHookArt = ({ active = "", st = {} }) => (
       ["od", "d · spessore dell'occhiello"],
       ["oe", "e · larghezza dell'occhiello"],
     ]}
+    marks={{ a: [25, 32], b: [80, 57], c: [52, 45], od: [53, 80], oe: [74, 67] }}
+    vals={vals}
     active={active}
     st={st}
   />
 );
 
 // catena KQ: figure del manuale (somma dei passi di 5 maglie, diametro del tondino)
-export const KqChainArt = ({ active = "", st = {} }) => (
+export const KqChainArt = ({ active = "", st = {}, vals = {} }) => (
   <div className="grid grid-cols-[3fr_2fr] gap-2 items-start" data-kito-chain-art>
-    <ManualFig src="/manuali/kito-kq-catena-5maglie.png" alt="Somma dei passi di 5 maglie (manuale KITO KQ)" source="Manuale KITO serie KQ, pag. 56." legend={[["passo5", "somma dei passi di 5 maglie"]]} active={active} st={st} wide />
-    <ManualFig src="/manuali/kito-kq-catena-diametro.png" alt="Diametro del tondino d (manuale KITO KQ)" source="Riprodotto con il consenso di FAS/KITO." legend={[["d", "diametro del tondino"]]} active={active} st={st} wide />
+    <ManualFig src="/manuali/kito-kq-catena-5maglie.png" alt="Somma dei passi di 5 maglie (manuale KITO KQ)" source="Manuale KITO serie KQ, pag. 56." legend={[["passo5", "somma dei passi di 5 maglie"]]} marks={{ passo5: [50, 50] }} vals={vals} active={active} st={st} wide />
+    <ManualFig src="/manuali/kito-kq-catena-diametro.png" alt="Diametro del tondino d (manuale KITO KQ)" source="Riprodotto con il consenso di FAS/KITO." legend={[["d", "diametro del tondino"]]} marks={{ d: [66, 55] }} vals={vals} active={active} st={st} wide />
   </div>
 );
 
 // ---------------------------------------------------------------- campo misura
-const Field = ({ id, label, value, onChange, onFocus, unit = "mm", hint, st, std, lim, dir }) => (
+const Field = ({ id, label, value, onChange, onFocus, onBlur, unit = "mm", hint, st, std, lim, dir }) => (
   <label className={`block rounded-2xl border-2 p-2.5 ${st === "over" ? "border-red-300 bg-red-50" : st === "near" ? "border-amber-300 bg-amber-50" : st === "ok" ? "border-emerald-300 bg-emerald-50" : "border-slate-200 bg-white"}`} data-kito-field={id} data-state={st || ""}>
     <span className="text-xs font-black text-slate-600 block leading-snug">{label}</span>
     <span className="relative block mt-1">
-      <input className={`${INPUT} pr-12`} inputMode="decimal" value={value} onFocus={onFocus} onChange={(e) => onChange(e.target.value.replace(/[^0-9.,]/g, ""))} data-kito-input={id} placeholder={std != null ? fmtK(std, 2) : "0"} autoComplete="off" />
+      <input className={`${INPUT} pr-12`} inputMode="decimal" value={value} onFocus={onFocus} onBlur={onBlur} onChange={(e) => onChange(e.target.value.replace(/[^0-9.,]/g, ""))} data-kito-input={id} placeholder={std != null ? fmtK(std, 2) : "0"} autoComplete="off" />
       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400">{unit}</span>
     </span>
     {(std != null || hint) && (
@@ -154,7 +216,7 @@ const Field = ({ id, label, value, onChange, onFocus, unit = "mm", hint, st, std
 );
 
 const Tabs = ({ value, onChange, list, id }) => (
-  <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1" data-kito-tabs={id}>
+  <div className="flex flex-wrap gap-1.5" data-kito-tabs={id}>
     {list.map(([v, l]) => (
       <button key={v} type="button" onClick={() => onChange(v)} data-kito-tab={v} className={`shrink-0 h-10 px-3.5 rounded-full text-sm font-black border ${value === v ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-600 border-slate-200"}`}>
         {l}
@@ -168,7 +230,8 @@ const KqMeasure = ({ parts = "tutto" }) => {
   const showChain = parts !== "gancio";
   const showHook = parts !== "catena";
   const [x, setX] = useState({ model: "KQ3SD", passo5: "", d: "", a: "", b: "", c: "", od: "", oe: "", puleggia: "", molla: "", frenoB: "", serie: "", ore: "", flags: {} });
-  const [active, setActive] = useState("");
+  const [active, onF, onB] = useActive();
+  const vals = valsOf(x, ["passo5", "d", "a", "b", "c", "od", "oe"]);
   const set = (k) => (v) => setX((o) => ({ ...o, [k]: v }));
   const r = useMemo(() => checkKq(x), [x]);
   const m = r.m;
@@ -176,12 +239,13 @@ const KqMeasure = ({ parts = "tutto" }) => {
   r.items.forEach((i) => {
     st[i.id] = i.over ? "over" : i.state && i.state.level === "attenzione" ? "near" : "ok";
   });
+  if (r.aInfo) st.a = r.aInfo.over ? "over" : r.aInfo.near ? "near" : "ok";
   const [copied, copy] = useCopy();
   const [regCopied, copyReg] = useCopy();
   const v = kqVerdict(r);
   const F = (id, label, extra = {}) => {
     const lim = m[id];
-    return <Field id={id} label={label} value={x[id]} onChange={set(id)} onFocus={() => setActive(id)} st={st[id]} std={lim ? lim[0] : null} lim={lim ? lim[1] : null} dir={id === "passo5" ? "max" : "min"} {...extra} />;
+    return <Field id={id} label={label} value={x[id]} onChange={set(id)} onFocus={onF(id)} onBlur={onB(id)} st={st[id]} std={lim ? lim[0] : null} lim={lim ? lim[1] : null} dir={id === "passo5" ? "max" : "min"} {...extra} />;
   };
   const Tone = r.level === "scarto" ? ["bg-red-600", XCircle] : r.level === "attenzione" ? ["bg-amber-600", AlertTriangle] : ["bg-emerald-600", CheckCircle2];
   const Icon = Tone[1];
@@ -212,7 +276,7 @@ const KqMeasure = ({ parts = "tutto" }) => {
 
       {showChain && (
       <Card title="Catena di carico" id="chain">
-        <KqChainArt active={active} st={st} />
+        <KqChainArt active={active} st={st} vals={vals} />
         <div className="grid grid-cols-2 gap-2">
           {F("passo5", "Somma dei passi di 5 maglie")}
           {F("d", "Diametro del tondino (d)")}
@@ -226,10 +290,10 @@ const KqMeasure = ({ parts = "tutto" }) => {
 
       {showHook && (
       <Card title="Gancio inferiore e occhiello di sospensione" id="hook">
-        <KqHookArt active={active} st={st} />
-        <p className="text-[11px] text-slate-500 -mt-1">La «a» si misura tra i segni in rilievo del gancio: per lei il manuale dà solo lo standard, il limite +10% è della UNI EN 818-6; b, c, d, e hanno i limiti del manuale. Tocca un campo e la sua lettera si colora di blu.</p>
+        <KqHookArt active={active} st={st} vals={vals} />
+        <p className="text-[11px] text-slate-500 -mt-1">La «a» si misura tra i segni in rilievo del gancio: per lei il manuale dà solo lo standard, il limite +10% è della UNI EN 818-6; b, c, d, e hanno i limiti del manuale. Tocca un campo: il disegno si avvicina a quella quota e le misure che scrivi compaiono sul gancio.</p>
         <div className="grid grid-cols-2 gap-2">
-          <Field id="a" label="a · apertura del gancio" value={x.a} onChange={set("a")} onFocus={() => setActive("a")} std={m.a} lim={r.aInfo ? r.aInfo.limit : Math.round(m.a * 1.1 * 100) / 100} dir="max" st={r.aInfo ? (r.aInfo.over ? "over" : r.aInfo.near ? "near" : "ok") : ""} hint="(tra i segni in rilievo · limite +10% sullo standard, UNI EN 818-6)" />
+          <Field id="a" label="a · apertura del gancio" value={x.a} onChange={set("a")} onFocus={onF("a")} onBlur={onB("a")} std={m.a} lim={r.aInfo ? r.aInfo.limit : Math.round(m.a * 1.1 * 100) / 100} dir="max" st={r.aInfo ? (r.aInfo.over ? "over" : r.aInfo.near ? "near" : "ok") : ""} hint="(tra i segni in rilievo · limite +10% sullo standard, UNI EN 818-6)" />
           {F("b", "b · larghezza del gancio")}
           {F("c", "c · spessore del gancio")}
           {F("od", "d · spessore dell'occhiello")}
@@ -588,7 +652,7 @@ const KqInfo = () => (
 
 // ---------------------------------------------------------------- KF
 // gancio KF visto di fronte con le 6 quote del catalogo (disegno fatto dall'app)
-export const KfHookArt = ({ active = "", st = {} }) => (
+export const KfHookArt = ({ active = "", st = {}, vals = {} }) => (
   <ManualFig
     src="/manuali/fas-kf-gancio.png"
     alt="Gancio KF: quote a, b, c, d, e, g (catalogo FAS)"
@@ -599,8 +663,10 @@ export const KfHookArt = ({ active = "", st = {} }) => (
       ["c", "altezza punta"],
       ["d", "larghezza punta"],
       ["e", "diametro gola"],
-      ["g", "punta, in obliquo"],
+      ["g", "apertura bocca"],
     ]}
+    marks={{ a: [28, 66], b: [6, 50], c: [72, 74], d: [56, 93], e: [52, 48], g: [86, 15] }}
+    vals={vals}
     active={active}
     st={st}
   />
@@ -608,7 +674,8 @@ export const KfHookArt = ({ active = "", st = {} }) => (
 
 const KfHook = () => {
   const [x, setX] = useState({ model: KF_HOOK_MODELS[4], kind: "SV", a: "", b: "", c: "", d: "", e: "", g: "", serie: "", flags: {} });
-  const [active, setActive] = useState("");
+  const [active, onF, onB] = useActive();
+  const vals = valsOf(x, ["a", "b", "c", "d", "e", "g"]);
   const set = (k) => (v) => setX((o) => ({ ...o, [k]: v }));
   const r = useMemo(() => checkKf(x), [x]);
   const [copied, copy] = useCopy();
@@ -653,11 +720,11 @@ const KfHook = () => {
         </label>
       </Card>
       <Card title="Misura il gancio" id="kfmeasure">
-        <KfHookArt active={active} st={st} />
-        <p className="text-[11px] text-slate-500 -mt-1">Tocca un campo e la quota da misurare si colora di blu nel disegno. Verde: come da nuovo. Arancio: si scosta. Rosso: apertura oltre il limite della EN 818-6.</p>
+        <KfHookArt active={active} st={st} vals={vals} />
+        <p className="text-[11px] text-slate-500 -mt-1">Tocca un campo: il disegno si avvicina alla quota da misurare e la misura compare sul gancio. Verde: come da nuovo. Arancio: si scosta. Rosso: apertura g oltre il +10% della EN 818-6 o quota oltre il 10% dallo standard.</p>
         <div className="grid grid-cols-2 gap-2">
           {KF_HOOK_DIMS.map(([id, label, where]) => (
-            <Field key={id} id={id} label={label} value={x[id]} onChange={set(id)} onFocus={() => setActive(id)} st={st[id]} std={r.std ? r.std[id] : null} lim={id === "e" && r.std ? Math.round(r.std.e * (1 + KF_HOOK_LIMIT / 100) * 100) / 100 : null} dir="max" hint={where} />
+            <Field key={id} id={id} label={label} value={x[id]} onChange={set(id)} onFocus={onF(id)} onBlur={onB(id)} st={st[id]} std={r.std ? r.std[id] : null} lim={id === "g" && r.std ? Math.round(r.std.g * (1 + KF_HOOK_LIMIT / 100) * 100) / 100 : null} dir="max" hint={where} />
           ))}
         </div>
       </Card>
@@ -813,7 +880,7 @@ const KfView = () => {
 
 // ---------------------------------------------------------------- DONATI DMK
 // gancio DMK con le quote del manuale (fig. 77): a2 = apertura all'imbocco, h2 = altezza della sezione (disegno fatto dall'app)
-export const DmkHookArt = ({ active = "", st = {} }) => (
+export const DmkHookArt = ({ active = "", st = {}, vals = {} }) => (
   <ManualFig
     src="/manuali/donati-dmk-gancio-fig77.png"
     alt="Gancio Donati DMK: quote a2 e h2 (fig. 77 del manuale)"
@@ -822,6 +889,8 @@ export const DmkHookArt = ({ active = "", st = {} }) => (
       ["a2", "apertura all'imbocco, col calibro"],
       ["h2", "altezza della sezione in basso"],
     ]}
+    marks={{ a2: [45, 57], h2: [33, 80] }}
+    vals={vals}
     active={active}
     st={st}
     wide
@@ -832,7 +901,8 @@ const DmkMeasure = ({ parts = "tutto" }) => {
   const showChain = parts !== "gancio";
   const showHook = parts !== "catena";
   const [x, setX] = useState({ model: DMK_MODELS[1].id, d: "", p: "", p11: "", a2: "", h2: "", serie: "", flags: {} });
-  const [active, setActive] = useState("");
+  const [active, onF, onB] = useActive();
+  const vals = valsOf(x, ["d", "p", "p11", "a2", "h2"]);
   const set = (k) => (v) => setX((o) => ({ ...o, [k]: v }));
   const r = useMemo(() => checkDmk(x), [x]);
   const m = r.m;
@@ -849,7 +919,7 @@ const DmkMeasure = ({ parts = "tutto" }) => {
     const q = DMK_MEASURES.find((z) => z.id === id);
     const std = m[q.std];
     const lim = q.lim ? m[q.lim] : Math.round(std * (1 + (q.dir === "max" ? q.pct : -q.pct) / 100) * 100) / 100;
-    return <Field id={id} label={q.label} value={x[id]} onChange={set(id)} onFocus={() => setActive(id)} st={st[id]} std={std} lim={lim} dir={q.dir} hint={hint} />;
+    return <Field id={id} label={q.label} value={x[id]} onChange={set(id)} onFocus={onF(id)} onBlur={onB(id)} st={st[id]} std={std} lim={lim} dir={q.dir} hint={hint} />;
   };
   return (
     <div className="space-y-4" data-kito="dmk">
@@ -879,7 +949,7 @@ const DmkMeasure = ({ parts = "tutto" }) => {
       </Card>
       {showChain && (
       <Card title="Catena di sollevamento" id="dmkchain">
-        <ManualFig src="/manuali/donati-dmk-catena.png" alt="Catena Donati: d, p, 11p (manuale)" source="Schema del manuale Donati serie DMK (pag. 82), riprodotto con il consenso di Donati Sollevamenti." legend={[["d", "diametro tondino"], ["p", "passo di una maglia"], ["p11", "11 maglie"]]} active={active} st={st} />
+        <ManualFig src="/manuali/donati-dmk-catena.png" alt="Catena Donati: d, p, 11p (manuale)" source="Schema del manuale Donati serie DMK (pag. 82), riprodotto con il consenso di Donati Sollevamenti." legend={[["d", "diametro tondino"], ["p", "passo di una maglia"], ["p11", "11 maglie"]]} marks={{ d: [36, 20], p: [82, 57], p11: [45, 66] }} vals={vals} active={active} st={st} />
         <div className="grid grid-cols-2 gap-2">
           {F("d", "(tondino, nel punto più consumato)")}
           {F("p", "(una maglia, da interno a interno)")}
@@ -892,8 +962,8 @@ const DmkMeasure = ({ parts = "tutto" }) => {
       )}
       {showHook && (
       <Card title="Gancio di sollevamento" id="dmkhook">
-        <DmkHookArt active={active} st={st} />
-        <p className="text-[11px] text-slate-500 -mt-1">Tocca un campo e la quota si colora di blu nel disegno. Verde entro il limite, arancio vicino, rosso oltre.</p>
+        <DmkHookArt active={active} st={st} vals={vals} />
+        <p className="text-[11px] text-slate-500 -mt-1">Tocca un campo: il disegno si avvicina alla quota e la misura compare sul gancio. Verde entro il limite, arancio vicino, rosso oltre.</p>
         <div className="grid grid-cols-2 gap-2">
           {F("a2", "(all'imbocco)")}
           {F("h2", "(la sezione nel fondo della gola)")}
@@ -1027,15 +1097,15 @@ export const KitoCheck = ({ onOpenKq = null }) => {
       ) : (
         <>
           {onOpenKq && (
-            <button type="button" onClick={onOpenKq} data-action="open-kq" className="w-full rounded-3xl bg-slate-900 text-white p-4 text-left flex items-center gap-3 shadow-lg">
-              <span className="p-2.5 rounded-2xl bg-blue-600 shrink-0">
+            <button type="button" onClick={onOpenKq} data-action="open-kq" className="w-full rounded-3xl bg-gradient-to-br from-blue-700 to-slate-900 text-white p-4 text-left flex items-center gap-3 shadow-lg">
+              <span className="p-2.5 rounded-2xl bg-white/15 shrink-0">
                 <Search className="w-6 h-6" />
               </span>
               <span className="flex-1">
                 <span className="block font-black">Paranco Kito KQ: tutto il resto</span>
-                <span className="block text-xs text-slate-300 leading-snug">Codici errore dell'inverter, guasti, conta ore, procedure e il controllo completo (catena, puleggia, molla, freno).</span>
+                <span className="block text-xs text-blue-100 leading-snug">Codici errore dell'inverter, guasti, conta ore, procedure e il controllo completo (catena, puleggia, molla, freno).</span>
               </span>
-              <span className="text-2xl font-black text-blue-300">›</span>
+              <span className="text-2xl font-black text-white">›</span>
             </button>
           )}
           <KqMeasure parts="gancio" />

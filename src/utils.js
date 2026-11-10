@@ -105,11 +105,17 @@ export const csvCell = (value) =>
   )}"`;
 
 // HELPER GLOBALE PER TECNICI MULTIPLI
-export const getTechsString = (log) => {
-  if (!log.additionalTechnicians || log.additionalTechnicians.length === 0)
-    return log.technician;
-  return `${log.technician}, ${log.additionalTechnicians.join(", ")}`;
+// tutti i tecnici dell'intervento, una volta sola (se il tecnico è stato messo anche tra i colleghi non si doppia)
+export const logTechs = (log) => {
+  const seen = new Set();
+  return [log.technician, ...(log.additionalTechnicians || [])].filter((t) => {
+    const k = String(t || "").trim().toLowerCase();
+    if (!k || seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  });
 };
+export const getTechsString = (log) => logTechs(log).join(", ");
 
 // HELPER GLOBALE PER LA PORTATA
 // «Gru 4868» solo se è davvero una gru: sottoganci, bilancini, impianti sospesi, pinze, magneti… → «Matr. 4868»

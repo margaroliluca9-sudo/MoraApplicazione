@@ -285,11 +285,17 @@ export const FigureViewerModal = ({ src, figure, onClose }) => (
         <p className="font-black text-slate-800 text-sm leading-tight">{figure.title}</p>
         {figure.legend && figure.legend.length > 0 && (
           <div className="flex flex-wrap gap-1.5">
-            {figure.legend.map(([k, l]) => (
-              <span key={k} className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-bold text-slate-600">
-                <b className="text-xs text-blue-700">{k}</b> {l}
-              </span>
-            ))}
+            {figure.legend.map(([k, l]) => {
+              const v = figure.vals && figure.vals[k];
+              const t = figure.st && figure.st[k];
+              const tone = t === "over" ? "bg-red-600" : t === "near" ? "bg-amber-600" : t === "ok" ? "bg-emerald-600" : "bg-slate-600";
+              return (
+                <span key={k} className="inline-flex items-center gap-1 rounded-full border border-slate-200 bg-slate-50 px-2 py-0.5 text-[11px] font-bold text-slate-600" data-figure-legend={k}>
+                  <b className="text-xs text-blue-700">{k}</b> {l}
+                  {v && <span className={`ml-0.5 rounded-full ${tone} text-white px-1.5 font-black`} data-figure-val={k}>{v} mm</span>}
+                </span>
+              );
+            })}
           </div>
         )}
         <p className="text-[10px] text-slate-400 leading-snug">{figure.source} · Due dita o doppio tocco per ingrandire, trascina per spostare, tira giù per chiudere.</p>

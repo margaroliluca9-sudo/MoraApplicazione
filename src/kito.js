@@ -106,7 +106,9 @@ export const checkKq = (x) => {
     const v = num(x[q.id]);
     if (v == null) return;
     const [std, limit] = lim;
-    const over = q.dir === "max" ? v > limit : v < limit;
+    // freno B: il manuale dice «È stato raggiunto il limite di tolleranza → sostituire», quindi al limite esatto è già scarto.
+    // Le altre misure: «non deve essere mai superato», al limite esatto si è ancora dentro.
+    const over = q.id === "frenoB" ? v <= limit : q.dir === "max" ? v > limit : v < limit;
     const it = { ...q, v, std, limit, over };
     if (q.id === "frenoB") it.state = frenoBState(v, lim);
     items.push(it);
@@ -397,7 +399,7 @@ export const KF_TEXT = { tipi: "SP = Gancio di sospensione · SV = Gancio di car
 // Il catalogo FAS dà solo le misure standard (da nuovo). Il limite di scarto NON è del costruttore: viene dalla
 // UNI EN 818-6 (apertura del gancio: l'aumento non deve superare il 10% del valore nominale). Per le altre quote
 // l'app mostra solo di quanto si scostano dallo standard, senza dire «scarto»: fa fede il manuale del costruttore.
-export const KF_HOOK_SOURCE = "UNI EN 818-6 (apertura del gancio: aumento massimo 10% del valore nominale, applicato alla gola «e» dove entra la braca); misure standard dal " + KF_SOURCE;
+export const KF_HOOK_SOURCE = "UNI EN 818-6 (apertura del gancio: aumento massimo 10% del valore nominale, applicato alla quota «g», la bocca del gancio dalla punta al perno della sicurezza); misure standard dal " + KF_SOURCE;
 export const KF_HOOK_LIMIT = 10; // %
 // [id, nome, dove si misura]
 export const KF_HOOK_DIMS = [
@@ -406,7 +408,7 @@ export const KF_HOOK_DIMS = [
   ["c", "c · altezza della punta", "la sezione della punta, in verticale"],
   ["d", "d · larghezza della punta", "la sezione della punta, in orizzontale"],
   ["e", "e · diametro della gola", "il tondo interno dove si appoggia la braca"],
-  ["g", "g · punta in obliquo", "dalla punta all'attacco della sicurezza"],
+  ["g", "g · apertura della bocca", "dalla punta al perno della sicurezza: è la bocca che si allarga"],
 ];
 // i modelli KF e il loro gancio (portata del gancio = portata del paranco)
 export const KF_HOOK_MODELS = KF_CHAINS.map((c) => c[0] + " · " + c[1]);
@@ -426,11 +428,10 @@ export const checkKf = (x) => {
       const s0 = std[id];
       const diff = Math.round((v - s0) * 100) / 100;
       const pct = Math.round(((v - s0) / s0) * 1000) / 10;
-      // solo per «e» (il diametro della gola, dove entra la braca: è il vano che si allarga) c'è un limite (EN 818-6, apertura +10%).
-      // Le altre quote si confrontano e basta.
-      // Per le altre quote nessun limite del costruttore: ma uno scostamento oltre il 10% dallo standard (in più o in meno)
-      // non è più un gancio «da nuovo» ed è segnato rosso lo stesso (UNI EN 818-6: deformazione / usura oltre il 10%).
-      const lim = id === "e";
+      // solo per «g» (la bocca del gancio, dalla punta al perno della sicurezza: è l'apertura che si allarga) c'è il limite
+      // della EN 818-6 (apertura +10%). Per le altre quote nessun limite del costruttore: uno scostamento oltre il 10%
+      // dallo standard (in più o in meno) non è più un gancio «da nuovo» ed è segnato rosso lo stesso.
+      const lim = id === "g";
       const limit = lim ? Math.round(s0 * (1 + KF_HOOK_LIMIT / 100) * 100) / 100 : null;
       const over = lim ? pct > KF_HOOK_LIMIT : Math.abs(pct) > KF_HOOK_LIMIT;
       const near = lim ? !over && pct > KF_HOOK_LIMIT / 2 : !over && Math.abs(pct) > 5;
@@ -493,7 +494,7 @@ export const kfReport = ({ r, x }) => {
     norms: [
       "Limite di scarto: UNI EN 818-6, apertura del gancio: l'aumento non deve superare il 10% del valore nominale. Non è un limite del costruttore: il catalogo KITO/FAS della serie KF riporta solo le dimensioni standard.",
       `Misure standard: ${KF_SOURCE}, tabella «Dimensioni standard del gancio» (a, b, c, d, e, g).`,
-      "Per le quote b, c, d, e, g il verbale riporta lo scostamento dallo standard; fa fede il manuale del costruttore.",
+      "Limite +10% applicato alla quota g (apertura della bocca). Per le quote a, b, c, d, e il verbale riporta lo scostamento dallo standard (rosso oltre il 10%); fa fede il manuale del costruttore.",
       "D.Lgs. 81/2008, Allegato VI, punto 3.1.2: «Le funi e le catene debbono essere sottoposte a controlli trimestrali in mancanza di specifica indicazione da parte del fabbricante.»",
     ],
   };
