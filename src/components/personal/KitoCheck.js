@@ -5,7 +5,7 @@
 // KF: controllo del gancio con le misure (a, b, c, d, e, g): standard dal catalogo FAS, limite di scarto +10%
 // sull'apertura dalla UNI EN 818-6 (il catalogo non dà limiti di usura), dimensioni standard della catena.
 // Dati e testi del manuale in src/kito.js (parola per parola). Le figure sono quelle dei manuali (public/manuali),
-// riprodotte con il consenso di FAS/KITO e Donati.
+// (public/manuali).
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { CheckCircle2, AlertTriangle, XCircle, Copy, Check, Printer, Search, ZoomIn } from "lucide-react";
 import { INPUT } from "./PersonalUi";
@@ -74,18 +74,80 @@ const Card = ({ title, children, id }) => (
 );
 const Quote = ({ children }) => <p className="text-[12px] text-slate-500 leading-snug">«{children}»</p>;
 
-// FIGURA DEL MANUALE (disegni originali del costruttore, usati con il suo consenso): immagine + legenda delle quote.
+// FIGURA DEL MANUALE (disegni originali del costruttore): immagine + legenda delle quote.
 // marks = { quota: [x %, y %] } punto della quota sul disegno: lì compare la misura scritta nel campo (verde/arancio/rosso)
 // e, quando tocchi il campo, il disegno si avvicina da solo a quella quota (la lettera si colora di blu).
 const ZOOM_IN = 1.9;
+// misure dei disegni (pixel), per la lente
+const FIG_SIZE = {
+  "/manuali/kito-kq-gancio-occhiello.png": [364, 492],
+  "/manuali/kito-kq-catena-5maglie.png": [338, 137],
+  "/manuali/kito-kq-catena-diametro.png": [222, 201],
+  "/manuali/fas-kf-gancio.png": [310, 331],
+  "/manuali/donati-dmk-gancio-fig77.png": [605, 334],
+  "/manuali/donati-dmk-catena.png": [317, 192],
+};
+// disegni per il verbale PDF: il disegno con sopra le misure prese (src/pdf.js → buildWearPdf, rep.figures)
+const PRINT_FIGS = {
+  kqHook: { src: "/manuali/kito-kq-gancio-occhiello.png", title: "Gancio inferiore e occhiello di sospensione", marks: { a: [25, 32], b: [80, 57], c: [52, 45], od: [53, 80], oe: [74, 67] }, names: { od: "d", oe: "e" } },
+  kqChain: { src: "/manuali/kito-kq-catena-5maglie.png", title: "Catena: somma dei passi di 5 maglie", marks: { passo5: [50, 50] }, names: { passo5: "5 maglie" } },
+  kqDia: { src: "/manuali/kito-kq-catena-diametro.png", title: "Catena: diametro del tondino", marks: { d: [66, 55] } },
+  kfHook: { src: "/manuali/fas-kf-gancio.png", title: "Gancio KF", marks: { a: [28, 66], b: [6, 50], c: [72, 74], d: [56, 93], e: [52, 48], g: [86, 15] } },
+  dmkHook: { src: "/manuali/donati-dmk-gancio-fig77.png", title: "Gancio di sollevamento", marks: { a2: [45, 57], h2: [33, 80] } },
+  dmkChain: { src: "/manuali/donati-dmk-catena.png", title: "Catena di sollevamento", marks: { d: [36, 20], p: [82, 57], p11: [45, 66] }, names: { p11: "11p" } },
+};
+const printFigs = (keys, vals, st) =>
+  keys
+    .map((k) => {
+      const f = PRINT_FIGS[k];
+      const v = {};
+      Object.keys(f.marks).forEach((q) => vals[q] && (v[q] = vals[q]));
+      return Object.keys(v).length ? { ...f, size: FIG_SIZE[f.src], vals: v, st: Object.fromEntries(Object.keys(v).map((q) => [q, st[q] || ""])) } : null;
+    })
+    .filter(Boolean);
+
+// LENTE: mentre scrivi una misura il disegno resta in alto sullo schermo (sotto l'intestazione), ingrandito sulla
+// quota, con la misura scritta sopra: così la vedi anche quando il disegno è uscito dallo schermo.
+const Lens = ({ src, k, mark, val, tone, label }) => {
+  const [top, setTop] = useState(96);
+  useEffect(() => {
+    const hb = document.querySelector(".sticky.top-0.z-50");
+    setTop(hb ? Math.max(8, hb.getBoundingClientRect().bottom + 8) : 12);
+  }, []);
+  const [iw, ih] = FIG_SIZE[src] || [300, 300];
+  const W = 168;
+  const H = 132;
+  const Z = 2.2;
+  const bw = W * Z;
+  const bh = (bw * ih) / iw;
+  const left = Math.min(0, Math.max(W - bw, W / 2 - (mark[0] / 100) * bw));
+  const tp = Math.min(0, Math.max(H - bh, H / 2 - (mark[1] / 100) * bh));
+  return (
+    <div className="fixed right-3 z-[60] rounded-2xl bg-white border-2 border-blue-500 shadow-2xl overflow-hidden pointer-events-none" style={{ top, width: W, height: H + 26 }} data-fig-lens={k}>
+      <div className="relative overflow-hidden" style={{ width: W, height: H }}>
+        <div className="absolute" style={{ left, top: tp, width: bw, height: bh, transition: "left .35s ease, top .35s ease" }}>
+          <img src={src} alt="" className="w-full h-full" />
+          {val && (
+            <span className="absolute rounded-full text-white font-black whitespace-nowrap shadow-lg" style={{ left: `${mark[0]}%`, top: `${mark[1]}%`, transform: "translate(-50%, -50%)", background: tone, fontSize: 15, lineHeight: "20px", padding: "1px 8px" }} data-fig-lens-val>
+              {val}
+            </span>
+          )}
+        </div>
+      </div>
+      <div className="h-[26px] px-2 flex items-center bg-blue-600 text-white text-[11px] font-black truncate">{label}</div>
+    </div>
+  );
+};
 const toneOf = (t, on) => (on ? "#2563eb" : t === "over" ? "#dc2626" : t === "near" ? "#d97706" : t === "ok" ? "#059669" : "#475569");
-const ManualFig = ({ src, alt, source, legend = [], active = "", st = {}, wide = false, marks = null, vals = {} }) => {
+const ManualFig = ({ src, alt, legend = [], active = "", st = {}, wide = false, marks = null, vals = {} }) => {
   const [open, setOpen] = useState(false);
   const focus = marks && marks[active] ? marks[active] : null;
   const z = focus ? ZOOM_IN : 1;
   // a zoom attivo: il punto della quota va al centro del riquadro (senza uscire dal disegno)
   const tx = focus ? Math.max(-(z - 1) * 50, Math.min((z - 1) * 50, (50 - focus[0]) * z)) : 0;
   const ty = focus ? Math.max(-(z - 1) * 50, Math.min((z - 1) * 50, (50 - focus[1]) * z)) : 0;
+  const lg = legend.find((l) => l[0] === active);
+  const focusLabel = !lg ? active : lg[0].length <= 3 && !lg[1].includes("·") ? `${lg[0]} · ${lg[1]}` : lg[1];
   const shown = marks ? Object.keys(marks).filter((k) => vals[k] !== undefined && String(vals[k]).trim() !== "") : [];
   return (
     <div className="space-y-2" data-manual-fig={src} data-fig-zoom={focus ? active : ""}>
@@ -101,7 +163,7 @@ const ManualFig = ({ src, alt, source, legend = [], active = "", st = {}, wide =
                   key={k}
                   data-fig-val={k}
                   className="absolute rounded-full text-white font-black whitespace-nowrap shadow-md"
-                  style={{ left: `${mx}%`, top: `${my}%`, transform: `translate(-50%, -50%) scale(${1 / z})`, background: toneOf(st[k], on), fontSize: 11, lineHeight: "16px", padding: "1px 6px", boxShadow: on ? "0 0 0 3px rgba(37,99,235,.35)" : undefined, transition: "transform .45s cubic-bezier(.2,.8,.2,1)" }}
+                  style={{ left: `${mx}%`, top: `${my}%`, transform: `translate(-50%, -50%) scale(${1 / z})`, background: toneOf(st[k], on), fontSize: 13, lineHeight: "18px", padding: "1px 7px", boxShadow: on ? "0 0 0 3px rgba(37,99,235,.35)" : undefined, transition: "transform .45s cubic-bezier(.2,.8,.2,1)" }}
                 >
                   {vals[k]}
                 </span>
@@ -111,11 +173,7 @@ const ManualFig = ({ src, alt, source, legend = [], active = "", st = {}, wide =
         </span>
         {focus && (
           <span className="absolute left-2 top-2 rounded-full bg-blue-600 text-white px-2 py-1 text-[10px] font-black" data-fig-focus>
-            {(() => {
-              const lg = legend.find((l) => l[0] === active);
-              if (!lg) return active;
-              return lg[0].length <= 3 && !lg[1].includes("·") ? `${lg[0]} · ${lg[1]}` : lg[1];
-            })()}
+            {focusLabel}
           </span>
         )}
         <span className="absolute right-2 bottom-2 inline-flex items-center gap-1 rounded-full bg-slate-900/80 text-white px-2 py-1 text-[10px] font-bold">
@@ -136,8 +194,8 @@ const ManualFig = ({ src, alt, source, legend = [], active = "", st = {}, wide =
           })}
         </div>
       )}
-      <p className="text-[10px] text-slate-400 text-center leading-snug">{source}</p>
-      {open && <FigureViewerModal src={src} figure={{ title: alt, legend, source, marks, vals, st }} onClose={() => setOpen(false)} />}
+      {focus && <Lens src={src} k={active} mark={focus} val={vals[active]} tone={toneOf(st[active], !st[active])} label={focusLabel} />}
+      {open && <FigureViewerModal src={src} figure={{ title: alt, legend, marks, vals, st }} onClose={() => setOpen(false)} />}
     </div>
   );
 };
@@ -170,7 +228,6 @@ export const KqHookArt = ({ active = "", st = {}, vals = {} }) => (
   <ManualFig
     src="/manuali/kito-kq-gancio-occhiello.png"
     alt="Gancio inferiore KQ (a tra i segni in rilievo, c, b) e occhiello di sospensione (d, e): manuale KITO"
-    source="Disegno del manuale KITO «Istruzioni d'uso e di sicurezza – Paranchi elettrici a catena serie KQ» (pag. 57), riprodotto con il consenso di FAS/KITO."
     legend={[
       ["a", "apertura tra i segni in rilievo"],
       ["b", "larghezza del gancio (di lato)"],
@@ -188,8 +245,8 @@ export const KqHookArt = ({ active = "", st = {}, vals = {} }) => (
 // catena KQ: figure del manuale (somma dei passi di 5 maglie, diametro del tondino)
 export const KqChainArt = ({ active = "", st = {}, vals = {} }) => (
   <div className="grid grid-cols-[3fr_2fr] gap-2 items-start" data-kito-chain-art>
-    <ManualFig src="/manuali/kito-kq-catena-5maglie.png" alt="Somma dei passi di 5 maglie (manuale KITO KQ)" source="Manuale KITO serie KQ, pag. 56." legend={[["passo5", "somma dei passi di 5 maglie"]]} marks={{ passo5: [50, 50] }} vals={vals} active={active} st={st} wide />
-    <ManualFig src="/manuali/kito-kq-catena-diametro.png" alt="Diametro del tondino d (manuale KITO KQ)" source="Riprodotto con il consenso di FAS/KITO." legend={[["d", "diametro del tondino"]]} marks={{ d: [66, 55] }} vals={vals} active={active} st={st} wide />
+    <ManualFig src="/manuali/kito-kq-catena-5maglie.png" alt="Somma dei passi di 5 maglie (manuale KITO KQ)" legend={[["passo5", "somma dei passi di 5 maglie"]]} marks={{ passo5: [50, 50] }} vals={vals} active={active} st={st} wide />
+    <ManualFig src="/manuali/kito-kq-catena-diametro.png" alt="Diametro del tondino d (manuale KITO KQ)" legend={[["d", "diametro del tondino"]]} marks={{ d: [66, 55] }} vals={vals} active={active} st={st} wide />
   </div>
 );
 
@@ -198,7 +255,7 @@ const Field = ({ id, label, value, onChange, onFocus, onBlur, unit = "mm", hint,
   <label className={`block rounded-2xl border-2 p-2.5 ${st === "over" ? "border-red-300 bg-red-50" : st === "near" ? "border-amber-300 bg-amber-50" : st === "ok" ? "border-emerald-300 bg-emerald-50" : "border-slate-200 bg-white"}`} data-kito-field={id} data-state={st || ""}>
     <span className="text-xs font-black text-slate-600 block leading-snug">{label}</span>
     <span className="relative block mt-1">
-      <input className={`${INPUT} pr-12`} inputMode="decimal" value={value} onFocus={onFocus} onBlur={onBlur} onChange={(e) => onChange(e.target.value.replace(/[^0-9.,]/g, ""))} data-kito-input={id} placeholder={std != null ? fmtK(std, 2) : "0"} autoComplete="off" />
+      <input className={`${INPUT} pr-12`} inputMode="decimal" value={value} onFocus={onFocus} onBlur={onBlur} onChange={(e) => onChange(e.target.value.replace(/[^0-9.,]/g, ""))} data-kito-input={id} placeholder="" autoComplete="off" />
       <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-bold text-slate-400">{unit}</span>
     </span>
     {(std != null || hint) && (
@@ -387,7 +444,7 @@ const KqMeasure = ({ parts = "tutto" }) => {
             <button type="button" onClick={() => copy(kqRegister({ r }))} className="h-10 px-3 rounded-xl bg-slate-100 border border-slate-200 text-sm font-bold text-slate-700 flex items-center gap-1.5" data-action="kito-copy">
               {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />} {copied ? "Copiato: incollalo nel rapporto" : "Copia per il rapporto"}
             </button>
-            <button type="button" onClick={() => printWear(kqReport({ r, x }))} className="w-full h-11 px-3 rounded-xl bg-slate-900 text-white text-sm font-bold flex items-center justify-center gap-1.5" data-action="kito-print">
+            <button type="button" onClick={() => printWear({ ...kqReport({ r, x }), figures: printFigs([...(showHook ? ["kqHook"] : []), ...(showChain ? ["kqChain", "kqDia"] : [])], vals, st) })} className="w-full h-11 px-3 rounded-xl bg-slate-900 text-white text-sm font-bold flex items-center justify-center gap-1.5" data-action="kito-print">
               <Printer className="w-4 h-4" /> Stampa il verbale (PDF)
             </button>
           </div>
@@ -656,7 +713,6 @@ export const KfHookArt = ({ active = "", st = {}, vals = {} }) => (
   <ManualFig
     src="/manuali/fas-kf-gancio.png"
     alt="Gancio KF: quote a, b, c, d, e, g (catalogo FAS)"
-    source="Disegno del catalogo FAS «Paranchi elettrici a catena serie KF – Dimensioni ganci e catene» (rev. 02/2018, pag. 93), riprodotto con il consenso di FAS."
     legend={[
       ["a", "larghezza in basso"],
       ["b", "altezza in basso"],
@@ -779,7 +835,7 @@ const KfHook = () => {
             <button type="button" onClick={() => copy(kfRegister({ r }))} className="h-10 px-3 rounded-xl bg-slate-100 border border-slate-200 text-sm font-bold text-slate-700 flex items-center gap-1.5" data-action="kito-kf-copy">
               {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />} {copied ? "Copiato: incollalo nel rapporto" : "Copia per il rapporto"}
             </button>
-            <button type="button" onClick={() => printWear(kfReport({ r, x }))} className="w-full h-11 px-3 rounded-xl bg-slate-900 text-white text-sm font-bold flex items-center justify-center gap-1.5" data-action="kito-kf-print">
+            <button type="button" onClick={() => printWear({ ...kfReport({ r, x }), figures: printFigs(["kfHook"], vals, st) })} className="w-full h-11 px-3 rounded-xl bg-slate-900 text-white text-sm font-bold flex items-center justify-center gap-1.5" data-action="kito-kf-print">
               <Printer className="w-4 h-4" /> Stampa il verbale (PDF)
             </button>
           </div>
@@ -793,7 +849,7 @@ const KfHook = () => {
 const KfTables = () => (
   <div className="space-y-4" data-kito="kf">
     <Card title="KF · dimensioni standard della catena" id="kfchain">
-      <ManualFig src="/manuali/fas-kf-catena.png" alt="Maglia della catena KF: d, a, b, p (catalogo FAS)" source="Disegno del catalogo FAS serie KF (rev. 02/2018, pag. 93), riprodotto con il consenso di FAS." legend={[["d", "diametro"], ["a", "larghezza interna"], ["b", "larghezza esterna"], ["p", "passo"]]} />
+      <ManualFig src="/manuali/fas-kf-catena.png" alt="Maglia della catena KF: d, a, b, p (catalogo FAS)" legend={[["d", "diametro"], ["a", "larghezza interna"], ["b", "larghezza esterna"], ["p", "passo"]]} />
       <div className="overflow-x-auto -mx-1">
         <table className="w-full text-[12px] text-slate-700" data-kito-kf-chain>
           <thead>
@@ -884,7 +940,6 @@ export const DmkHookArt = ({ active = "", st = {}, vals = {} }) => (
   <ManualFig
     src="/manuali/donati-dmk-gancio-fig77.png"
     alt="Gancio Donati DMK: quote a2 e h2 (fig. 77 del manuale)"
-    source="Fig. 77 del manuale Donati «Istruzioni per l'uso – Paranchi elettrici a catena serie DMK» (rev. luglio 2026, pag. 82), riprodotta con il consenso di Donati Sollevamenti."
     legend={[
       ["a2", "apertura all'imbocco, col calibro"],
       ["h2", "altezza della sezione in basso"],
@@ -949,7 +1004,7 @@ const DmkMeasure = ({ parts = "tutto" }) => {
       </Card>
       {showChain && (
       <Card title="Catena di sollevamento" id="dmkchain">
-        <ManualFig src="/manuali/donati-dmk-catena.png" alt="Catena Donati: d, p, 11p (manuale)" source="Schema del manuale Donati serie DMK (pag. 82), riprodotto con il consenso di Donati Sollevamenti." legend={[["d", "diametro tondino"], ["p", "passo di una maglia"], ["p11", "11 maglie"]]} marks={{ d: [36, 20], p: [82, 57], p11: [45, 66] }} vals={vals} active={active} st={st} />
+        <ManualFig src="/manuali/donati-dmk-catena.png" alt="Catena Donati: d, p, 11p (manuale)" legend={[["d", "diametro tondino"], ["p", "passo di una maglia"], ["p11", "11 maglie"]]} marks={{ d: [36, 20], p: [82, 57], p11: [45, 66] }} vals={vals} active={active} st={st} />
         <div className="grid grid-cols-2 gap-2">
           {F("d", "(tondino, nel punto più consumato)")}
           {F("p", "(una maglia, da interno a interno)")}
@@ -1024,7 +1079,7 @@ const DmkMeasure = ({ parts = "tutto" }) => {
             <button type="button" onClick={() => copy(dmkRegister({ r }))} className="h-10 px-3 rounded-xl bg-slate-100 border border-slate-200 text-sm font-bold text-slate-700 flex items-center gap-1.5" data-action="dmk-copy">
               {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />} {copied ? "Copiato: incollalo nel rapporto" : "Copia per il rapporto"}
             </button>
-            <button type="button" onClick={() => printWear(dmkReport({ r, x }))} className="w-full h-11 px-3 rounded-xl bg-slate-900 text-white text-sm font-bold flex items-center justify-center gap-1.5" data-action="dmk-print">
+            <button type="button" onClick={() => printWear({ ...dmkReport({ r, x }), figures: printFigs([...(showHook ? ["dmkHook"] : []), ...(showChain ? ["dmkChain"] : [])], vals, st) })} className="w-full h-11 px-3 rounded-xl bg-slate-900 text-white text-sm font-bold flex items-center justify-center gap-1.5" data-action="dmk-print">
               <Printer className="w-4 h-4" /> Stampa il verbale (PDF)
             </button>
           </div>

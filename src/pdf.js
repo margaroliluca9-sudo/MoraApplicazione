@@ -783,6 +783,48 @@ export const buildWearPdf = async ({ rep, crane = null, tech = "", today }) => {
     wrapText(font, "Disegno fatto dall'app dalla costruzione della fune: non è il disegno del catalogo del fabbricante.", 7.5, W - flow.M - tx).forEach((ln, i) => flow.page.drawText(ln, { x: tx, y: cy - 30 - i * 10, size: 7.5, font, color: col(C.grey) }));
     flow.y -= 2 * R + 16;
   }
+  // disegno del manuale con sopra le misure prese (ganci e catene dei paranchi)
+  const figs = (rep.figures || []).filter((f) => f && f.src && f.vals && Object.keys(f.vals).length);
+  if (figs.length) {
+    flow.heading("Disegno con le misure prese");
+    const TONE = { over: [220, 38, 38], near: [217, 119, 6], ok: [5, 150, 105] };
+    for (const f of figs) {
+      try {
+        const bytes = await fetch(f.src).then((r) => r.arrayBuffer());
+        const img = await flow.ctx.doc.embedPng(bytes);
+        const [iw, ih] = f.size || [img.width, img.height];
+        const sc = Math.min(250 / iw, 210 / ih);
+        const dw = iw * sc;
+        const dh = ih * sc;
+        flow.ensure(dh + 18);
+        const top = flow.y + 4;
+        const x0 = flow.M;
+        flow.page.drawRectangle({ x: x0 - 4, y: top - dh - 4, width: dw + 8, height: dh + 8, borderColor: col([203, 213, 225]), borderWidth: 0.6 });
+        flow.page.drawImage(img, { x: x0, y: top - dh, width: dw, height: dh });
+        const names = f.names || {};
+        Object.keys(f.vals).forEach((k) => {
+          const m = f.marks[k];
+          if (!m) return;
+          const t = `${f.vals[k]}`;
+          const w = bold.widthOfTextAtSize(t, 9) + 8;
+          const cx = x0 + (m[0] / 100) * dw;
+          const cy = top - (m[1] / 100) * dh;
+          flow.page.drawRectangle({ x: cx - w / 2, y: cy - 6, width: w, height: 12, color: col(TONE[f.st && f.st[k]] || [71, 85, 105]) });
+          flow.page.drawText(t, { x: cx - w / 2 + 4, y: cy - 3, size: 9, font: bold, color: col([255, 255, 255]) });
+        });
+        const tx = x0 + dw + 18;
+        flow.page.drawText(f.title || "", { x: tx, y: top - 10, size: 11, font: bold, color: col(C.ink) });
+        Object.keys(f.vals).forEach((k, i) => {
+          const st = f.st && f.st[k];
+          const lab = st === "over" ? "oltre il limite" : st === "near" ? "vicina al limite" : st === "ok" ? "entro il limite" : "";
+          flow.page.drawText(`${names[k] || k}: ${f.vals[k]} mm${lab ? "  ·  " + lab : ""}`, { x: tx, y: top - 28 - i * 14, size: 9.5, font, color: col(TONE[st] || C.text) });
+        });
+        flow.y -= dh + 18;
+      } catch (e) {
+        // disegno non disponibile (senza rete): il verbale esce lo stesso, con la tabella delle misure
+      }
+    }
+  }
   flow.heading("Risultato");
   flow.tiles(rep.tiles);
   // esito: riquadro colorato

@@ -298,7 +298,7 @@ export const FigureViewerModal = ({ src, figure, onClose }) => (
             })}
           </div>
         )}
-        <p className="text-[10px] text-slate-400 leading-snug">{figure.source} · Due dita o doppio tocco per ingrandire, trascina per spostare, tira giù per chiudere.</p>
+        <p className="text-[10px] text-slate-400 leading-snug">Due dita o doppio tocco per ingrandire, trascina per spostare, tira giù per chiudere.</p>
       </div>
     </div>
   </div>
