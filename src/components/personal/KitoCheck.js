@@ -109,21 +109,54 @@ const printFigs = (keys, vals, st) =>
 // LENTE: mentre scrivi una misura il disegno resta in alto sullo schermo (sotto l'intestazione), ingrandito sulla
 // quota, con la misura scritta sopra: così la vedi anche quando il disegno è uscito dallo schermo.
 const Lens = ({ src, k, mark, val, tone, label }) => {
-  const [top, setTop] = useState(96);
+  // popup accanto al campo che stai scrivendo, dal lato opposto (campo a sinistra → lente a destra e viceversa),
+  // sempre dentro la parte di schermo che si vede sopra la tastiera
+  const W = Math.min(200, Math.round((typeof window !== "undefined" ? window.innerWidth : 390) * 0.44));
+  const H = Math.round(W * 0.78);
+  const [pos, setPos] = useState(null);
   useEffect(() => {
-    const hb = document.querySelector(".sticky.top-0.z-50");
-    setTop(hb ? Math.max(8, hb.getBoundingClientRect().bottom + 8) : 12);
-  }, []);
+    const place = () => {
+      const el = document.querySelector(`[data-kito-field="${k}"]`);
+      if (!el) return;
+      const r = el.getBoundingClientRect();
+      const vw = window.innerWidth;
+      const vv = window.visualViewport;
+      const vTop = vv ? vv.offsetTop : 0;
+      const vH = vv ? vv.height : window.innerHeight;
+      const hb = document.querySelector(".sticky.top-0.z-50");
+      const minTop = Math.max(vTop + 8, hb ? hb.getBoundingClientRect().bottom + 6 : 8);
+      const maxTop = vTop + vH - (H + 26) - 8;
+      const left = r.left + r.width / 2 < vw / 2 ? Math.min(vw - W - 8, r.right + 10) : Math.max(8, r.left - W - 10);
+      const top = Math.max(minTop, Math.min(maxTop, r.top));
+      setPos({ left, top, side: left > r.left ? "right" : "left" });
+    };
+    place();
+    const t = setTimeout(place, 350);
+    window.addEventListener("scroll", place, true);
+    window.addEventListener("resize", place);
+    const vv = window.visualViewport;
+    if (vv) {
+      vv.addEventListener("resize", place);
+      vv.addEventListener("scroll", place);
+    }
+    return () => {
+      clearTimeout(t);
+      window.removeEventListener("scroll", place, true);
+      window.removeEventListener("resize", place);
+      if (vv) {
+        vv.removeEventListener("resize", place);
+        vv.removeEventListener("scroll", place);
+      }
+    };
+  }, [k, W, H]);
   const [iw, ih] = FIG_SIZE[src] || [300, 300];
-  const W = 168;
-  const H = 132;
   const Z = 2.2;
   const bw = W * Z;
   const bh = (bw * ih) / iw;
   const left = Math.min(0, Math.max(W - bw, W / 2 - (mark[0] / 100) * bw));
   const tp = Math.min(0, Math.max(H - bh, H / 2 - (mark[1] / 100) * bh));
   return (
-    <div className="fixed right-3 z-[60] rounded-2xl bg-white border-2 border-blue-500 shadow-2xl overflow-hidden pointer-events-none" style={{ top, width: W, height: H + 26 }} data-fig-lens={k}>
+    <div className="fixed z-[60] rounded-2xl bg-white border-2 border-blue-500 shadow-2xl overflow-hidden pointer-events-none animate-in fade-in" style={{ left: pos ? pos.left : -9999, top: pos ? pos.top : 0, width: W, height: H + 26, transition: "top .2s ease, left .2s ease" }} data-fig-lens={k} data-fig-lens-side={pos ? pos.side : ""}>
       <div className="relative overflow-hidden" style={{ width: W, height: H }}>
         <div className="absolute" style={{ left, top: tp, width: bw, height: bh, transition: "left .35s ease, top .35s ease" }}>
           <img src={src} alt="" className="w-full h-full" />
