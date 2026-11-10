@@ -15,6 +15,7 @@ import {
   UserCircle,
   Folder,
 } from "lucide-react";
+import { pendingWearCount, watchPendingWear } from "./wearReports";
 import { signInAnonymously, onAuthStateChanged } from "firebase/auth";
 import { collection, serverTimestamp, Timestamp, orderBy, limit, documentId, getDocsFromCache, doc, query, where } from "firebase/firestore";
 import { addDoc, setDoc, deleteDoc } from "./tracked";
@@ -467,6 +468,21 @@ export default function App() {
     typeof navigator === "undefined" ? true : navigator.onLine !== false
   );
   const [pendingCount, setPendingCount] = useState(0);
+  // verbali di fune, catena e ganci stampati senza rete: partono da soli quando torna
+  const [wearPending, setWearPending] = useState(pendingWearCount);
+  useEffect(() => {
+    const on = () => setWearPending(pendingWearCount());
+    const back = () => watchPendingWear();
+    watchPendingWear();
+    window.addEventListener("mora-wear-pending", on);
+    window.addEventListener("online", back);
+    return () => {
+      window.removeEventListener("mora-wear-pending", on);
+      window.removeEventListener("online", back);
+    };
+  }, []);
+  const waitText = [pendingCount > 0 ? `${pendingCount} ${pendingCount === 1 ? "rapporto" : "rapporti"}` : "", wearPending > 0 ? `${wearPending} ${wearPending === 1 ? "verbale" : "verbali"}` : ""].filter(Boolean).join(" e ");
+  const waitN = pendingCount + wearPending;
   // ultima volta che i dati sono arrivati dal server (per dire "aggiornati alle...")
   const [lastSync, setLastSync] = useState(readLastSync);
   const markSynced = () => {
@@ -1214,7 +1230,7 @@ export default function App() {
         </div>
       </header>
       {!isMobileView && <TabStrip tabs={openTabs} active={activeTab} onGo={setActiveTab} onClose={closeTab} color={color} />}
-      {(!isOnline || pendingCount > 0) && (
+      {(!isOnline || waitN > 0) && (
         <div
           role="status"
           data-section="network-status"
@@ -1236,17 +1252,13 @@ export default function App() {
                 {lastSync ? ` (aggiornati ${syncWhen(lastSync)})` : ""}
               </span>
               <span className="block font-semibold">
-                {pendingCount > 0
-                  ? `${pendingCount} ${pendingCount === 1 ? "rapporto salvato" : "rapporti salvati"} sul telefono: ${
-                      pendingCount === 1 ? "parte" : "partono"
-                    } appena torna la connessione. `
-                  : ""}
+                {waitN > 0 ? `${waitText} ${waitN === 1 ? "salvato" : "salvati"} sul telefono: ${waitN === 1 ? "parte" : "partono"} da ${waitN === 1 ? "solo" : "soli"} appena torna la connessione. ` : ""}
                 La mia area, interventi e clienti si aprono; quello che scrivi parte quando torna la rete. Le novità dei colleghi arrivano dopo.
               </span>
             </span>
           ) : (
             <span>
-              {`Invio di ${pendingCount} ${pendingCount === 1 ? "rapporto" : "rapporti"} in corso...`}
+              {`Invio di ${waitText} in corso...`}
             </span>
           )}
         </div>

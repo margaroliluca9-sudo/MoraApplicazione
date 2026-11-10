@@ -744,27 +744,10 @@ export const buildBackupPdf = async ({ logs = [], customers = [], machines = [],
 // VERBALE DI CONTROLLO DI FUNE O CATENA (Fune e catena / Misura → «Stampa»)
 // rep: da src/wearRegister.js (ropeReport / chainReport); crane: la gru scelta (facoltativa)
 // =====================================================================
-export const buildWearPdf = async ({ rep, crane = null, tech = "", today }) => {
-  const printed = today || new Date().toLocaleDateString("it-IT");
-  const flow = await createFlow({ title: rep.title, subtitle: crane ? [crane.customerName, getSafeMatricola(crane)].filter(Boolean).join(" · ") : "", docTitle: rep.title });
+// corpo di un controllo (fune, catena, braca, paranco): usato dal verbale singolo e dal verbale unico della gru
+const drawWearRep = async (flow, rep, num = "") => {
   const { col, bold, font } = flow.ctx;
-  const sl = rep.type === "fascia" || !!rep.sottoganci;
-  flow.meta([`Data del controllo: ${printed}`, `Tecnico: ${tech || "-"}`, sl ? `Cliente: ${crane ? crane.customerName : "-"}` : crane ? `Gru: ${getSafeMatricola(crane)}` : "Gru: -"]);
-  if (crane)
-    flow.details(
-      sl
-        ? [
-            ["Cliente", crane.customerName],
-            ["Numero Mora", crane.matricola || ""],
-          ]
-        : [
-            ["Cliente", crane.customerName],
-            ["Matricola gru", getSafeMatricola(crane)],
-            ["Tipo", crane.type || ""],
-            ["Portata", crane.capacity ? formatCapacity(crane.capacity) : ""],
-          ]
-    );
-  flow.heading(rep.type === "fune" ? "Fune controllata" : rep.type === "fascia" ? "Braca controllata" : rep.type === "paranco" ? "Paranco controllato" : "Catena controllata");
+  flow.heading(num + (rep.type === "fune" ? "Fune controllata" : rep.type === "fascia" ? "Braca controllata" : rep.type === "paranco" ? "Paranco controllato" : "Catena controllata"));
   flow.details(rep.params);
   // sezione della fune (disegno indicativo dalla costruzione)
   const sec = rep.cons ? ropeSection(rep.cons) : [];
@@ -825,6 +808,7 @@ export const buildWearPdf = async ({ rep, crane = null, tech = "", today }) => {
       }
     }
   }
+  flow.ensure(150);
   flow.heading("Risultato");
   flow.tiles(rep.tiles);
   // esito: riquadro colorato
@@ -850,10 +834,59 @@ export const buildWearPdf = async ({ rep, crane = null, tech = "", today }) => {
   flow.heading("Altri difetti osservati");
   if (rep.defects.length) rep.defects.forEach((d) => flow.paragraph(`- ${d} (motivo di scarto)`, { size: 9 }));
   else flow.paragraph("Nessuno.", { size: 9 });
+};
+export const buildWearPdf = async ({ rep, crane = null, tech = "", today }) => {
+  const printed = today || new Date().toLocaleDateString("it-IT");
+  const flow = await createFlow({ title: rep.title, subtitle: crane ? [crane.customerName, getSafeMatricola(crane)].filter(Boolean).join(" · ") : "", docTitle: rep.title });
+  const { col, bold, font } = flow.ctx;
+  const sl = rep.type === "fascia" || !!rep.sottoganci;
+  flow.meta([`Data del controllo: ${printed}`, `Tecnico: ${tech || "-"}`, sl ? `Cliente: ${crane ? crane.customerName : "-"}` : crane ? `Gru: ${getSafeMatricola(crane)}` : "Gru: -"]);
+  if (crane)
+    flow.details(
+      sl
+        ? [
+            ["Cliente", crane.customerName],
+            ["Numero Mora", crane.matricola || ""],
+          ]
+        : [
+            ["Cliente", crane.customerName],
+            ["Matricola gru", getSafeMatricola(crane)],
+            ["Tipo", crane.type || ""],
+            ["Portata", crane.capacity ? formatCapacity(crane.capacity) : ""],
+          ]
+    );
+  const reps = rep.reps && rep.reps.length ? rep.reps : [rep];
+  if (rep.reps && rep.reps.length) {
+    // VERBALE UNICO DELLA GRU: riepilogo, poi un controllo dopo l'altro, le norme tutte in fondo
+    flow.heading("Riepilogo dei controlli");
+    flow.table({
+      columns: [
+        { label: "N.", w: 0.08 },
+        { label: "Controllo", w: 0.5 },
+        { label: "Esito", w: 0.42 },
+      ],
+      rows: reps.map((r, i) => [String(i + 1), { t: wearRepName(r), b: true }, { t: r.esito || "", b: true, c: r.level === "scarto" ? [220, 38, 38] : r.level === "attenzione" ? [217, 119, 6] : C.green }]),
+    });
+    const tone0 = rep.level === "scarto" ? [220, 38, 38] : rep.level === "attenzione" ? [217, 119, 6] : [5, 150, 105];
+    const total0 = W - 2 * flow.M;
+    const lines0 = wrapText(font, rep.azione || "", 9.5, total0 - 24);
+    const h0 = 30 + lines0.length * 13;
+    flow.ensure(h0 + 10);
+    flow.page.drawRectangle({ x: flow.M, y: flow.y + 12 - h0, width: total0, height: h0, color: col(tone0) });
+    flow.page.drawText(`ESITO DELLA GRU: ${rep.esito}`, { x: flow.M + 12, y: flow.y - 6, size: 13, font: bold, color: col([255, 255, 255]) });
+    lines0.forEach((ln, i) => flow.page.drawText(ln, { x: flow.M + 12, y: flow.y - 22 - i * 13, size: 9.5, font, color: col([255, 255, 255]) }));
+    flow.y -= h0 + 8;
+  }
+  for (let i = 0; i < reps.length; i++) await drawWearRep(flow, reps[i], reps.length > 1 ? `${i + 1}. ` : "");
   flow.heading("Norme e criteri utilizzati per il calcolo");
-  rep.norms.forEach((n) => flow.paragraph(n, { size: 8.5 }));
+  [...new Set(reps.flatMap((r) => r.norms || []))].forEach((n) => flow.paragraph(n, { size: 8.5 }));
   flow.paragraph("Il calcolo è uno strumento di aiuto al controllo visivo e alle misure. Fanno sempre fede il manuale del costruttore dell'apparecchio di sollevamento e della fune o catena e la valutazione della persona competente che ha eseguito il controllo.", { size: 8, color: C.grey });
   return flow.finish(`Verbale generato dall'app Assistenza Mora il ${printed}.`);
+};
+const wearRepName = (r) => {
+  const t = r && r.tiles && r.tiles[0];
+  if (r && r.type === "paranco" && t) return `${t[0]} ${t[1]}`;
+  return { fune: "Fune", catena: "Catena", paranco: "Paranco", fascia: "Braca" }[r && r.type] || "Controllo";
 };
 
 export const pdfFileName = (...parts) =>

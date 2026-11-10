@@ -2,11 +2,12 @@
 // Se l'app lo riconosce propone gru e cliente; se no si scrivono a mano numero, cliente e portata.
 // Il verbale si salva solo tra i «Verbali stampati» (wear_reports): negli interventi non si salva niente.
 import React, { useEffect, useMemo, useState } from "react";
-import { Printer, X } from "lucide-react";
+import { Printer, X, Layers } from "lucide-react";
 import { getSafeMatricola, formatCapacity } from "../utils";
 import { buildWearPdf, pdfFileName } from "../pdf";
 import { openPdf } from "./PdfHost";
 import { saveWearReport } from "../wearReports";
+import { addToBasket } from "../craneBasket";
 
 const INPUT = "w-full px-3 py-3 bg-slate-50 border border-slate-300 rounded-xl text-base font-semibold text-slate-800 outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-slate-400";
 const norm = (v) => String(v || "").trim().toUpperCase().replace(/\s+/g, "");
@@ -30,20 +31,30 @@ export const doPrintWear = ({ rep, crane = null, day = "", tech = "", again = fa
     saveWearReport({ rep, crane: c, tech: t, day: d })
       .then(() => window.dispatchEvent(new CustomEvent("mora-wear-saved")))
       .catch(() => {});
-  openPdf(() => buildWearPdf({ rep, crane: c, tech: t, today: d }), pdfFileName(rep.type === "fune" ? "Controllo fune" : rep.type === "fascia" ? "Controllo braca" : rep.type === "paranco" ? "Controllo paranco" : "Controllo catena", c ? c.customerName : "", c ? c.matricola : "", d));
+  openPdf(() => buildWearPdf({ rep, crane: c, tech: t, today: d }), pdfFileName(rep.type === "gru" ? "Controllo gru" : rep.type === "fune" ? "Controllo fune" : rep.type === "fascia" ? "Controllo braca" : rep.type === "paranco" ? "Controllo paranco" : "Controllo catena", c ? c.customerName : "", c ? c.matricola : "", d));
 };
 
 export const WearPrintHost = ({ machines = [], color = "blue" }) => {
   const [job, setJob] = useState(null);
   const [f, setF] = useState({ matricola: "", customerName: "", capacity: "", type: "" });
   const [picked, setPicked] = useState(null);
+  const [added, setAdded] = useState(0);
   useEffect(() => {
     const on = (e) => {
       const d = (e && e.detail) || {};
       if (!d.rep) return;
-      if (d.crane) return doPrintWear({ rep: d.rep, crane: d.crane });
-      setF({ matricola: (d.rep && d.rep.mora) || "", customerName: "", capacity: "", type: "" });
-      setPicked(null);
+      const sl0 = d.rep.type === "fascia" || !!d.rep.sottoganci;
+      // gru già scelta: per una braca si stampa subito; per fune, catena e paranco si chiede se stampare
+      // solo questo controllo o metterlo nel verbale unico della gru
+      if (d.crane && sl0) return doPrintWear({ rep: d.rep, crane: d.crane });
+      if (d.crane) {
+        setF({ matricola: getSafeMatricola(d.crane) || d.crane.matricola || "", customerName: d.crane.customerName || "", capacity: d.crane.capacity || "", type: d.crane.type || "" });
+        setPicked(d.crane);
+      } else {
+        setF({ matricola: (d.rep && d.rep.mora) || "", customerName: "", capacity: "", type: "" });
+        setPicked(null);
+      }
+      setAdded(0);
       setJob(d);
     };
     window.addEventListener("mora-wear-print", on);
@@ -69,6 +80,10 @@ export const WearPrintHost = ({ machines = [], color = "blue" }) => {
     const crane = withCrane && (sling ? f.customerName.trim() : f.matricola.trim()) ? { ...f, matricola: f.matricola.trim(), customerName: f.customerName.trim(), type: sling ? "" : f.type } : null;
     doPrintWear({ rep: job.rep, crane });
     setJob(null);
+  };
+  const addUnico = () => {
+    const crane = { customerName: f.customerName.trim(), matricola: f.matricola.trim(), type: f.type || "", capacity: f.capacity || "" };
+    setAdded(addToBasket(crane, job.rep));
   };
   const canPrint = sling ? !!f.customerName.trim() : !!f.matricola.trim() && !!f.customerName.trim();
   const custs = sling && f.customerName.trim().length >= 2 ? [...new Set(machines.map((m) => m.customerName).filter(Boolean))].filter((c) => c.toUpperCase().includes(f.customerName.trim().toUpperCase()) && c !== f.customerName).slice(0, 5) : [];
@@ -150,12 +165,30 @@ export const WearPrintHost = ({ machines = [], color = "blue" }) => {
         </div>
         )}
         <div className="p-4 border-t border-slate-200 space-y-2">
+          {added > 0 && (
+            <div className="rounded-2xl bg-emerald-50 border border-emerald-200 p-3 text-sm" data-print-added={added}>
+              <p className="font-black text-emerald-800">Messo nel verbale unico della gru {f.matricola.trim()}</p>
+              <p className="text-emerald-700 text-xs">Ci sono {added} {added === 1 ? "controllo" : "controlli"}. Fai gli altri controlli della gru e, quando hai finito, stampa tutto da «Verbale unico» in cima a Fune e catena.</p>
+              <button type="button" onClick={() => setJob(null)} className="mt-2 h-10 px-4 rounded-xl bg-emerald-600 text-white font-black text-sm" data-action="print-added-ok">
+                Ok
+              </button>
+            </div>
+          )}
+          {!sling && added === 0 && (
+            <button type="button" disabled={!canPrint} onClick={addUnico} data-action="print-add-unico" className="w-full min-h-12 rounded-xl border-2 border-blue-500 bg-blue-50 text-blue-800 font-black flex items-center justify-center gap-2 disabled:opacity-40 px-3 leading-tight">
+              <Layers className="w-5 h-5 shrink-0" /> Metti nel verbale unico della gru
+            </button>
+          )}
+{added === 0 && (
+          <>
           <button type="button" disabled={!canPrint} onClick={() => go(true)} data-action="print-with-crane" className={`w-full h-12 rounded-xl bg-${color}-600 text-white font-black flex items-center justify-center gap-2 disabled:opacity-40`}>
-            <Printer className="w-5 h-5" /> Stampa il verbale
+            <Printer className="w-5 h-5" /> {sling ? "Stampa il verbale" : "Stampa solo questo controllo"}
           </button>
           <button type="button" onClick={() => go(false)} data-action="print-no-crane" className="w-full h-11 rounded-xl border border-slate-300 text-sm font-bold text-slate-600">
             {sling ? "Stampa senza cliente" : "Stampa senza gru"}
           </button>
+          </>
+          )}
         </div>
       </div>
     </div>

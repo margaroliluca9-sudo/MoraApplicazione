@@ -3,7 +3,7 @@
 // (EN 818-6 sottoganci / brache di catena, criteri dei costruttori per le catene da paranco). Le regole stanno in src/wearRules.js.
 import React, { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
-import { CheckCircle2, AlertTriangle, XCircle, Copy, Check, Info, X, ExternalLink, FilePlus2, History, Printer, Trash2 } from "lucide-react";
+import { CheckCircle2, AlertTriangle, XCircle, Copy, Check, Info, X, ExternalLink, FilePlus2, History, Printer, Trash2, Layers, CloudOff } from "lucide-react";
 import { PanelHeader, INPUT } from "./PersonalUi";
 import { BreakCalc } from "./BreakCalc";
 import { ROPES, ROPE_FLAGS, CHAIN_FLAGS, checkRope, checkChain, measureFixed } from "../../wearRules";
@@ -12,6 +12,7 @@ import { fasFamily } from "../../fasRopes";
 import { ropeVerdict, chainVerdict, ropeRegister, chainRegister, ropeReport, chainReport } from "../../wearRegister";
 import { printWear, doPrintWear } from "../WearPrintHost";
 import { listWearReports, deleteWearReport } from "../../wearReports";
+import { listBaskets, removeFromBasket, clearBasket, basketRep, repName } from "../../craneBasket";
 import { ropeSection, describeCons, consOf } from "../../ropeSection";
 import { CHAIN_GRADES, CHAIN_MODES, CHAIN_TEXT, CHAIN_SOURCE, EDGE, SHOCK, chainGrade, chainSlingWll } from "../../chainSlings";
 import { SLING_COLORS, SLING_MODES, SLING_FLAGS, SLING_TEXT, SLING_SOURCE, checkSling, slingVerdict, slingRegister, slingReport } from "../../slingRules";
@@ -236,6 +237,75 @@ export const RopeSectionArt = ({ cons, size = 150 }) => {
 };
 
 // VERBALI STAMPATI (gli ultimi 20, di tutti): tocca per ristamparlo
+// VERBALE UNICO DELLA GRU: i controlli messi da parte (fune, catena, ganci) da stampare tutti in un PDF
+const BasketCard = () => {
+  const [list, setList] = useState(listBaskets);
+  const [ask, setAsk] = useState("");
+  useEffect(() => {
+    const on = () => setList(listBaskets());
+    window.addEventListener("mora-basket", on);
+    window.addEventListener("storage", on);
+    return () => {
+      window.removeEventListener("mora-basket", on);
+      window.removeEventListener("storage", on);
+    };
+  }, []);
+  if (!list.length) return null;
+  return (
+    <div className="space-y-3" data-section="wear-basket">
+      {list.map((b) => {
+        const rep = basketRep(b);
+        return (
+          <section key={b.key} className="rounded-3xl border-2 border-blue-300 bg-blue-50 p-4 space-y-2" data-basket={b.crane.matricola}>
+            <div className="flex items-start gap-2">
+              <Layers className="w-5 h-5 text-blue-700 shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <p className="text-[11px] font-black uppercase tracking-wider text-blue-700">Verbale unico in preparazione</p>
+                <p className="font-black text-slate-800 leading-tight truncate">
+                  Gru {b.crane.matricola} · {b.crane.customerName}
+                </p>
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              {b.items.map((i, n) => (
+                <div key={i.id} className="flex items-center gap-2 rounded-xl bg-white border border-blue-100 px-3 py-2" data-basket-item={i.rep.type}>
+                  <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${i.rep.level === "scarto" ? "bg-red-500" : i.rep.level === "attenzione" ? "bg-amber-500" : "bg-emerald-500"}`} />
+                  <span className="flex-1 min-w-0 text-sm font-bold text-slate-700 truncate">
+                    {n + 1}. {repName(i.rep)} · {i.rep.esito}
+                  </span>
+                  <button type="button" onClick={() => removeFromBasket(b.key, i.id)} aria-label="Togli questo controllo" className="w-8 h-8 rounded-full border border-slate-200 flex items-center justify-center shrink-0" data-action="basket-remove">
+                    <X className="w-4 h-4 text-slate-500" />
+                  </button>
+                </div>
+              ))}
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                doPrintWear({ rep, crane: b.crane });
+                clearBasket(b.key);
+              }}
+              className="w-full h-12 rounded-xl bg-blue-600 text-white font-black flex items-center justify-center gap-2"
+              data-action="basket-print"
+            >
+              <Printer className="w-5 h-5" /> Stampa il verbale unico ({b.items.length} {b.items.length === 1 ? "controllo" : "controlli"})
+            </button>
+            <button
+              type="button"
+              onClick={() => (ask === b.key ? (clearBasket(b.key), setAsk("")) : setAsk(b.key))}
+              className={`w-full h-10 rounded-xl text-sm font-bold border ${ask === b.key ? "bg-red-600 text-white border-red-600" : "bg-white text-slate-600 border-slate-200"}`}
+              data-action="basket-clear"
+            >
+              {ask === b.key ? "Sicuro? Tocca di nuovo per buttarlo" : "Butta via questo verbale unico"}
+            </button>
+            <p className="text-[11px] text-slate-500 leading-snug">Esito della gru: {rep.esito}. Si tiene sul telefono finché non lo stampi; per aggiungere un controllo, dopo l'esito tocca «Stampa il verbale» e poi «Metti nel verbale unico della gru».</p>
+          </section>
+        );
+      })}
+    </div>
+  );
+};
+
 const PrintedReports = ({ isAdmin = false }) => {
   const [list, setList] = useState(null);
   const [ask, setAsk] = useState(null);
@@ -276,14 +346,20 @@ const PrintedReports = ({ isAdmin = false }) => {
           <span className={`w-2.5 h-2.5 rounded-full shrink-0 ${v.level === "scarto" ? "bg-red-500" : v.level === "attenzione" ? "bg-amber-500" : "bg-emerald-500"}`} />
           <span className="flex-1 min-w-0">
             <span className="block text-sm font-black text-slate-800 truncate">
-              {v.type === "fune" ? "Fune" : v.type === "fascia" ? "Fascia" : v.type === "paranco" ? "Paranco" : "Catena"} · {v.crane ? `${v.crane.customerName} · ${v.crane.matricola}` : "senza gru"}
+              {v.type === "gru" ? `Verbale unico (${(v.rep.reps || []).length})` : v.type === "fune" ? "Fune" : v.type === "fascia" ? "Fascia" : v.type === "paranco" ? "Paranco" : "Catena"} · {v.crane ? `${v.crane.customerName} · ${v.crane.matricola}` : "senza gru"}
             </span>
             <span className="block text-xs text-slate-500 truncate">
               {v.day}
               {v.tech ? ` · ${v.tech}` : ""} · {v.esito}
             </span>
           </span>
-          <Printer className="w-4 h-4 text-slate-400 shrink-0" />
+          {v.pending ? (
+            <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-amber-100 text-amber-800 px-2 py-0.5 text-[10px] font-black" data-wear-printed-pending>
+              <CloudOff className="w-3 h-3" /> da mandare
+            </span>
+          ) : (
+            <Printer className="w-4 h-4 text-slate-400 shrink-0" />
+          )}
         </button>
         {isAdmin && (
           <button type="button" onClick={() => del(v.id)} data-action={`wear-printed-del-${v.id}`} aria-label="Cancella il verbale" className={`shrink-0 rounded-xl px-3 text-xs font-black border ${ask === v.id ? "bg-red-600 text-white border-red-600" : "bg-white text-red-600 border-red-200"}`}>
@@ -1666,6 +1742,7 @@ export const WearPanel = ({ color = "blue", onBack, onClose, machines = [], logs
     <div className="flex flex-col h-full" data-section="wear">
       <PanelHeader title={tab === "kq" ? "Paranco Kito KQ" : "Fune e catena"} sub={tab === "kq" ? "Dal manuale FAS/KITO" : "Cosa dice la norma"} onBack={tab === "kq" ? () => setTab("kito") : onBack} onClose={onClose} color={color} />
       <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50">
+        <BasketCard />
         {tab !== "sling" && tab !== "break" && tab !== "kito" && tab !== "kq" && <CranePicker machines={machines} crane={crane} onPick={setCrane} color={color} type={type} knownLabel={knownLabel} />}
         {tab !== "kq" && (
         <div className="flex bg-slate-200/70 p-1 rounded-2xl" role="tablist">
