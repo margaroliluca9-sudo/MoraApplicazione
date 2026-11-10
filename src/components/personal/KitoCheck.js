@@ -114,6 +114,25 @@ const Lens = ({ src, k, mark, val, tone, label }) => {
   const W = Math.min(200, Math.round((typeof window !== "undefined" ? window.innerWidth : 390) * 0.44));
   const H = Math.round(W * 0.78);
   const [pos, setPos] = useState(null);
+  // si vede mentre scrivi; sparisce da sola quando smetti (la misura è scritta) o appena tocchi da un'altra parte
+  const [show, setShow] = useState(true);
+  useEffect(() => {
+    setShow(true);
+    const t = setTimeout(() => setShow(false), 1500);
+    return () => clearTimeout(t);
+  }, [k, val]);
+  useEffect(() => {
+    const down = (e) => {
+      const inp = document.querySelector(`[data-kito-input="${k}"]`);
+      if (!inp || e.target !== inp) setShow(false);
+    };
+    document.addEventListener("pointerdown", down, true);
+    document.addEventListener("touchstart", down, true);
+    return () => {
+      document.removeEventListener("pointerdown", down, true);
+      document.removeEventListener("touchstart", down, true);
+    };
+  }, [k]);
   useEffect(() => {
     const place = () => {
       const el = document.querySelector(`[data-kito-field="${k}"]`);
@@ -156,7 +175,7 @@ const Lens = ({ src, k, mark, val, tone, label }) => {
   const left = Math.min(0, Math.max(W - bw, W / 2 - (mark[0] / 100) * bw));
   const tp = Math.min(0, Math.max(H - bh, H / 2 - (mark[1] / 100) * bh));
   return (
-    <div className="fixed z-[60] rounded-2xl bg-white border-2 border-blue-500 shadow-2xl overflow-hidden pointer-events-none animate-in fade-in" style={{ left: pos ? pos.left : -9999, top: pos ? pos.top : 0, width: W, height: H + 26, transition: "top .2s ease, left .2s ease" }} data-fig-lens={k} data-fig-lens-side={pos ? pos.side : ""}>
+    <div className="fixed z-[60] rounded-2xl bg-white border-2 border-blue-500 shadow-2xl overflow-hidden pointer-events-none animate-in fade-in" style={{ left: pos ? pos.left : -9999, top: pos ? pos.top : 0, width: W, height: H + 26, opacity: show ? 1 : 0, transform: show ? "scale(1)" : "scale(.92)", transition: "top .2s ease, left .2s ease, opacity .25s ease, transform .25s ease" }} data-fig-lens={k} data-fig-lens-side={pos ? pos.side : ""} data-fig-lens-show={show ? "1" : "0"}>
       <div className="relative overflow-hidden" style={{ width: W, height: H }}>
         <div className="absolute" style={{ left, top: tp, width: bw, height: bh, transition: "left .35s ease, top .35s ease" }}>
           <img src={src} alt="" className="w-full h-full" />
