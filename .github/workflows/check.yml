@@ -33,7 +33,9 @@ jobs:
         run: |
           mkdir -p .ci
           npm install --no-save --no-audit --no-fund --prefix .ci react@19.2.8 react-dom@19.2.8 scheduler@0.27.0 typescript@6.0.3 playwright@1.56.0
-          npx --prefix .ci playwright install --with-deps chromium
+          # se i server di Ubuntu non rispondono (succede), il browser si installa lo stesso senza i pacchetti di sistema:
+          # sulla macchina di GitHub ci sono già quasi tutti
+          npx --prefix .ci playwright install --with-deps chromium || { echo "Pacchetti di sistema non scaricati: installo solo il browser"; npx --prefix .ci playwright install chromium; }
       - name: Prova l'app
         run: |
           node tests/build-harness.js "$PWD/.ci/node_modules" src "$PWD/.ci/pagina"
