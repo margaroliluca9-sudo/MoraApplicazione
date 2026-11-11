@@ -20,9 +20,6 @@ export const EditCustomerModal = ({
   color = "blue",
 }) => {
   const [name, setName] = useState(customer.name || "");
-  // paese e indirizzo (si vedono sotto il nome in Esplora, nel Nuovo rapporto e nella scheda cliente)
-  const [city, setCity] = useState(customer.city || "");
-  const [address, setAddress] = useState(customer.address || "");
   // cartella del cliente nel Drive scelta a mano (null = la trova il programma dal nome)
   const [folder, setFolder] = useState(customer.driveFolderId ? { id: customer.driveFolderId, name: customer.driveFolderName || "" } : null);
   const [loading, setLoading] = useState(false);
@@ -45,12 +42,8 @@ export const EditCustomerModal = ({
         doc(db, "artifacts", appId, "public", "data", "customers", customer.id),
         {
           name: cleanName,
-          city: city.trim(),
-          address: address.trim(),
           driveFolderId: folder ? folder.id : "",
           driveFolderName: folder ? folder.name : "",
-          // scritto a mano: l'aggiornamento automatico dal Drive non lo tocca più
-          ...(city.trim() !== (customer.city || "") || address.trim() !== (customer.address || "") ? { placeSource: "manual" } : {}),
         }
       );
 
@@ -114,32 +107,6 @@ export const EditCustomerModal = ({
             className={PRO_INPUT}
             value={name}
             onChange={(e) => setName(e.target.value)}
-          />
-        </div>
-        <div className="space-y-1">
-          <label className="text-[9px] font-bold text-slate-400 uppercase ml-1">
-            Paese
-          </label>
-          <input
-            type="text"
-            className={PRO_INPUT}
-            value={city}
-            placeholder="Es. Borgomanero (NO)"
-            onChange={(e) => setCity(e.target.value)}
-            data-customer-city
-          />
-        </div>
-        <div className="space-y-1">
-          <label className="text-[9px] font-bold text-slate-400 uppercase ml-1">
-            Indirizzo
-          </label>
-          <input
-            type="text"
-            className={PRO_INPUT}
-            value={address}
-            placeholder="Es. Via Roma, 10"
-            onChange={(e) => setAddress(e.target.value)}
-            data-customer-address
           />
         </div>
         <DriveFolderPicker customerId={customer.id} value={folder} onChange={setFolder} />

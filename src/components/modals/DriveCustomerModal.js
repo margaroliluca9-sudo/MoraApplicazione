@@ -4,7 +4,7 @@
 import React, { useMemo, useState } from "react";
 import { doc } from "firebase/firestore";
 import { updateDoc } from "../../tracked";
-import { X, Folder, MapPin, ExternalLink, Pencil, EyeOff, Eye, RotateCcw, Check, Loader2, Factory, Wrench } from "lucide-react";
+import { X, Folder, ExternalLink, Pencil, EyeOff, Eye, RotateCcw, Check, Loader2, Factory, Wrench } from "lucide-react";
 import { db, appId } from "../../firebase";
 import { describeError, getSafeMatricola } from "../../utils";
 import { DriveFolderPicker } from "../DriveFolderPicker";
@@ -138,8 +138,6 @@ const CraneRow = ({ row, machines, color, onSaved }) => {
 
 export const DriveCustomerModal = ({ customer, machines = [], rows: allRows = null, onRowSaved = () => {}, color = "blue", onClose }) => {
   const [folder, setFolder] = useState(customer.driveFolderId ? { id: customer.driveFolderId, name: customer.driveFolderName || "" } : null);
-  const [city, setCity] = useState(customer.city || "");
-  const [address, setAddress] = useState(customer.address || "");
   const [busy, setBusy] = useState("");
   const [msg, setMsg] = useState("");
 
@@ -155,7 +153,6 @@ export const DriveCustomerModal = ({ customer, machines = [], rows: allRows = nu
   const review = useMemo(() => reviewCustomer(rows || [], myMachines), [rows, myMachines]);
 
   const folderChanged = (folder ? folder.id : "") !== (customer.driveFolderId || "");
-  const placeChanged = city.trim() !== (customer.city || "") || address.trim() !== (customer.address || "");
 
   const saveCustomer = async (what, data, done) => {
     setBusy(what);
@@ -170,15 +167,6 @@ export const DriveCustomerModal = ({ customer, machines = [], rows: allRows = nu
       setBusy("");
     }
   };
-
-  const src =
-    customer.placeSource === "drive"
-      ? "Preso dal Drive"
-      : customer.placeSource === "manual"
-      ? "Scritto a mano: il Drive non lo cambia più"
-      : customer.placeSource === "file"
-      ? "Importato da un file: il Drive non lo cambia"
-      : "";
 
   return (
     <div className="fixed inset-0 bg-slate-900/50 z-[200] flex items-stretch md:items-center justify-center md:p-4 backdrop-blur-md" data-section="drive-customer">
@@ -244,36 +232,6 @@ export const DriveCustomerModal = ({ customer, machines = [], rows: allRows = nu
           </section>
           )}
 
-          <section className={box}>
-            <h4 className="font-black text-sm text-slate-800 flex items-center gap-2">
-              <MapPin className="w-4 h-4" /> Paese e indirizzo
-            </h4>
-            {src && (
-              <p className="text-xs text-slate-600" data-place-source>
-                {src}
-                {customer.placeSource === "drive" && customer.placeFolder ? `: cartella ${customer.placeFolder}` : ""}
-                {customer.placeSource === "drive" && customer.placeSheet ? ` · foglio ${customer.placeSheet}` : ""}
-                {customer.placeSource === "drive" && customer.placeSheetUrl && (
-                  <a href={customer.placeSheetUrl} target="_blank" rel="noopener noreferrer" className={`ml-2 font-bold text-${color}-700`}>
-                    Apri il foglio <ExternalLink className="inline w-3 h-3 -mt-0.5" />
-                  </a>
-                )}
-              </p>
-            )}
-            <input className={input} value={city} placeholder="Paese, es. Borgomanero (NO)" onChange={(e) => setCity(e.target.value)} data-drive-city />
-            <input className={input} value={address} placeholder="Indirizzo, es. Via Roma, 10" onChange={(e) => setAddress(e.target.value)} data-drive-address />
-            {placeChanged && (
-              <button
-                type="button"
-                disabled={!!busy}
-                onClick={() => saveCustomer("place", { city: city.trim(), address: address.trim(), placeSource: "manual" }, "Paese e indirizzo salvati: il Drive non li cambia più.")}
-                className={`w-full h-11 rounded-full bg-${color}-600 text-white font-bold text-sm flex items-center justify-center gap-2`}
-                data-action="drive-place-save"
-              >
-                {busy === "place" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />} Salva paese e indirizzo
-              </button>
-            )}
-          </section>
 
           <section className={box}>
             <h4 className="font-black text-sm text-slate-800 flex items-center gap-2">

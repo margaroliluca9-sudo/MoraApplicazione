@@ -127,9 +127,7 @@ export const DrivePlacesStatus = ({ onRun }) => {
   const today = info && info.lastRun
     ? [
         num(info.lette) && `${info.lette} fogli letti (solo nuovi o cambiati)`,
-        num(info.aggiornati) && `${info.aggiornati} paesi aggiornati`,
         num(info.gru) && `${info.gru} gru aggiornate`,
-        num(info.posizioni) && Number(info.posizioni) > 0 && `${info.posizioni} posizioni di clienti trovate`,
         num(info.durata) && `in ${Math.max(1, Math.round(Number(info.durata) / 60))} min`,
       ].filter(Boolean)
     : [];

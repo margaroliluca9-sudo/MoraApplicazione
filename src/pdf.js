@@ -413,7 +413,6 @@ export const buildInterventionPdf = async ({ log, today }) => {
   flow.details([
     ["Tecnico/i", getTechsString(log)],
     ["Cliente", log.customer],
-    ["Luogo", log._place || ""],
     ["Matricola gru", log.machineId],
     // n. di fabbrica solo se è diverso dalla matricola (di solito è lo stesso numero)
     ["N. fabbrica", dr && dr.fab && fabKey(dr.fab) !== fabKey(log.machineId) ? dr.fab : ""],
@@ -606,8 +605,6 @@ export const buildCustomerMachinesPdf = async ({ customerName, customer = null, 
   flow.meta([`Gru: ${sorted.length}`, `Interventi: ${logs.length}`]);
   flow.details([
     ["Cliente", customerName],
-    ["Paese", (customer && customer.city) || ""],
-    ["Indirizzo", (customer && customer.address) || ""],
   ]);
   // interventi per gru (stessa matricola, senza badare a maiuscole)
   const key = (x) => String(x || "").trim().toUpperCase();

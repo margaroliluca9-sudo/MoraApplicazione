@@ -3,7 +3,6 @@
  *
  * Gira dentro il Google Drive di chi lo installa (Google Apps Script): non servono password né chiavi.
  * Ogni mattina guarda la cartella «Clienti / Verifiche»: per ogni cliente apre il foglio verifica più recente e
- *  - legge paese e indirizzo dall'intestazione (es. «Località: OLEGGIO (NO) Via Verbano, 56/A»);
  *  - legge la tabella delle gru: numero di fabbrica, tipo, portata, paranco, matricola INAIL, anno e
  *    com'era la fune o la catena all'ultima verifica (es. «Fune idonea, 1 filo rotto, distorta»).
  * Nell'app la gru si riconosce dal numero di fabbrica (campo Matricola/Campata) e la sua scheda mostra
@@ -19,15 +18,11 @@
  *
  * Cliente ↔ cartella: di solito li abbina dal nome. Se il nome è diverso, nell'app in Admin → Drive → il cliente
  * → «Cartella nel Drive» scegli tu la cartella giusta: dal giorno dopo vale quella. Sempre in Admin → Drive si vede
- * da quale cartella e foglio arriva ogni dato e si possono correggere paese e gru (le correzioni non le tocco mai).
- *
- * Posizione sulla mappa: per i clienti con paese o indirizzo cerca le coordinate su Google Maps (solo se sono
- * nuovi o cambiati) e le scrive nel cliente: in Esplora → Mappa compaiono tutti i clienti.
+ * da quale cartella e foglio arriva ogni dato e si possono correggere le gru (le correzioni non le tocco mai).
  *
  * I clienti segnati «Solo interventi» nell'app (niente verifiche, quindi niente cartella) non li abbino mai.
  *
- * Paese e indirizzo: aggiorna solo i clienti senza paese o quelli che aveva già aggiornato lui
- * (placeSource = "drive"); quello che scrivete a mano o importate da file non viene mai toccato.
+ * Paese, indirizzo e posizione dei clienti: non li legge e non li scrive più (tolti dall'app).
  *
  * INSTALLAZIONE (una volta sola, 2 minuti):
  *   1. Apri https://script.google.com con l'account che vede la cartella Clienti → il progetto (o «Nuovo progetto»).
@@ -225,35 +220,10 @@ function giro_() {
       var info = estrai(foglio.testo);
       var cliente = scelto || cima || abbinaUno_([cart.getName(), info.cliente].filter(String), custs);
       if (!u.top && cliente) clienteDiCima[voce.id] = cliente;
-      var dove = { placeFolder: voce.n, placeSheet: file.getName(), placeSheetUrl: file.getUrl() };
       var ora = { k: chiave, c: cliente ? cliente.id : "", n: clienti.length, g: [] };
       voce.c = ora.c;
       if (cliente) {
         conti.abbinati++;
-        // paese e indirizzo (+ da quale cartella e foglio li ho presi, si vede in Admin → Drive)
-        if (info.city || info.address) {
-          var libero = !String(cliente.city || "").trim() && !String(cliente.address || "").trim();
-          var cambia = cliente.city !== info.city || (cliente.address || "") !== info.address;
-          // da una sottocartella solo se il cliente non ha ancora il paese (di solito vale quello della cartella in cima)
-          if (libero || (cliente.placeSource === "drive" && !u.top)) {
-            if (cambia) conti.clientiAggiornati++;
-            if (cambia || cliente.placeSheet !== dove.placeSheet || cliente.placeFolder !== dove.placeFolder) {
-              scritture.push(
-                aggiornaDoc_("customers/" + cliente.id, {
-                  city: info.city,
-                  address: info.address,
-                  placeSource: "drive",
-                  placeFolder: dove.placeFolder,
-                  placeSheet: dove.placeSheet,
-                  placeSheetUrl: dove.placeSheetUrl,
-                })
-              );
-              cliente.city = info.city; // così le altre cartelle dello stesso cliente non lo riscrivono
-              cliente.address = info.address;
-              cliente.placeSource = "drive";
-            }
-          }
-        }
         // gru del foglio (le correzioni fatte nell'app restano: qui scrivo solo i campi del Drive)
         var etichetta = etichettaFoglio_(file.getName());
         estraiGru(foglio.tabelle).forEach(function (g, i) {
@@ -295,38 +265,6 @@ function giro_() {
       Logger.log("Salto %s: %s", voce.n, e);
       conti.errori.push(voce.n + ": " + String((e && e.message) || e).slice(0, 120));
     }
-  });
-  // posizione sulla mappa (Esplora → Mappa): cerco su Google Maps i clienti con paese/indirizzo nuovi o cambiati
-  conti.posizioni = 0;
-  var geo = Maps.newGeocoder().setRegion("it").setLanguage("it");
-  clienti.some(function (c) {
-    if (Date.now() - inizio > (CONFIG.minuti + 1) * 60000 || conti.posizioni >= 300) return true;
-    var q = [c.address, c.city].map(function (x) {
-      return String(x || "").trim();
-    }).filter(String);
-    if (!q.length) return false;
-    var chiaveGeo = q.join(", ");
-    if (c.geoKey === chiaveGeo) return false;
-    conti.posizioni++;
-    try {
-      var r = geo.geocode(chiaveGeo + ", Italia");
-      var g = r && r.status === "OK" && r.results && r.results[0];
-      if (g) {
-        scritture.push(
-          aggiornaDoc_("customers/" + c.id, {
-            lat: g.geometry.location.lat,
-            lng: g.geometry.location.lng,
-            geoKey: chiaveGeo,
-            geoApprox: !String(c.address || "").trim() || g.geometry.location_type === "APPROXIMATE",
-          })
-        );
-      } else {
-        scritture.push(aggiornaDoc_("customers/" + c.id, { geoKey: chiaveGeo, geoNone: true }));
-      }
-    } catch (e) {
-      Logger.log("Posizione di %s non trovata: %s", c.name, e);
-    }
-    return false;
   });
   var falliti = scriviTutto_(token, scritture);
   if (falliti) conti.errori.push("Database: " + falliti + " scritture non riuscite");

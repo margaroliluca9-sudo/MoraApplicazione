@@ -7,11 +7,11 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { collection, doc } from "firebase/firestore";
 import { updateDoc, writeBatch } from "../tracked";
-import { Folder, Search, ChevronRight, MapPin, Wrench, HelpCircle, Check, X, Loader2 } from "lucide-react";
+import { Folder, Search, ChevronRight, Wrench, HelpCircle, Check, X, Loader2 } from "lucide-react";
 import { db, appId } from "../firebase";
 import { loadDaily } from "../dailyCache";
 import { getProPanelClass } from "../ui";
-import { placeOf, normName } from "../places";
+import { normName } from "../names";
 import { describeError, getSafeMatricola } from "../utils";
 import { reviewCustomer } from "../driveCranes";
 import { DrivePlacesStatus } from "../components/DrivePlacesStatus";
@@ -33,14 +33,6 @@ export const folderIndex = (folders = []) => {
     if (byCust[c] && byCust[c].p) subs[c] -= 1;
   });
   return { byCust, subs };
-};
-
-export const placeSourceLabel = (c) => {
-  if (!c || !placeOf(c)) return "";
-  if (c.placeSource === "drive") return "dal Drive";
-  if (c.placeSource === "manual") return "scritto a mano";
-  if (c.placeSource === "file") return "da file";
-  return "";
 };
 
 // tutte le gru lette dal Drive: dalla copia sul telefono, dal server al massimo una volta al giorno
@@ -252,7 +244,7 @@ export const DriveAdmin = ({ customers = [], machines = [], color = "blue" }) =>
   const list = useMemo(() => {
     const t = q.trim().toUpperCase();
     return customers
-      .filter((c) => !t || String(c.name || "").toUpperCase().includes(t) || String(c.city || "").toUpperCase().includes(t))
+      .filter((c) => !t || String(c.name || "").toUpperCase().includes(t))
       .filter((c) => filter === "all" || (filter === "none" ? c.driveNone : filter === "nofolder" ? !c.driveNone && !folderOf(c) : !!folderOf(c)))
       .slice()
       .sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")));
@@ -324,7 +316,6 @@ export const DriveAdmin = ({ customers = [], machines = [], color = "blue" }) =>
       <ul className="divide-y divide-slate-100 border border-slate-200 rounded-2xl bg-white max-h-[560px] overflow-y-auto">
         {list.map((c) => {
           const f = folderOf(c);
-          const src = placeSourceLabel(c);
           return (
             <li key={c.id}>
               <button type="button" className="w-full text-left p-3 flex items-center gap-3" onClick={() => setOpenId(c.id)} data-drive-customer={c.name}>
@@ -345,13 +336,6 @@ export const DriveAdmin = ({ customers = [], machines = [], color = "blue" }) =>
                       ) : (
                         "nessuna cartella trovata"
                       )}
-                    </span>
-                  )}
-                  {placeOf(c) && (
-                    <span className="block text-xs text-slate-500 truncate">
-                      <MapPin className="inline w-3.5 h-3.5 -mt-0.5 mr-1" />
-                      {placeOf(c)}
-                      {src && <span className="text-slate-400"> · {src}</span>}
                     </span>
                   )}
                 </span>
