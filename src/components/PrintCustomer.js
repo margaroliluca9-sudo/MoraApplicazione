@@ -1,4 +1,4 @@
-// STAMPA DELLA SCHEDA CLIENTE: paese, indirizzo e tutte le gru, con i dati del Drive (paranco, matricola INAIL,
+// STAMPA DELLA SCHEDA CLIENTE: tutte le gru, con i dati del Drive (paranco, matricola INAIL,
 // anno) quando ci sono e gli interventi di ogni gru. Usata dalla scheda cliente e da Esplora.
 import { buildCustomerMachinesPdf, pdfFileName } from "../pdf";
 import { openPdf } from "./PdfHost";

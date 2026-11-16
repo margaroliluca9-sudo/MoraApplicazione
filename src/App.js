@@ -19,6 +19,7 @@ import { pendingWearCount, watchPendingWear } from "./wearReports";
 import { signInAnonymously, onAuthStateChanged } from "firebase/auth";
 import { collection, serverTimestamp, Timestamp, orderBy, limit, documentId, getDocsFromCache, doc, query, where } from "firebase/firestore";
 import { addDoc, setDoc, deleteDoc } from "./tracked";
+import { clearPlaces } from "./noPlaces";
 import { onSnapshot, getDocsFromServer, startReadsMeter, setReadsOwner, readsToday, FREE_READS } from "./metered";
 import { loadReadsDay } from "./components/ReadsCard";
 import { auth, db, appId } from "./firebase";
@@ -720,7 +721,10 @@ export default function App() {
     });
     const stopSync = startSync(
       {
-        customers: (rows) => setCustomers(rows.slice().sort((a, b) => String(a.name || "").localeCompare(String(b.name || "")))),
+        customers: (rows) => {
+          clearPlaces(rows);
+          setCustomers(rows.slice().sort((a, b) => String(a.name || "").localeCompare(String(b.name || ""))));
+        },
         machines: (rows) => setMachines(rows),
         maintenance_logs: (rows, meta) => {
           olderRef.current = rows;

@@ -595,7 +595,7 @@ export const buildHoursPdf = async ({ me, from, to, days = [], std = 480, today 
 };
 
 // Elenco gru di un cliente (colonna Note vuota da compilare a penna)
-// SCHEDA DEL CLIENTE (Esplora e scheda cliente → «Stampa»): paese e indirizzo, poi tutte le sue gru con
+// SCHEDA DEL CLIENTE (Esplora e scheda cliente → «Stampa»): tutte le sue gru con
 // i dati del Drive (paranco, matricola INAIL, anno) quando ci sono, quanti interventi e l'ultimo.
 // machines: [{ ...gru, _drive: riga del Drive o null }], logs: interventi di questo cliente
 export const buildCustomerMachinesPdf = async ({ customerName, customer = null, machines = [], logs = [], today }) => {
