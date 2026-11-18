@@ -93,7 +93,7 @@ export const CustomerDetailModal = ({
                   </span>
                 )}
               </span>
-              {last.description && <span className="block mt-1.5 text-sm text-slate-600 leading-snug line-clamp-3 whitespace-pre-wrap break-words">{last.description}</span>}
+              {last.description && <span className="block mt-1.5 text-sm text-slate-600 leading-snug line-clamp-4 whitespace-pre-wrap break-words">{last.description}</span>}
               <span className={`flex items-center gap-1 mt-2 text-xs font-black text-${color}-700`}>
                 Apri la gru <ChevronRight className="w-4 h-4" />
               </span>
