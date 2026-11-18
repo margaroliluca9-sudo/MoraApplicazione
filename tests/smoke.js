@@ -57,6 +57,25 @@ const check = (label, got, want) => {
     await home(p);
     await wait(p, 500);
   }
+  // scheda del cliente: ultimo intervento in cima; aperta una gru e chiusa, si torna sulla scheda del cliente
+  await clickSel(p, '[data-home-tile="history"]');
+  await wait(p, 900);
+  await p.evaluate(() => document.querySelector("[data-log-card] h4").click());
+  await wait(p, 600);
+  const cust = await p.evaluate(() => { const b = document.querySelector("[data-customer-last]"); return b ? [b.dataset.customerLast, /Ultimo intervento/.test(b.textContent), document.querySelectorAll("[data-machine-last]").length > 0] : null; });
+  check("scheda cliente: riquadro «Ultimo intervento» e data sotto le gru", cust && [!!cust[0], cust[1], cust[2]], [true, true, true]);
+  const custName = await p.evaluate(() => document.querySelector(".fixed h2").textContent.trim());
+  await clickSel(p, "[data-customer-last]");
+  await wait(p, 600);
+  check("dall'ultimo intervento si apre la gru", await p.evaluate(() => !document.querySelector("[data-customer-last]") && !!document.querySelector('[aria-label="Chiudi"]')), true);
+  await p.evaluate(() => { const b = [...document.querySelectorAll('[aria-label="Chiudi"]')].pop(); b.click(); });
+  await wait(p, 600);
+  check("chiusa la gru si torna sulla scheda dello stesso cliente", await p.evaluate(() => { const h = document.querySelector(".fixed h2"); return !!document.querySelector("[data-customer-last]") && h && h.textContent.trim(); }), custName);
+  await p.evaluate(() => { const b = [...document.querySelectorAll('[aria-label="Chiudi"]')].pop(); b.click(); });
+  await wait(p, 500);
+  check("chiusa la scheda del cliente non si riapre", await has(p, "[data-customer-last]"), false);
+  await home(p);
+  await wait(p, 500);
   // ricerca che perdona gli errori
   await p.evaluate(() => { const el = document.querySelector('[data-section="home-search"] input'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(el, "biachi"); el.dispatchEvent(new Event("input", { bubbles: true })); });
   await wait(p);

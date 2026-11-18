@@ -8,7 +8,7 @@ import {
   Camera,
   Printer,
 } from "lucide-react";
-import { getTechsString, formatCapacity, getSafeMatricola } from "../utils";
+import { getTechsString, formatCapacity, getSafeMatricola, compareLogs } from "../utils";
 import { PRO_INPUT, getProPanelClass } from "../ui";
 import { PrintLogButton } from "../components/PrintLogButton";
 import { printCustomer } from "../components/PrintCustomer";
@@ -35,6 +35,19 @@ export const ExploreView = React.memo(
       return fuzzyFilter(customers, searchTerm, (c) => c.name);
     }, [customers, searchTerm]);
 
+    // ultimo intervento di ogni cliente e di ogni gru (una passata sola su tutti gli interventi)
+    const lastBy = useMemo(() => {
+      const c = new Map();
+      const m = new Map();
+      logs.forEach((l) => {
+        const kc = l.customer;
+        const km = `${l.customer}|${l.machineId}`;
+        if (!c.has(kc) || compareLogs(l, c.get(kc)) > 0) c.set(kc, l);
+        if (!m.has(km) || compareLogs(l, m.get(km)) > 0) m.set(km, l);
+      });
+      return { c, m };
+    }, [logs]);
+
     const getCustomerMachines = useCallback(
       (customerName) => {
         return machines.filter((m) => m.customerName === customerName);
@@ -44,9 +57,7 @@ export const ExploreView = React.memo(
 
     const getMachineLogs = useCallback(
       (machineMatricola, customerName) => {
-        return logs.filter(
-          (l) => l.machineId === machineMatricola && l.customer === customerName
-        );
+        return logs.filter((l) => l.machineId === machineMatricola && l.customer === customerName).sort((a, b) => compareLogs(b, a));
       },
       [logs]
     );
@@ -108,6 +119,11 @@ export const ExploreView = React.memo(
                       <span className="block font-bold text-sm text-slate-700">
                         {c.name}
                       </span>
+                      {lastBy.c.get(c.name) && (
+                        <span className="block text-[11px] font-semibold text-slate-500" data-explore-last>
+                          Ultimo intervento: {lastBy.c.get(c.name).dateString} · gru {lastBy.c.get(c.name).machineId}
+                        </span>
+                      )}
                     </span>
                   </div>
                   <ChevronRight
@@ -171,6 +187,11 @@ export const ExploreView = React.memo(
                                     </span>
                                   )}
                                 </div>
+                                {lastBy.m.get(`${m.customerName}|${getSafeMatricola(m)}`) && (
+                                  <span className="block text-[10px] font-semibold text-slate-500 mt-0.5">
+                                    Ultimo intervento: {lastBy.m.get(`${m.customerName}|${getSafeMatricola(m)}`).dateString}
+                                  </span>
+                                )}
                               </div>
                             </div>
                             <ChevronRight

@@ -374,6 +374,8 @@ export default function App() {
 
   const [viewingMachineHistory, setViewingMachineHistory] = useState(null);
   const [viewingCustomerDetail, setViewingCustomerDetail] = useState(null);
+  // gru aperta dalla scheda di un cliente: chiudendola (X o indietro) si torna su quella scheda
+  const backToCustomer = useRef(null);
 
   useEffect(() => {
     const initAuth = async () => {
@@ -1068,12 +1070,20 @@ export default function App() {
         capacity: "N.D.",
       }
     );
+    backToCustomer.current = viewingCustomerDetail || null;
     setViewingCustomerDetail(null);
   };
 
   const openCustomerDetail = (customerName) => {
+    backToCustomer.current = null;
     setViewingCustomerDetail(customerName);
     setViewingMachineHistory(null);
+  };
+  const closeMachineDetail = () => {
+    const back = backToCustomer.current;
+    backToCustomer.current = null;
+    setViewingMachineHistory(null);
+    if (back) setViewingCustomerDetail(back);
   };
 
   const handleGlobalUnlock = (techName) => {
@@ -1474,7 +1484,7 @@ export default function App() {
         <MachineHistoryModal
           machine={viewingMachineHistory}
           allLogs={logs}
-          onClose={() => setViewingMachineHistory(null)}
+          onClose={closeMachineDetail}
           onOpenCustomer={openCustomerDetail}
           onOpenPhotos={setGlobalPhotoView}
           themeColor={color}
@@ -1483,6 +1493,7 @@ export default function App() {
               ? null
               : (m) => {
                   setNewPrefill({ key: Date.now(), data: m });
+                  backToCustomer.current = null;
                   setViewingMachineHistory(null);
                   setActiveTab("new");
                 }
