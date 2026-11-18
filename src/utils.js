@@ -116,21 +116,6 @@ export const logTechs = (log) => {
   });
 };
 export const getTechsString = (log) => logTechs(log).join(", ");
-// data dell'intervento per ordinarli: prima il giorno scritto nel rapporto, poi l'ora in cui è stato salvato
-const logDay = (l) => {
-  const p = String((l && l.dateString) || "").split("/").map(Number);
-  return p.length === 3 && p[2] ? new Date(p[2], p[1] - 1, p[0]).getTime() : 0;
-};
-const logAt = (l) => {
-  const c = l && (l.createdAt || l.timestamp);
-  if (!c) return 0;
-  if (c.seconds) return c.seconds * 1000;
-  if (typeof c.toMillis === "function") return c.toMillis();
-  return Number(c) || 0;
-};
-export const compareLogs = (a, b) => logDay(a) - logDay(b) || logAt(a) - logAt(b);
-// l'ultimo intervento fra quelli dati (null se non ce ne sono)
-export const lastLog = (list) => (list || []).reduce((best, l) => (!best || compareLogs(l, best) > 0 ? l : best), null);
 
 // HELPER GLOBALE PER LA PORTATA
 // «Gru 4868» solo se è davvero una gru: sottoganci, bilancini, impianti sospesi, pinze, magneti… → «Matr. 4868»

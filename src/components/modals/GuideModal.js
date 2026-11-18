@@ -212,7 +212,7 @@ const appStepsFor = ({ hasVan, chatEnabled, isAdmin }) =>
     {
       icon: Folder,
       title: "Esplora",
-      text: "«Per cliente»: sfogli i clienti (sotto il nome la data dell'ultimo intervento), apri le loro gru e leggi gli interventi di ognuna. La scheda del cliente ha in cima l'ultimo intervento; se apri una gru da lì e la chiudi, torni sulla scheda del cliente. «Elenco gru e interventi»: tutte le gru e tutti gli interventi in un elenco, con ricerca (era il Database).",
+      text: "«Per cliente»: sfogli i clienti, apri le loro gru e leggi gli interventi di ognuna. «Elenco gru e interventi»: tutte le gru e tutti gli interventi in un elenco, con ricerca (era il Database).",
     },
     {
       icon: Briefcase,
@@ -393,8 +393,7 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
       icon: Folder,
       title: "Esplora",
       points: [
-        "«Per cliente»: sfoglia i clienti, apri le loro gru e leggi gli interventi di ogni gru (dal più recente), con foto e stampa. Sotto il nome di ogni cliente c'è la data del suo ultimo intervento e la gru; sotto ogni gru la data del suo ultimo intervento.",
-        "Scheda del cliente (toccando il nome del cliente nello Storico, nella Home o nella scheda di una gru): in cima il riquadro «Ultimo intervento» con data, gru, tecnici e cosa è stato fatto; toccandolo si apre quella gru. Sotto ogni gru c'è la data del suo ultimo intervento. Se apri una gru dalla scheda del cliente e poi la chiudi (X o indietro), torni sulla scheda del cliente, non all'inizio.",
+        "«Per cliente»: sfoglia i clienti, apri le loro gru e leggi gli interventi di ogni gru, con foto e stampa.",
         "«Elenco gru e interventi» (era il Database): tutti i clienti, le gru e gli interventi in elenco, con ricerca veloce.",
         "Stampa scheda cliente: aprendo un cliente in Esplora (o la sua scheda) c'è «Stampa scheda cliente»: un PDF con il nome del cliente e tutte le sue gru, con tipo e portata, paranco, matricola INAIL e anno (presi dal Drive quando ci sono) e quanti interventi ha avuto ogni gru con la data dell'ultimo.",
       ],
@@ -628,7 +627,7 @@ const officeSteps = [
   {
     icon: Folder,
     title: "Esplora",
-    text: "Sfogli i clienti (sotto il nome la data dell'ultimo intervento), apri le loro gru e leggi gli interventi di ognuna, con foto e stampa. Se apri una gru dalla scheda del cliente e la chiudi, torni sulla scheda del cliente.",
+    text: "Sfogli i clienti, apri le loro gru e leggi gli interventi di ognuna, con foto e stampa.",
     go: { label: "Apri Esplora", to: "explore" },
   },
   {
