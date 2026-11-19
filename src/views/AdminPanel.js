@@ -639,7 +639,7 @@ export const AdminPanel = ({
         />
       )}
 
-      {view === "design" && <DesignAdmin layoutConfig={layoutConfig} onUpdateLayout={onUpdateLayout} />}
+      {view === "design" && <DesignAdmin layoutConfig={layoutConfig} onUpdateLayout={onUpdateLayout} technicians={technicians} />}
 
       {(view === "techs" || view === "types") && (
         <div

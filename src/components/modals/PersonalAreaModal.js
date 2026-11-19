@@ -1,7 +1,11 @@
 // LA MIA AREA: Oggi, Calendario, Note, Chat, Promemoria e contatti, Magazzino (solo con furgone), numeri del mese.
 // Ogni tecnico vede solo le sue cose.
 import React, { useEffect, useMemo, useState } from "react";
-import { X, CalendarDays, StickyNote, MessageSquare, Bell, Truck, ClipboardList, Printer, WifiOff, Settings, Timer, Wrench, ChevronRight } from "lucide-react";
+import { X, CalendarDays, StickyNote, MessageSquare, Bell, Truck, ClipboardList, Printer, WifiOff, Settings, Timer, Wrench, ChevronRight, Briefcase } from "lucide-react";
+import { onSnapshot } from "firebase/firestore";
+import { SalesPanel } from "../personal/SalesPanel";
+import { SALES, canSales, salesUsers, summary as salesSummary } from "../../sales";
+import { chatRef } from "../../chat";
 import { HoursPanel } from "../personal/HoursPanel";
 import { getSettings } from "../../settings";
 import { fmtMin, monthSummary, getStd, withDefaults, getSince } from "../../hours";
@@ -68,6 +72,8 @@ export const PersonalAreaModal = ({
   color = "blue",
   initialPanel = null,
   areaTiles = null,
+  salesCfg = null, // layoutConfig: chi vede il Commerciale
+  customers = [],
   inline = false, // pagina normale (scheda «Mia area», come lo Storico) invece che una finestra sopra la Home
 }) => {
   // parti accese o spente dall'admin
@@ -94,6 +100,18 @@ export const PersonalAreaModal = ({
       window.removeEventListener("offline", off);
     };
   }, []);
+  // COMMERCIALE: solo per i tecnici abilitati (di base Luca e Marco); le pratiche sono condivise tra loro
+  const salesOn = canSales(salesCfg, me);
+  const [sales, setSales] = useState([]);
+  useEffect(() => {
+    if (!salesOn) return undefined;
+    return onSnapshot(
+      chatRef(SALES),
+      (s) => setSales(s.docs.map((d) => ({ id: d.id, ...d.data() }))),
+      () => {}
+    );
+  }, [salesOn]);
+  const salesSum = salesSummary(sales);
   const today = todayIso();
   const van = vanOf(vans, me);
   const vanList = van ? itemsOf(vanItems, van.id) : [];
@@ -133,6 +151,8 @@ export const PersonalAreaModal = ({
         logs={logs}
         onNewReport={(data) => window.dispatchEvent(new CustomEvent("mora-new-report", { detail: data }))}
       />;
+  else if (panel === "sales" && salesOn)
+    body = <SalesPanel me={me} items={sales} users={salesUsers(salesCfg)} customers={customers} logs={logs} color={color} onBack={back} onClose={closeX} />;
   else if (panel === "year" && yearToShow()) body = <YearPanel me={me} logs={logs} year={yearToShow()} color={color} onBack={back} onClose={closeX} />;
   else if (panel === "profile") body = <ProfilePanel me={me} technicians={technicians} color={color} onBack={back} onClose={closeX} />;
   else if (panel === "settings") body = <SettingsPanel me={me} color={color} onBack={back} onClose={closeX} hoursAllowed={on("hours")} />;
@@ -189,6 +209,22 @@ export const PersonalAreaModal = ({
               <span className="flex-1 min-w-0">
                 <span className="block font-black text-lg leading-tight">Il mio {yearToShow()}</span>
                 <span className="block text-sm font-semibold opacity-90 truncate">Il riepilogo del tuo anno: interventi, clienti, gru</span>
+              </span>
+              <ChevronRight className="w-5 h-5 opacity-80 shrink-0" />
+            </button>
+          )}
+          {salesOn && (
+            <button type="button" onClick={() => setPanel("sales")} data-area-tile="sales" className="w-full text-left rounded-3xl bg-slate-800 text-white p-4 flex items-center gap-3 active:scale-[0.99] transition-transform" style={{ backgroundColor: "#1e293b" }}>
+              <span className="w-11 h-11 rounded-xl flex items-center justify-center bg-white/15 shrink-0">
+                <Briefcase className="w-5 h-5" />
+              </span>
+              <span className="flex-1 min-w-0">
+                <span className="block font-black text-lg leading-tight">Commerciale</span>
+                <span className={`block text-sm font-semibold truncate ${salesSum.late ? "text-red-300" : "text-white/80"}`}>
+                  {salesSum.open
+                    ? `${salesSum.due} da fare oggi${salesSum.late ? ` (${salesSum.late} in ritardo)` : ""} · ${salesSum.wait} in attesa · ${salesSum.open} aperte`
+                    : "Preventivi, richieste e chiamate dei clienti"}
+                </span>
               </span>
               <ChevronRight className="w-5 h-5 opacity-80 shrink-0" />
             </button>

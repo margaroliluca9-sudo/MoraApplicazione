@@ -66,6 +66,9 @@ const DB = () => ({
     { id: "n2", owner: "luca", title: "Da tenere nel furgone", text: "", pinned: true, items: [{ t: "Fune 10 mm", done: true }, { t: "Contattori 24V", done: false }], updatedAt: 0 },
   ],
   personal_reminders: [{ id: "r1", owner: "luca", title: "Richiamare sig. Rossi (Mario Rossi Srl)", date: T0, time: "14:00", notify: true, done: false }],
+  sales_items: [
+    { id: "s1", customer: "BIANCHI LAMIERE", title: "Paranco nuovo reparto taglio", kind: "quote", status: "wait", owner: "marco", amount: 8400, contact: "Sig. Bianchi", phone: "0321 123456", nextDate: iso(ago(2)), nextWhat: "Richiamare per la conferma", entries: [{ at: 1, who: "marco", kind: "quote", text: "Mandato il preventivo" }], createdBy: "marco", updatedAt: 1 },
+  ],
   personal_contacts: [{ id: "k1", owner: "luca", name: "Mario Rossi", role: "Mario Rossi Srl – manutenzione", phone: "+39 333 123 4567" }],
   vans: [{ id: "v1", name: "Furgone di Luca", plate: "EK482TL", users: ["luca", "marco"] }],
   van_items: [

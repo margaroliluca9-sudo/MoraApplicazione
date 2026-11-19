@@ -57,6 +57,26 @@ const check = (label, got, want) => {
     await home(p);
     await wait(p, 500);
   }
+  // COMMERCIALE: Luca lo vede (con la pratica di Marco), la apre, apre «Nuova»; Ivano non lo vede
+  await clickSel(p, '[data-nav="area"]');
+  await wait(p, 900);
+  check("Commerciale: riquadro nella mia area di Luca", await has(p, '[data-area-tile="sales"]'), true);
+  await clickSel(p, '[data-area-tile="sales"]');
+  await wait(p, 500);
+  await clickSel(p, '[data-sales-tab="wait"]');
+  await wait(p, 300);
+  check("Commerciale: punto della situazione e pratica di Marco", await p.evaluate(() => document.querySelectorAll("[data-sales-sum]").length === 4 && !!document.querySelector('[data-sales-item="s1"]')), true);
+  await p.evaluate(() => document.querySelector('[data-sales-item="s1"]').click());
+  await wait(p, 500);
+  check("Commerciale: la pratica si apre con il diario", await p.evaluate(() => !!document.querySelector('[data-section="sales-item"]') && document.querySelectorAll("[data-sales-entry]").length === 1), true);
+  await p.evaluate(() => document.querySelector('[data-section="sales-item"] [aria-label="Chiudi"]').click());
+  await wait(p, 300);
+  await clickSel(p, '[data-action="sales-new"]');
+  await wait(p, 300);
+  check("Commerciale: modulo nuova pratica", await has(p, '[data-section="sales-form"]'), true);
+  await p.evaluate(() => document.querySelector('[data-section="sales-form"] [aria-label="Chiudi"]').click());
+  await home(p);
+  await wait(p, 500);
   // ricerca che perdona gli errori
   await p.evaluate(() => { const el = document.querySelector('[data-section="home-search"] input'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(el, "biachi"); el.dispatchEvent(new Event("input", { bubbles: true })); });
   await wait(p);

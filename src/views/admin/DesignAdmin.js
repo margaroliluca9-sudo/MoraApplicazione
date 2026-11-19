@@ -2,12 +2,13 @@
 // avvio, «La mia area» per tutti. (Era dentro AdminPanel.js: spostato qui così il file è più piccolo.)
 import React from "react";
 import { AREA_TILES, areaOn } from "../../areaTiles";
+import { salesUsers, nameOf } from "../../sales";
 import { AppNameField, ThemeColors, SeasonGallery } from "../../components/DesignExtras";
 import { PRO_INPUT, getProPanelClass } from "../../ui";
 import { SwitchRow, Switch } from "../../components/Switch";
 import { FONT_OPTIONS, FONT_SCALE_OPTIONS, RADIUS_OPTIONS, DENSITY_OPTIONS, APPEARANCE_DEFAULTS } from "../../appearance";
 
-export const DesignAdmin = ({ layoutConfig, onUpdateLayout }) => (
+export const DesignAdmin = ({ layoutConfig, onUpdateLayout, technicians = [] }) => (
   <div
       className={`p-6 shadow-xl ${getProPanelClass(
         layoutConfig.themeColor
@@ -143,6 +144,34 @@ export const DesignAdmin = ({ layoutConfig, onUpdateLayout }) => (
               </div>
             );
           })}
+        </div>
+
+        <div className="p-3 rounded-xl border border-slate-200 bg-slate-50 space-y-2" data-section="sales-admin">
+          <div>
+            <span className="text-xs font-bold text-slate-700 block">«Commerciale»: chi lo vede</span>
+            <span className="text-[10px] text-slate-500">Solo i tecnici accesi vedono la sezione Commerciale nella loro area, con le pratiche condivise tra loro.</span>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {[...new Set([...salesUsers(layoutConfig), ...technicians.map((t) => String(t.name || "").trim().toLowerCase()).filter(Boolean)])].map((u) => {
+              const list = salesUsers(layoutConfig);
+              const on = list.includes(u);
+              return (
+                <button
+                  key={u}
+                  type="button"
+                  data-sales-admin={u}
+                  aria-pressed={on}
+                  onClick={() => {
+                    const next = on ? list.filter((x) => x !== u) : [...list, u];
+                    if (next.length) onUpdateLayout({ ...layoutConfig, salesUsers: next });
+                  }}
+                  className={`min-h-10 px-3 rounded-full border text-xs font-bold ${on ? "bg-slate-800 border-slate-800 text-white" : "bg-white border-slate-300 text-slate-600"}`}
+                >
+                  {nameOf(u)}
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         <button
