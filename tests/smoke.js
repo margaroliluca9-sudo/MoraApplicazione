@@ -75,6 +75,15 @@ const check = (label, got, want) => {
   await wait(p, 300);
   await p.evaluate(() => document.querySelector('[data-sales-item="s1"] [data-action="sales-toggle"]').click());
   await wait(p, 500);
+  const xl = await p.evaluate(() => { const S = window.__require("@/sales"); const b = S.salesXlsx(window.__fakeDB.sales_items); return b && b.length > 1000 && b[0] === 0x50 && b[1] === 0x4b; });
+  check("Commerciale: tabella Excel pronta", xl, true);
+  await clickSel(p, '[data-action="sales-people"]');
+  await wait(p, 300);
+  check("Commerciale: «Persone» con i tecnici", await p.evaluate(() => [...document.querySelectorAll('[data-chip^="people-"]')].map((x) => x.dataset.chip)), ["people-luca", "people-marco", "people-ivano", "people-paolo"]);
+  await clickSel(p, '[data-chip="people-ivano"]');
+  await clickSel(p, '[data-action="sales-people-save"]');
+  await wait(p, 500);
+  check("Commerciale: Ivano aggiunto", await p.evaluate(() => JSON.stringify((window.__fakeDB.settings.find((x) => x.id === "layout") || {}).salesUsers)), '["luca","marco","ivano"]');
   check("Commerciale: spuntata come fatta", await p.evaluate(() => window.__fakeDB.sales_items.find((x) => x.id === "s1").status), "done");
   await home(p);
   await wait(p, 500);

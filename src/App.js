@@ -1049,6 +1049,12 @@ export default function App() {
     );
   };
 
+  // COMMERCIALE: chi lo vede (lo cambiano dalla sezione stessa i tecnici che ce l'hanno): salva solo quel campo
+  const handleSalesUsers = async (list) => {
+    setLayoutConfig((c) => ({ ...c, salesUsers: list }));
+    await setDoc(doc(db, "artifacts", appId, "public", "data", "settings", "layout"), { salesUsers: list }, { merge: true });
+  };
+
   const openMachineDetail = (mId, mCustomer) => {
     let machine;
     if (mCustomer) {
@@ -1328,6 +1334,7 @@ export default function App() {
                 onHomePrefs={setHomePrefs}
                 onPreviewLook={handlePreviewLook}
                 isOffice={isOffice}
+                onSalesUsers={handleSalesUsers}
               />
             )}
             {!isOffice && (activeTab === "explore" || activeTab === "database") && (

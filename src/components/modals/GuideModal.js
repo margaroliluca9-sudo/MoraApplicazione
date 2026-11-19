@@ -429,6 +429,8 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
         "Commerciale · Aggiungere: scrivi una riga (es. «Rossi: richiamare per il preventivo della fune»), tocca chi la segue (Luca o Marco) e se serve quando (Oggi, Domani, Lunedì), poi «Aggiungi».",
         "Commerciale · La lista: prima le cose in ritardo (in rosso), poi quelle di oggi, poi le altre. Sotto ogni riga chi la segue, il quando e l'ultima nota. Il cerchio a sinistra la spunta come fatta; le fatte stanno in fondo in «Fatte». «Tutte», «Le mie», «Di Marco» per filtrare.",
         "Commerciale · Toccando una riga: cambi il testo, chi, il quando (anche con avviso sul telefono quel giorno alle 9) e aggiungi una nota («chiamato, mi richiama lunedì»): le note restano con data e nome, così l'altro sa a che punto è. «Fatto» la spunta, «Elimina» la toglie.",
+        "Commerciale · Persone: in alto «Persone» per mettere o togliere chi vede il Commerciale (tocca i nomi e «Salva»). Chi viene tolto non vede più la sezione; la lista resta com'è. Lo stesso si fa da Admin → Design.",
+        "Commerciale · Excel: in fondo alla lista «Scarica la lista in Excel» fa una tabella con due fogli: «Lista» (cosa c'è da fare, chi, quando, stato, ultima nota, chi l'ha aggiunta e modificata) e «Note» (tutte le note con data e nome). Sul telefono si condivide subito (WhatsApp, mail, Drive…).",
         "I miei interventi: quelli di questo mese o tutti.",
         "Stampa interventi: scegli e stampa insieme i rapporti tuoi e dei colleghi.",
         "Calendario: i tuoi impegni (con avviso) e i pallini verdi dei giorni in cui hai fatto interventi.",

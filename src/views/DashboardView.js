@@ -100,6 +100,7 @@ export const DashboardView = ({
   chatMessages = [],
   chatReads = [],
   technicians = [],
+  onSalesUsers = null,
   isAdmin = false,
   onOpenPhotos = () => {},
   personal = {},
@@ -621,6 +622,8 @@ export const DashboardView = ({
           inline={areaTab}
           areaTiles={layoutConfig?.areaTiles || null}
           salesCfg={layoutConfig || null}
+          onSalesUsers={onSalesUsers}
+          allTechs={technicians}
           key={area}
           me={currentTechName}
           logs={logs}

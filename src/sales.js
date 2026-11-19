@@ -8,6 +8,7 @@ import { serverTimestamp } from "firebase/firestore";
 import { addDoc, deleteDoc, setDoc } from "./tracked";
 import { chatRef, chatDoc, key } from "./chat";
 import { todayIso, isoOf, parseIso, saveReminder } from "./personal";
+import { buildXlsx } from "./xlsx";
 
 export const SALES = "sales_items";
 export const DEFAULT_SALES_USERS = ["luca", "marco"];
@@ -144,3 +145,56 @@ export const saveItem = async (me, it, { remind = false } = {}) => {
 };
 export const withEntry = (it, me, kind, text) => ({ ...it, entries: [...(it.entries || []), { at: Date.now(), who: key(me), kind, text: String(text || "").trim() }] });
 export const removeItem = (id) => deleteDoc(chatDoc(SALES, id));
+
+// TABELLA EXCEL della lista: foglio «Lista» (una riga per cosa da fare) e foglio «Note» (una riga per nota)
+const toDate = (ms) => (ms ? { date: new Date(ms) } : "");
+const textOfItem = (it) => [it.customer, it.title].filter(Boolean).join(": ");
+export const salesXlsx = (items) => {
+  const list = sortItems(items);
+  const lista = list.map((it) => {
+    const e = it.entries || [];
+    const le = e.length ? e[e.length - 1] : null;
+    const d = dueState(it);
+    return [
+      textOfItem(it),
+      nameOf(it.owner),
+      it.nextDate ? { date: parseIso(it.nextDate) } : "",
+      !isOpen(it) ? "Fatto" : d === "late" ? "In ritardo" : d === "today" ? "Da fare oggi" : "Da fare",
+      le ? le.text : "",
+      e.length,
+      nameOf(it.createdBy),
+      toDate(it.updatedAt),
+      nameOf(it.updatedBy),
+    ];
+  });
+  const note = [];
+  list.forEach((it) => (it.entries || []).forEach((e) => note.push([textOfItem(it), toDate(e.at), nameOf(e.who), e.text])));
+  return buildXlsx([
+    {
+      name: "Lista",
+      cols: [
+        { title: "Cosa c'è da fare", width: 60 },
+        { title: "Chi", width: 12 },
+        { title: "Quando", width: 12 },
+        { title: "Stato", width: 14 },
+        { title: "Ultima nota", width: 45 },
+        { title: "N. note", width: 9 },
+        { title: "Aggiunta da", width: 13 },
+        { title: "Ultima modifica", width: 15 },
+        { title: "Modificata da", width: 14 },
+      ],
+      rows: lista,
+    },
+    {
+      name: "Note",
+      cols: [
+        { title: "Cosa c'è da fare", width: 60 },
+        { title: "Data", width: 12 },
+        { title: "Chi", width: 12 },
+        { title: "Nota", width: 70 },
+      ],
+      rows: note,
+    },
+  ]);
+};
+export const salesFileName = (now = new Date()) => `Commerciale ${String(now.getDate()).padStart(2, "0")}-${String(now.getMonth() + 1).padStart(2, "0")}-${now.getFullYear()}.xlsx`;

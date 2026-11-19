@@ -2,11 +2,12 @@
 // In cima si scrive una riga («Rossi: richiamare per il preventivo della fune»), si sceglie chi la segue e quando;
 // ogni riga ha la spunta «fatto». Toccando la riga: le note di chi l'ha seguita, con data e nome.
 import React, { useMemo, useState } from "react";
-import { Check, Trash2, Plus, Bell } from "lucide-react";
+import { Check, Trash2, Plus, Bell, FileSpreadsheet } from "lucide-react";
+import { XLSX_TYPE } from "../../xlsx";
 import { PanelHeader, Sheet, PrimaryBtn, GhostBtn, Empty, INPUT } from "./PersonalUi";
 import { key } from "../../chat";
 import { todayIso, relDay } from "../../personal";
-import { isOpen, dueState, lastEntry, sortItems, shortDate, isoShort, plusDays, nextMonday, nameOf, saveItem, withEntry, removeItem } from "../../sales";
+import { isOpen, dueState, lastEntry, sortItems, shortDate, isoShort, plusDays, nextMonday, nameOf, saveItem, withEntry, removeItem, salesXlsx, salesFileName } from "../../sales";
 
 const WHEN = () => [
   ["Oggi", todayIso()],
@@ -163,7 +164,56 @@ const RowSheet = ({ me, users, item, onClose, color }) => {
   );
 };
 
-export const SalesPanel = ({ me, items = [], users = [], color = "blue", onBack, onClose }) => {
+// CHI VEDE IL COMMERCIALE: i tecnici accesi vedono la sezione e la lista; si tocca per mettere o togliere
+const PeopleSheet = ({ me, users, allTechs, onUsers, onClose, color }) => {
+  const all = [...new Set([...users, ...allTechs.map((t) => key(t.name)).filter(Boolean)])];
+  const [sel, setSel] = useState(users);
+  const [busy, setBusy] = useState(false);
+  const meOut = !sel.includes(key(me));
+  return (
+    <Sheet
+      title="Chi vede il Commerciale"
+      onClose={onClose}
+      section="sales-people"
+      footer={
+        <>
+          <GhostBtn onClick={onClose}>Annulla</GhostBtn>
+          <PrimaryBtn
+            color={color}
+            disabled={busy || !sel.length}
+            data-action="sales-people-save"
+            onClick={async () => {
+              setBusy(true);
+              try {
+                await onUsers(sel);
+                onClose();
+              } catch (e) {
+                setBusy(false);
+              }
+            }}
+          >
+            {busy ? "Salvo…" : "Salva"}
+          </PrimaryBtn>
+        </>
+      }
+    >
+      <p className="text-sm text-slate-600">Tocca i nomi: chi è acceso vede la sezione Commerciale e tutta la lista. Gli altri non la vedono.</p>
+      <div className="flex flex-wrap gap-1.5">
+        {all.map((u) => (
+          <Chip key={u} on={sel.includes(u)} onClick={() => setSel((s) => (s.includes(u) ? s.filter((x) => x !== u) : [...s, u]))} data={"people-" + u}>
+            {sel.includes(u) ? "✓ " : ""}
+            {nameOf(u)}
+          </Chip>
+        ))}
+      </div>
+      {meOut && sel.length > 0 && <p className="text-sm font-bold text-red-700">Hai tolto te stesso: dopo il salvataggio non vedrai più il Commerciale.</p>}
+      {!sel.length && <p className="text-sm font-bold text-red-700">Lascia almeno una persona.</p>}
+    </Sheet>
+  );
+};
+
+export const SalesPanel = ({ me, items = [], users = [], allTechs = [], onUsers = null, color = "blue", onBack, onClose }) => {
+  const [people, setPeople] = useState(false);
   const [text, setText] = useState("");
   const [owner, setOwner] = useState(key(me));
   const [nextDate, setNextDate] = useState("");
@@ -186,10 +236,44 @@ export const SalesPanel = ({ me, items = [], users = [], color = "blue", onBack,
     }
   };
   const toggle = (it) => saveItem(me, { ...it, status: isOpen(it) ? "done" : "todo" });
+  // tabella Excel di tutta la lista: sul telefono si condivide (WhatsApp, mail, Drive…), altrimenti si scarica
+  const excel = async () => {
+    const name = salesFileName();
+    const blob = new Blob([salesXlsx(items)], { type: XLSX_TYPE });
+    let file = null;
+    try {
+      file = new File([blob], name, { type: XLSX_TYPE });
+    } catch (e) {
+      file = null;
+    }
+    if (file && navigator.canShare && navigator.canShare({ files: [file] })) {
+      try {
+        await navigator.share({ files: [file], title: name });
+        return;
+      } catch (e) {
+        if (e && e.name === "AbortError") return;
+      }
+    }
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+  };
   const opened = openId && items.find((i) => i.id === openId);
   return (
     <div className="flex flex-col h-full bg-slate-50" data-section="sales">
-      <PanelHeader title="Commerciale" sub={others.length ? `Lista condivisa con ${others.map(nameOf).join(", ")}` : "Lista delle cose da fare"} onBack={onBack} onClose={onClose} color={color} />
+      <PanelHeader
+        title="Commerciale"
+        sub={others.length ? `Lista condivisa con ${others.map(nameOf).join(", ")}` : "Lista delle cose da fare"}
+        onBack={onBack}
+        onClose={onClose}
+        color={color}
+        action={onUsers ? { id: "sales-people", label: "Persone", onClick: () => setPeople(true) } : null}
+      />
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         <section className="bg-white rounded-2xl border-2 border-blue-200 p-3 space-y-2" data-section="sales-add">
           <textarea
@@ -246,8 +330,14 @@ export const SalesPanel = ({ me, items = [], users = [], color = "blue", onBack,
             {showDone && done.map((it) => <Row key={it.id} it={it} me={me} onToggle={() => toggle(it)} onOpen={() => setOpenId(it.id)} />)}
           </div>
         )}
+        {items.length > 0 && (
+          <button type="button" onClick={excel} data-action="sales-excel" className="w-full h-12 rounded-xl border-2 border-emerald-600 bg-white text-emerald-700 font-black text-sm flex items-center justify-center gap-2">
+            <FileSpreadsheet className="w-5 h-5" /> Scarica la lista in Excel
+          </button>
+        )}
       </div>
       {opened && <RowSheet me={me} users={users} item={opened} color={color} onClose={() => setOpenId(null)} />}
+      {people && <PeopleSheet me={me} users={users} allTechs={allTechs} onUsers={onUsers} color={color} onClose={() => setPeople(false)} />}
     </div>
   );
 };
