@@ -278,7 +278,7 @@ export const HistoryView = ({
       {!readOnly && myMissing.length > 0 && (
         <div className="rounded-3xl bg-amber-50 border-2 border-amber-300 p-4 space-y-2" data-section="rope-missing">
           <p className="font-black text-amber-900 flex items-center gap-2">
-            <AlertTriangle className="w-5 h-5 shrink-0" /> {myMissing.length === 1 ? "Ti mancano i dati di una fune o catena" : `Ti mancano i dati di ${myMissing.length} funi o catene`}
+            <AlertTriangle className="w-5 h-5 shrink-0" /> {myMissing.length === 1 ? "Dati da completare: 1 fune o catena sostituita" : `Dati da completare: ${myMissing.length} funi o catene sostituite`}
           </p>
           {myMissing.map(({ log, id }) => (
             <button key={log.id + id} type="button" onClick={() => setCompleting({ log, id })} data-action="rope-missing" className="w-full text-left rounded-2xl bg-white border border-amber-200 px-3 py-2 flex items-center gap-2 active:scale-[0.99]">

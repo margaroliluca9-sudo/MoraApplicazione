@@ -6,7 +6,17 @@ import { fasFamily, fasItem, fasSearch } from "../fasRopes";
 import { teciFamily, teciItem, teciSearch } from "../teciRopes";
 
 // motivi pronti quando i dati della fune / catena non ci sono ancora
-export const ropeReasons = (label) => ["Certificato non ancora arrivato", `${label === "catena" ? "Catena fornita" : "Fune fornita"} dal cliente`, "Certificato in ufficio", "Targhetta illeggibile"];
+export const ropeReasons = (label) => {
+  const art = label === "catena" ? "Catena fornita" : "Fune fornita";
+  return [
+    "Certificato presente sul furgone, da registrare",
+    "Certificato presente in sede, da registrare",
+    "Certificato in attesa dal fornitore",
+    `${art} dal cliente: certificato richiesto al cliente`,
+    "Marcatura o targhetta non leggibile: dati da verificare",
+    "Dati da rilevare al prossimo intervento",
+  ];
+};
 // Dati FUNE / CATENA sostituita.
 // Non c'è nessuna casella da spuntare: la sezione compare da sola quando la
 // descrizione parla di sostituzione (vedi autoTick in ropes.js).
@@ -159,7 +169,7 @@ export const RopeFields = ({ ropes, onChange, completing = false }) => {
             </label>
             {r.nonDisponibile && (
               <div className="space-y-2" data-rope-reasons={id}>
-                <p className="text-[11px] font-black text-amber-800">Perché mancano i dati?</p>
+                <p className="text-[11px] font-black text-amber-800">Motivo della mancata registrazione dei dati</p>
                 <div className="flex flex-wrap gap-1.5">
                   {ropeReasons(label).map((m) => {
                     const on = r.motivo === m;
@@ -196,7 +206,7 @@ export const RopeFields = ({ ropes, onChange, completing = false }) => {
                     onChange={(e) => set(id, { motivo: e.target.value, altro: true })}
                   />
                 )}
-                <p className="text-[11px] text-amber-800">Diametro, lunghezza e tipo, se li sai, scrivili lo stesso. Quando hai i dati: Storico → il tuo intervento → «Completa i dati».</p>
+                <p className="text-[11px] text-amber-800">Inserisci comunque diametro, lunghezza e tipo, se noti. I dati mancanti si completano dallo Storico (riquadro «Dati da completare» → «Completa»).</p>
               </div>
             )}
           </div>
