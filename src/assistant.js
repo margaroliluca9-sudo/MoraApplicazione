@@ -104,13 +104,18 @@ export const pendingItems = (machineLogs, { now = new Date(), maxAgeDays = 365 }
 export const repeatedFaults = (machineLogs, { now = new Date(), days = 60, min = 2 } = {}) => {
   const from = new Date(now.getTime() - days * 86400000);
   const counts = {};
-  for (const l of machineLogs || []) {
+  const all = [...(machineLogs || [])].sort((a, b) => orderKey(a) - orderKey(b));
+  // «fune da sostituire» e poi «sostituita fune» sono lo stesso problema: il sospeso risolto dopo non si conta due volte
+  const doneLater = (idx, c) =>
+    all.slice(idx + 1).some((l) => !!l[c] || sentencesOf(l.description).some((sent) => { const s = sent.replace(OIL, " "); return DONE.test(s) && !PENDING.test(s) && COMPONENTS.find((x) => x.id === c).re.test(s); }));
+  for (const [idx, l] of all.entries()) {
     const d = toDate(l.dateString);
     if (!d || d < from || d > now) continue;
     const ids = new Set();
     for (const sent of sentencesOf(l.description)) {
       const s = sent.replace(OIL, " ");
-      if (FAULT.test(s) || PENDING.test(s)) componentsIn(s).forEach((c) => ids.add(c));
+      if (FAULT.test(s)) componentsIn(s).forEach((c) => ids.add(c));
+      else if (PENDING.test(s)) componentsIn(s).forEach((c) => !doneLater(idx, c) && ids.add(c));
     }
     for (const c of ids) (counts[c] = counts[c] || []).push(l.dateString);
   }

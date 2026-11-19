@@ -1710,7 +1710,9 @@ export const WearPanel = ({ color = "blue", onBack, onClose, machines = [], logs
   const chainOf = useMemo(() => {
     const out = {};
     logs.forEach((l) => {
-      if (l && l.catena && l.catena.diametro) out[`${norm(l.customer)}|${norm(l.machineId)}`] = `Ø${String(l.catena.diametro).replace(".", ",")} mm`;
+      const k = `${norm(l && l.customer)}|${norm(l && l.machineId)}`;
+      // gli interventi arrivano dal più nuovo: vale la prima catena trovata (quella montata per ultima)
+      if (l && l.catena && l.catena.diametro && !out[k]) out[k] = `Ø${String(l.catena.diametro).replace(".", ",")} mm`;
     });
     return out;
   }, [logs]);
@@ -1725,7 +1727,16 @@ export const WearPanel = ({ color = "blue", onBack, onClose, machines = [], logs
   const kr = crane && type === "fune" ? known[mkey(crane)] : null;
   const mounted = crane ? (kr ? kr.log : lastRopeOf(craneLogs, type)) : null;
   const knownType = kr ? { ...(mounted.fune || {}), fas: kr.type.fas || "", teci: kr.type.teci || "", costruzione: kr.type.costruzione || "", diametro: kr.type.diametro || (mounted.fune || {}).diametro } : null;
-  const prev = crane ? lastCheckOf(craneLogs, type) : null;
+  const prev0 = crane ? lastCheckOf(craneLogs, type) : null;
+  // il controllo precedente conta solo se è stato fatto sulla fune (o catena) montata adesso: se dopo è stata cambiata,
+  // era su quella vecchia e non si mostra come «precedente»
+  const dk = (ds) => {
+    const p = String(ds || "").split("/").map(Number);
+    return p.length === 3 ? p[2] * 10000 + p[1] * 100 + p[0] : 0;
+  };
+  const mountedAt = (l) => (l ? dk(l.dateString) * 1e10 + ((l.createdAt && l.createdAt.seconds) || 0) : 0);
+  const oldCheck = prev0 && mounted && mountedAt(prev0) < mountedAt(mounted);
+  const prev = oldCheck ? null : prev0;
   const report =
     crane && onNewReport
       ? (rc) =>
@@ -1783,6 +1794,11 @@ export const WearPanel = ({ color = "blue", onBack, onClose, machines = [], logs
                 <p className={`font-black ${prev.ropeCheck.level === "scarto" ? "text-red-700" : prev.ropeCheck.level === "attenzione" ? "text-amber-700" : "text-emerald-700"}`}>{prev.ropeCheck.title}</p>
                 <p className="text-xs text-slate-500 leading-snug">{String(prev.ropeCheck.text || "").replace(/^[^:]*:\s*[^.]*\.\s*/, "")}</p>
               </div>
+            )}
+            {oldCheck && (
+              <p className="text-xs text-slate-500 px-1" data-wear-prev-old>
+                Il controllo del {prev0.dateString} era sulla {type} vecchia ({prev0.ropeCheck.title.toLowerCase()}): il {mounted.dateString} è stata cambiata, quindi non conta più.
+              </p>
             )}
             {type === "fune" && <DriveCraneInfo matricola={getSafeMatricola(crane)} customerName={crane.customerName} />}
           </div>
