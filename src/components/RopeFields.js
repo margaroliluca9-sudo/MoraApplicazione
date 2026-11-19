@@ -5,6 +5,8 @@ import { ROPE_ITEMS, emptyRope, ROPE_TYPES, consInText, ropeName } from "../rope
 import { fasFamily, fasItem, fasSearch } from "../fasRopes";
 import { teciFamily, teciItem, teciSearch } from "../teciRopes";
 
+// motivi pronti quando i dati della fune / catena non ci sono ancora
+export const ropeReasons = (label) => ["Certificato non ancora arrivato", `${label === "catena" ? "Catena fornita" : "Fune fornita"} dal cliente`, "Certificato in ufficio", "Targhetta illeggibile"];
 // Dati FUNE / CATENA sostituita.
 // Non c'è nessuna casella da spuntare: la sezione compare da sola quando la
 // descrizione parla di sostituzione (vedi autoTick in ropes.js).
@@ -156,14 +158,46 @@ export const RopeFields = ({ ropes, onChange, completing = false }) => {
               </span>
             </label>
             {r.nonDisponibile && (
-              <input
-                type="text"
-                className={PRO_INPUT}
-                placeholder="Motivo (es. certificato non ancora arrivato)"
-                aria-label={`Motivo dati ${label} non disponibili`}
-                value={r.motivo}
-                onChange={(e) => set(id, { motivo: e.target.value })}
-              />
+              <div className="space-y-2" data-rope-reasons={id}>
+                <p className="text-[11px] font-black text-amber-800">Perché mancano i dati?</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {ropeReasons(label).map((m) => {
+                    const on = r.motivo === m;
+                    return (
+                      <button
+                        key={m}
+                        type="button"
+                        onClick={() => set(id, { motivo: m, altro: false })}
+                        data-rope-reason={m}
+                        aria-pressed={on}
+                        className={`min-h-10 px-3 rounded-full border text-xs font-bold ${on ? "bg-amber-600 border-amber-600 text-white" : "bg-white border-amber-300 text-amber-900"}`}
+                      >
+                        {m}
+                      </button>
+                    );
+                  })}
+                  <button
+                    type="button"
+                    onClick={() => set(id, { motivo: ropeReasons(label).includes(r.motivo) ? "" : r.motivo, altro: true })}
+                    data-rope-reason="altro"
+                    aria-pressed={!!r.altro}
+                    className={`min-h-10 px-3 rounded-full border text-xs font-bold ${r.altro ? "bg-amber-600 border-amber-600 text-white" : "bg-white border-amber-300 text-amber-900"}`}
+                  >
+                    Altro…
+                  </button>
+                </div>
+                {(r.altro || (r.motivo && !ropeReasons(label).includes(r.motivo))) && (
+                  <input
+                    type="text"
+                    className={PRO_INPUT}
+                    placeholder="Scrivi il motivo"
+                    aria-label={`Motivo dati ${label} non disponibili`}
+                    value={r.motivo}
+                    onChange={(e) => set(id, { motivo: e.target.value, altro: true })}
+                  />
+                )}
+                <p className="text-[11px] text-amber-800">Diametro, lunghezza e tipo, se li sai, scrivili lo stesso. Quando hai i dati: Storico → il tuo intervento → «Completa i dati».</p>
+              </div>
             )}
           </div>
         );

@@ -6,6 +6,8 @@ import { doc } from "firebase/firestore";
 import { X, Check, Loader2 } from "lucide-react";
 import { db, appId } from "../../firebase";
 import { updateDoc } from "../../tracked";
+import { diffLog, withEdit } from "../../logHistory";
+import { logsChanged } from "../../logsWindow";
 import { RopeFields } from "../RopeFields";
 import { fromSavedRope, toSavedRope, validateRopes, ROPE_ITEMS } from "../../ropes";
 import { describeError } from "../../utils";
@@ -14,7 +16,7 @@ import { describeError } from "../../utils";
 export const ropeIncomplete = (saved, id) =>
   !!saved && (!!saved.nonDisponibile || !saved.certificato || !saved.diametro || !saved.lunghezza || (id === "fune" && !saved.fas && !saved.teci && !saved.costruzione));
 
-export const CompleteRopeModal = ({ log, id, onClose, color = "blue" }) => {
+export const CompleteRopeModal = ({ log, id, onClose, color = "blue", me = "" }) => {
   const item = ROPE_ITEMS.find((r) => r.id === id) || ROPE_ITEMS[0];
   const [ropes, setRopes] = useState(() => ({ [id]: { ...fromSavedRope(log[id]), nonDisponibile: false, motivo: "" } }));
   const [err, setErr] = useState("");
@@ -27,7 +29,13 @@ export const CompleteRopeModal = ({ log, id, onClose, color = "blue" }) => {
     setBusy(true);
     setErr("");
     try {
-      await updateDoc(doc(db, "artifacts", appId, "public", "data", "maintenance_logs", log.id), { [id]: toSavedRope(r) });
+      const upd = { [id]: toSavedRope(r) };
+      // nella storia delle modifiche dell'intervento: chi ha aggiunto i dati e quando
+      const edits = withEdit(log, diffLog(log, upd), me);
+      if (edits) upd.edits = edits;
+      await updateDoc(doc(db, "artifacts", appId, "public", "data", "maintenance_logs", log.id), upd);
+      // lo Storico (e il promemoria in cima) si aggiornano subito
+      logsChanged();
       onClose(true);
     } catch (x) {
       setErr("Non salvato: " + describeError(x));

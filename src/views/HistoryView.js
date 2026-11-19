@@ -11,6 +11,7 @@ import {
   PenLine,
   Printer,
   Lock,
+  AlertTriangle,
 } from "lucide-react";
 import { isAdminPassword } from "../passwords";
 import { Avatar } from "../components/Avatar";
@@ -148,6 +149,16 @@ export const HistoryView = ({
   // ---------------------------------------------------------
 
   const meKey = String(me || "").trim().toLowerCase();
+  // fune / catena sostituite da me (tecnico che ha scritto l'intervento) con i dati ancora da completare
+  const myMissing = useMemo(() => {
+    if (!meKey) return [];
+    const out = [];
+    logs.forEach((l) => {
+      if (String(l.technician || "").trim().toLowerCase() !== meKey) return;
+      ROPE_ITEMS.forEach(({ id }) => l[id] && ropeIncomplete(l[id], id) && out.push({ log: l, id }));
+    });
+    return out.slice(0, 10);
+  }, [logs, meKey]);
   // N. assistenza (riparte ogni anno): «5» = i n. 5 di tutti gli anni, «5/2027» solo quello del 2027
   // ricerca che perdona gli errori di battitura («biachi» trova Bianchi): vedi fuzzy.js
   const filtered = useMemo(() => {
@@ -264,6 +275,27 @@ export const HistoryView = ({
           <span className="self-center ml-auto text-xs font-bold text-slate-400">{filtered.length} interventi</span>
         )}
       </div>
+      {!readOnly && myMissing.length > 0 && (
+        <div className="rounded-3xl bg-amber-50 border-2 border-amber-300 p-4 space-y-2" data-section="rope-missing">
+          <p className="font-black text-amber-900 flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5 shrink-0" /> {myMissing.length === 1 ? "Ti mancano i dati di una fune o catena" : `Ti mancano i dati di ${myMissing.length} funi o catene`}
+          </p>
+          {myMissing.map(({ log, id }) => (
+            <button key={log.id + id} type="button" onClick={() => setCompleting({ log, id })} data-action="rope-missing" className="w-full text-left rounded-2xl bg-white border border-amber-200 px-3 py-2 flex items-center gap-2 active:scale-[0.99]">
+              <span className="flex-1 min-w-0">
+                <span className="block text-sm font-black text-slate-800 truncate">
+                  {id === "fune" ? "Fune" : "Catena"} · {log.customer} · gru {log.machineId}
+                </span>
+                <span className="block text-[11px] font-semibold text-slate-500 truncate">
+                  {log.dateString}
+                  {log[id] && log[id].motivo ? ` · ${log[id].motivo}` : ""}
+                </span>
+              </span>
+              <span className="shrink-0 rounded-full bg-amber-600 text-white px-3 py-1.5 text-xs font-black">Completa</span>
+            </button>
+          ))}
+        </div>
+      )}
       <div
         className={isMobile ? "" : `rounded-3xl overflow-hidden shadow-xl ${getProPanelClass(color)}`}
       >
@@ -613,7 +645,7 @@ export const HistoryView = ({
           </div>
         )}
       </div>
-      {completing && <CompleteRopeModal log={completing.log} id={completing.id} color={color} onClose={() => setCompleting(null)} />}
+      {completing && <CompleteRopeModal log={completing.log} id={completing.id} color={color} me={me} onClose={() => setCompleting(null)} />}
       {isDeleting && (
         <DeleteConfirmDialog
           onConfirm={confirmDelete}
