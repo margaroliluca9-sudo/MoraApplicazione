@@ -63,18 +63,19 @@ const check = (label, got, want) => {
   check("Commerciale: riquadro nella mia area di Luca", await has(p, '[data-area-tile="sales"]'), true);
   await clickSel(p, '[data-area-tile="sales"]');
   await wait(p, 500);
-  await clickSel(p, '[data-sales-tab="wait"]');
-  await wait(p, 300);
-  check("Commerciale: punto della situazione e pratica di Marco", await p.evaluate(() => document.querySelectorAll("[data-sales-sum]").length === 4 && !!document.querySelector('[data-sales-item="s1"]')), true);
-  await p.evaluate(() => document.querySelector('[data-sales-item="s1"]').click());
+  check("Commerciale: la riga di Marco in lista", await p.evaluate(() => /BIANCHI LAMIERE: Paranco nuovo/.test((document.querySelector('[data-sales-item="s1"]') || {}).innerText || "")), true);
+  await p.fill('[data-sales-input="new"]', "Rossi: richiamare per il preventivo della fune");
+  await clickSel(p, '[data-action="sales-add"]');
   await wait(p, 500);
-  check("Commerciale: la pratica si apre con il diario", await p.evaluate(() => !!document.querySelector('[data-section="sales-item"]') && document.querySelectorAll("[data-sales-entry]").length === 1), true);
+  check("Commerciale: riga aggiunta per Luca", await p.evaluate(() => (window.__fakeDB.sales_items || []).some((x) => x.title === "Rossi: richiamare per il preventivo della fune" && x.owner === "luca")), true);
+  await p.evaluate(() => document.querySelector('[data-sales-item="s1"] [data-action="sales-open"]').click());
+  await wait(p, 400);
+  check("Commerciale: la riga si apre con le note", await p.evaluate(() => !!document.querySelector('[data-section="sales-item"]') && document.querySelectorAll("[data-sales-entry]").length === 1), true);
   await p.evaluate(() => document.querySelector('[data-section="sales-item"] [aria-label="Chiudi"]').click());
   await wait(p, 300);
-  await clickSel(p, '[data-action="sales-new"]');
-  await wait(p, 300);
-  check("Commerciale: modulo nuova pratica", await has(p, '[data-section="sales-form"]'), true);
-  await p.evaluate(() => document.querySelector('[data-section="sales-form"] [aria-label="Chiudi"]').click());
+  await p.evaluate(() => document.querySelector('[data-sales-item="s1"] [data-action="sales-toggle"]').click());
+  await wait(p, 500);
+  check("Commerciale: spuntata come fatta", await p.evaluate(() => window.__fakeDB.sales_items.find((x) => x.id === "s1").status), "done");
   await home(p);
   await wait(p, 500);
   // ricerca che perdona gli errori

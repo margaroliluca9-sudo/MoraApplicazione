@@ -621,7 +621,6 @@ export const DashboardView = ({
           inline={areaTab}
           areaTiles={layoutConfig?.areaTiles || null}
           salesCfg={layoutConfig || null}
-          customers={customers || []}
           key={area}
           me={currentTechName}
           logs={logs}

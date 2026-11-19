@@ -73,7 +73,6 @@ export const PersonalAreaModal = ({
   initialPanel = null,
   areaTiles = null,
   salesCfg = null, // layoutConfig: chi vede il Commerciale
-  customers = [],
   inline = false, // pagina normale (scheda «Mia area», come lo Storico) invece che una finestra sopra la Home
 }) => {
   // parti accese o spente dall'admin
@@ -152,7 +151,7 @@ export const PersonalAreaModal = ({
         onNewReport={(data) => window.dispatchEvent(new CustomEvent("mora-new-report", { detail: data }))}
       />;
   else if (panel === "sales" && salesOn)
-    body = <SalesPanel me={me} items={sales} users={salesUsers(salesCfg)} customers={customers} logs={logs} color={color} onBack={back} onClose={closeX} />;
+    body = <SalesPanel me={me} items={sales} users={salesUsers(salesCfg)} color={color} onBack={back} onClose={closeX} />;
   else if (panel === "year" && yearToShow()) body = <YearPanel me={me} logs={logs} year={yearToShow()} color={color} onBack={back} onClose={closeX} />;
   else if (panel === "profile") body = <ProfilePanel me={me} technicians={technicians} color={color} onBack={back} onClose={closeX} />;
   else if (panel === "settings") body = <SettingsPanel me={me} color={color} onBack={back} onClose={closeX} hoursAllowed={on("hours")} />;
@@ -221,9 +220,7 @@ export const PersonalAreaModal = ({
               <span className="flex-1 min-w-0">
                 <span className="block font-black text-lg leading-tight">Commerciale</span>
                 <span className={`block text-sm font-semibold truncate ${salesSum.late ? "text-red-300" : "text-white/80"}`}>
-                  {salesSum.open
-                    ? `${salesSum.due} da fare oggi${salesSum.late ? ` (${salesSum.late} in ritardo)` : ""} · ${salesSum.wait} in attesa · ${salesSum.open} aperte`
-                    : "Preventivi, richieste e chiamate dei clienti"}
+                  {salesSum.open ? `${salesSum.open} da fare${salesSum.late ? ` · ${salesSum.late} in ritardo` : salesSum.due ? ` · ${salesSum.due} per oggi` : ""}` : "La lista delle cose da fare con i clienti"}
                 </span>
               </span>
               <ChevronRight className="w-5 h-5 opacity-80 shrink-0" />
