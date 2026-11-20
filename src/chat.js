@@ -7,8 +7,9 @@
 //  .../public/data/push_subscriptions  telefoni iscritti alle notifiche
 // Conversazioni: "group" (tutti) oppure "dm:anna|marco" (nomi in minuscolo, in ordine).
 // Le notifiche le spedisce il "postino" /api/notify (cartella api/, gira su Vercel).
-import { collection, doc, serverTimestamp } from "firebase/firestore";
-import { addDoc, setDoc, deleteDoc, updateDoc } from "./tracked";
+// scritture dirette di Firebase (non quelle di tracked.js): un messaggio risulta mandato solo quando
+// l'ha ricevuto il server, così la notifica ai colleghi parte quando il messaggio c'è davvero
+import { collection, doc, serverTimestamp, addDoc, setDoc, deleteDoc, updateDoc } from "firebase/firestore";
 import { getDocs } from "./metered";
 import { db, appId } from "./firebase";
 

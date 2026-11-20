@@ -2,8 +2,9 @@
 // Raccolta a sé (wear_reports): NON tocca gli interventi. Un documento per verbale:
 //   { at, day, type: "fune"|"catena", esito, level, rep (JSON del verbale), crane { customerName, matricola, type, capacity }, tech, owner }
 // Si leggono solo aprendo «Fune e catena» (gli ultimi 20).
-import { collection, query, orderBy, limit, doc, waitForPendingWrites } from "firebase/firestore";
-import { addDoc, deleteDoc } from "./tracked";
+// scritture dirette di Firebase (non quelle di tracked.js): il verbale esce dai «da mandare» solo quando
+// l'ha ricevuto il server
+import { collection, query, orderBy, limit, doc, waitForPendingWrites, addDoc, deleteDoc } from "firebase/firestore";
 import { getDocs } from "./metered";
 import { db, appId } from "./firebase";
 import { key } from "./chat";
