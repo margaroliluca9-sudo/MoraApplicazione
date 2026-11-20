@@ -125,7 +125,9 @@ const clean = (it) => ({
   kind: KINDS.some((k) => k.id === it.kind) ? it.kind : "other",
   status: STATUSES.some((s) => s.id === it.status) ? it.status : "todo",
   owner: key(it.owner),
-  amount: Number(String(it.amount == null ? "" : it.amount).replace(/\./g, "").replace(",", ".")) || null,
+  // già numero (pratica salvata): resta com'è; scritto a mano: «1.250,50» → 1250.5
+  // (prima un importo salvato con i centesimi, 1250.5, a ogni spunta diventava 12505)
+  amount: typeof it.amount === "number" ? it.amount || null : Number(String(it.amount == null ? "" : it.amount).replace(/\./g, "").replace(",", ".")) || null,
   contact: String(it.contact || "").trim(),
   phone: String(it.phone || "").trim(),
   nextDate: it.nextDate || "",
