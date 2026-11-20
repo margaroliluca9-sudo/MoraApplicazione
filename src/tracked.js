@@ -71,6 +71,42 @@ const announce = (ops) => {
   }, 30);
 };
 
+// SENZA RETE: Firebase tiene la scrittura sul telefono e la manda da sola quando torna la rete, ma la sua
+// promessa si chiude solo quando risponde il server. Senza rete (o con pochissimo segnale) i pulsanti
+// «Salva» restavano fermi su «Salvataggio…» e la bozza del rapporto non si cancellava (rischio di salvarlo
+// due volte). Qui la scrittura vale come fatta appena è in coda sul telefono; un errore che arriva dopo
+// finisce solo nella console.
+const QUEUED_AFTER_MS = 10000;
+const lateError = (e) => console.error("Scrittura non riuscita:", e);
+const queued = (p) => {
+  if (!p || typeof p.then !== "function") return p;
+  if (typeof navigator !== "undefined" && navigator.onLine === false) {
+    p.catch(lateError);
+    return Promise.resolve();
+  }
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const t = setTimeout(() => {
+      settled = true;
+      resolve();
+    }, QUEUED_AFTER_MS);
+    p.then(
+      (v) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(t);
+        resolve(v);
+      },
+      (e) => {
+        if (settled) return lateError(e);
+        settled = true;
+        clearTimeout(t);
+        return reject(e);
+      }
+    );
+  });
+};
+
 export const writeBatch = (database = db) => {
   const b = fsWriteBatch(database);
   const ops = [];
@@ -98,7 +134,7 @@ export const writeBatch = (database = db) => {
       notes(ops).forEach((n) => b.set(changesRef(), n));
       const p = b.commit();
       announce(ops);
-      return p;
+      return queued(p);
     },
   };
   return w;
@@ -112,13 +148,18 @@ const single = (ref, del, apply) => {
   return b.commit();
 };
 
-export const setDoc = (ref, data, opts) => single(ref, false, (b) => b.set(ref, data, opts)) || (opts ? fsSetDoc(ref, data, opts) : fsSetDoc(ref, data));
-export const updateDoc = (ref, ...args) => single(ref, false, (b) => b.update(ref, ...args)) || fsUpdateDoc(ref, ...args);
-export const deleteDoc = (ref) => single(ref, true, (b) => b.delete(ref)) || fsDeleteDoc(ref);
+export const setDoc = (ref, data, opts) => single(ref, false, (b) => b.set(ref, data, opts)) || queued(opts ? fsSetDoc(ref, data, opts) : fsSetDoc(ref, data));
+export const updateDoc = (ref, ...args) => single(ref, false, (b) => b.update(ref, ...args)) || queued(fsUpdateDoc(ref, ...args));
+export const deleteDoc = (ref) => single(ref, true, (b) => b.delete(ref)) || queued(fsDeleteDoc(ref));
 export const addDoc = async (collRef, data) => {
   const seg = String((collRef && collRef.path) || "").split("/");
-  if (!TRACKED.includes(seg[seg.length - 1])) return fsAddDoc(collRef, data);
   const r = doc(collRef);
+  // anche le raccolte non segnate: il nome del documento si decide sul telefono, così senza rete
+  // si ha subito il riferimento (fsAddDoc lo darebbe solo dopo la risposta del server)
+  if (!TRACKED.includes(seg[seg.length - 1])) {
+    await queued(fsSetDoc(r, data));
+    return r;
+  }
   await setDoc(r, data);
   return r;
 };
