@@ -221,7 +221,7 @@ export const PersonalAreaModal = ({
               </span>
               <span className="flex-1 min-w-0">
                 <span className="block font-black text-lg leading-tight">Commerciale</span>
-                <span className={`block text-sm font-semibold truncate ${salesSum.late ? "text-red-300" : "text-white/80"}`}>
+                <span className={`block text-sm font-semibold truncate ${salesSum.late ? "text-red-400" : "text-white/80"}`}>
                   {salesSum.open ? `${salesSum.open} da fare${salesSum.late ? ` · ${salesSum.late} in ritardo` : salesSum.due ? ` · ${salesSum.due} per oggi` : ""}` : "La lista delle cose da fare con i clienti"}
                 </span>
               </span>

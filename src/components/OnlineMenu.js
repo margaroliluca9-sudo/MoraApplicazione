@@ -267,8 +267,9 @@ export const OnlineMenu = ({
                     <div
                       data-online-msg
                       className={`max-w-[80%] px-3 py-2 rounded-2xl text-sm leading-snug whitespace-pre-wrap break-words ${
-                        mine ? `bg-${color}-600 text-white rounded-br-md` : "bg-white border border-slate-200 text-slate-800 rounded-bl-md"
+                        mine ? `bg-${color}-600 text-white` : "bg-white border border-slate-200 text-slate-800 rounded-bl-md"
                       }`}
+                      style={mine ? { borderBottomRightRadius: "0.375rem" } : undefined}
                     >
                       {m.audioId && <VoicePlayer id={m.audioId} dur={m.audioDur} mine={mine} color={color} />}
                       {m.text || (m.audioId ? "" : "📷 foto")}

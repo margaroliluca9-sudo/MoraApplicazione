@@ -625,8 +625,9 @@ export const ChatModal = ({
                           tabIndex={0}
                           onClick={() => setSelected(selected === m.id ? null : m.id)}
                           className={`px-3 py-2 rounded-2xl shadow-sm cursor-pointer ${
-                            mine ? `bg-${color}-600 text-white rounded-br-md` : "bg-white text-slate-800 rounded-bl-md"
+                            mine ? `bg-${color}-600 text-white` : "bg-white text-slate-800 rounded-bl-md"
                           } ${m.pinned ? "ring-2 ring-amber-400" : ""}`}
+                          style={mine ? { borderBottomRightRadius: "0.375rem" } : undefined}
                         >
                           {!mine && conv === GROUP && !sameAuthor && (
                             <div className={`text-[11px] font-black text-${color}-700 mb-0.5`}>{m.author}</div>
