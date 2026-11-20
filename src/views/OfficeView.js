@@ -169,21 +169,27 @@ export const OfficeView = ({
     return logs.filter((log) => {
       let matches = true;
       if (startDate || endDate) {
-        const [d, m, y] = log.dateString.split("/").map(Number);
+        const [d, m, y] = String(log.dateString || "").split("/").map(Number);
         const logDate = new Date(y, m - 1, d);
-        if (startDate && logDate < new Date(startDate)) matches = false;
-        if (endDate && logDate > new Date(endDate)) matches = false;
+        // «aaaa-mm-gg» del calendario: mezzanotte ITALIANA (new Date("aaaa-mm-gg") è l'una di notte in Italia
+        // e lasciava fuori gli interventi del primo giorno scelto)
+        const dayOf = (iso) => {
+          const [yy, mm, dd] = iso.split("-").map(Number);
+          return new Date(yy, mm - 1, dd);
+        };
+        if (startDate && logDate < dayOf(startDate)) matches = false;
+        if (endDate && logDate > dayOf(endDate)) matches = false;
       }
       if (
         matches &&
         selectedCustomer &&
-        !log.customer.includes(selectedCustomer.toUpperCase())
+        !String(log.customer || "").includes(selectedCustomer.toUpperCase())
       )
         matches = false;
       if (
         matches &&
         selectedMachine &&
-        !log.machineId.includes(selectedMachine.toUpperCase())
+        !String(log.machineId || "").includes(selectedMachine.toUpperCase())
       )
         matches = false;
       if (matches && selectedTech) {
