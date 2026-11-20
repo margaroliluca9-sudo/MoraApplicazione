@@ -294,7 +294,7 @@ export const DriveAdmin = ({ customers = [], machines = [], color = "blue" }) =>
       <div className="flex flex-wrap gap-2 items-center">
         <div className="flex-1 min-w-[180px] flex items-center gap-2 border border-slate-200 rounded-lg px-3 bg-white">
           <Search className="w-4 h-4 text-slate-400" />
-          <input className="flex-1 py-2 text-sm outline-none bg-transparent" placeholder="Cerca cliente o paese…" value={q} onChange={(e) => setQ(e.target.value)} data-drive-search />
+          <input className="flex-1 py-2 text-sm outline-none bg-transparent" placeholder="Cerca cliente…" value={q} onChange={(e) => setQ(e.target.value)} data-drive-search />
         </div>
         {[
           ["all", `Tutti (${customers.length})`],

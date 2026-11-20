@@ -407,7 +407,7 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
       points: [
         "Calendario degli interventi del mese o dell'anno.",
         "Ricerca per N. assistenza, con l'anno (il numero riparte ogni anno): esce prima il numero esatto.",
-        "Report in PDF o file Excel, filtrando per date, cliente, gru e tecnico.",
+        "Report in PDF o file Excel, filtrando per date, cliente, gru e tecnico. La prima e l'ultima data scelte sono comprese: scegliendo dal 1 al 30 escono anche gli interventi del giorno 1.",
       ],
     },
     {
@@ -568,6 +568,7 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
         "L'app si apre anche senza internet (in un capannone, in cantina): usa la copia salvata sul telefono.",
         "Vedi La mia area (note, calendario, promemoria, contatti), gli interventi, i clienti e le gru com'erano l'ultima volta che c'era la rete: la striscia gialla in alto dice «aggiornati oggi alle…».",
         "Puoi scrivere rapporti, note e impegni: partono da soli appena torna la rete. Le novità dei colleghi arrivano quando torni online.",
+        "Senza rete «Salva» non resta più fermo su «Salvataggio…»: il rapporto (o la nota, l'impegno, la riga del Commerciale) è già salvato sul telefono, compare il riepilogo e la bozza si cancella, così non lo salvi due volte. La striscia in alto conta i rapporti ancora da mandare.",
         "Anche i controlli di fune, catena e ganci si fanno senza rete: calcoli, disegni e verbale PDF funzionano lo stesso. Il verbale stampato si salva sul telefono e parte da solo quando torna la rete: la striscia in alto dice quanti rapporti e verbali sono ancora da mandare e nei «Verbali stampati» quelli non ancora partiti hanno l'etichetta gialla «da mandare». Il verbale unico della gru in preparazione resta sul telefono finché non lo stampi.",
         "Le foto dei rapporti degli ultimi mesi restano sul telefono e si vedono anche senza rete; quelle più vecchie, se non le hai mai aperte, compaiono quando torna la rete.",
         "Serve averla aperta almeno una volta con la rete su quel telefono.",
