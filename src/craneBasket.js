@@ -57,7 +57,9 @@ export const repName = (rep) => {
 export const basketRep = (b) => {
   const reps = b.items.map((i) => i.rep);
   const level = reps.some((r) => r.level === "scarto") ? "scarto" : reps.some((r) => r.level === "attenzione") ? "attenzione" : "ok";
-  const bad = reps.filter((r) => r.esito && /NON/.test(r.esito));
+  // fune, catena e brache dicono «DA SCARTARE», ganci e paranchi «NON IDONEO»: contano tutti e due
+  // (prima una fune da scartare lasciava la gru «IDONEA» con «Tutti i controlli entro i limiti»)
+  const bad = reps.filter((r) => r.level === "scarto" || /NON|SCART/i.test(String(r.esito || "")));
   return {
     type: "gru",
     title: "VERBALE CONTROLLO GRU",
