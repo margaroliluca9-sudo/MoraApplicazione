@@ -57,6 +57,12 @@ const check = (label, got, want) => {
     await home(p);
     await wait(p, 500);
   }
+  // Storico: Luca (admin) vede l'ora in cui è stato inserito ogni intervento
+  await clickSel(p, '[data-nav="history"]');
+  await wait(p, 900);
+  check("Storico: ora di inserimento per l'admin", await p.evaluate(() => /^\d\d:\d\d$/.test(((document.querySelector("[data-log-time]") || {}).textContent || "").trim())), true);
+  await home(p);
+  await wait(p, 400);
   // COMMERCIALE: Luca lo vede (con la pratica di Marco), la apre, apre «Nuova»; Ivano non lo vede
   await clickSel(p, '[data-nav="area"]');
   await wait(p, 900);

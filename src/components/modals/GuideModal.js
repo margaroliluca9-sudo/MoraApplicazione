@@ -528,6 +528,7 @@ const sectionsFor = ({ hasVan, chatEnabled, isAdmin }) =>
         "Sui tablet stretti il menu mostra solo le icone con il nome sotto.",
         "Anche «Fune e catena» ha la sua voce nel menu e la sua scheda in alto. Dentro, la scheda «Ganci» (Ganci paranchi) ha Kito KQ, Kito KF e Donati DMK; la catena del paranco con i limiti del costruttore è nella scheda «Catena».",
         "Storico: sui tablet e sugli schermi non molto larghi gli interventi sono a riquadri, come sul telefono (con stampa, matita e cestino sempre a portata); la tabella con le colonne c'è sugli schermi larghi.",
+        "Storico, solo per l'admin (Luca): sotto la data di ogni intervento c'è l'ora in cui è stato inserito nell'app (in viola, con l'orologio), sia nei riquadri sia nella tabella. Gli altri tecnici l'ora non la vedono.",
         "Quando cambi pagina, la pagina nuova parte sempre dall'alto.",
       ],
     },

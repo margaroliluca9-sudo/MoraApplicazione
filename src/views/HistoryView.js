@@ -72,6 +72,15 @@ const TechFaces = ({ log, technicians = [] }) => {
   );
 };
 
+// ora in cui l'intervento è stato inserito nell'app (solo per l'admin): «14:32»
+const savedTime = (log) => {
+  const c = log && log.createdAt;
+  const ms = !c ? 0 : c.seconds ? c.seconds * 1000 : typeof c.toMillis === "function" ? c.toMillis() : Number(c) || 0;
+  if (!ms) return "";
+  const d = new Date(ms);
+  return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+};
+
 export const HistoryView = ({
   logs,
   machines,
@@ -337,7 +346,14 @@ export const HistoryView = ({
                       >
                         {log.customer}
                       </h4>
-                      <span className="text-xs font-bold text-slate-500 whitespace-nowrap bg-slate-100 rounded-full px-2.5 py-1 tabular-nums shrink-0">{log.dateString}</span>
+                      <span className="flex flex-col items-end gap-1 shrink-0">
+                        <span className="text-xs font-bold text-slate-500 whitespace-nowrap bg-slate-100 rounded-full px-2.5 py-1 tabular-nums">{log.dateString}</span>
+                        {isAdmin && savedTime(log) && (
+                          <span className="text-[11px] font-black text-purple-700 flex items-center gap-1 tabular-nums" title="Ora in cui è stato inserito (solo admin)" data-log-time>
+                            <Clock className="w-3.5 h-3.5" /> {savedTime(log)}
+                          </span>
+                        )}
+                      </span>
                     </div>
                     <button
                       type="button"
@@ -513,18 +529,9 @@ export const HistoryView = ({
                   <tr key={log.id} className="hover:bg-slate-50 group">
                     <td className="px-4 py-4 text-xs font-bold text-slate-500 align-top border-r border-slate-100 overflow-hidden">
                       <div className="whitespace-nowrap">{log.dateString}</div>
-                      {isAdmin && log.createdAt && (
-                        <div
-                          className="text-[9px] text-purple-600 font-bold mt-1 flex items-center gap-1"
-                          title="Orario di inserimento (Admin)"
-                        >
-                          <Clock className="w-3 h-3" />{" "}
-                          {new Date(
-                            log.createdAt.seconds * 1000
-                          ).toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
+                      {isAdmin && savedTime(log) && (
+                        <div className="text-[9px] text-purple-600 font-bold mt-1 flex items-center gap-1" title="Orario di inserimento (Admin)" data-log-time>
+                          <Clock className="w-3 h-3" /> {savedTime(log)}
                         </div>
                       )}
                       <div className="flex flex-col gap-1 mt-1.5 items-start">
