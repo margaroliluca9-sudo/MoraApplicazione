@@ -2,12 +2,12 @@
 // In cima si scrive una riga («Rossi: richiamare per il preventivo della fune»), si sceglie chi la segue e quando;
 // ogni riga ha la spunta «fatto». Toccando la riga: le note di chi l'ha seguita, con data e nome.
 import React, { useMemo, useState } from "react";
-import { Check, Trash2, Plus, Bell, FileSpreadsheet } from "lucide-react";
+import { Check, Trash2, Plus, Bell, FileSpreadsheet, Search, Wrench } from "lucide-react";
 import { XLSX_TYPE } from "../../xlsx";
 import { PanelHeader, Sheet, PrimaryBtn, GhostBtn, Empty, INPUT } from "./PersonalUi";
 import { key } from "../../chat";
 import { todayIso, relDay } from "../../personal";
-import { isOpen, dueState, lastEntry, sortItems, shortDate, isoShort, plusDays, nextMonday, nameOf, saveItem, withEntry, removeItem, salesXlsx, salesFileName } from "../../sales";
+import { isOpen, dueState, lastEntry, sortItems, shortDate, isoShort, plusDays, nextMonday, nameOf, saveItem, withEntry, removeItem, salesXlsx, salesFileName, jobsFromLogs, QUICK } from "../../sales";
 
 const WHEN = () => [
   ["Oggi", todayIso()],
@@ -212,7 +212,49 @@ const PeopleSheet = ({ me, users, allTechs, onUsers, onClose, color }) => {
   );
 };
 
-export const SalesPanel = ({ me, items = [], users = [], allTechs = [], onUsers = null, color = "blue", onBack, onClose }) => {
+// «DAGLI INTERVENTI»: lavori consigliati o da fare scritti nei rapporti e non ancora fatti. Solo da leggere:
+// non tocca la lista. Ricerca per cliente, gru, parola o tecnico.
+const JobsTab = ({ jobs }) => {
+  const [q, setQ] = useState("");
+  const words = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const shown = words.length ? jobs.filter((j) => { const t = `${j.log.customer} gru ${j.log.machineId} ${j.sentence} ${j.log.technician || ""} ${(j.log.additionalTechnicians || []).join(" ")}`.toLowerCase(); return words.every((w) => t.includes(w)); }) : jobs;
+  return (
+    <div className="flex-1 overflow-y-auto p-4 space-y-3" data-section="sales-jobs">
+      <p className="text-sm text-slate-600 leading-snug">
+        Lavori <b>consigliati o da fare</b> scritti nei rapporti degli ultimi 12 mesi e <b>non ancora fatti</b>: se un rapporto dopo, sulla stessa gru, dice che è stato fatto (per esempio «sostituita fune»), qui non compare. Serve per proporre il lavoro al cliente; non cambia niente nella vostra lista.
+      </p>
+      <div className="relative">
+        <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+        <input className={`${INPUT} pl-9`} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cerca cliente, gru, lavoro o tecnico…" aria-label="Cerca nei lavori dagli interventi" data-sales-input="jobs-search" />
+      </div>
+      {!shown.length && <Empty>{jobs.length ? "Nessun lavoro trovato con queste parole." : "Nessun lavoro consigliato in sospeso nei rapporti degli ultimi 12 mesi."}</Empty>}
+      {shown.map((j) => (
+        <div key={j.id} className="bg-white rounded-2xl border border-slate-200 p-3 space-y-1" data-sales-job>
+          <p className="flex items-start gap-2">
+            <Wrench className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+            <span className="flex-1 min-w-0">
+              <span className="block font-black text-slate-800 leading-tight">{j.log.customer}</span>
+              <span className="block text-xs font-bold text-slate-500">
+                Gru {j.log.machineId}
+                {j.log.machineType ? ` · ${j.log.machineType}` : ""}
+              </span>
+            </span>
+          </p>
+          <p className="text-sm text-slate-800 leading-snug">{j.sentence}</p>
+          <p className="text-[11px] font-semibold text-slate-500">
+            Rapporto del {j.log.dateString} · {[j.log.technician, ...(j.log.additionalTechnicians || [])].filter(Boolean).join(", ")}
+          </p>
+        </div>
+      ))}
+    </div>
+  );
+};
+
+export const SalesPanel = ({ me, items: all = [], logs = [], users = [], allTechs = [], onUsers = null, color = "blue", onBack, onClose }) => {
+  const items = all;
+  const [q, setQ] = useState("");
+  const [tab, setTab] = useState("list"); // list | jobs
+  const jobs = useMemo(() => jobsFromLogs(logs), [logs]);
   const [people, setPeople] = useState(false);
   const [text, setText] = useState("");
   const [owner, setOwner] = useState(key(me));
@@ -222,8 +264,15 @@ export const SalesPanel = ({ me, items = [], users = [], allTechs = [], onUsers 
   const [openId, setOpenId] = useState(null);
   const [busy, setBusy] = useState(false);
   const others = users.filter((u) => u !== key(me));
-  const todo = useMemo(() => sortItems(items.filter((it) => isOpen(it) && (who === "all" || key(it.owner) === who))), [items, who]);
-  const done = useMemo(() => sortItems(items.filter((it) => !isOpen(it) && (who === "all" || key(it.owner) === who))).slice(0, 30), [items, who]);
+  // ricerca: cerca nel testo, nelle note e nel nome di chi la segue; trova anche le righe già fatte
+  const words = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const match = (it) => {
+    if (!words.length) return true;
+    const t = [it.customer, it.title, nameOf(it.owner), ...(it.entries || []).map((e) => e.text)].join(" ").toLowerCase();
+    return words.every((w) => t.includes(w));
+  };
+  const todo = useMemo(() => sortItems(items.filter((it) => isOpen(it) && (who === "all" || key(it.owner) === who) && match(it))), [items, who, q]);
+  const done = useMemo(() => sortItems(items.filter((it) => !isOpen(it) && (who === "all" || key(it.owner) === who) && match(it))).slice(0, 30), [items, who, q]);
   const add = async () => {
     if (!text.trim() || busy) return;
     setBusy(true);
@@ -274,6 +323,21 @@ export const SalesPanel = ({ me, items = [], users = [], allTechs = [], onUsers 
         color={color}
         action={onUsers ? { id: "sales-people", label: "Persone", onClick: () => setPeople(true) } : null}
       />
+      <div className="px-4 pt-3 shrink-0">
+      <div className="flex gap-1 p-1 bg-slate-200/70 rounded-xl" data-section="sales-tabs">
+        {[
+          ["list", `La nostra lista (${items.filter(isOpen).length})`],
+          ["jobs", `Dagli interventi (${jobs.length})`],
+        ].map(([t, l]) => (
+          <button key={t} type="button" data-sales-tab={t} onClick={() => setTab(t)} className={`flex-1 h-10 rounded-lg text-sm font-black ${tab === t ? "bg-white text-slate-800 shadow-sm" : "text-slate-500"}`}>
+            {l}
+          </button>
+        ))}
+      </div>
+      </div>
+      {tab === "jobs" ? (
+        <JobsTab jobs={jobs} />
+      ) : (
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         <section className="bg-white rounded-2xl border-2 border-blue-200 p-3 space-y-2" data-section="sales-add">
           <textarea
@@ -285,6 +349,19 @@ export const SalesPanel = ({ me, items = [], users = [], allTechs = [], onUsers 
             aria-label="Cosa c'è da fare"
             data-sales-input="new"
           />
+          <div className="flex flex-wrap gap-1.5" data-section="sales-quick">
+            {QUICK.map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setText((v) => (v.trim() ? `${v.trim().replace(/[.:]$/, "")}: ${t.toLowerCase()}` : `${t}`))}
+                className="py-1.5 px-2.5 rounded-full bg-blue-50 border border-blue-200 text-blue-800 text-xs font-bold"
+                data-sales-quick={t}
+              >
+                + {t}
+              </button>
+            ))}
+          </div>
           <div className="flex flex-wrap gap-1.5">
             {users.map((u) => (
               <Chip key={u} on={owner === u} onClick={() => setOwner(u)} data={"new-owner-" + u}>
@@ -304,6 +381,11 @@ export const SalesPanel = ({ me, items = [], users = [], allTechs = [], onUsers 
           </PrimaryBtn>
         </section>
 
+        <div className="relative" data-section="sales-search">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+          <input className={`${INPUT} pl-9`} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cerca un cliente, una parola, una nota…" aria-label="Cerca nella lista" data-sales-input="search" />
+        </div>
+
         <div className="flex flex-wrap gap-1.5" data-section="sales-who">
           <Chip on={who === "all"} onClick={() => setWho("all")} data="who-all">
             Tutte ({items.filter(isOpen).length})
@@ -316,7 +398,7 @@ export const SalesPanel = ({ me, items = [], users = [], allTechs = [], onUsers 
         </div>
 
         <div className="space-y-2" data-section="sales-list">
-          {!todo.length && <Empty>{items.length ? "Niente da fare qui." : "La lista è vuota. Scrivi qui sopra la prima cosa da fare: la vedrete tutti e due."}</Empty>}
+          {!todo.length && <Empty>{words.length ? "Nessuna cosa da fare trovata con queste parole." : items.length ? "Niente da fare qui." : "La lista è vuota. Scrivi qui sopra la prima cosa da fare: la vedrete tutti e due."}</Empty>}
           {todo.map((it) => (
             <Row key={it.id} it={it} me={me} onToggle={() => toggle(it)} onOpen={() => setOpenId(it.id)} />
           ))}
@@ -325,9 +407,9 @@ export const SalesPanel = ({ me, items = [], users = [], allTechs = [], onUsers 
         {done.length > 0 && (
           <div className="space-y-2">
             <button type="button" onClick={() => setShowDone((v) => !v)} className="text-sm font-black text-slate-500 min-h-10" data-action="sales-show-done">
-              {showDone ? "Nascondi le fatte" : `Fatte (${done.length})`}
+              {showDone && !words.length ? "Nascondi le fatte" : `Fatte (${done.length})`}
             </button>
-            {showDone && done.map((it) => <Row key={it.id} it={it} me={me} onToggle={() => toggle(it)} onOpen={() => setOpenId(it.id)} />)}
+            {(showDone || words.length > 0) && done.map((it) => <Row key={it.id} it={it} me={me} onToggle={() => toggle(it)} onOpen={() => setOpenId(it.id)} />)}
           </div>
         )}
         {items.length > 0 && (
@@ -336,6 +418,7 @@ export const SalesPanel = ({ me, items = [], users = [], allTechs = [], onUsers 
           </button>
         )}
       </div>
+      )}
       {opened && <RowSheet me={me} users={users} item={opened} color={color} onClose={() => setOpenId(null)} />}
       {people && <PeopleSheet me={me} users={users} allTechs={allTechs} onUsers={onUsers} color={color} onClose={() => setPeople(false)} />}
     </div>

@@ -153,7 +153,7 @@ export const PersonalAreaModal = ({
         onNewReport={(data) => window.dispatchEvent(new CustomEvent("mora-new-report", { detail: data }))}
       />;
   else if (panel === "sales" && salesOn)
-    body = <SalesPanel me={me} items={sales} users={salesUsers(salesCfg)} allTechs={allTechs} onUsers={onSalesUsers} color={color} onBack={back} onClose={closeX} />;
+    body = <SalesPanel me={me} items={sales} logs={logs} users={salesUsers(salesCfg)} allTechs={allTechs} onUsers={onSalesUsers} color={color} onBack={back} onClose={closeX} />;
   else if (panel === "year" && yearToShow()) body = <YearPanel me={me} logs={logs} year={yearToShow()} color={color} onBack={back} onClose={closeX} />;
   else if (panel === "profile") body = <ProfilePanel me={me} technicians={technicians} color={color} onBack={back} onClose={closeX} />;
   else if (panel === "settings") body = <SettingsPanel me={me} color={color} onBack={back} onClose={closeX} hoursAllowed={on("hours")} />;

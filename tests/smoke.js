@@ -91,6 +91,25 @@ const check = (label, got, want) => {
   await wait(p, 500);
   check("Commerciale: Ivano aggiunto", await p.evaluate(() => JSON.stringify((window.__fakeDB.settings.find((x) => x.id === "layout") || {}).salesUsers)), '["luca","marco","ivano"]');
   check("Commerciale: spuntata come fatta", await p.evaluate(() => window.__fakeDB.sales_items.find((x) => x.id === "s1").status), "done");
+  await p.fill('[data-sales-input="search"]', "paranco");
+  await wait(p, 300);
+  check("Commerciale: la ricerca trova anche le fatte", await p.evaluate(() => !!document.querySelector('[data-sales-item="s1"]')), true);
+  await p.fill('[data-sales-input="search"]', "");
+  await p.fill('[data-sales-input="new"]', "Verdi");
+  await clickSel(p, '[data-sales-quick="Mandare il preventivo"]');
+  check("Commerciale: frase pronta aggiunta al testo", await p.evaluate(() => document.querySelector('[data-sales-input="new"]').value), "Verdi: mandare il preventivo");
+  await p.fill('[data-sales-input="new"]', "");
+  const wBefore = await p.evaluate(() => (window.__writes || []).length);
+  const salesBefore = await p.evaluate(() => JSON.stringify(window.__fakeDB.sales_items));
+  await clickSel(p, '[data-sales-tab="jobs"]');
+  await wait(p, 500);
+  const nJobs = await p.evaluate(() => document.querySelectorAll("[data-sales-job]").length);
+  check("Dagli interventi: ci sono lavori da proporre", nJobs > 0, true);
+  await p.fill('[data-sales-input="jobs-search"]', "zzzz");
+  await wait(p, 300);
+  check("Dagli interventi: la ricerca filtra", await p.evaluate(() => document.querySelectorAll("[data-sales-job]").length), 0);
+  check("Dagli interventi: non scrive niente", await p.evaluate((n) => (window.__writes || []).length === n, wBefore) && (await p.evaluate(() => JSON.stringify(window.__fakeDB.sales_items))) === salesBefore, true);
+  await clickSel(p, '[data-sales-tab="list"]');
   await home(p);
   await wait(p, 500);
   // ricerca che perdona gli errori
