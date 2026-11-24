@@ -1,13 +1,13 @@
 // COMMERCIALE (La mia area, solo per i tecnici abilitati): una LISTA condivisa delle cose da fare con i clienti.
 // In cima si scrive una riga («Rossi: richiamare per il preventivo della fune»), si sceglie chi la segue e quando;
 // ogni riga ha la spunta «fatto». Toccando la riga: le note di chi l'ha seguita, con data e nome.
-import React, { useMemo, useState } from "react";
-import { Check, Trash2, Plus, Bell, FileSpreadsheet, Search, Wrench } from "lucide-react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Check, Trash2, Plus, Bell, FileSpreadsheet, Search, Mic } from "lucide-react";
 import { XLSX_TYPE } from "../../xlsx";
 import { PanelHeader, Sheet, PrimaryBtn, GhostBtn, Empty, INPUT } from "./PersonalUi";
 import { key } from "../../chat";
 import { todayIso, relDay } from "../../personal";
-import { isOpen, dueState, lastEntry, sortItems, shortDate, isoShort, plusDays, nextMonday, nameOf, saveItem, withEntry, removeItem, salesXlsx, salesFileName, jobsFromLogs, QUICK } from "../../sales";
+import { isOpen, dueState, lastEntry, sortItems, shortDate, isoShort, plusDays, nextMonday, nameOf, saveItem, withEntry, removeItem, salesXlsx, salesFileName, QUICK } from "../../sales";
 
 const WHEN = () => [
   ["Oggi", todayIso()],
@@ -212,49 +212,44 @@ const PeopleSheet = ({ me, users, allTechs, onUsers, onClose, color }) => {
   );
 };
 
-// «DAGLI INTERVENTI»: lavori consigliati o da fare scritti nei rapporti e non ancora fatti. Solo da leggere:
-// non tocca la lista. Ricerca per cliente, gru, parola o tecnico.
-const JobsTab = ({ jobs }) => {
-  const [q, setQ] = useState("");
-  const words = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
-  const shown = words.length ? jobs.filter((j) => { const t = `${j.log.customer} gru ${j.log.machineId} ${j.sentence} ${j.log.technician || ""} ${(j.log.additionalTechnicians || []).join(" ")}`.toLowerCase(); return words.every((w) => t.includes(w)); }) : jobs;
+// DETTATURA: il microfono del telefono (riconoscimento vocale del browser, gratis). Se il telefono non lo
+// supporta il pulsante non compare. Il testo dettato si aggiunge a quello già scritto.
+const SpeechRec = () => (typeof window !== "undefined" && (window.SpeechRecognition || window.webkitSpeechRecognition)) || null;
+const MicButton = ({ onText }) => {
+  const [on, setOn] = useState(false);
+  const [err, setErr] = useState("");
+  const rec = useRef(null);
+  useEffect(() => () => { try { rec.current && rec.current.abort(); } catch (e) { /* già fermo */ } }, []);
+  const Rec = SpeechRec();
+  if (!Rec) return null;
+  const start = () => {
+    if (on) { try { rec.current && rec.current.stop(); } catch (e) { /* già fermo */ } return; }
+    setErr("");
+    const r = new Rec();
+    r.lang = "it-IT";
+    r.interimResults = false;
+    r.maxAlternatives = 1;
+    r.onresult = (ev) => {
+      const t = [...ev.results].map((x) => x[0].transcript).join(" ").trim();
+      if (t) onText(t.charAt(0).toUpperCase() + t.slice(1));
+    };
+    r.onerror = (ev) => setErr(ev.error === "not-allowed" || ev.error === "service-not-allowed" ? "Il microfono non è permesso: attivalo nelle impostazioni del telefono." : ev.error === "no-speech" ? "Non ho sentito niente, riprova." : "Dettatura non riuscita, riprova.");
+    r.onend = () => setOn(false);
+    rec.current = r;
+    try { r.start(); setOn(true); } catch (e) { setErr("Dettatura non riuscita, riprova."); }
+  };
   return (
-    <div className="flex-1 overflow-y-auto p-4 space-y-3" data-section="sales-jobs">
-      <p className="text-sm text-slate-600 leading-snug">
-        Lavori <b>consigliati o da fare</b> scritti nei rapporti degli ultimi 12 mesi e <b>non ancora fatti</b>: se un rapporto dopo, sulla stessa gru, dice che è stato fatto (per esempio «sostituita fune»), qui non compare. Serve per proporre il lavoro al cliente; non cambia niente nella vostra lista.
-      </p>
-      <div className="relative">
-        <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-        <input className={`${INPUT} pl-9`} value={q} onChange={(e) => setQ(e.target.value)} placeholder="Cerca cliente, gru, lavoro o tecnico…" aria-label="Cerca nei lavori dagli interventi" data-sales-input="jobs-search" />
-      </div>
-      {!shown.length && <Empty>{jobs.length ? "Nessun lavoro trovato con queste parole." : "Nessun lavoro consigliato in sospeso nei rapporti degli ultimi 12 mesi."}</Empty>}
-      {shown.map((j) => (
-        <div key={j.id} className="bg-white rounded-2xl border border-slate-200 p-3 space-y-1" data-sales-job>
-          <p className="flex items-start gap-2">
-            <Wrench className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-            <span className="flex-1 min-w-0">
-              <span className="block font-black text-slate-800 leading-tight">{j.log.customer}</span>
-              <span className="block text-xs font-bold text-slate-500">
-                Gru {j.log.machineId}
-                {j.log.machineType ? ` · ${j.log.machineType}` : ""}
-              </span>
-            </span>
-          </p>
-          <p className="text-sm text-slate-800 leading-snug">{j.sentence}</p>
-          <p className="text-[11px] font-semibold text-slate-500">
-            Rapporto del {j.log.dateString} · {[j.log.technician, ...(j.log.additionalTechnicians || [])].filter(Boolean).join(", ")}
-          </p>
-        </div>
-      ))}
-    </div>
+    <>
+      <button type="button" onClick={start} aria-label={on ? "Ferma la dettatura" : "Detta con il microfono"} className={`w-full h-11 rounded-xl text-sm font-black flex items-center justify-center gap-2 border-2 ${on ? "bg-blue-50 border-blue-400 text-blue-800 animate-pulse" : "bg-white border-slate-200 text-slate-700"}`} data-action="sales-mic">
+        <Mic className="w-5 h-5" /> {on ? "Sto ascoltando… tocca per fermare" : "Detta a voce"}
+      </button>
+      {err && <p className="text-xs font-semibold text-slate-600">{err}</p>}
+    </>
   );
 };
 
-export const SalesPanel = ({ me, items: all = [], logs = [], users = [], allTechs = [], onUsers = null, color = "blue", onBack, onClose }) => {
-  const items = all;
+export const SalesPanel = ({ me, items = [], users = [], allTechs = [], onUsers = null, color = "blue", onBack, onClose }) => {
   const [q, setQ] = useState("");
-  const [tab, setTab] = useState("list"); // list | jobs
-  const jobs = useMemo(() => jobsFromLogs(logs), [logs]);
   const [people, setPeople] = useState(false);
   const [text, setText] = useState("");
   const [owner, setOwner] = useState(key(me));
@@ -323,21 +318,6 @@ export const SalesPanel = ({ me, items: all = [], logs = [], users = [], allTech
         color={color}
         action={onUsers ? { id: "sales-people", label: "Persone", onClick: () => setPeople(true) } : null}
       />
-      <div className="px-4 pt-3 shrink-0">
-      <div className="flex gap-1 p-1 bg-slate-200/70 rounded-xl" data-section="sales-tabs">
-        {[
-          ["list", `La nostra lista (${items.filter(isOpen).length})`],
-          ["jobs", `Dagli interventi (${jobs.length})`],
-        ].map(([t, l]) => (
-          <button key={t} type="button" data-sales-tab={t} onClick={() => setTab(t)} className={`flex-1 h-10 rounded-lg text-sm font-black ${tab === t ? "bg-white text-slate-800 shadow-sm" : "text-slate-500"}`}>
-            {l}
-          </button>
-        ))}
-      </div>
-      </div>
-      {tab === "jobs" ? (
-        <JobsTab jobs={jobs} />
-      ) : (
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         <section className="bg-white rounded-2xl border-2 border-blue-200 p-3 space-y-2" data-section="sales-add">
           <textarea
@@ -349,6 +329,7 @@ export const SalesPanel = ({ me, items: all = [], logs = [], users = [], allTech
             aria-label="Cosa c'è da fare"
             data-sales-input="new"
           />
+          <MicButton onText={(t) => setText((v) => (v.trim() ? `${v.trim()} ${t}` : t))} />
           <div className="flex flex-wrap gap-1.5" data-section="sales-quick">
             {QUICK.map((t) => (
               <button
@@ -418,7 +399,6 @@ export const SalesPanel = ({ me, items: all = [], logs = [], users = [], allTech
           </button>
         )}
       </div>
-      )}
       {opened && <RowSheet me={me} users={users} item={opened} color={color} onClose={() => setOpenId(null)} />}
       {people && <PeopleSheet me={me} users={users} allTechs={allTechs} onUsers={onUsers} color={color} onClose={() => setPeople(false)} />}
     </div>

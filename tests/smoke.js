@@ -25,6 +25,13 @@ const check = (label, got, want) => {
       ([db, dark, name]) => {
         window.__fakeDB = db;
         window.__liveDB = true;
+        // microfono finto: «sente» sempre la stessa frase
+        window.SpeechRecognition = function () {
+          const r = this;
+          r.start = () => setTimeout(() => { r.onresult && r.onresult({ results: [[{ transcript: "richiamare lunedì" }]] }); r.onend && r.onend(); }, 50);
+          r.stop = () => r.onend && r.onend();
+          r.abort = () => {};
+        };
         localStorage.setItem("mora_tech_last_name", name);
         localStorage.setItem("mora_notify_asked_v1", "1");
         localStorage.setItem("mora_notify_install_tip", "1");
@@ -98,18 +105,11 @@ const check = (label, got, want) => {
   await p.fill('[data-sales-input="new"]', "Verdi");
   await clickSel(p, '[data-sales-quick="Mandare il preventivo"]');
   check("Commerciale: frase pronta aggiunta al testo", await p.evaluate(() => document.querySelector('[data-sales-input="new"]').value), "Verdi: mandare il preventivo");
-  await p.fill('[data-sales-input="new"]', "");
-  const wBefore = await p.evaluate(() => (window.__writes || []).length);
-  const salesBefore = await p.evaluate(() => JSON.stringify(window.__fakeDB.sales_items));
-  await clickSel(p, '[data-sales-tab="jobs"]');
-  await wait(p, 500);
-  const nJobs = await p.evaluate(() => document.querySelectorAll("[data-sales-job]").length);
-  check("Dagli interventi: ci sono lavori da proporre", nJobs > 0, true);
-  await p.fill('[data-sales-input="jobs-search"]', "zzzz");
+  await p.fill('[data-sales-input="new"]', "Bianchi");
+  await p.evaluate(() => document.querySelector('[data-action="sales-mic"]').click());
   await wait(p, 300);
-  check("Dagli interventi: la ricerca filtra", await p.evaluate(() => document.querySelectorAll("[data-sales-job]").length), 0);
-  check("Dagli interventi: non scrive niente", await p.evaluate((n) => (window.__writes || []).length === n, wBefore) && (await p.evaluate(() => JSON.stringify(window.__fakeDB.sales_items))) === salesBefore, true);
-  await clickSel(p, '[data-sales-tab="list"]');
+  check("Commerciale: dettatura aggiunta al testo", await p.evaluate(() => document.querySelector('[data-sales-input="new"]').value), "Bianchi Richiamare lunedì");
+  await p.fill('[data-sales-input="new"]', "");
   await home(p);
   await wait(p, 500);
   // ricerca che perdona gli errori

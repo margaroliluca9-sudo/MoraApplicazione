@@ -9,7 +9,6 @@ import { addDoc, deleteDoc, setDoc } from "./tracked";
 import { chatRef, chatDoc, key } from "./chat";
 import { todayIso, isoOf, parseIso, saveReminder } from "./personal";
 import { buildXlsx } from "./xlsx";
-import { pendingItems } from "./assistant";
 
 export const SALES = "sales_items";
 export const DEFAULT_SALES_USERS = ["luca", "marco"];
@@ -201,34 +200,6 @@ export const salesXlsx = (items) => {
   ]);
 };
 export const salesFileName = (now = new Date()) => `Commerciale ${String(now.getDate()).padStart(2, "0")}-${String(now.getMonth() + 1).padStart(2, "0")}-${now.getFullYear()}.xlsx`;
-
-// LAVORI DAGLI INTERVENTI (scheda a parte del Commerciale, SOLO LETTURA: non scrive niente nella lista).
-// Nei rapporti degli ultimi 12 mesi le cose consigliate o da fare («fune da sostituire alla prossima verifica»,
-// «si consiglia la revisione del freno») che nessun rapporto SUCCESSIVO sulla stessa gru dice fatte.
-// Le regole sono quelle di «L'ultima volta…» (assistant.js → pendingItems): una cosa con un pezzo (fune, catena,
-// freno, finecorsa…) è chiusa se un rapporto dopo dice quel pezzo sostituito/riparato/sistemato o ha i dati della
-// fune/catena nuova; una cosa senza pezzo vale solo fino al rapporto successivo sulla gru.
-const SALE_HINT = /\b(da\s+(sostituire|cambiare|riparare|revisionare|ordinare)|consigliat[aoie]|si\s+consiglia|consigli[oa]\s+di|revisione\s+a\s+terra)\b/i;
-const dayKey = (l) => {
-  const p = String((l && l.dateString) || "").split("/").map(Number);
-  return p.length === 3 ? p[2] * 10000 + p[1] * 100 + p[0] : 0;
-};
-export const jobsFromLogs = (logs, { now = new Date(), days = 365 } = {}) => {
-  const byMachine = {};
-  (logs || []).forEach((l) => {
-    if (!l || !l.customer) return;
-    const k = `${String(l.customer).trim().toUpperCase()}|${String(l.machineId || "").trim().toUpperCase()}`;
-    (byMachine[k] = byMachine[k] || []).push(l);
-  });
-  const out = [];
-  Object.values(byMachine).forEach((list) =>
-    pendingItems(list, { now, maxAgeDays: days }).forEach(({ log, sentence }) => {
-      if (!SALE_HINT.test(sentence)) return;
-      out.push({ id: `${log.id}|${out.length}`, log, sentence: sentence.trim().replace(/[.;]+$/, "") });
-    })
-  );
-  return out.sort((a, b) => dayKey(b.log) - dayKey(a.log));
-};
 
 // frasi pronte per scrivere più in fretta
 export const QUICK = ["Mandare il preventivo", "Richiamare per conferma", "Fissare la data dell'intervento", "Proporre la verifica periodica", "Sentire se hanno bisogno"];
