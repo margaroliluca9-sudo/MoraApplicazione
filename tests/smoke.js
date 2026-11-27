@@ -112,6 +112,17 @@ const check = (label, got, want) => {
   await p.fill('[data-sales-input="new"]', "");
   await home(p);
   await wait(p, 500);
+  // FOTO: «Scatta» apre la fotocamera dentro l'app (la pagina non va in sottofondo), «X» la chiude
+  await clickSel(p, '[data-nav="new"]');
+  await wait(p, 900);
+  await p.evaluate(() => document.querySelector('[data-action="photo-camera"]').click());
+  await wait(p, 600);
+  check("Foto: fotocamera dentro l'app", await has(p, '[data-section="camera"]'), true);
+  await p.evaluate(() => document.querySelector('[data-action="camera-close"]').click());
+  await wait(p, 300);
+  check("Foto: fotocamera chiusa", await has(p, '[data-section="camera"]'), false);
+  await home(p);
+  await wait(p, 500);
   // ricerca che perdona gli errori
   await p.evaluate(() => { const el = document.querySelector('[data-section="home-search"] input'); Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value").set.call(el, "biachi"); el.dispatchEvent(new Event("input", { bubbles: true })); });
   await wait(p);

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useMemo } from "react";
+import { photoOutRecent } from "./reportHelpers";
 import {
   PlusCircle,
   History,
@@ -127,6 +128,8 @@ export default function App() {
         window.history.replaceState(null, "", window.location.pathname);
         return t;
       }
+      // la pagina si è ricaricata mentre era aperta la fotocamera del telefono: si torna al rapporto
+      if (photoOutRecent()) return "new";
     } catch (e) {
       // niente
     }

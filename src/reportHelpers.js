@@ -41,3 +41,31 @@ export const draftWhen = (ms) => {
   if (d.toDateString() === y.toDateString()) return "ieri " + hm;
   return `${d.getDate()}/${d.getMonth() + 1} ${hm}`;
 };
+
+// FOTO DAL TELEFONO: mentre la fotocamera o la galleria del telefono sono aperte, alcuni Android chiudono
+// l'app per liberare memoria e al ritorno la pagina si ricarica. Prima di aprirle salvo la bozza e segno
+// l'ora: se la pagina riparte entro 20 minuti, si riapre «Nuovo» con il rapporto ripreso da solo.
+const PHOTO_OUT = "mora_photo_out";
+export const markPhotoOut = (data) => {
+  if (data) saveDraft(data);
+  try {
+    localStorage.setItem(PHOTO_OUT, String(Date.now()));
+  } catch (e) {
+    // niente
+  }
+};
+export const clearPhotoOut = () => {
+  try {
+    localStorage.removeItem(PHOTO_OUT);
+  } catch (e) {
+    // niente
+  }
+};
+export const photoOutRecent = () => {
+  try {
+    const t = Number(localStorage.getItem(PHOTO_OUT) || 0);
+    return t > 0 && Date.now() - t < 20 * 60 * 1000;
+  } catch (e) {
+    return false;
+  }
+};

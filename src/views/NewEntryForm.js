@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
   PlusCircle,
   Save,
@@ -69,7 +69,8 @@ import {
 } from "../ropes";
 import { vanOf, applyReport, findUsedParts, itemsOf } from "../van";
 import { showVanUsage } from "../components/VanHost";
-import { loadDraft, saveDraft, clearDraft, draftWhen } from "../reportHelpers";
+import { loadDraft, saveDraft, clearDraft, draftWhen, markPhotoOut, clearPhotoOut, photoOutRecent } from "../reportHelpers";
+import { CameraSheet, canInAppCamera } from "../components/CameraSheet";
 import { printIntervention } from "../components/PrintLogButton";
 import { PhotoMarkup } from "../components/modals/PhotoMarkup";
 import { buzzSaved, buzzError, getSettings, setSetting } from "../settings";
@@ -120,7 +121,28 @@ export const NewEntryForm = ({
 
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   // BOZZA: il rapporto si salva da solo sul telefono finché non lo invii
-  const [pendingDraft, setPendingDraft] = useState(() => (practice || prefill ? null : loadDraft()));
+  // la pagina si è ricaricata mentre era aperta la fotocamera/galleria del telefono: riprendo il rapporto da solo
+  const [restored] = useState(() => {
+    if (practice || prefill || !photoOutRecent()) return null;
+    clearPhotoOut();
+    return loadDraft();
+  });
+  const [pendingDraft, setPendingDraft] = useState(() => (practice || prefill || restored ? null : loadDraft()));
+  useEffect(() => {
+    if (restored) setFormData((p) => ({ ...p, ...restored.data }));
+  }, [restored]);
+  const [showRestored, setShowRestored] = useState(!!restored);
+  const [camOpen, setCamOpen] = useState(false);
+  const nativeCam = useRef(null);
+  const photosRef = useRef([]);
+  // tornati dalla fotocamera/galleria del telefono SENZA ricarica (anche annullando): tolgo il segno
+  useEffect(() => {
+    const back = () => {
+      if (document.visibilityState === "visible") setTimeout(clearPhotoOut, 1500);
+    };
+    document.addEventListener("visibilitychange", back);
+    return () => document.removeEventListener("visibilitychange", back);
+  }, []);
   // dopo "Salva": riepilogo con "Altra gru, stesso cliente", "Stampa", "Vai allo Storico"
   const [savedLog, setSavedLog] = useState(null);
   // dopo il salvataggio: il riepilogo resta 3 secondi, poi si va da soli allo Storico
@@ -234,7 +256,31 @@ export const NewEntryForm = ({
     setFormData((p) => ({ ...p, additionalTechnicians: newTechs }));
   };
 
+  photosRef.current = formData.photos;
+  // una foto dalla fotocamera dentro l'app
+  const addShot = async (file) => {
+    const budget = photoBudget(photosRef.current, 1);
+    if (budget < 40000) {
+      alert("Non c'è più spazio per altre foto in questo intervento: togline una.");
+      throw new Error("spazio");
+    }
+    const base64 = await compressImage(file, budget);
+    photosRef.current = [...photosRef.current, base64];
+    setFormData((p) => ({ ...p, photos: [...p.photos, base64] }));
+  };
+  // «Scatta»: la fotocamera dentro l'app; se non c'è, quella del telefono (con la bozza salvata prima)
+  const openCamera = () => {
+    if (formData.photos.length >= MAX_PHOTOS || uploadingPhotos) return;
+    if (canInAppCamera()) setCamOpen(true);
+    else phoneCamera();
+  };
+  const phoneCamera = () => {
+    setCamOpen(false);
+    markPhotoOut(formData);
+    if (nativeCam.current) nativeCam.current.click();
+  };
   const handlePhotoUpload = async (e) => {
+    clearPhotoOut();
     const files = Array.from(e.target.files);
     if (files.length + formData.photos.length > MAX_PHOTOS) {
       alert(`Puoi caricare al massimo ${MAX_PHOTOS} foto per intervento.`);
@@ -839,28 +885,35 @@ export const NewEntryForm = ({
             <div className="flex justify-between items-center gap-3 flex-wrap">
               <p className="text-xs text-slate-500 font-semibold">Fino a {MAX_PHOTOS} foto, dalla fotocamera o dalla galleria.</p>
               <div className="flex gap-2">
-                {[
-                  ["camera", Camera, "Scatta", { capture: "environment" }],
-                  ["gallery", ImageIcon, "Galleria", { multiple: true }],
-                ].map(([id, Icon, label, extra]) => (
-                  <label
-                    key={id}
-                    data-action={"photo-" + id}
-                    className={`cursor-pointer h-11 px-3.5 bg-white border border-slate-300 rounded-xl text-sm font-bold text-slate-700 flex items-center gap-2 hover:bg-slate-100 transition-all ${
-                      formData.photos.length >= MAX_PHOTOS ? "opacity-50 cursor-not-allowed" : ""
-                    }`}
-                  >
-                    <Icon className="w-4 h-4" /> {label}
-                    <input
-                      type="file"
-                      accept="image/*"
-                      {...extra}
-                      className="hidden"
-                      onChange={handlePhotoUpload}
-                      disabled={formData.photos.length >= MAX_PHOTOS || uploadingPhotos}
-                    />
-                  </label>
-                ))}
+                <button
+                  type="button"
+                  data-action="photo-camera"
+                  onClick={openCamera}
+                  disabled={formData.photos.length >= MAX_PHOTOS || uploadingPhotos}
+                  className={`h-11 px-3.5 bg-white border border-slate-300 rounded-xl text-sm font-bold text-slate-700 flex items-center gap-2 hover:bg-slate-100 transition-all ${
+                    formData.photos.length >= MAX_PHOTOS ? "opacity-50 cursor-not-allowed" : ""
+                  }`}
+                >
+                  <Camera className="w-4 h-4" /> Scatta
+                </button>
+                <input ref={nativeCam} type="file" accept="image/*" capture="environment" className="hidden" onChange={handlePhotoUpload} data-input="photo-native-camera" />
+                <label
+                  data-action="photo-gallery"
+                  onClick={() => markPhotoOut(formData)}
+                  className={`cursor-pointer h-11 px-3.5 bg-white border border-slate-300 rounded-xl text-sm font-bold text-slate-700 flex items-center gap-2 hover:bg-slate-100 transition-all ${
+                    formData.photos.length >= MAX_PHOTOS ? "opacity-50 cursor-not-allowed" : ""
+                  }`}
+                >
+                  <ImageIcon className="w-4 h-4" /> Galleria
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={handlePhotoUpload}
+                    disabled={formData.photos.length >= MAX_PHOTOS || uploadingPhotos}
+                  />
+                </label>
               </div>
             </div>
 
@@ -905,6 +958,7 @@ export const NewEntryForm = ({
                 ))}
               </div>
             )}
+            {camOpen && <CameraSheet left={MAX_PHOTOS - formData.photos.length} onShot={addShot} onClose={() => setCamOpen(false)} onFallback={phoneCamera} />}
             {markIdx !== null && formData.photos[markIdx] && (
               <PhotoMarkup
                 src={formData.photos[markIdx]}
@@ -1090,6 +1144,15 @@ export const NewEntryForm = ({
           </div>
         )}
       </div>
+      {showRestored && (
+        <div className="mx-6 mt-5 p-4 rounded-2xl border-2 border-blue-300 bg-blue-50 space-y-2" data-section="photo-restored">
+          <p className="text-sm font-black text-blue-900">Il telefono ha ricaricato l'app mentre facevi la foto</p>
+          <p className="text-xs font-semibold text-blue-800">Il rapporto è stato ripreso com'era. Se la foto non c'è, rifalla con «Scatta»: ora usa la fotocamera dentro l'app.</p>
+          <button type="button" onClick={() => setShowRestored(false)} className="h-10 px-4 rounded-xl bg-white border border-blue-300 text-blue-900 font-bold text-sm" data-action="photo-restored-ok">
+            Ok
+          </button>
+        </div>
+      )}
       {pendingDraft && (
         <div className="mx-6 mt-5 p-4 rounded-2xl border-2 border-amber-300 bg-amber-50 space-y-3" data-section="draft-banner">
           <p className="text-sm font-black text-amber-900">Hai un rapporto non finito</p>

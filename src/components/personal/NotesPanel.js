@@ -7,6 +7,7 @@ import { sortNotes, saveNote, removePersonal } from "../../personal";
 import { describeError } from "../../utils";
 import { PanelHeader, Sheet, Field, INPUT, PrimaryBtn, GhostBtn, Empty } from "./PersonalUi";
 import { SwipeRow } from "../SwipeRow";
+import { CameraSheet, canInAppCamera } from "../CameraSheet";
 
 const when = (ms) => {
   if (!ms) return "";
@@ -28,6 +29,12 @@ export const NotesPanel = ({ me, notes, onBack, onClose, color = "blue" }) => {
   const fileRef = useRef(null);
   const galleryRef = useRef(null);
   const modeRef = useRef("foto");
+  // «Foto»: la fotocamera dentro l'app (con quella del telefono alcuni Android ricaricano la pagina)
+  const [cam, setCam] = useState(false);
+  const addShot = async (f) => {
+    const ph = await photoFromFile(f);
+    setEdit((ed) => ({ ...ed, photos: [...(ed.photos || []), ph].slice(0, MAX_NOTE_PHOTOS) }));
+  };
   const list = sortNotes(notes);
 
   // «Foto» (fotocamera) o «Galleria»
@@ -36,6 +43,7 @@ export const NotesPanel = ({ me, notes, onBack, onClose, color = "blue" }) => {
     setInfo("");
     if ((edit.photos || []).length >= MAX_NOTE_PHOTOS) return setError(`Al massimo ${MAX_NOTE_PHOTOS} foto per nota.`);
     modeRef.current = mode;
+    if (mode !== "galleria" && canInAppCamera()) return setCam(true);
     const ref = mode === "galleria" ? galleryRef : fileRef;
     if (ref.current) ref.current.click();
   };
@@ -176,6 +184,17 @@ export const NotesPanel = ({ me, notes, onBack, onClose, color = "blue" }) => {
               <ImageIcon className="w-5 h-5" /> Galleria
             </button>
           </div>
+          {cam && (
+            <CameraSheet
+              left={MAX_NOTE_PHOTOS - (edit.photos || []).length}
+              onShot={addShot}
+              onClose={() => setCam(false)}
+              onFallback={() => {
+                setCam(false);
+                if (fileRef.current) fileRef.current.click();
+              }}
+            />
+          )}
           <input ref={fileRef} type="file" accept="image/*" capture="environment" className="hidden" data-note-file onChange={onFile} />
           <input ref={galleryRef} type="file" accept="image/*" multiple className="hidden" data-note-gallery onChange={onFile} />
           {(edit.photos || []).length > 0 && (
